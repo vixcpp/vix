@@ -10,6 +10,7 @@
     }
   },
   "server": {
-    "port": 8080
+    "port": 8080,
+    "request_timeout": 5000
   }
 }
