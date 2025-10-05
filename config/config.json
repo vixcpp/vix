@@ -1,10 +1,13 @@
 {
   "database": {
-    "host": "localhost",
-    "user": "root",
-    "password": "",
-    "name": "",
-    "port": 3306
+    "default": {
+      "ENGINE": "mysql",
+      "NAME": "mydb",
+      "USER": "myuser",
+      "PASSWORD": "",
+      "HOST": "localhost",
+      "PORT": 3306
+    }
   },
   "server": {
     "port": 8080

@@ -21,3 +21,4 @@ build/
 *.dwo
 *.d
 .vscode/
+text.txt
