@@ -1,3 +1,4 @@
 [submodule "modules/core"]
 	path = modules/core
 	url = https://github.com/vixcpp/core.git
+	branch = dev

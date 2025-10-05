@@ -2,18 +2,18 @@
 
 int main()
 {
-    try
-    {
-        Vix::Config &config = Vix::Config::getInstance();
-        config.loadConfig();
-        Vix::HTTPServer server(config);
+    Vix::App app;
 
-        server.run();
-    }
-    catch (const std::exception &e)
-    {
-        spdlog::error("Critical error: {}", e.what());
-    }
+    app.get("/hello", [](auto &req, auto &res)
+            { res.json({{"message", "Hello, World!"}}); });
 
-    return 0;
+    app.get("/ping", [](auto &req, auto &res)
+            { res.text("pong"); });
+
+    app.get("/users/{id}", [](auto &req, auto &res, auto &params)
+            {
+    std::string id = params["id"]; 
+    res.json({{"user_id", id}}); });
+
+    app.run(8080);
 }
