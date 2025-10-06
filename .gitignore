@@ -22,3 +22,4 @@ build/
 *.d
 .vscode/
 text.txt
+cmd.txt
