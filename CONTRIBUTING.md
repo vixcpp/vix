@@ -1,38 +1,58 @@
-# 🤝 Contribuer à Softadastra
+# Pull Request Template
 
-Bienvenue dans le projet **Softadastra**, une marketplace africaine ambitieuse et innovante.  
-Ce fichier vous guide pour contribuer de manière propre et efficace.
+## Description
 
----
+Please include a summary of the changes and the motivation behind this PR.  
+Also include relevant issues or feature requests that this PR addresses.
 
-## 🧠 Avant de commencer
-
-- Assurez-vous d’avoir lu le fichier `README.md`
-- Vérifiez que votre contribution correspond à la **vision du projet**
-- Si vous avez une idée, créez une **Issue GitHub** pour en discuter
+Fixes # (issue)
 
 ---
 
-## 🛠️ Stack technique
+## Type of Change
 
-- **Frontend** : PHP, HTML, CSS, JS, Bootstrap, Select2, NProgress
-- **Backend** : C++ (Crow + Boost.Beast)
-- **Versioning** : Git (main / staging / develop)
+Please delete options that are not relevant:
+
+- [ ] Bug fix (non-breaking change)
+- [ ] New feature (non-breaking change)
+- [ ] Breaking change (fix or feature that would cause existing functionality to change)
+- [ ] Documentation update
+- [ ] Tests / CI improvements
 
 ---
 
-## 🔀 Workflow Git (Branche)
+## How Has This Been Tested?
 
-1. Travaillez toujours sur la branche `develop`
-2. Une fois terminé, créez un **Pull Request vers `staging`**
-3. Ne poussez **jamais** directement sur `main` ni `staging`
-4. Exemples :
-   ```bash
-   git checkout develop
-   git pull origin develop
-   git checkout -b feat/user-auth
-   # Code...
-   git add .
-   git commit -m "✨ Ajout de l’authentification utilisateur"
-   git push origin feat/user-auth
-   ```
+Please describe the tests you ran to verify your changes.  
+Provide instructions so others can reproduce. Examples:
+
+```bash
+# Build project
+mkdir build && cd build
+cmake ..
+make -j$(nproc)
+
+# Run unit tests
+./test_core
+```
+
+Include details of your test coverage if applicable.
+
+## Checklist
+
+My code follows the style guidelines of this project
+
+I have performed a self-review of my own code
+
+I have commented my code, particularly in hard-to-understand areas
+
+I have updated documentation if necessary
+
+I have added tests that prove my fix is effective or that my feature works
+
+All new and existing tests passed
+
+## Additional Notes
+
+Add any other information or context about the pull request here.
+Screenshots, benchmarks, or flamegraphs are welcome if they demonstrate improvements or fixes.
