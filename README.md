@@ -1,8 +1,7 @@
 # Vix.cpp
 
-[![Build](https://img.shields.io/github/actions/workflow/status/vixcpp/vix/cmake.yml?branch=main)](https://github.com/vixcpp/vix/actions)
-[![License](https://img.shields.io/github/license/vixcpp/vix)](./LICENSE)
-[![Coverage](https://img.shields.io/badge/coverage-unknown-lightgrey)](./)
+![C++](https://img.shields.io/badge/C++20-Standard-blue)
+![License](https://img.shields.io/badge/License-MIT-green)
 
 Vix.cpp is a modular C++ backend framework inspired by FastAPI, Vue.js, and React.js. It simplifies backend development while keeping high performance.
 
