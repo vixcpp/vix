@@ -24,27 +24,30 @@ endif()
 # Umbrella 'vix' INTERFACE library
 # ======================================================
 add_library(vix INTERFACE)
-
-# Include directories exposed to users
 target_include_directories(vix INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}              # vix/core.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/modules/core
-)
-
-# Link the core library to the umbrella interface
-target_link_libraries(vix INTERFACE core)
-
-# ======================================================
-# Example executable
-# ======================================================
-add_executable(test_core examples/main.cpp)
-target_link_libraries(test_core PRIVATE core)
-target_include_directories(test_core PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/modules/core
 )
+target_link_libraries(vix INTERFACE core)
 
+# ======================================================
+# Examples
+# ======================================================
+file(GLOB EXAMPLES "${CMAKE_CURRENT_SOURCE_DIR}/examples/*.cpp")
+
+foreach(EXAMPLE_SRC ${EXAMPLES})
+    get_filename_component(EXAMPLE_NAME ${EXAMPLE_SRC} NAME_WE)
+    add_executable(${EXAMPLE_NAME} ${EXAMPLE_SRC})
+    target_link_libraries(${EXAMPLE_NAME} PRIVATE core)
+    target_include_directories(${EXAMPLE_NAME} PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/modules/core
+    )
+endforeach()
+
+# ======================================================
 # Copy config.json to build directory
+# ======================================================
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/config/config.json
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -52,6 +55,6 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/config/config.json
 # User messages
 # ======================================================
 message(STATUS "vix configured with core submodule (branch: dev).")
-message(STATUS "Example executable 'test_core' configured.")
+message(STATUS "Example executables configured for all *.cpp in examples/")
 message(STATUS "Build: cmake --build <build_dir>")
-message(STATUS "Run: ./test_core from build directory")
+message(STATUS "Run: ./<example_name> from build directory")
