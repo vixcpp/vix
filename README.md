@@ -23,15 +23,15 @@ All tests were performed with [wrk](https://github.com/wg/wrk), 4 threads, 50 co
 ## Requests/sec Comparison
 
 Go [:████████████████████] 81336
-Vix.cpp [:███████████████ ] 40447
-Node.js [:██ ] 4220
-PHP [:█ ] 2804
-Crow [: ] 1149
-FastAPI [: ] 752
+Vix.cpp [:███████████████·····] 40447
+Node.js [:██··················] 4220
+PHP [:█···················] 2804
+Crow [:····················] 1149
+FastAPI [:····················] 752
 
 - Each `█` block roughly represents ~4000 req/sec.
-- Visualizes relative throughput of different frameworks.
-- Helps quickly see Vix.cpp’s performance compared to Go, Node.js, Crow, FastAPI, and PHP.
+- `·` is used as a filler to preserve alignment.
+- Helps quickly see relative throughput.
 
 ---
 
