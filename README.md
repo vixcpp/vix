@@ -22,21 +22,143 @@ Vix.cpp is a modular C++ backend framework inspired by FastAPI, Vue.js, and Reac
 
 ### Prerequisites
 
+You need a C++20 compiler, CMake, and several libraries. Below are instructions for common platforms.
+
 - C++20 compiler (GCC 12+, Clang 16+, MSVC 2022+)
 - CMake 3.20+
 - Boost libraries (asio, beast)
 - nlohmann/json
 - spdlog
 
-### Build
+1. C++20 Compiler
+
+## Linux (Ubuntu/Debian):
 
 ```bash
+sudo apt update
+sudo apt install g++-12 clang-16 -y
+```
+
+## macOS (Homebrew):
+
+```bash
+brew install gcc
+brew install llvm
+```
+
+## Windows:
+
+Install MSVC 2022 via Visual Studio installer with Desktop C++ workload.
+
+2. CMake 3.20+
+
+## Linux/macOS:
+
+```bash
+sudo apt install cmake # Linux
+brew install cmake # macOS
+```
+
+Windows: Install via CMake official site : https://cmake.org/download/
+
+3. Boost Libraries (asio & beast)
+
+# Linux:
+
+```bash
+sudo apt install libboost-all-dev
+```
+
+# macOS:
+
+```bash
+brew install boost
+```
+
+Windows: Use vcpkg or download from Boost.org : https://www.boost.org/
+
+4. nlohmann/json
+
+# Linux/macOS (via package manager):
+
+```bash
+sudo apt install nlohmann-json3-dev   # Linux
+brew install nlohmann-json            # macOS
+```
+
+Windows: Install via vcpkg:
+
+```bash
+vcpkg install nlohmann-json
+```
+
+5. spdlog
+
+# Linux/macOS:
+
+```bash
+sudo apt install libspdlog-dev   # Linux
+brew install spdlog              # macOS
+```
+
+Windows: Install via vcpkg:
+
+```bash
+vcpkg install spdlog
+```
+
+### Build
+
+Clone the repository, configure, and build all modules including examples:
+
+```bash
+# Clone the vix repository
 git clone https://github.com/vixcpp/vix.git
 cd vix
+
+# Initialize and update submodules (core and others)
+git submodule update --init --recursive
+
+# Create a build directory and move into it
 mkdir build && cd build
+
+# Configure the project with CMake
 cmake ..
+
+# Compile all modules and examples using all CPU cores
 make -j$(nproc)
+
 ```
+
+## What this does:
+
+Builds the core module as a library
+
+Sets up the umbrella interface vix
+
+Compiles all example executables in examples/:
+
+main → general example
+
+get_example → GET routes
+
+post_example → POST routes
+
+put_example → PUT routes
+
+delete_example → DELETE routes
+
+Copies config/config.json to the build directory automatically
+
+## Run examples:
+
+# From the build directory
+
+./main
+./get_example
+./post_example
+./put_example
+./delete_example
 
 ---
 
@@ -70,19 +192,178 @@ wrk -t8 -c100 -d30s http://localhost:8080/hello
 wrk -t8 -c100 -d30s http://localhost:8080/users/1
 ```
 
+## POST Example
+
+```cpp
+#include <vix/core.h>
+
+int main() {
+    Vix::App app;
+
+    app.post("/users", [](auto &req, auto &res) {
+        auto body = req.body();
+        res.json({{"status", "created"}, {"data", body}});
+    });
+
+    app.run(8080);
+}
+```
+
+## Test with:
+
+```bash
+curl -X POST http://localhost:8080/users -d '{"name":"Alice"}' -H "Content-Type: application/json"
+```
+
+## PUT Example
+
+```cpp
+#include <vix/core.h>
+
+int main() {
+    Vix::App app;
+
+    app.put("/users/{id}", [](auto &req, auto &res, auto &params) {
+        std::string id = params["id"];
+        auto body = req.body();
+        res.json({{"status", "updated"}, {"user_id", id}, {"data", body}});
+    });
+
+    app.run(8080);
+}
+```
+
+## Test with:
+
+```bash
+curl -X PUT http://localhost:8080/users/1 -d '{"name":"Bob"}' -H "Content-Type: application/json"
+```
+
+## DELETE Example
+
+```cpp
+#include <vix/core.h>
+
+int main() {
+    Vix::App app;
+
+    app.del("/users/{id}", [](auto &req, auto &res, auto &params) {
+        std::string id = params["id"];
+        res.json({{"status", "deleted"}, {"user_id", id}});
+    });
+
+    app.run(8080);
+}
+```
+
+## Test with:
+
+```bash
+curl -X DELETE http://localhost:8080/users/1
+```
+
+# Vix.cpp Examples
+
+This folder contains example applications demonstrating how to use the Vix.cpp framework.
+
+Each file shows how to create routes for different HTTP methods: GET, POST, PUT, DELETE.
+
 ---
+
+## Example Files
+
+| File                 | Description                                             |
+| -------------------- | ------------------------------------------------------- |
+| `get_example.cpp`    | Demonstrates GET routes, including parameterized paths. |
+| `post_example.cpp`   | Demonstrates POST routes with JSON body handling.       |
+| `put_example.cpp`    | Demonstrates PUT routes for updating resources.         |
+| `delete_example.cpp` | Demonstrates DELETE routes for removing resources.      |
+
+---
+
+## Usage
+
+1. Build the examples:
+
+```bash
+cd vix
+mkdir -p build/examples && cd build/examples
+cmake ../../
+make -j$(nproc)
+```
+
+2. Run an example:
+
+```bash
+./get_example       # Runs GET routes
+./post_example      # Runs POST routes
+./put_example       # Runs PUT routes
+./delete_example    # Runs DELETE routes
+```
+
+3. Test routes using curl or wrk:
+
+# GET /hello
+
+```bash
+curl http://localhost:8080/hello
+wrk -t4 -c50 -d10s http://localhost:8080/users/1
+# {"message":"Hello, World!"}
+```
+
+# GET /users/{id}
+
+```bash
+wrk -t4 -c50 -d10s http://localhost:8080/users/1
+# 49322 req/sec, 51.77MB read
+```
+
+# POST /users
+
+```bash
+curl -X POST http://localhost:8080/users \
+ -d '{"name":"Alice"}' \
+ -H "Content-Type: application/json"
+
+# {"message":"User created","name":"Alice"}
+```
+
+# PUT /users/{id}
+
+```bash
+curl -X PUT http://localhost:8080/users/1 \
+     -d '{"name":"Bob"}' \
+     -H "Content-Type: application/json"
+# {"id":"1","message":"User updated","name":"Bob"}
+```
+
+# DELETE /users/{id}
+
+```bash
+curl -X DELETE http://localhost:8080/users/1
+# {"id":"1","message":"User deleted"}
+```
+
+### Notes
+
+Ensure vix.cpp core is built and running before testing.
+
+Modify routes and port numbers in examples if needed.
+
+High performance: C++ backend can handle tens of thousands of requests/sec as shown.
 
 ## Repository Structure
 
 ```
+
 vix/
 ├─ modules/
-│  ├─ core/
-│  ├─ orm/
-│  ├─ cli/
-│  ├─ middleware/
-│  ├─ websocket/
-│  └─ devtools/
+│ ├─ core/
+│ ├─ orm/
+│ ├─ cli/
+│ ├─ middleware/
+│ ├─ websocket/
+│ └─ devtools/
 ├─ examples/
 ├─ config/
 ├─ scripts/
@@ -91,6 +372,7 @@ vix/
 ├─ README.md
 ├─ CHANGELOG.md
 └─ CMakeLists.txt
+
 ```
 
 ---
@@ -104,3 +386,11 @@ Contributions are welcome! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for 
 ## License
 
 MIT License – see [LICENSE](./LICENSE) for details.
+
+```
+
+```
+
+```
+
+```
