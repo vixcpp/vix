@@ -7,6 +7,189 @@ Vix.cpp is a modular C++ backend framework inspired by FastAPI, Vue.js, and Reac
 
 ---
 
+## Benchmarks & Examples
+
+All tests were performed with [wrk](https://github.com/wg/wrk), 4 threads, 50 connections, for 10 seconds.
+
+| Framework | Requests/sec | Avg Latency | Transfer/sec |
+| --------- | ------------ | ----------- | ------------ |
+| Go        | 81336        | 674.28µs    | 10.16MB      |
+| Vix.cpp   | 40447        | 1.18ms      | 4.71MB       |
+| Node.js   | 4220         | 16.00ms     | 0.97MB       |
+| PHP       | 2804         | 16.87ms     | 498.38KB     |
+| Crow      | 1149         | 41.60ms     | 358.95KB     |
+| FastAPI   | 752          | 63.71ms     | 111.99KB     |
+
+## Requests/sec Comparison
+
+Go [:████████████████████] 81336
+Vix.cpp [:███████████████ ] 40447
+Node.js [:██ ] 4220
+PHP [:█ ] 2804
+Crow [: ] 1149
+FastAPI [: ] 752
+
+- Each `█` block roughly represents ~4000 req/sec.
+- Visualizes relative throughput of different frameworks.
+- Helps quickly see Vix.cpp’s performance compared to Go, Node.js, Crow, FastAPI, and PHP.
+
+---
+
+### Vix.cpp Example
+
+```cpp
+#include <vix/core.h>
+
+int main()
+{
+    Vix::App app;
+
+    app.get("/hello", [](auto &req, auto &res)
+    { res.json({{"message", "Hello, World!"}}); });
+
+    app.get("/users/{id}", [](auto &req, auto &res, auto &params)
+    {
+        std::string id = params["id"];
+        res.json({{"user_id", id}});
+    });
+
+    app.run(8080);
+}
+```
+
+Benchmark:
+
+```bash
+wrk -t4 -c50 -d10s http://localhost:8080/hello
+# 40447 req/sec, 4.71MB/sec
+
+wrk -t4 -c50 -d10s http://localhost:8080/users/1
+# 49322 req/sec, 5.17MB/sec
+```
+
+## Go Example
+
+```go
+package main
+
+import (
+    "fmt"
+    "net/http"
+)
+
+func helloHandler(w http.ResponseWriter, r *http.Request) {
+    fmt.Fprintln(w, "Hello, world!")
+}
+
+func main() {
+    http.HandleFunc("/hello", helloHandler)
+    fmt.Println("Server running on http://localhost:8001")
+    http.ListenAndServe(":8001", nil)
+}
+```
+
+## Benchmark
+
+```bash
+wrk -t4 -c50 -d10s http://localhost:8001/hello
+# 81336 req/sec, 10.16MB/sec
+```
+
+# Node.js (Express) Example
+
+```javascript
+const express = require("express");
+const app = express();
+const PORT = 3000;
+
+app.get("/hello", (req, res) => {
+  res.send("Hello, world!");
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
+```
+
+## Benchmark:
+
+```bash
+wrk -t4 -c50 -d10s http://localhost:3000/hello
+# 4220 req/sec, 0.97MB/sec
+```
+
+# Crow (C++) Example
+
+```cpp
+#include <crow.h>
+
+int main()
+{
+    crow::SimpleApp app;
+
+    CROW_ROUTE(app, "/hello")([](){ return "Hello, world!"; });
+
+    app.port(18080).concurrency(8).run();
+}
+```
+
+## Benchmark:
+
+```bash
+wrk -t4 -c50 -d10s http://localhost:18080/hello
+# 1149 req/sec, 358.95KB/sec
+```
+
+# FastAPI Example (Python)
+
+```python
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/hello")
+def read_root():
+    return {"message": "Hello, World!"}
+```
+
+## Benchmark:
+
+```bash
+wrk -t4 -c50 -d10s http://localhost:3001/hello
+# 752 req/sec, 111.99KB/sec
+```
+
+## PHP Example
+
+```php
+<?php
+header('Content-Type: application/json');
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && $_SERVER['REQUEST_URI'] === '/hello') {
+    echo json_encode(["message" => "Hello, World!"]);
+} else {
+    http_response_code(404);
+    echo json_encode(["error" => "Not Found"]);
+}
+```
+
+## Benchmark:
+
+```bash
+wrk -t4 -c50 -d10s http://localhost:3002/hello
+# 2804 req/sec, 498.38KB/sec
+```
+
+# Notes
+
+Vix.cpp provides high throughput and low latency while remaining modular and flexible in C++.
+
+Go achieves the highest raw performance in these benchmarks.
+
+Latency is measured as the average time per request.
+
+All tests were conducted on the same machine under identical conditions.
+
 ## Features
 
 - Asynchronous HTTP server (Boost.Asio & Boost.Beast)
@@ -386,11 +569,3 @@ Contributions are welcome! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for 
 ## License
 
 MIT License – see [LICENSE](./LICENSE) for details.
-
-```
-
-```
-
-```
-
-```
