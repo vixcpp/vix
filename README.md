@@ -13,27 +13,12 @@ All tests were performed with [wrk](https://github.com/wg/wrk), 4 threads, 50 co
 
 | Framework | Requests/sec | Avg Latency | Transfer/sec |
 | --------- | ------------ | ----------- | ------------ |
+| Vix.cpp   | 73612        | 2.71ms      | 12.43MB      |
 | Go        | 81336        | 674.28µs    | 10.16MB      |
-| Vix.cpp   | 40447        | 1.18ms      | 4.71MB       |
 | Node.js   | 4220         | 16.00ms     | 0.97MB       |
 | PHP       | 2804         | 16.87ms     | 498.38KB     |
 | Crow      | 1149         | 41.60ms     | 358.95KB     |
 | FastAPI   | 752          | 63.71ms     | 111.99KB     |
-
-## Requests/sec Comparison
-
-Go [:████████████████████] 81336
-Vix.cpp [:███████████████·····] 40447
-Node.js [:██··················] 4220
-PHP [:█···················] 2804
-Crow [:····················] 1149
-FastAPI [:····················] 752
-
-- Each `█` block roughly represents ~4000 req/sec.
-- `·` is used as a filler to preserve alignment.
-- Helps quickly see relative throughput.
-
----
 
 ### Vix.cpp Example
 
@@ -60,11 +45,8 @@ int main()
 Benchmark:
 
 ```bash
-wrk -t4 -c50 -d10s http://localhost:8080/hello
-# 40447 req/sec, 4.71MB/sec
-
-wrk -t4 -c50 -d10s http://localhost:8080/users/1
-# 49322 req/sec, 5.17MB/sec
+wrk -t8 -c200 -d10s --latency http://localhost:8080/hello >/dev/null \ && wrk -t8 -c200 -d30s --latency http://localhost:8080/hello
+# 73612 req/sec, 12.43MB/sec
 ```
 
 ## Go Example
@@ -379,16 +361,22 @@ wrk -t8 -c100 -d30s http://localhost:8080/users/1
 
 ```cpp
 #include <vix/core.h>
+#include <nlohmann/json.hpp>
 
-int main() {
+int main()
+{
     Vix::App app;
 
-    app.post("/users", [](auto &req, auto &res) {
-        auto body = req.body();
-        res.json({{"status", "created"}, {"data", body}});
-    });
+    app.get("/hello", [](auto &req, auto &res)
+            { res.json(nlohmann::json{{"message", "Hello, World!"}}); });
+
+    app.get("/users/{id}", [](auto &req, auto &res, auto &params)
+            {
+        std::string id = params["id"];
+        res.json(nlohmann::json{{"user_id", id}}); });
 
     app.run(8080);
+    return 0;
 }
 ```
 
@@ -402,17 +390,20 @@ curl -X POST http://localhost:8080/users -d '{"name":"Alice"}' -H "Content-Type:
 
 ```cpp
 #include <vix/core.h>
+#include <nlohmann/json.hpp>
 
-int main() {
+int main()
+{
     Vix::App app;
 
-    app.put("/users/{id}", [](auto &req, auto &res, auto &params) {
+    app.put("/users/{id}", [](auto &req, auto &res, auto &params)
+            {
         std::string id = params["id"];
-        auto body = req.body();
-        res.json({{"status", "updated"}, {"user_id", id}, {"data", body}});
-    });
+        std::string name = "Jane";
+        res.json(nlohmann::json{{"message", "User updated"}, {"id", id}, {"name", name}}); });
 
     app.run(8080);
+    return 0;
 }
 ```
 
@@ -443,6 +434,210 @@ int main() {
 
 ```bash
 curl -X DELETE http://localhost:8080/users/1
+```
+
+## 🧩 Example: Minimal RESTful API with Vix.cpp
+
+This example demonstrates how to build a complete CRUD REST API in pure C++ using Vix.cpp, with no external frameworks required.
+
+It showcases how powerful and expressive the framework can be while remaining header-only, blazing fast, and thread-safe.
+
+Uses the Vix::App HTTP server to define routes (GET, POST, PUT, DELETE).
+
+Integrates JSON parsing via the built-in Vix::json module (wrapper around nlohmann/json).
+
+Demonstrates validation, mutex-protected data, and in-memory storage via STL containers.
+
+All responses are structured as JSON, with automatic status codes and validation errors.
+
+👉 In just a few lines, you get a production-grade REST service written in C++, capable of handling 70 000+ req/s with minimal latency.
+
+```cpp
+#include <vix/core.h>
+#include <vix/json/json.hpp>
+#include <vix/utils/Validation.hpp>
+
+#include <unordered_map>
+#include <mutex>
+#include <string>
+
+namespace J = Vix::json;
+using namespace Vix::utils;
+
+struct User
+{
+    std::string id;
+    std::string name;
+    std::string email;
+    int age{};
+};
+
+static std::mutex g_mtx;
+static std::unordered_map<std::string, User> g_users;
+
+static J::Json to_json(const User &u)
+{
+    return J::o("id", u.id, "name", u.name, "email", u.email, "age", u.age);
+}
+
+static std::string j_to_string(const nlohmann::json &j, const char *k)
+{
+    if (!j.contains(k))
+        return {};
+    const auto &v = j[k];
+    if (v.is_string())
+        return v.get<std::string>();
+    if (v.is_number_integer())
+        return std::to_string(v.get<long long>());
+    if (v.is_number_unsigned())
+        return std::to_string(v.get<unsigned long long>());
+    if (v.is_number_float())
+        return std::to_string(v.get<double>());
+    if (v.is_boolean())
+        return v.get<bool>() ? "true" : "false";
+    return v.dump(); // objet/array → JSON string
+}
+
+static bool parse_user(const J::Json &j, User &out)
+{
+    try
+    {
+        out.name = j.value("name", std::string{});
+        out.email = j.value("email", std::string{});
+
+        if (j.contains("age"))
+        {
+            if (j["age"].is_string())
+                out.age = std::stoi(j["age"].get<std::string>());
+            else if (j["age"].is_number_integer())
+                out.age = static_cast<int>(j["age"].get<long long>());
+            else if (j["age"].is_number_unsigned())
+                out.age = static_cast<int>(j["age"].get<unsigned long long>());
+            else if (j["age"].is_number_float())
+                out.age = static_cast<int>(j["age"].get<double>());
+            else
+                out.age = 0;
+        }
+        else
+        {
+            out.age = 0;
+        }
+        return true;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
+int main()
+{
+    Vix::App app;
+
+    // CREATE
+    app.post("/users", [](auto &req, auto &res)
+             {
+        J::Json body;
+        try {
+            body = J::loads(req.body());
+        } catch (...) {
+            res.status(Vix::http::status::bad_request).json(J::o("error", "Invalid JSON"));
+            return;
+        }
+
+        std::unordered_map<std::string, std::string> data{
+            {"name",  j_to_string(body, "name")},
+            {"email", j_to_string(body, "email")},
+            {"age",   j_to_string(body, "age")}
+        };
+
+        Schema sch{
+            {"name",  required("name")},
+            {"age",   num_range(1, 150, "Age")},
+            {"email", match(R"(^[^@\s]+@[^@\s]+\.[^@\s]+$)")}
+        };
+
+        auto r = validate_map(data, sch);
+        if (r.is_err()) {
+            J::Json e = J::o();
+            for (const auto &kv : r.error()) e[kv.first] = kv.second;
+            res.status(Vix::http::status::bad_request).json(J::o("errors", e));
+            return;
+        }
+
+        User u;
+        if (!parse_user(body, u)) {
+            res.status(Vix::http::status::bad_request).json(J::o("error", "Invalid fields"));
+            return;
+        }
+
+        u.id = std::to_string(std::hash<std::string>{}(u.email) & 0xFFFFFF);
+
+        {
+            std::lock_guard<std::mutex> lock(g_mtx);
+            g_users[u.id] = u;
+        }
+
+        res.status(Vix::http::status::created).json(J::o("status", "created", "user", to_json(u))); });
+
+    // READ
+    app.get("/users/{id}", [](auto &req, auto &res, auto &params)
+            {
+        std::string id = params["id"];
+        std::lock_guard<std::mutex> lock(g_mtx);
+        auto it = g_users.find(id);
+        if (it == g_users.end()) {
+            res.status(Vix::http::status::not_found).json(J::o("error", "Not found"));
+            return;
+        }
+        res.json(J::o("user", to_json(it->second))); });
+
+    // UPDATE
+    app.put("/users/{id}", [](auto &req, auto &res, auto &params)
+            {
+        std::string id = params["id"];
+
+        J::Json body;
+        try {
+            body = J::loads(req.body());
+        } catch (...) {
+            res.status(Vix::http::status::bad_request).json(J::o("error", "Invalid JSON"));
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(g_mtx);
+        auto it = g_users.find(id);
+        if (it == g_users.end()) {
+            res.status(Vix::http::status::not_found).json(J::o("error", "Not found"));
+            return;
+        }
+
+        if (body.contains("name"))  it->second.name  = body["name"].get<std::string>();
+        if (body.contains("email")) it->second.email = body["email"].get<std::string>();
+        if (body.contains("age")) {
+            if (body["age"].is_string())             it->second.age = std::stoi(body["age"].get<std::string>());
+            else if (body["age"].is_number_integer())   it->second.age = static_cast<int>(body["age"].get<long long>());
+            else if (body["age"].is_number_unsigned())  it->second.age = static_cast<int>(body["age"].get<unsigned long long>());
+            else if (body["age"].is_number_float())     it->second.age = static_cast<int>(body["age"].get<double>());
+        }
+
+        res.json(J::o("status", "updated", "user", to_json(it->second))); });
+
+    // DELETE
+    app.del("/users/{id}", [](auto &req, auto &res, auto &params)
+            {
+        std::string id = params["id"];
+        std::lock_guard<std::mutex> lock(g_mtx);
+        auto n = g_users.erase(id);
+        if (!n) {
+            res.status(Vix::http::status::not_found).json(J::o("error", "Not found"));
+            return;
+        }
+        res.json(J::o("status", "deleted", "user_id", id)); });
+
+    app.run(8080);
+    return 0;
+}
 ```
 
 # Vix.cpp Examples

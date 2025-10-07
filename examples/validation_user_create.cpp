@@ -25,7 +25,6 @@ static J::Json to_json(const User &u)
     return J::o("id", u.id, "name", u.name, "email", u.email, "age", u.age);
 }
 
-// Stringify sûr (évite les exceptions si le type ne matche pas)
 static std::string j_to_string(const nlohmann::json &j, const char *k)
 {
     if (!j.contains(k))
@@ -91,7 +90,6 @@ int main()
             return;
         }
 
-        // ⚠️ Ne pas utiliser body.value<T>(..., std::string{}) sur un nombre → exception
         std::unordered_map<std::string, std::string> data{
             {"name",  j_to_string(body, "name")},
             {"email", j_to_string(body, "email")},
