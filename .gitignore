@@ -22,3 +22,7 @@ build/
 *.d
 .vscode/
 text.txt
+cmd.txt
+# Logs
+vix.log
+*.log

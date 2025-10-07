@@ -1,4 +1,5 @@
 #include <vix/core.h>
+#include <nlohmann/json.hpp>
 
 int main()
 {
@@ -7,9 +8,9 @@ int main()
     app.put("/users/{id}", [](auto &req, auto &res, auto &params)
             {
         std::string id = params["id"];
-        auto body = nlohmann::json::parse(req.body());
-        std::string name = body.value("name", "unknown");
-        res.json({{"message", "User updated"}, {"id", id}, {"name", name}}); });
+        std::string name = "Jane";
+        res.json(nlohmann::json{{"message", "User updated"}, {"id", id}, {"name", name}}); });
 
     app.run(8080);
+    return 0;
 }

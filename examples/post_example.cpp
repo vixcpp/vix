@@ -1,14 +1,18 @@
 #include <vix/core.h>
+#include <nlohmann/json.hpp>
 
 int main()
 {
     Vix::App app;
 
-    app.post("/users", [](auto &req, auto &res)
-             {
-        auto body = nlohmann::json::parse(req.body());
-        std::string name = body.value("name", "unknown");
-        res.json({{"message", "User created"}, {"name", name}}); });
+    app.get("/hello", [](auto &req, auto &res)
+            { res.json(nlohmann::json{{"message", "Hello, World!"}}); });
+
+    app.get("/users/{id}", [](auto &req, auto &res, auto &params)
+            {
+        std::string id = params["id"];
+        res.json(nlohmann::json{{"user_id", id}}); });
 
     app.run(8080);
+    return 0;
 }
