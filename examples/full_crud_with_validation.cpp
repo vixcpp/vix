@@ -32,7 +32,6 @@ static bool parse_user(const J::Json &j, User &out)
         out.name = j.value("name", std::string{});
         out.email = j.value("email", std::string{});
 
-        // "age" peut arriver en string; on normalise
         if (j.contains("age"))
         {
             if (j["age"].is_string())
