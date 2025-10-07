@@ -11,3 +11,6 @@
 	path = modules/cli
 	url = https://github.com/vixcpp/cli.git
 	branch = dev
+[submodule "modules/json"]
+	path = modules/json
+	url = https://github.com/vixcpp/json.git
