@@ -1,7 +1,8 @@
 # ======================================================
-# Build and temporary files
+# 🧱 Build and temporary files
 # ======================================================
 build/
+build-*/
 *.o
 *.obj
 *.lo
@@ -20,9 +21,44 @@ build/
 *.pch
 *.dwo
 *.d
+
+# ======================================================
+# 🧠 IDEs and editors
+# ======================================================
 .vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# ======================================================
+# 🧰 Generated configs
+# ======================================================
+compile_commands.json
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+
+# ======================================================
+# 🧾 Logs and diagnostics
+# ======================================================
+*.log
+vix.log
+text.md
+cmd.md
 text.txt
 cmd.txt
-# Logs
-vix.log
-*.log
+
+# ======================================================
+# 🧪 Local scripts and tools
+# ======================================================
+scripts/changelog-release.sh
+scripts/update_changelog.sh
+
+# ======================================================
+# 🔧 Local test & reference builds
+# ======================================================
+build-ref/
+build-rel/

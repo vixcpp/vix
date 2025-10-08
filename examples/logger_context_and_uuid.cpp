@@ -36,6 +36,3 @@ int main()
     app.run(8080);
     return 0;
 }
-
-// curl :8080/trace
-// # Check your console/vix.log for contextual logs (rid=..., mod=trace_handler)

@@ -1,17 +1,33 @@
+// POST example — create a resource from JSON body
 #include <vix/core.h>
 #include <nlohmann/json.hpp>
+#include <string>
 
 int main()
 {
     Vix::App app;
 
-    app.get("/hello", [](auto &req, auto &res)
-            { res.json(nlohmann::json{{"message", "Hello, World!"}}); });
+    // Create user
+    app.post("/users", [](auto &req, auto &res)
+             {
+        try {
+            auto body = nlohmann::json::parse(req.body());
 
-    app.get("/users/{id}", [](auto &req, auto &res, auto &params)
-            {
-        std::string id = params["id"];
-        res.json(nlohmann::json{{"user_id", id}}); });
+            // echo minimal "created" payload
+            nlohmann::json out = {
+                {"action", "create"},
+                {"status", "created"},
+                {"user", {
+                    {"name",  body.value("name",  "")},
+                    {"email", body.value("email", "")},
+                    {"age",   body.value("age",   0)}
+                }}
+            };
+            res.status(Vix::http::status::created).json(out);
+        } catch (...) {
+            res.status(Vix::http::status::bad_request)
+               .json(nlohmann::json{{"error", "Invalid JSON"}});
+        } });
 
     app.run(8080);
     return 0;
