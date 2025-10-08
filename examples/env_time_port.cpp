@@ -24,6 +24,3 @@ int main()
 
     return 0;
 }
-
-// PORT=9090 ./env_time_port
-// curl :9090/now
