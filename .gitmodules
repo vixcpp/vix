@@ -1,7 +1,7 @@
 [submodule "modules/core"]
     path = modules/core
     url = https://github.com/vixcpp/core.git
-    branch = dev
+	branch = dev
 
 [submodule "modules/utils"]
 	path = modules/utils
@@ -14,3 +14,4 @@
 [submodule "modules/json"]
 	path = modules/json
 	url = https://github.com/vixcpp/json.git
+	branch = dev
