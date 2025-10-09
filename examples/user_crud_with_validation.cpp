@@ -1,15 +1,23 @@
 // ============================================================================
-// users_crud_validated.cpp — CRUD + validation (new Vix.cpp API)
+// user_crud_with_validation.cpp — Full CRUD + Validation (Vix.cpp, nouvelle API)
+// ----------------------------------------------------------------------------
+// Routes:
+//   POST   /users          → Create user (with validation)
+//   GET    /users/{id}     → Read user
+//   PUT    /users/{id}     → Update user
+//   DELETE /users/{id}     → Delete user
 // ============================================================================
 
-#include <vix.hpp>
-#include <vix/json/Simple.hpp>
-#include <vix/utils/Validation.hpp>
+#include <vix.hpp>                  // App, http, ResponseWrapper, etc.
+#include <vix/json/Simple.hpp>      // Vix::json::token, obj(), array()
+#include <vix/utils/Validation.hpp> // required(), num_range(), match(), validate_map
 #include <nlohmann/json.hpp>
 
 #include <unordered_map>
 #include <mutex>
 #include <string>
+#include <optional>
+#include <sstream>
 #include <vector>
 
 using namespace Vix;
@@ -29,8 +37,8 @@ struct User
 static std::mutex g_mtx;
 static std::unordered_map<std::string, User> g_users;
 
-// --------------------------- JSON helpers (Simple API) ----------------------
-static J::kvs to_json(const User &u)
+// --------------------------- Helpers ----------------------------------------
+static J::kvs user_to_kvs(const User &u)
 {
     return J::obj({"id", u.id,
                    "name", u.name,
@@ -38,22 +46,19 @@ static J::kvs to_json(const User &u)
                    "age", static_cast<long long>(u.age)});
 }
 
-static std::string j_to_string(const njson &j, const char *k)
+static std::string to_string_safe(const njson &j)
 {
-    if (!j.contains(k))
-        return {};
-    const auto &v = j.at(k);
-    if (v.is_string())
-        return v.get<std::string>();
-    if (v.is_number_integer())
-        return std::to_string(v.get<long long>());
-    if (v.is_number_unsigned())
-        return std::to_string(v.get<unsigned long long>());
-    if (v.is_number_float())
-        return std::to_string(v.get<double>());
-    if (v.is_boolean())
-        return v.get<bool>() ? "true" : "false";
-    return v.dump(); // objet/array -> JSON string
+    if (j.is_string())
+        return j.get<std::string>();
+    if (j.is_number_integer())
+        return std::to_string(j.get<long long>());
+    if (j.is_number_unsigned())
+        return std::to_string(j.get<unsigned long long>());
+    if (j.is_number_float())
+        return std::to_string(j.get<double>());
+    if (j.is_boolean())
+        return j.get<bool>() ? "true" : "false";
+    return {};
 }
 
 static bool parse_user(const njson &j, User &out)
@@ -88,26 +93,37 @@ static bool parse_user(const njson &j, User &out)
     }
 }
 
-// --------------------------- App -------------------------------------------
+static std::string gen_id_from_email(const std::string &email)
+{
+    const auto h = std::hash<std::string>{}(email) & 0xFFFFFFull;
+    std::ostringstream oss;
+    oss << h;
+    return oss.str();
+}
+
+// --------------------------- Main -------------------------------------------
 int main()
 {
     App app;
 
-    // CREATE
+    // CREATE (POST /users)
     app.post("/users", [](auto &req, auto &res)
              {
         njson body;
         try {
             body = njson::parse(req.body());
         } catch (...) {
-            res.status(http::status::bad_request).json({ "error", "Invalid JSON" });
+            res.status(http::status::bad_request).json({
+                "error", "Invalid JSON"
+            });
             return;
         }
 
+        // Prépare les champs pour la validation (map<string,string>)
         std::unordered_map<std::string, std::string> data{
-            {"name",  j_to_string(body, "name")},
-            {"email", j_to_string(body, "email")},
-            {"age",   j_to_string(body, "age")}
+            {"name",  body.value("name",  std::string{})},
+            {"email", body.value("email", std::string{})},
+            {"age",   body.contains("age") ? to_string_safe(body["age"]) : std::string{}}
         };
 
         Schema sch{
@@ -118,7 +134,7 @@ int main()
 
         auto r = validate_map(data, sch);
         if (r.is_err()) {
-           // Construire {"errors": {field: message, ...}} sans nlohmann
+            // Construire {"errors": { field: message, ... }} SANS nlohmann
             std::vector<J::token> flat;
             flat.reserve(r.error().size() * 2);
             for (const auto& kv : r.error()) {
@@ -126,7 +142,6 @@ int main()
                 flat.emplace_back(kv.second);  // valeur
             }
 
-            // J::obj(std::move(flat)) crée un objet JSON à partir de la liste plate
             res.status(http::status::bad_request).json({
                 "errors", J::obj(std::move(flat))
             });
@@ -135,12 +150,13 @@ int main()
 
         User u;
         if (!parse_user(body, u)) {
-            res.status(http::status::bad_request).json({ "error", "Invalid fields" });
+            res.status(http::status::bad_request).json({
+                "error", "Invalid fields"
+            });
             return;
         }
 
-        // Simple ID from email hash
-        u.id = std::to_string(std::hash<std::string>{}(u.email) & 0xFFFFFF);
+        u.id = gen_id_from_email(u.email);
 
         {
             std::lock_guard<std::mutex> lock(g_mtx);
@@ -149,22 +165,26 @@ int main()
 
         res.status(http::status::created).json({
             "status", "created",
-            "user",   to_json(u)
+            "user",   user_to_kvs(u)
         }); });
 
-    // READ
-    app.get("/users/{id}", [](auto &, auto &res, auto &params)
+    // READ (GET /users/{id})
+    app.get("/users/{id}", [](auto & /*req*/, auto &res, auto &params)
             {
         const std::string id = params["id"];
         std::lock_guard<std::mutex> lock(g_mtx);
         auto it = g_users.find(id);
         if (it == g_users.end()) {
-            res.status(http::status::not_found).json({ "error", "Not found" });
+            res.status(http::status::not_found).json({
+                "error", "User not found"
+            });
             return;
         }
-        res.json({ "user", to_json(it->second) }); });
+        res.json({
+            "user", user_to_kvs(it->second)
+        }); });
 
-    // UPDATE
+    // UPDATE (PUT /users/{id})
     app.put("/users/{id}", [](auto &req, auto &res, auto &params)
             {
         const std::string id = params["id"];
@@ -173,40 +193,53 @@ int main()
         try {
             body = njson::parse(req.body());
         } catch (...) {
-            res.status(http::status::bad_request).json({ "error", "Invalid JSON" });
+            res.status(http::status::bad_request).json({
+                "error", "Invalid JSON"
+            });
             return;
         }
 
         std::lock_guard<std::mutex> lock(g_mtx);
         auto it = g_users.find(id);
         if (it == g_users.end()) {
-            res.status(http::status::not_found).json({ "error", "Not found" });
+            res.status(http::status::not_found).json({
+                "error", "User not found"
+            });
             return;
         }
 
         if (body.contains("name"))  it->second.name  = body["name"].get<std::string>();
         if (body.contains("email")) it->second.email = body["email"].get<std::string>();
         if (body.contains("age")) {
-            if      (body["age"].is_string())               it->second.age = std::stoi(body["age"].get<std::string>());
-            else if (body["age"].is_number_integer())       it->second.age = static_cast<int>(body["age"].get<long long>());
-            else if (body["age"].is_number_unsigned())      it->second.age = static_cast<int>(body["age"].get<unsigned long long>());
-            else if (body["age"].is_number_float())         it->second.age = static_cast<int>(body["age"].get<double>());
+            if      (body["age"].is_string())          it->second.age = std::stoi(body["age"].get<std::string>());
+            else if (body["age"].is_number_integer())  it->second.age = static_cast<int>(body["age"].get<long long>());
+            else if (body["age"].is_number_unsigned()) it->second.age = static_cast<int>(body["age"].get<unsigned long long>());
+            else if (body["age"].is_number_float())    it->second.age = static_cast<int>(body["age"].get<double>());
         }
 
-        res.json({ "status", "updated", "user", to_json(it->second) }); });
+        res.json({
+            "status", "updated",
+            "user",   user_to_kvs(it->second)
+        }); });
 
-    // DELETE
-    app.del("/users/{id}", [](auto &, auto &res, auto &params)
+    // DELETE (DELETE /users/{id})
+    app.del("/users/{id}", [](auto & /*req*/, auto &res, auto &params)
             {
         const std::string id = params["id"];
         std::lock_guard<std::mutex> lock(g_mtx);
         const auto n = g_users.erase(id);
         if (!n) {
-            res.status(http::status::not_found).json({ "error", "Not found" });
+            res.status(http::status::not_found).json({
+                "error", "User not found"
+            });
             return;
         }
-        res.json({ "status", "deleted", "user_id", id }); });
+        res.json({
+            "status",  "deleted",
+            "user_id", id
+        }); });
 
+    // Lancement
     app.run(8080);
     return 0;
 }

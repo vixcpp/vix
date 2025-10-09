@@ -32,21 +32,31 @@ minimal memory footprint (12MB) — outperforming Node.js, FastAPI, and PHP.
 # 🧭 Quick Example
 
 ```cpp
-#include <vix/core.h>
-#include <nlohmann/json.hpp>
+#include <vix.hpp>
+using namespace Vix;
 
 int main() {
-    Vix::App app;
+    App app;
 
-    app.get("/hello", [](auto& req, auto& res) {
-        res.json(nlohmann::json{{"message", "Hello, Vix!"}});
+    // GET /
+    app.get("/", [](auto&, auto& res) {
+        res.json({
+            "framework", "Vix.cpp",
+            "message", "Welcome to the future of C++ web development 🚀"
+        });
     });
 
-    app.get("/users/{id}", [](auto& req, auto& res, auto& params) {
-        res.json(nlohmann::json{{"user_id", params["id"]}});
+    // GET /hello/{name}
+    app.get("/hello/{name}", [](auto&, auto& res, auto& params) {
+        res.json({
+            "greeting", "Hello " + params["name"] + " 👋",
+            "powered_by", "Vix.cpp"
+        });
     });
 
+    // Start server
     app.run(8080);
+    return 0;
 }
 ```
 
@@ -229,14 +239,14 @@ Each example links against the umbrella interface target **`Vix::vix`**.
 | **Example**                 | **Description**                             |
 | --------------------------- | ------------------------------------------- |
 | `main`                      | General example showcasing core usage.      |
-| `get_example`               | Demonstrates handling of **GET** routes.    |
-| `post_example`              | Demonstrates handling of **POST** routes.   |
+| `hello_routes`              | Demonstrates handling of **GET** routes.    |
+| `post_user`                 | Demonstrates handling of **POST** routes.   |
 | `put_example`               | Demonstrates handling of **PUT** routes.    |
-| `delete_example`            | Demonstrates handling of **DELETE** routes. |
+| `delete_user`               | Demonstrates handling of **DELETE** routes. |
 | `validation_user_create`    | Example of form validation logic.           |
-| `logger_context_and_uuid`   | Logging with contextual data and UUIDs.     |
-| `env_time_port`             | Environment variables and time demo.        |
-| `full_crud_with_validation` | Full **CRUD** workflow with validation.     |
+| `trace_route`               | Logging with contextual data and UUIDs.     |
+| `now_server`                | Environment variables and time demo.        |
+| `user_crud_with_validation` | Full **CRUD** workflow with validation.     |
 
 ---
 
@@ -245,10 +255,10 @@ Each example links against the umbrella interface target **`Vix::vix`**.
 ```bash
 cd build-rel    # or build/
 ./main
-./get_example
-./post_example
-./put_example
-./delete_example
+./hello_routes
+./post_user
+./put_user
+./delete_user
 ```
 
 ## Configuration file (config/config.json) is automatically copied to the build directory.
@@ -304,105 +314,122 @@ All responses are structured as JSON, with automatic status codes and validation
 
 ```cpp
 // ============================================================================
-// main.cpp — Quick Example for Vix.cpp
-// ----------------------------------------------------------------------------
-// Minimal REST API demonstrating the simplicity of the Vix framework.
-// ----------------------------------------------------------------------------
-// Routes:
-//   GET  /hello         → returns a JSON greeting
-//   GET  /users/{id}    → returns a user ID as JSON
+// main.cpp — Quick Start Example (Vix.cpp)
+// ---------------------------------------------------------------------------
+// A minimal HTTP server built with Vix.cpp.
+// Run →  ./main
+// Then visit →  http://localhost:8080/hello
 // ============================================================================
 
-#include <vix/core.h>
-#include <nlohmann/json.hpp>
+#include <vix.hpp>
+using namespace Vix;
 
 int main()
 {
-    Vix::App app;
+        App app;
 
-    // Simple JSON route
-    app.get("/hello", [](auto &req, auto &res)
-    {
-        res.json(nlohmann::json{{"message", "Hello, Vix!"}});
-    });
+        // GET /
+        app.get("/", [](auto &, auto &res)
+                { res.json({"framework", "Vix.cpp",
+                            "message", "Welcome to the future of C++ web development 🚀"}); });
 
-    // Example with path parameter
-    app.get("/users/{id}", [](auto &req, auto &res, auto &params)
-    {
-        res.json(nlohmann::json{
-            {"user_id", params["id"]},
-            {"framework", "Vix.cpp"}
-        });
-    });
+        // GET /hello/{name}
+        app.get("/hello/{name}", [](auto &, auto &res, auto &params)
+                { res.json({"greeting", "Hello " + params["name"] + " 👋",
+                            "powered_by", "Vix.cpp"}); });
 
-    app.run(8080);
-    return 0;
+        // Start server
+        app.run(8080);
+        return 0;
 }
 ```
 
-### examples/get_example.cpp
+### examples/hello_routes.cpp
 
 ```cpp
-// GET example — simple read-only endpoints
-#include <vix/core.h>
-#include <nlohmann/json.hpp>
-#include <string>
+// ============================================================================
+// hello_routes.cpp — Minimal example (new Vix.cpp API)
+// GET /hello        → {"message":"Hello, Vix!"}
+// GET /user         → {"name":"Ada","tags":["c++","net","http"],"profile":{"id":42,"vip":true}}
+// GET /users/{id}   → 404 {"error":"User not found"}
+// ============================================================================
 
-int main() {
-    Vix::App app;
+#include <vix.hpp>
+using namespace Vix;
+namespace J = Vix::json;
 
-    // Simple health/hello
-    app.get("/hello", [](auto& req, auto& res) {
-        res.json(nlohmann::json{{"message", "Hello, World!"}});
-    });
+int main()
+{
+        App app;
 
-    // Read with path parameter
-    app.get("/users/{id}", [](auto& req, auto& res, auto& params) {
-        std::string id = params["id"];
-        res.json(nlohmann::json{
-            {"action", "read"},
-            {"user_id", id}
-        });
-    });
+        // Simple hello route
+        app.get("/hello", [](auto &, auto &res)
+                { res.json({"message", "Hello, Vix!"}); });
 
-    app.run(8080);
-    return 0;
+        // Nested JSON using builders
+        app.get("/user", [](auto &, auto &res)
+                {
+        using namespace J;
+        res.json({
+            "name", "Ada",
+            "tags", array({ "c++", "net", "http" }),
+            "profile", obj({ "id", 42, "vip", true })
+        }); });
+
+        // Example with path param
+        app.get("/users/{id}", [](auto &, auto &res)
+                { res.status(http::status::not_found).json({"error", "User not found"}); });
+
+        app.run(8080);
+        return 0;
 }
-
 ```
 
 ### examples/post_example.cpp
 
 ```cpp
-// POST example — create a resource from JSON body
-#include <vix/core.h>
-#include <nlohmann/json.hpp>
+// ============================================================================
+// post_create_user.cpp — POST example (new Vix.cpp API)
+// POST /users -> {"action":"create","status":"created","user":{...}}
+// ============================================================================
+
+#include <vix.hpp>
+#include <vix/json/Simple.hpp>
 #include <string>
 
-int main() {
-    Vix::App app;
+using namespace Vix;
+namespace J = Vix::json;
 
-    // Create user
-    app.post("/users", [](auto& req, auto& res) {
+int main()
+{
+    App app;
+
+    // POST /users
+    app.post("/users", [](auto &req, auto &res)
+             {
         try {
+            // Parse body as nlohmann::json for simplicity (still supported)
             auto body = nlohmann::json::parse(req.body());
 
-            // echo minimal "created" payload
-            nlohmann::json out = {
-                {"action", "create"},
-                {"status", "created"},
-                {"user", {
-                    {"name",  body.value("name",  "")},
-                    {"email", body.value("email", "")},
-                    {"age",   body.value("age",   0)}
-                }}
-            };
-            res.status(Vix::http::status::created).json(out);
-        } catch (...) {
-            res.status(Vix::http::status::bad_request)
-               .json(nlohmann::json{{"error", "Invalid JSON"}});
+            const std::string name  = body.value("name",  "");
+            const std::string email = body.value("email", "");
+            const int age           = body.value("age",   0);
+
+            res.status(http::status::created).json({
+                "action", "create",
+                "status", "created",
+                "user", J::obj({
+                    "name",  name,
+                    "email", email,
+                    "age",   static_cast<long long>(age)
+                })
+            });
         }
-    });
+        catch (...) {
+            res.status(http::status::bad_request).json({
+                "error", "Invalid JSON"
+            });
+        } });
 
     app.run(8080);
     return 0;
@@ -412,37 +439,51 @@ int main() {
 ### examples/put_example.cpp
 
 ```cpp
-// PUT example — update a resource by id
-#include <vix/core.h>
-#include <nlohmann/json.hpp>
+// ============================================================================
+// put_update_user.cpp — PUT example (new Vix.cpp API)
+// PUT /users/{id} -> {"action":"update","status":"updated","user":{...}}
+// ============================================================================
+
+#include <vix.hpp>
+#include <vix/json/Simple.hpp>
 #include <string>
 
-int main() {
-    Vix::App app;
+using namespace Vix;
+namespace J = Vix::json;
 
-    // Update user
-    app.put("/users/{id}", [](auto& req, auto& res, auto& params) {
+int main()
+{
+    App app;
+
+    // PUT /users/{id}
+    app.put("/users/{id}", [](auto &req, auto &res, auto &params)
+            {
         const std::string id = params["id"];
+
         try {
+            // Parsing with nlohmann::json for input is fine (Vix supports it internally)
             auto body = nlohmann::json::parse(req.body());
 
-            // echo minimal "updated" payload
-            nlohmann::json out = {
-                {"action", "update"},
-                {"status", "updated"},
-                {"user", {
-                    {"id",    id},
-                    {"name",  body.value("name",  nlohmann::json())},
-                    {"email", body.value("email", nlohmann::json())},
-                    {"age",   body.value("age",   nlohmann::json())}
-                }}
-            };
-            res.json(out);
-        } catch (...) {
-            res.status(Vix::http::status::bad_request)
-               .json(nlohmann::json{{"error", "Invalid JSON"}});
+            const std::string name  = body.value("name",  "");
+            const std::string email = body.value("email", "");
+            const int age           = body.value("age",   0);
+
+            res.json({
+                "action", "update",
+                "status", "updated",
+                "user", J::obj({
+                    "id",    id,
+                    "name",  name,
+                    "email", email,
+                    "age",   static_cast<long long>(age)
+                })
+            });
         }
-    });
+        catch (...) {
+            res.status(http::status::bad_request).json({
+                "error", "Invalid JSON"
+            });
+        } });
 
     app.run(8080);
     return 0;
@@ -452,29 +493,38 @@ int main() {
 ### examples/delete_example.cpp
 
 ```cpp
-// DELETE example — delete a resource by id
-#include <vix/core.h>
-#include <nlohmann/json.hpp>
+// ============================================================================
+// delete_user.cpp — DELETE example (new Vix.cpp API)
+// DELETE /users/{id} -> {"action":"delete","status":"deleted","user_id":"<id>"}
+// ============================================================================
+
+#include <vix.hpp>
+#include <vix/json/Simple.hpp>
 #include <string>
 
-int main() {
-    Vix::App app;
+using namespace Vix;
+namespace J = Vix::json;
 
-    // Delete user
-    app.del("/users/{id}", [](auto& req, auto& res, auto& params) {
+int main()
+{
+    App app;
+
+    // DELETE /users/{id}
+    app.del("/users/{id}", [](auto &, auto &res, auto &params)
+            {
         const std::string id = params["id"];
 
-        // In a real app you'd remove from DB/store here
-        res.json(nlohmann::json{
-            {"action", "delete"},
-            {"status", "deleted"},
-            {"user_id", id}
-        });
-    });
+        // In a real app you'd remove the resource from DB or memory here
+        res.json({
+            "action",  "delete",
+            "status",  "deleted",
+            "user_id", id
+        }); });
 
     app.run(8080);
     return 0;
 }
+
 ```
 
 ### Build & run (rappel)
@@ -487,7 +537,7 @@ cmake --build build -j
 
 
 cd build
-./get_example
+./hello_routes
 # ./post_example
 # ./put_example
 # ./delete_example
@@ -496,29 +546,30 @@ cd build
 
 ```cpp
 // ============================================================================
-// full_crud_with_validation.cpp — Full CRUD + Validation (Vix.cpp)
+// user_crud_with_validation.cpp — Full CRUD + Validation (Vix.cpp, nouvelle API)
 // ----------------------------------------------------------------------------
-// Complete demonstration of CRUD operations using Vix::App, with validation
-// (Vix::utils::Validation) and JSON serialization (Vix::json).
-//
 // Routes:
 //   POST   /users          → Create user (with validation)
 //   GET    /users/{id}     → Read user
 //   PUT    /users/{id}     → Update user
 //   DELETE /users/{id}     → Delete user
-//
-// Thread-safe: std::mutex protects shared user map
 // ============================================================================
 
-#include <vix/core.h>
-#include <vix/json/json.hpp>
-#include <vix/utils/Validation.hpp>
+#include <vix.hpp>                  // App, http, ResponseWrapper, etc.
+#include <vix/json/Simple.hpp>      // Vix::json::token, obj(), array()
+#include <vix/utils/Validation.hpp> // required(), num_range(), match(), validate_map
+#include <nlohmann/json.hpp>
 
 #include <unordered_map>
 #include <mutex>
 #include <string>
+#include <optional>
+#include <sstream>
+#include <vector>
 
+using namespace Vix;
 namespace J = Vix::json;
+using njson = nlohmann::json;
 using namespace Vix::utils;
 
 // --------------------------- Data Model -------------------------------------
@@ -533,13 +584,31 @@ struct User
 static std::mutex g_mtx;
 static std::unordered_map<std::string, User> g_users;
 
-// --------------------------- JSON Helpers -----------------------------------
-static J::Json to_json(const User &u)
+// --------------------------- Helpers ----------------------------------------
+static J::kvs user_to_kvs(const User &u)
 {
-    return J::o("id", u.id, "name", u.name, "email", u.email, "age", u.age);
+    return J::obj({"id", u.id,
+                   "name", u.name,
+                   "email", u.email,
+                   "age", static_cast<long long>(u.age)});
 }
 
-static bool parse_user(const J::Json &j, User &out)
+static std::string to_string_safe(const njson &j)
+{
+    if (j.is_string())
+        return j.get<std::string>();
+    if (j.is_number_integer())
+        return std::to_string(j.get<long long>());
+    if (j.is_number_unsigned())
+        return std::to_string(j.get<unsigned long long>());
+    if (j.is_number_float())
+        return std::to_string(j.get<double>());
+    if (j.is_boolean())
+        return j.get<bool>() ? "true" : "false";
+    return {};
+}
+
+static bool parse_user(const njson &j, User &out)
 {
     try
     {
@@ -571,26 +640,37 @@ static bool parse_user(const J::Json &j, User &out)
     }
 }
 
-// --------------------------- Main Application -------------------------------
+static std::string gen_id_from_email(const std::string &email)
+{
+    const auto h = std::hash<std::string>{}(email) & 0xFFFFFFull;
+    std::ostringstream oss;
+    oss << h;
+    return oss.str();
+}
+
+// --------------------------- Main -------------------------------------------
 int main()
 {
-    Vix::App app;
+    App app;
 
     // CREATE (POST /users)
     app.post("/users", [](auto &req, auto &res)
-    {
-        J::Json body;
-        try { body = J::loads(req.body()); }
-        catch (...) {
-            res.status(Vix::http::status::bad_request)
-               .json(J::o("error", "Invalid JSON"));
+             {
+        njson body;
+        try {
+            body = njson::parse(req.body());
+        } catch (...) {
+            res.status(http::status::bad_request).json({
+                "error", "Invalid JSON"
+            });
             return;
         }
 
+        // Prépare les champs pour la validation (map<string,string>)
         std::unordered_map<std::string, std::string> data{
             {"name",  body.value("name",  std::string{})},
             {"email", body.value("email", std::string{})},
-            {"age",   body.value("age",   std::string{})}
+            {"age",   body.contains("age") ? to_string_safe(body["age"]) : std::string{}}
         };
 
         Schema sch{
@@ -600,109 +680,117 @@ int main()
         };
 
         auto r = validate_map(data, sch);
-        if (r.is_err())
-        {
-            J::Json e = J::o();
-            for (const auto &kv : r.error())
-                e[kv.first] = kv.second;
+        if (r.is_err()) {
+            // Construire {"errors": { field: message, ... }} SANS nlohmann
+            std::vector<J::token> flat;
+            flat.reserve(r.error().size() * 2);
+            for (const auto& kv : r.error()) {
+                flat.emplace_back(kv.first);   // clé
+                flat.emplace_back(kv.second);  // valeur
+            }
 
-            res.status(Vix::http::status::bad_request)
-               .json(J::o("errors", e));
+            res.status(http::status::bad_request).json({
+                "errors", J::obj(std::move(flat))
+            });
             return;
         }
 
         User u;
-        if (!parse_user(body, u))
-        {
-            res.status(Vix::http::status::bad_request)
-               .json(J::o("error", "Invalid fields"));
+        if (!parse_user(body, u)) {
+            res.status(http::status::bad_request).json({
+                "error", "Invalid fields"
+            });
             return;
         }
 
-        // Generate ID (simple hash of email)
-        u.id = std::to_string(std::hash<std::string>{}(u.email) & 0xFFFFFF);
+        u.id = gen_id_from_email(u.email);
 
         {
             std::lock_guard<std::mutex> lock(g_mtx);
             g_users[u.id] = u;
         }
 
-        res.status(Vix::http::status::created)
-           .json(J::o("status", "created", "user", to_json(u)));
-    });
+        res.status(http::status::created).json({
+            "status", "created",
+            "user",   user_to_kvs(u)
+        }); });
 
     // READ (GET /users/{id})
-    app.get("/users/{id}", [](auto &req, auto &res, auto &params)
-    {
-        std::string id = params["id"];
+    app.get("/users/{id}", [](auto & /*req*/, auto &res, auto &params)
+            {
+        const std::string id = params["id"];
         std::lock_guard<std::mutex> lock(g_mtx);
         auto it = g_users.find(id);
-        if (it == g_users.end())
-        {
-            res.status(Vix::http::status::not_found)
-               .json(J::o("error", "User not found"));
+        if (it == g_users.end()) {
+            res.status(http::status::not_found).json({
+                "error", "User not found"
+            });
             return;
         }
-        res.json(J::o("user", to_json(it->second)));
-    });
+        res.json({
+            "user", user_to_kvs(it->second)
+        }); });
 
     // UPDATE (PUT /users/{id})
     app.put("/users/{id}", [](auto &req, auto &res, auto &params)
-    {
-        std::string id = params["id"];
-        J::Json body;
-        try { body = J::loads(req.body()); }
-        catch (...) {
-            res.status(Vix::http::status::bad_request)
-               .json(J::o("error", "Invalid JSON"));
+            {
+        const std::string id = params["id"];
+
+        njson body;
+        try {
+            body = njson::parse(req.body());
+        } catch (...) {
+            res.status(http::status::bad_request).json({
+                "error", "Invalid JSON"
+            });
             return;
         }
 
         std::lock_guard<std::mutex> lock(g_mtx);
         auto it = g_users.find(id);
-        if (it == g_users.end())
-        {
-            res.status(Vix::http::status::not_found)
-               .json(J::o("error", "User not found"));
+        if (it == g_users.end()) {
+            res.status(http::status::not_found).json({
+                "error", "User not found"
+            });
             return;
         }
 
         if (body.contains("name"))  it->second.name  = body["name"].get<std::string>();
         if (body.contains("email")) it->second.email = body["email"].get<std::string>();
-        if (body.contains("age"))
-        {
-            if (body["age"].is_string())
-                it->second.age = std::stoi(body["age"].get<std::string>());
-            else if (body["age"].is_number_integer())
-                it->second.age = static_cast<int>(body["age"].get<long long>());
-            else if (body["age"].is_number_unsigned())
-                it->second.age = static_cast<int>(body["age"].get<unsigned long long>());
-            else if (body["age"].is_number_float())
-                it->second.age = static_cast<int>(body["age"].get<double>());
+        if (body.contains("age")) {
+            if      (body["age"].is_string())          it->second.age = std::stoi(body["age"].get<std::string>());
+            else if (body["age"].is_number_integer())  it->second.age = static_cast<int>(body["age"].get<long long>());
+            else if (body["age"].is_number_unsigned()) it->second.age = static_cast<int>(body["age"].get<unsigned long long>());
+            else if (body["age"].is_number_float())    it->second.age = static_cast<int>(body["age"].get<double>());
         }
 
-        res.json(J::o("status", "updated", "user", to_json(it->second)));
-    });
+        res.json({
+            "status", "updated",
+            "user",   user_to_kvs(it->second)
+        }); });
 
     // DELETE (DELETE /users/{id})
-    app.del("/users/{id}", [](auto &req, auto &res, auto &params)
-    {
-        std::string id = params["id"];
+    app.del("/users/{id}", [](auto & /*req*/, auto &res, auto &params)
+            {
+        const std::string id = params["id"];
         std::lock_guard<std::mutex> lock(g_mtx);
-        auto n = g_users.erase(id);
-        if (!n)
-        {
-            res.status(Vix::http::status::not_found)
-               .json(J::o("error", "User not found"));
+        const auto n = g_users.erase(id);
+        if (!n) {
+            res.status(http::status::not_found).json({
+                "error", "User not found"
+            });
             return;
         }
-        res.json(J::o("status", "deleted", "user_id", id));
-    });
+        res.json({
+            "status",  "deleted",
+            "user_id", id
+        }); });
 
-    // ------------------------------------------------------------------------
+    // Lancement
     app.run(8080);
     return 0;
 }
+
 
 ```
 
@@ -734,8 +822,8 @@ Each file shows how to create routes for different HTTP methods: GET, POST, PUT,
 
 | File                            | Description                                                      |
 | ------------------------------- | ---------------------------------------------------------------- |
-| `get_example.cpp`               | Demonstrates GET routes, including parameterized paths.          |
-| `full_crud_with_validation.cpp` | Demonstrates POST,GET,PUT,DELETE routes with JSON body handling. |
+| `hello_routes.cpp`              | Demonstrates GET routes, including parameterized paths.          |
+| `user_crud_with_validation.cpp` | Demonstrates POST,GET,PUT,DELETE routes with JSON body handling. |
 
 ---
 
@@ -745,16 +833,16 @@ Build the examples:
 
 ```bash
 cd build
-./full_crud_with_validation
+./user_crud_with_validation
 ```
 
 2. Run an example:
 
 ```bash
-./get_example       # Runs GET routes
-./post_example      # Runs POST routes
-./put_example       # Runs PUT routes
-./delete_example    # Runs DELETE routes
+./hello_routes       # Runs GET routes
+./post_user          # Runs POST routes
+./put_user           # Runs PUT routes
+./delete_user        # Runs DELETE routes
 ```
 
 3. Test routes using curl or wrk:
@@ -837,28 +925,30 @@ Output format customizable with setPattern() (spdlog-style).
 # 📂 Source
 
 ```cpp
-#include <vix/core.h>
+// ============================================================================
+// trace_route.cpp — contextual logging + request tracing (new Vix.cpp API)
+// GET /trace -> {"rid":"<uuid>","ok":true}
+// ============================================================================
+
+#include <vix.hpp>
 #include <vix/utils/Logger.hpp>
 #include <vix/utils/UUID.hpp>
-#include <nlohmann/json.hpp>
 #include <string>
 
-using Vix::Logger;
+using namespace Vix;
 
-int main()
-{
-    auto &log = Logger::getInstance();
+int main() {
+    auto& log = Logger::getInstance();
     log.setPattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %v");
     log.setLevel(Logger::Level::INFO);
     log.setAsync(true);
 
-    Vix::App app;
+    App app;
 
-    app.get("/trace", [](auto &req, auto &res)
-    {
+    app.get("/trace", [](auto& req, auto& res) {
         Logger::Context cx;
-        cx.request_id = Vix::utils::uuid4();
-        cx.module = "trace_handler";
+        cx.request_id = utils::uuid4();
+        cx.module     = "trace_handler";
         Logger::getInstance().setContext(cx);
 
         std::string path(req.target().data(), req.target().size());
@@ -867,15 +957,21 @@ int main()
         Logger::getInstance().logf(
             Logger::Level::INFO,
             "Incoming request",
-            "path", path.c_str(),
-            "method", method.c_str());
+            "path",   path.c_str(),
+            "method", method.c_str(),
+            "rid",    cx.request_id.c_str()
+        );
 
-        res.json(nlohmann::json{{"rid", cx.request_id}, {"ok", true}});
+        res.json({
+            "rid", cx.request_id,
+            "ok",  true
+        });
     });
 
     app.run(8080);
     return 0;
 }
+
 ```
 
 # ⏱ Example: env_time_port.cpp
@@ -906,73 +1002,83 @@ Simple structured logging via Vix::Logger.
 # 📂 Source
 
 ```cpp
-#include <vix/core.h>
+// ============================================================================
+// now_server.cpp — Demo route: current time in ISO 8601 and milliseconds
+// GET /now -> {"iso8601":"2025-10-09T10:34:12.123Z","ms":1696848852123}
+// ============================================================================
+
+#include <vix.hpp>
 #include <vix/utils/Env.hpp>
 #include <vix/utils/Time.hpp>
 #include <vix/utils/Logger.hpp>
 
+using namespace Vix;
+
 int main()
 {
-    auto &log = Vix::Logger::getInstance();
+    auto &log = Logger::getInstance();
     log.setPattern("[%H:%M:%S.%e] [%^%l%$] %v");
-    log.setLevel(Vix::Logger::Level::INFO);
+    log.setLevel(Logger::Level::INFO);
 
-    int port = Vix::utils::env_int("PORT", 8080);
+    const int port = utils::env_int("PORT", 8080);
 
-    Vix::App app;
+    App app;
 
-    app.get("/now", [](auto &req, auto &res)
-    {
-        res.json({
-            {"iso8601", Vix::utils::iso8601_now()},
-            {"ms", Vix::utils::now_ms()}
-        });
-    });
+    // GET /now → returns current ISO 8601 timestamp and epoch ms
+    app.get("/now", [](auto &, auto &res)
+            { res.json({"iso8601", utils::iso8601_now(),
+                        "ms", static_cast<long long>(utils::now_ms())}); });
 
-    log.log(Vix::Logger::Level::INFO, "Starting on port {}", port);
+    log.log(Logger::Level::INFO, "Starting server on port {}", port);
 
     app.run(port);
     return 0;
 }
+
+
 ```
 
 # examples/json_builders_routes.cpp
 
 ```cpp
 // ============================================================================
-// json_builders_routes.cpp — Minimal routes using Vix::json builders
+// json_builders_routes.cpp — Minimal routes using Vix::json builders (new API)
 // GET /hello          -> {"message":"Hello, World!"}
 // GET /users/{id}     -> {"user":{"id":"<id>","active":true}}
 // GET /roles          -> {"roles":["admin","editor","viewer"]}
 // ============================================================================
 
-#include <vix/core.h>
-#include <vix/json/json.hpp>
-#include <string>
+#include <vix.hpp>
+#include <vix/json/Simple.hpp>
 
+using namespace Vix;
 namespace J = Vix::json;
 
-int main() {
-    Vix::App app;
+int main()
+{
+        App app;
 
-    // GET /hello -> {"message": "Hello, World!"}
-    app.get("/hello", [](auto& /*req*/, auto& res) {
-        res.json(J::o("message", "Hello, World!"));
-    });
+        // GET /hello -> {"message": "Hello, World!"}
+        app.get("/hello", [](auto &, auto &res)
+                { res.json({"message", "Hello, World!"}); });
 
-    // GET /users/{id} -> {"user": {"id": "...", "active": true}}
-    app.get("/users/{id}", [](auto& /*req*/, auto& res, auto& params) {
+        // GET /users/{id} -> {"user": {"id": "...", "active": true}}
+        app.get("/users/{id}", [](auto &, auto &res, auto &params)
+                {
         const std::string id = params["id"];
-        res.json(J::o("user", J::o("id", id, "active", true)));
-    });
+        res.json({
+            "user", J::obj({
+                "id",     id,
+                "active", true
+            })
+        }); });
 
-    // GET /roles -> {"roles": ["admin", "editor", "viewer"]}
-    app.get("/roles", [](auto& /*req*/, auto& res) {
-        res.json(J::o("roles", J::a("admin", "editor", "viewer")));
-    });
+        // GET /roles -> {"roles": ["admin", "editor", "viewer"]}
+        app.get("/roles", [](auto &, auto &res)
+                { res.json({"roles", J::array({"admin", "editor", "viewer"})}); });
 
-    app.run(8080);
-    return 0;
+        app.run(8080);
+        return 0;
 }
 ```
 
