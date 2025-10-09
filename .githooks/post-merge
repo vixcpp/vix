@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "[Vix] post-merge hook → synchronisation des sous-modules..."
+
+# Synchronise les URLs et branches depuis .gitmodules
+git submodule sync --recursive
+
+# Met à jour chaque module vers la branche spécifiée dans .gitmodules (ici 'dev')
+git submodule update --init --remote --recursive
+
+echo "[Vix] ✅ Tous les modules sont à jour (core, utils, cli, json)."
