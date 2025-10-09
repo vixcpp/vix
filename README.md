@@ -17,7 +17,7 @@ All benchmarks were executed using **wrk**
 ````markdown
 | Framework            | Requests/sec | Avg Latency | Transfer/sec   |
 | -------------------- | ------------ | ----------- | -------------- |
-| **Vix.cpp (v1.3.1)** | **84,582**   | **2.38 ms** | **19.28 MB/s** |
+| **Vix.cpp (v1.3.2)** | **84,582**   | **2.38 ms** | **19.28 MB/s** |
 | Go (Fiber)           | 81,336       | 0.67 ms     | 10.16 MB/s     |
 | Node.js (Fastify)    | 4,220        | 16.00 ms    | 0.97 MB/s      |
 | PHP (Slim)           | 2,804        | 16.87 ms    | 0.49 MB/s      |
@@ -25,7 +25,7 @@ All benchmarks were executed using **wrk**
 | FastAPI (Python)     | 752          | 63.71 ms    | 0.11 MB/s      |
 
 🟢 Result
-Vix.cpp (v1.3.1) reaches ~84 K requests/sec with an average latency of 2.3 ms —
+Vix.cpp (v1.3.2) reaches ~84 K requests/sec with an average latency of 2.3 ms —
 matching Go in throughput while maintaining pure native C++ performance and low memory usage.
 
 ⚙️ Tested with: wrk -t8 -c200 -d30s http://localhost:8080/
@@ -62,7 +62,6 @@ int main() {
     return 0;
 }
 ```
-````
 
 ## 🔬 Run benchmark locally
 
@@ -1114,3 +1113,4 @@ Contributions are welcome! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for 
 ## License
 
 MIT License – see [LICENSE](./LICENSE) for details.
+````
