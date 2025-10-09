@@ -54,3 +54,9 @@ test:
 
 changelog:
 	bash scripts/update_changelog.sh
+
+submodules:
+	./scripts/submodules-sync.sh
+
+submodules-remote:
+	./scripts/submodules-sync.sh remote

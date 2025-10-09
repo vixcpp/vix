@@ -1,30 +1,29 @@
 // ============================================================================
-// main.cpp — Quick Example for Vix.cpp
-// ----------------------------------------------------------------------------
-// Minimal REST API demonstrating the simplicity of the Vix framework.
-// ----------------------------------------------------------------------------
-// Routes:
-//   GET  /hello         → returns a JSON greeting
-//   GET  /users/{id}    → returns a user ID as JSON
+// main.cpp — Quick Start Example (Vix.cpp)
+// ---------------------------------------------------------------------------
+// A minimal HTTP server built with Vix.cpp.
+// Run →  ./main
+// Then visit →  http://localhost:8080/hello
 // ============================================================================
 
-#include <vix/core.h>
-#include <nlohmann/json.hpp>
+#include <vix.hpp>
+using namespace Vix;
 
 int main()
 {
-        Vix::App app;
+        App app;
 
-        // Simple JSON route
-        app.get("/hello", [](auto &req, auto &res)
-                { res.json(nlohmann::json{{"message", "Hello, Vix!"}}); });
+        // GET /
+        app.get("/", [](auto &, auto &res)
+                { res.json({"framework", "Vix.cpp",
+                            "message", "Welcome to the future of C++ web development 🚀"}); });
 
-        // Example with path parameter
-        app.get("/users/{id}", [](auto &req, auto &res, auto &params)
-                { res.json(nlohmann::json{
-                      {"user_id", params["id"]},
-                      {"framework", "Vix.cpp"}}); });
+        // GET /hello/{name}
+        app.get("/hello/{name}", [](auto &, auto &res, auto &params)
+                { res.json({"greeting", "Hello " + params["name"] + " 👋",
+                            "powered_by", "Vix.cpp"}); });
 
+        // Start server
         app.run(8080);
         return 0;
 }
