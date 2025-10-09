@@ -11,23 +11,26 @@ while delivering extreme performance and full modularity.
 
 ## ⚡ Benchmarks
 
-All benchmarks were executed with wrk
-8 threads, 100 connections, for 30 seconds, on the same machine.
+All benchmarks were executed using **wrk**  
+`8 threads`, `200 connections`, for `30 seconds`, on the same machine (Ubuntu 24.04, Intel Xeon, C++20 build).
 
-```markdown
-| Framework | Requests/sec | Avg Latency | Transfer/sec |
-| --------- | ------------ | ----------- | ------------ |
-| Vix.cpp   | 73612        | 2.71ms      | 12.43MB      |
-| Go        | 81336        | 674.28µs    | 10.16MB      |
-| Node.js   | 4220         | 16.00ms     | 0.97MB       |
-| PHP       | 2804         | 16.87ms     | 498.38KB     |
-| Crow      | 1149         | 41.60ms     | 358.95KB     |
-| FastAPI   | 752          | 63.71ms     | 111.99KB     |
-```
+````markdown
+| Framework            | Requests/sec | Avg Latency | Transfer/sec   |
+| -------------------- | ------------ | ----------- | -------------- |
+| **Vix.cpp (v1.3.0)** | **84,582**   | **2.38 ms** | **19.28 MB/s** |
+| Go (Fiber)           | 81,336       | 0.67 ms     | 10.16 MB/s     |
+| Node.js (Fastify)    | 4,220        | 16.00 ms    | 0.97 MB/s      |
+| PHP (Slim)           | 2,804        | 16.87 ms    | 0.49 MB/s      |
+| Crow (C++)           | 1,149        | 41.60 ms    | 0.35 MB/s      |
+| FastAPI (Python)     | 752          | 63.71 ms    | 0.11 MB/s      |
 
-🟢 Result:
-Vix.cpp handles ~73K requests/sec with low latency (2.7ms) and
-minimal memory footprint (12MB) — outperforming Node.js, FastAPI, and PHP.
+🟢 Result
+Vix.cpp (v1.3.0) reaches ~84 K requests/sec with an average latency of 2.3 ms —
+matching Go in throughput while maintaining pure native C++ performance and low memory usage.
+
+⚙️ Tested with: wrk -t8 -c200 -d30s http://localhost:8080/
+
+🧩 Environment: Ubuntu 24.04, C++20 (GCC 13), Asio standalone, no Boost.
 
 # 🧭 Quick Example
 
@@ -59,6 +62,7 @@ int main() {
     return 0;
 }
 ```
+````
 
 ## 🔬 Run benchmark locally
 
