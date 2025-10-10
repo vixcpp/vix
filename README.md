@@ -80,14 +80,17 @@ Latency:      2.71ms
 
 # 🧩 Key Features
 
-. ✅ Modern C++20 — clean syntax, type safety, and RAII
-. ⚙️ Asynchronous HTTP server — built on Boost.Asio + Boost.Beast
-. 🧭 Routing system — expressive path parameters (/users/{id})
-. 💾 JSON-first design — integrates nlohmann::json and Vix::json helpers
-. 🧰 Modular architecture — core, cli, utils, middleware, websocket
-. 🧠 Middleware support — logging, validation, sessions
-. ⚡ High performance — tens of thousands of requests per second
-. 🪶 Header-only modules — portable and easy to embed in other projects
+- ✅ **Modern C++20** — clean syntax, type safety, and RAII
+- ⚙️ **Asynchronous HTTP server** — built on Boost.Asio + Boost.Beast
+- 🧭 **Routing system** — expressive path parameters (`/users/{id}`)
+- 💾 **ORM for MySQL / SQLite** — high-level data access with QueryBuilder & Repository pattern
+- 🧠 **Middleware support** — logging, validation, and sessions
+- 💡 **JSON-first design** — integrates `nlohmann::json` and `Vix::json` helpers
+- 🧰 **Modular architecture** — core, cli, utils, orm, middleware, websocket
+- ⚡ **High performance** — tens of thousands of requests per second
+- 🪶 **Header-only modules** — portable and easy to embed in other projects
+
+---
 
 # 🧱 Repository Structure
 
@@ -97,14 +100,15 @@ vix/
 │  ├─ core/          # HTTP server, router, request/response
 │  ├─ utils/         # Logger, Validation, UUID, Env, Time
 │  ├─ json/          # JSON helpers & builders
+│  ├─ orm/           # ORM layer (MySQL / SQLite, QueryBuilder, Repository)
 │  ├─ cli/           # Command-line interface
 │  ├─ middleware/    # Future middlewares
 │  ├─ websocket/     # WebSocket support (WIP)
 │  └─ devtools/      # Developer utilities
 │
-├─ examples/         # Minimal REST demos (GET, POST, CRUD, Logger...)
+├─ examples/         # Minimal REST + ORM demos (GET, POST, CRUD, Transactions...)
 ├─ config/           # Runtime config (JSON)
-├─ scripts/          # Helper scripts
+├─ scripts/          # Helper scripts (e.g. submodules-sync.sh)
 ├─ build/            # CMake build output
 ├─ LICENSE
 ├─ README.md
@@ -112,47 +116,75 @@ vix/
 └─ CMakeLists.txt
 ```
 
-## Getting Started
+# 🚀 Getting Started
 
-### Prerequisites
+## 🧩 Overview
 
-You need a C++20 compiler, CMake, and several libraries. Below are instructions for common platforms.
-
-- C++20 compiler (GCC 12+, Clang 16+, MSVC 2022+)
-- CMake 3.20+
-- Boost libraries (asio, beast)
-- nlohmann/json
-- spdlog
+Vix.cpp is a high-performance C++20 web framework inspired by FastAPI, Vue.js, and React.
+It’s modular by design — each component (core, utils, json, orm, cli) can be built independently or together under the umbrella project.pdlog
 
 ## 🧩 Build & Developer Setup
 
-### Prerequisites
+### 🧱 Prerequisites
 
-You need a **C++20** compiler, **CMake ≥ 3.20**, and the following libraries:
+You’ll need the following tools and libraries depending on your platform:
 
-- Boost (asio, beast)
-- nlohmann/json
-- spdlog
+| **Component**       | **Minimum Version**              | **Purpose**              |
+| ------------------- | -------------------------------- | ------------------------ |
+| C++ Compiler        | GCC 12+ / Clang 16+ / MSVC 2022+ | C++20 support            |
+| CMake               | ≥ 3.20                           | Build system             |
+| Boost               | asio, beast                      | Networking (core module) |
+| nlohmann/json       | ≥ 3.11                           | JSON serialization       |
+| spdlog              | ≥ 1.10                           | Logging                  |
+| MySQL Connector/C++ | _optional_                       | ORM (database driver)    |
 
 #### Linux (Ubuntu/Debian)
 
 ```bash
 sudo apt update
-sudo apt install g++-12 cmake libboost-all-dev nlohmann-json3-dev libspdlog-dev -y
+sudo apt install -y \ g++-12 cmake make git \                            # Build tools
+  libboost-all-dev \                                 # Boost (includes asio, beast)
+  nlohmann-json3-dev \                               # JSON (nlohmann/json)
+  libspdlog-dev \                                    # Logging (spdlog)
+  libmysqlcppconn-dev                                # Optional: MySQL Connector/C++ for ORM
 ```
 
-### macOS
+If you need SQLite for testing ORM:
+
+```bash
+sudo apt install -y libsqlite3-dev
+```
+
+### 🍎 macOS (Homebrew)
 
 ```bash
 brew install llvm cmake boost nlohmann-json spdlog
-
+# optional for ORM:
+brew install mysql-connector-c++
 ```
 
-### Windows (MSVC 2022 + CMake)
+💡 If you’re using LLVM via Homebrew, you may want to prepend its toolchain:
 
 ```bash
-Use Visual Studio 2022 with Desktop C++ workload and install dependencies via vcpkg:
+export CC=/usr/local/opt/llvm/bin/clang
+export CXX=/usr/local/opt/llvm/bin/clang++
+```
+
+### 🪟 Windows (Visual Studio 2022 + vcpkg)
+
+1. Install Visual Studio 2022 with the “Desktop C++” workload.
+2. Use vcpkg to install dependencies:
+
+```bash
 vcpkg install boost-asio boost-beast nlohmann-json spdlog
+# optional for ORM:
+vcpkg install mysql-connector-cpp
+```
+
+Then integrate vcpkg with CMake:
+
+```bash
+cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake
 ```
 
 ### 🏗️ Configure & Build
@@ -163,7 +195,7 @@ vcpkg install boost-asio boost-beast nlohmann-json spdlog
 git clone https://github.com/vixcpp/vix.git
 cd vix
 
-# Init and update submodules
+# Initialize and update submodules
 
 git submodule update --init --recursive
 
@@ -171,11 +203,64 @@ git submodule update --init --recursive
 
 cmake -S . -B build-rel -DCMAKE_BUILD_TYPE=Release
 cmake --build build-rel -j
+```
 
-# Or build in Debug with sanitizers (for developers)
+This builds all umbrella modules (core, utils, json, orm, cli).
 
+# 🧪 Build (Debug with Sanitizers)
+
+For developers who want to debug memory or undefined behavior:
+
+```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DVIX_ENABLE_SANITIZERS=ON
 cmake --build build -j
+```
+
+### ⚙️ Optional Build Flags
+
+```markdown
+| **Flag**                     | **Description**                                                     |
+| ---------------------------- | ------------------------------------------------------------------- |
+| `-DVIX_BUILD_EXAMPLES=ON`    | Build all umbrella examples in `/examples`                          |
+| `-DVIX_BUILD_TESTS=ON`       | Build unit tests (requires GoogleTest)                              |
+| `-DVIX_ENABLE_SANITIZERS=ON` | Enable AddressSanitizer and UndefinedBehaviorSanitizer              |
+| `-DVIX_ENABLE_LTO=ON`        | Enable Link-Time Optimization (applies to Release builds only)      |
+| `-DVIX_ORM_USE_MYSQL=ON`     | Enable MySQL backend in the ORM module                              |
+| `-DVIX_ORM_REQUIRE_MYSQL=ON` | Fail the build if MySQL is requested but not found                  |
+| `-DVIX_ENABLE_CLANG_TIDY=ON` | Enable `clang-tidy` static analysis during build                    |
+| `-DVIX_ENABLE_CPPCHECK=ON`   | Enable `cppcheck` static analysis                                   |
+| `-DVIX_ENABLE_COVERAGE=ON`   | Enable code coverage instrumentation (applies to Debug builds only) |
+```
+
+# 🧩 Example: Build ORM only
+
+```bash
+cd modules/orm
+cmake -S . -B build \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DVIX_ORM_USE_MYSQL=ON \
+  -DVIX_ORM_BUILD_EXAMPLES=ON
+cmake --build build -j
+./build/vix_orm_users
+```
+
+# ✅ Verifying
+
+After a successful build, you’ll see:
+
+If you only want to build the ORM module:
+
+```less
+-- [vix_orm] MySQL: ON (target: 1)
+-- [vix_orm] SQLite: OFF (found: )
+-- [vix_orm] spdlog: 1
+[100%] Built target vix_orm_users
+```
+
+Run an example from the root:
+
+```bash
+./build-rel/hello_routes
 ```
 
 ### ⚙️ Features Automatically Enabled
@@ -238,19 +323,44 @@ All example .cpp files inside examples/ are built automatically when:
 
 ### 🧪 Example Executables
 
-Each example links against the umbrella interface target **`Vix::vix`**.
+[![Build](https://github.com/vixcpp/vix/actions/workflows/build.yml/badge.svg)](https://github.com/vixcpp/vix/actions/workflows/build.yml)
+[![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg?style=flat&logo=c%2B%2B)](https://en.cppreference.com/w/cpp/20)
+[![CMake](https://img.shields.io/badge/CMake-3.20+-064F8C.svg?style=flat&logo=cmake)](https://cmake.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-| **Example**                 | **Description**                             |
-| --------------------------- | ------------------------------------------- |
-| `main`                      | General example showcasing core usage.      |
-| `hello_routes`              | Demonstrates handling of **GET** routes.    |
-| `post_user`                 | Demonstrates handling of **POST** routes.   |
-| `put_example`               | Demonstrates handling of **PUT** routes.    |
-| `delete_user`               | Demonstrates handling of **DELETE** routes. |
-| `validation_user_create`    | Example of form validation logic.           |
-| `trace_route`               | Logging with contextual data and UUIDs.     |
-| `now_server`                | Environment variables and time demo.        |
-| `user_crud_with_validation` | Full **CRUD** workflow with validation.     |
+The following examples demonstrate core features of **Vix.cpp** — from routing and ORM integration to validation, transactions, and migrations.
+
+```markdown
+| **Example**                 | **Description**                                                           |
+| --------------------------- | ------------------------------------------------------------------------- |
+| `main`                      | Entry point / smoke test example for the umbrella build.                  |
+| `hello_routes`              | Demonstrates defining and handling **GET** routes.                        |
+| `post_create_user`          | Example showing how to create a user with a **POST** request.             |
+| `put_update_user`           | Demonstrates updating user data with a **PUT** request.                   |
+| `delete_user`               | Demonstrates handling of **DELETE** routes.                               |
+| `trace_route`               | Shows advanced request tracing with contextual logs and UUIDs.            |
+| `validation_user_create`    | Implements server-side **validation** for user creation forms.            |
+| `user_crud_with_validation` | Full **CRUD** workflow example with integrated validation logic.          |
+| `users_crud`                | Basic CRUD operations example (Create, Read, Update, Delete).             |
+| `users_crud_internal`       | Internal shared code used by other CRUD examples (no `main()`).           |
+| `repository_crud_full`      | Demonstrates the complete **Repository pattern** for data management.     |
+| `batch_insert_tx`           | Example of batch inserts within a **transaction** context.                |
+| `tx_unit_of_work`           | Demonstrates the **Unit of Work** pattern in transactional operations.    |
+| `migrate_init`              | Example showing how to initialize and run database migrations.            |
+| `querybuilder_update`       | Demonstrates building complex SQL queries with **QueryBuilder**.          |
+| `demo_with_orm`             | End-to-end demo using the ORM for database interaction.                   |
+| `error_handling`            | Demonstrates exception and error management using `DBError`.              |
+| `json_builders_routes`      | Shows JSON builders and route composition using `Vix::json`.              |
+| `now_server`                | Example of dynamic responses using system time and environment variables. |
+```
+
+---
+
+# 💡 Run any example after building:
+
+```bash
+./build/<example_name>
+```
 
 ---
 
@@ -269,50 +379,58 @@ cd build-rel    # or build/
 
 ### 🧭 Summary of Key CMake Options
 
-```markdown
 ## ⚙️ Build Options
 
-Voici les options de configuration disponibles pour la compilation via CMake :
+Voici les options de configuration disponibles pour la compilation via **CMake** :
 
-| **Option**                      | **Default** | **Description**                                                  |
-| ------------------------------- | ----------- | ---------------------------------------------------------------- |
-| `VIX_BUILD_EXAMPLES`            | `ON`        | Builds all example executables under `/examples`.                |
-| `VIX_ENABLE_SANITIZERS`         | `OFF`       | Enables **ASan** + **UBSan** for runtime error checks.           |
-| `CMAKE_EXPORT_COMPILE_COMMANDS` | `ON`        | Exports `compile_commands.json` for IDEs (VS Code, CLion, etc.). |
-```
+| **Option**                      | **Default** | **Description**                                                              |
+| ------------------------------- | ----------- | ---------------------------------------------------------------------------- |
+| `VIX_BUILD_EXAMPLES`            | `ON`        | Builds all umbrella examples under `/examples`.                              |
+| `VIX_BUILD_TESTS`               | `ON`        | Builds and runs unit tests with **GoogleTest**.                              |
+| `VIX_ENABLE_SANITIZERS`         | `OFF`       | Enables **ASan** + **UBSan** for runtime error detection.                    |
+| `VIX_ENABLE_LTO`                | `OFF`       | Enables Link Time Optimization (for Release builds).                         |
+| `CMAKE_EXPORT_COMPILE_COMMANDS` | `ON`        | Exports `compile_commands.json` for IDEs (VS Code, CLion, etc.).             |
+| `VIX_ORM_USE_MYSQL`             | `ON`        | Enables **MySQL Connector/C++** support for ORM.                             |
+| `VIX_ORM_USE_SQLITE`            | `OFF`       | Enables **SQLite3** backend (if available).                                  |
+| `VIX_ORM_BUILD_EXAMPLES`        | `OFF`       | Builds ORM-specific examples like `users_crud`, `repository_crud_full`, etc. |
+| `VIX_ORM_BUILD_TESTS`           | `OFF`       | Builds ORM test suites (disabled by default).                                |
+
+---
 
 ### 🧰 Developer Tips
 
-Use cmake --build build -j to rebuild quickly.
+- Rebuild quickly:
 
-Use ninja generator for faster builds: cmake -G Ninja -S . -B build.
+```bash
+  cmake --build build -j
+```
 
-Reset IntelliSense if VS Code shows stale errors:
-Command Palette → “C/C++: Reset IntelliSense Database”
+Use the Ninja generator for faster incremental builds:
+
+```bash
+cmake -G Ninja -S . -B build
+```
+
+- Reset IntelliSense if VS Code shows stale errors:
+  .Command Palette → “C/C++: Reset IntelliSense Database”
 
 ### ✅ With this setup, building Vix.cpp on any OS automatically:
 
-generates compile_commands.json for VS Code,
+- generates compile_commands.json for IDE integration
+- compiles all modules (core, utils, json, cli, orm)
+- links all examples and test executables, ready to run
 
-compiles all modules (core, utils, json, cli),
-
-and links examples ready to run.
-
-## 🧩 Example: Minimal RESTful API with Vix.cpp
+🧩 Example: Minimal RESTful API with Vix.cpp
 
 This example demonstrates how to build a complete CRUD REST API in pure C++ using Vix.cpp, with no external frameworks required.
-
-It showcases how powerful and expressive the framework can be while remaining header-only, blazing fast, and thread-safe.
-
-Uses the Vix::App HTTP server to define routes (GET, POST, PUT, DELETE).
-
-Integrates JSON parsing via the built-in Vix::json module (wrapper around nlohmann/json).
-
-Demonstrates validation, mutex-protected data, and in-memory storage via STL containers.
-
-All responses are structured as JSON, with automatic status codes and validation errors.
-
-👉 In just a few lines, you get a production-grade REST service written in C++, capable of handling 70 000+ req/s with minimal latency.
+It showcases the expressive and high-performance design of the framework while remaining header-only, blazing fast, and thread-safe.
+Uses Vix::App as the asynchronous HTTP server.
+Defines clean REST routes: GET, POST, PUT, DELETE.
+Integrates JSON parsing via Vix::json (wrapper around nlohmann/json).
+Demonstrates input validation, mutex-protected data, and STL-based storage.
+Outputs consistent JSON responses with proper status codes and error handling.
+👉 In just a few lines, you get a production-grade C++ REST API capable of handling
+70 000+ requests per second with minimal latency — and now, optionally, full ORM persistence for real databases.
 
 ### 🧩 examples/main.cpp
 
@@ -814,6 +932,110 @@ curl -X PUT http://localhost:8080/users/123456 -H "Content-Type: application/jso
 curl -X DELETE http://localhost:8080/users/123456
 ```
 
+## 🧩 ORM Overview
+
+The **Vix ORM (Object–Relational Mapper)** is a modern, lightweight database layer built in pure C++20.  
+It provides a clean abstraction over SQL databases (MySQL and SQLite), enabling developers to interact with data using expressive and type-safe C++ interfaces.
+
+The ORM follows a **Repository + Unit of Work** pattern inspired by enterprise frameworks — but optimized for high performance and simplicity.
+
+---
+
+### 🧠 Core Components
+
+```markdown
+| **Class / Module**               | **Purpose**                                                                                                |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `ConnectionPool`                 | Manages a pool of reusable database connections for maximum throughput and thread safety.                  |
+| `MySQLDriver` / `SQLiteDriver`   | Implements low-level drivers using **MySQL Connector/C++** or **SQLite3** APIs.                            |
+| `QueryBuilder`                   | Fluent, chainable interface to build SQL queries safely (`select()`, `where()`, `insert()`, `update()` …). |
+| `Repository<T>`                  | Provides CRUD operations for a given entity type, hiding SQL syntax.                                       |
+| `Entity`                         | Base class or concept representing a table row — supports serialization, primary keys, and mapping.        |
+| `Mapper`                         | Maps entities to database columns and handles conversions between C++ objects and SQL result sets.         |
+| `Transaction`                    | RAII wrapper for transactional consistency (commit/rollback automatically handled).                        |
+| `UnitOfWork`                     | Tracks pending changes across multiple repositories and commits them atomically.                           |
+| `Migration` / `MigrationsRunner` | Handles versioned schema migrations with up/down scripts to evolve database structure over time.           |
+| `DBError`                        | Custom exception type providing detailed SQL error diagnostics (driver, code, message).                    |
+```
+
+---
+
+### ⚙️ Supported Drivers
+
+```markdown
+| **Driver** | **Status**  | **Library Dependency**        | **Notes**                                     |
+| ---------- | ----------- | ----------------------------- | --------------------------------------------- |
+| MySQL      | ✅ Stable   | `mysql-connector-cpp`         | Full CRUD, prepared statements, transactions. |
+| SQLite3    | ⚙️ Optional | `libsqlite3-dev` (if enabled) | Lightweight local database (experimental).    |
+```
+
+Enable drivers in CMake:
+
+```bash
+# MySQL only (default)
+cmake -S . -B build -DVIX_ORM_USE_MYSQL=ON -DVIX_ORM_USE_SQLITE=OFF
+
+# MySQL + SQLite
+cmake -S . -B build -DVIX_ORM_USE_MYSQL=ON -DVIX_ORM_USE_SQLITE=ON
+```
+
+# 🧩 Example — Simple Repository Pattern
+
+```cpp
+#include <vix/orm/orm.hpp>
+using namespace Vix::orm;
+
+struct User {
+    int id;
+    std::string name;
+    std::string email;
+};
+
+// Example CRUD
+int main() {
+    auto pool = ConnectionPool::create_mysql("tcp://127.0.0.1:3306", "root", "pass", "vixdb");
+
+    Repository<User> repo(pool);
+
+    // Create
+    User u{0, "Alice", "alice@example.com"};
+    repo.insert(u);
+
+    // Read
+    auto users = repo.find_all();
+    for (auto &u : users)
+        std::cout << u.name << " <" << u.email << ">\n";
+
+    // Update
+    u.email = "alice@newmail.com";
+    repo.update(u);
+
+    // Delete
+    repo.remove(u.id);
+}
+```
+
+# 🚀 Highlights
+
+- Fully thread-safe via internal connection pooling
+- Type-safe query builder — no string concatenation or unsafe SQL
+- Automatic transactions (RAII-style rollback on exceptions)
+- Unified interface for MySQL and SQLite
+- Composable design — can be used standalone or as part of the full Vix.cpp stack
+
+### 🧩 Example ORM Demos
+
+```markdown
+| **Example File**           | **Description**                                        |
+| -------------------------- | ------------------------------------------------------ |
+| `users_crud.cpp`           | Full CRUD workflow using the Repository pattern.       |
+| `repository_crud_full.cpp` | Demonstrates bulk operations and entity relationships. |
+| `tx_unit_of_work.cpp`      | Example of Transaction and Unit-of-Work patterns.      |
+| `querybuilder_update.cpp`  | Fluent construction of dynamic SQL `UPDATE` queries.   |
+| `migrate_init.cpp`         | Initialization and execution of schema migrations.     |
+| `error_handling.cpp`       | Robust error handling using `DBError` exception types. |
+```
+
 # Vix.cpp Examples
 
 This folder contains example applications demonstrating how to use the Vix.cpp framework.
@@ -1114,7 +1336,3 @@ Contributions are welcome! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for 
 ## License
 
 MIT License – see [LICENSE](./LICENSE) for details.
-
-```
-
-```
