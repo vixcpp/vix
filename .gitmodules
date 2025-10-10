@@ -15,3 +15,6 @@
 	path = modules/json
 	url = https://github.com/vixcpp/json.git
 	branch = dev
+[submodule "modules/orm"]
+	path = modules/orm
+	url = https://github.com/vixcpp/orm.git
