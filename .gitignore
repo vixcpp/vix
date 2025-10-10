@@ -62,3 +62,4 @@ scripts/update_changelog.sh
 # ======================================================
 build-ref/
 build-rel/
+hello_server
