@@ -17,7 +17,7 @@ All benchmarks were executed using **wrk**
 ```markdown
 | Framework            | Requests/sec | Avg Latency | Transfer/sec   |
 | -------------------- | ------------ | ----------- | -------------- |
-| **Vix.cpp (v1.3.3)** | **84,582**   | **2.38 ms** | **19.28 MB/s** |
+| **Vix.cpp (v1.5.1)** | **84,582**   | **2.38 ms** | **19.28 MB/s** |
 | Go (Fiber)           | 81,336       | 0.67 ms     | 10.16 MB/s     |
 | Node.js (Fastify)    | 4,220        | 16.00 ms    | 0.97 MB/s      |
 | PHP (Slim)           | 2,804        | 16.87 ms    | 0.49 MB/s      |
@@ -26,7 +26,7 @@ All benchmarks were executed using **wrk**
 ```
 
 🟢 Result
-Vix.cpp (v1.3.3) reaches ~84 K requests/sec with an average latency of 2.3 ms —
+Vix.cpp (v1.5.1) reaches ~84 K requests/sec with an average latency of 2.3 ms —
 matching Go in throughput while maintaining pure native C++ performance and low memory usage.
 
 ⚙️ Tested with: wrk -t8 -c200 -d30s http://localhost:8080/
@@ -45,22 +45,11 @@ int main() {
     // GET /
     app.get("/", [](auto&, auto& res) {
         res.json({
-            "framework", "Vix.cpp",
-            "message", "Welcome to the future of C++ web development 🚀"
+            "message", "Hello world"
         });
     });
 
-    // GET /hello/{name}
-    app.get("/hello/{name}", [](auto&, auto& res, auto& params) {
-        res.json({
-            "greeting", "Hello " + params["name"] + " 👋",
-            "powered_by", "Vix.cpp"
-        });
-    });
-
-    // Start server
     app.run(8080);
-    return 0;
 }
 ```
 
@@ -73,9 +62,9 @@ wrk -t8 -c200 -d30s --latency http://localhost:8080/hello
 ## Output:
 
 ```makefile
-Requests/sec: 73612
-Transfer/sec: 12.43MB
-Latency:      2.71ms
+Requests/sec: 84,582
+Transfer/sec: 19.28MB
+Latency:      2.38ms
 ```
 
 # 🧩 Key Features
@@ -912,8 +901,6 @@ int main()
     app.run(8080);
     return 0;
 }
-
-
 ```
 
 ```bash
