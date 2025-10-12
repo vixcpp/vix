@@ -6,8 +6,8 @@ cmake_minimum_required(VERSION 3.20)
 # Purpose
 #   - Single entry point to configure and build the project.
 #   - Adds submodules (json, utils, core, orm, cli).
-#   - Exposes umbrella INTERFACE target (Vix::vix) so consumers/examples
-#     inherit all public headers and transitive dependencies by linking it.
+#   - Exposes an umbrella INTERFACE target (Vix::vix) so consumers/examples
+#     inherit public headers and transitive dependencies by linking it.
 #
 # Quick Start
 #   $ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DVIX_BUILD_EXAMPLES=ON
@@ -16,17 +16,12 @@ cmake_minimum_required(VERSION 3.20)
 # Conventions
 #   - C++20 baseline.
 #   - Module targets are namespaced with "Vix::" where possible.
-#   - Public headers are exposed via target_include_directories(... PUBLIC/INTERFACE).
-#   - Avoid global include_directories; prefer target_link_libraries + usage reqs.
+#   - Prefer target_link_libraries + usage requirements over global includes.
 #
 # Notes for Contributors
 #   - If modules/core has no .cpp sources yet, it builds header-only (INTERFACE).
-#   - The JSON module may export different target names across environments.
-#     We detect them (Vix::json / vix::json / vix_json) to avoid build breaks.
-#   - Keep this file readable: future contributors will refer to it often.
-#
-# License
-#   Open source; see LICENSE.
+#   - The JSON module may export different target names across environments:
+#     Vix::json / vix::json / vix_json — we resolve them dynamically.
 # ====================================================================
 
 project(vix VERSION 0.2.0 LANGUAGES CXX)
@@ -36,29 +31,34 @@ if (POLICY CMP0144)
   cmake_policy(SET CMP0144 NEW)
 endif()
 
-message(STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
-
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
+# RPATH to easily run after installation
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH ON)
+if (APPLE)
+  set(CMAKE_MACOSX_RPATH ON)
+endif()
 include(CMakeDependentOption)
 include(FetchContent)
 
 # ----------------------------------------------------
-# Always export compile_commands.json (for VS Code)
+# Build settings & developer options
 # ----------------------------------------------------
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+# Export compile_commands.json (for VS Code, clangd, etc.)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_custom_target(copy-compile-commands ALL
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
           ${CMAKE_BINARY_DIR}/compile_commands.json
           ${CMAKE_SOURCE_DIR}/compile_commands.json
   BYPRODUCTS ${CMAKE_SOURCE_DIR}/compile_commands.json
-  COMMENT "Copy compile_commands.json to project root for VS Code"
+  COMMENT "Copy compile_commands.json to project root for tooling"
 )
 
-# ----------------------- Global compiler settings --------------------
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-# Nice warnings pack (applied via INTERFACE to dependents)
+# Warnings bundle (opt-in)
 option(VIX_ENABLE_WARNINGS "Enable extra warnings" ON)
 if (VIX_ENABLE_WARNINGS)
   add_library(vix_warnings INTERFACE)
@@ -69,7 +69,7 @@ if (VIX_ENABLE_WARNINGS)
   endif()
 endif()
 
-# Optional LTO for Release
+# LTO (Release)
 option(VIX_ENABLE_LTO "Enable link-time optimization (Release only)" OFF)
 if (VIX_ENABLE_LTO AND CMAKE_BUILD_TYPE MATCHES "Release")
   include(CheckIPOSupported)
@@ -82,7 +82,18 @@ if (VIX_ENABLE_LTO AND CMAKE_BUILD_TYPE MATCHES "Release")
   endif()
 endif()
 
-# Static analysis hooks (opt-in)
+option(VIX_MSVC_STATIC_RUNTIME "Link MSVC runtime statically (/MT)" OFF)
+if (MSVC AND VIX_MSVC_STATIC_RUNTIME)
+  foreach(flag_var
+    CMAKE_C_FLAGS_RELEASE CMAKE_C_FLAGS_RELWITHDEBINFO CMAKE_C_FLAGS_DEBUG
+    CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_RELWITHDEBINFO CMAKE_CXX_FLAGS_DEBUG)
+    if (DEFINED ${flag_var})
+      string(REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
+    endif()
+  endforeach()
+endif()
+
+# Static analysis (opt-in)
 option(VIX_ENABLE_CLANG_TIDY "Enable clang-tidy if available" OFF)
 if (VIX_ENABLE_CLANG_TIDY)
   find_program(CLANG_TIDY_EXE NAMES clang-tidy)
@@ -122,11 +133,11 @@ if (VIX_ENABLE_COVERAGE AND CMAKE_BUILD_TYPE MATCHES "Debug")
   endif()
 endif()
 
-# Global sanitizers (opt-in)
+# Sanitizers (opt-in)
 option(VIX_ENABLE_SANITIZERS "Enable address/undefined sanitizers" OFF)
 if (VIX_ENABLE_SANITIZERS)
   if (MSVC)
-    message(FATAL_ERROR "Sanitizers not supported on MSVC. Use Clang or GCC.")
+    message(FATAL_ERROR "Sanitizers are not supported on MSVC. Use Clang or GCC.")
   endif()
   set(_SAN_COMMON -O1 -g -fno-omit-frame-pointer)
   set(_SAN_TYPES  -fsanitize=address,undefined)
@@ -148,11 +159,21 @@ endif()
 option(VIX_BUILD_EXAMPLES "Build all umbrella examples in ./examples" ON)
 option(VIX_BUILD_TESTS "Build unit tests (GoogleTest)" ON)
 
-# ----------------------- Umbrella INTERFACE target -------------------
-# IMPORTANT: create 'vix' EARLY so submodules can link to it safely
+# ----------------------------------------------------
+# Umbrella INTERFACE target — create it EARLY
+# ----------------------------------------------------
 add_library(vix INTERFACE)
 add_library(Vix::vix ALIAS vix)
-# Attach warnings/coverage globally to umbrella (propagates to consumers)
+
+# Public headers visibility (build/install)
+target_include_directories(vix INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/core/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/utils/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/json/include>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+
+# Attach warnings/coverage to umbrella (propagates to consumers)
 if (TARGET vix_warnings)
   target_link_libraries(vix INTERFACE vix_warnings)
 endif()
@@ -160,9 +181,9 @@ if (TARGET vix_coverage)
   target_link_libraries(vix INTERFACE vix_coverage)
 endif()
 
-# ----------------------------- Submodules ----------------------------
-# Each submodule owns its targets. Fail early if a required module is missing.
-
+# ----------------------------------------------------
+# Submodules
+# ----------------------------------------------------
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/json/CMakeLists.txt")
   message(STATUS "Adding 'modules/json'...")
   add_subdirectory(modules/json json_build)
@@ -184,7 +205,7 @@ else()
   message(FATAL_ERROR "Missing 'modules/core'. Run: git submodule update --init --recursive")
 endif()
 
-# Configure ORM module knobs before adding it
+# ORM knobs before adding it
 set(VIX_ORM_USE_MYSQL      ON  CACHE BOOL "Enable MySQL backend in vix_orm" FORCE)
 set(VIX_ORM_BUILD_EXAMPLES OFF CACHE BOOL "Build vix_orm examples"           FORCE)
 set(VIX_ORM_BUILD_TESTS    OFF CACHE BOOL "Build vix_orm tests"              FORCE)
@@ -192,7 +213,6 @@ set(VIX_ORM_BUILD_TESTS    OFF CACHE BOOL "Build vix_orm tests"              FOR
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/orm/CMakeLists.txt")
   message(STATUS "Adding 'modules/orm'...")
   add_subdirectory(modules/orm orm_build)
-  # Make ORM visible to umbrella consumers (since 'vix' already exists)
   if (TARGET Vix::orm)
     target_link_libraries(vix INTERFACE Vix::orm)
     set(VIX_HAS_ORM ON)
@@ -208,8 +228,9 @@ else()
   message(STATUS "Skipping 'modules/cli' (not present).")
 endif()
 
-# ------------------------ Resolve JSON target name -------------------
-# Some environments export JSON as Vix::json, others as vix::json or vix_json.
+# ----------------------------------------------------
+# Resolve JSON target name for downstreams
+# ----------------------------------------------------
 set(JSON_TARGET "Vix::json")
 if (NOT TARGET ${JSON_TARGET})
   if (TARGET vix::json)
@@ -217,21 +238,18 @@ if (NOT TARGET ${JSON_TARGET})
   elseif (TARGET vix_json)
     set(JSON_TARGET vix_json)
   else()
-    message(FATAL_ERROR
-      "JSON module target not found. Expected one of: Vix::json, vix::json, vix_json.\n"
-      "Ensure modules/json defines an exported target and alias.")
+    message(FATAL_ERROR "JSON module target not found ...")
   endif()
 endif()
 
-# Link the umbrella to core/utils/json after targets exist
+# Link umbrella to core/utils/json
 target_link_libraries(vix INTERFACE
   Vix::core
   Vix::utils
   ${JSON_TARGET}
 )
 
-# ---------------------- Sanitizers (optional) ------------------------
-# Enable correct link of ASan/UBSan on umbrella (propagates to deps)
+# Propagate sanitizers to umbrella (and thus to consumers)
 if (VIX_ENABLE_SANITIZERS)
   message(STATUS "VIX: enabling sanitizers (ASan + UBSan) on umbrella target")
   target_compile_options(vix INTERFACE -O1 -g -fno-omit-frame-pointer)
@@ -239,7 +257,9 @@ if (VIX_ENABLE_SANITIZERS)
   target_link_options(vix INTERFACE -fsanitize=address,undefined)
 endif()
 
-# ----------------------------- Examples ------------------------------
+# ----------------------------------------------------
+# Examples
+# ----------------------------------------------------
 if (VIX_BUILD_EXAMPLES)
   file(GLOB VIX_UMBRELLA_EXAMPLES
        CONFIGURE_DEPENDS
@@ -250,10 +270,7 @@ if (VIX_BUILD_EXAMPLES)
   else()
     foreach(EXAMPLE_SRC IN LISTS VIX_UMBRELLA_EXAMPLES)
       get_filename_component(_raw_name "${EXAMPLE_SRC}" NAME_WE)
-    # Skip helper/disabled/internal files
-      if (_raw_name MATCHES "_common$"
-      OR _raw_name MATCHES "_disabled$"
-      OR _raw_name MATCHES "_internal$")     # <-- AJOUT
+      if (_raw_name MATCHES "_common$" OR _raw_name MATCHES "_disabled$" OR _raw_name MATCHES "_internal$")
         message(STATUS "Skipping helper/internal example: ${_raw_name}")
         continue()
       endif()
@@ -272,7 +289,7 @@ if (VIX_BUILD_EXAMPLES)
       endif()
       if (VIX_ENABLE_SANITIZERS)
         target_compile_options("${EXAMPLE_NAME}" PRIVATE -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined)
-        target_link_options("${EXAMPLE_NAME}" PRIVATE -fsanitize=address,undefined)
+        target_link_options("${EXAMPLE_NAME}" PRIVATE                       -fsanitize=address,undefined)
       endif()
       if (TARGET vix_coverage)
         target_link_libraries("${EXAMPLE_NAME}" PRIVATE vix_coverage)
@@ -287,7 +304,9 @@ if (VIX_BUILD_EXAMPLES)
   endif()
 endif()
 
-# ------------------------------ Tests --------------------------------
+# ----------------------------------------------------
+# Tests
+# ----------------------------------------------------
 if (VIX_BUILD_TESTS)
   include(CTest)
   enable_testing()
@@ -329,23 +348,92 @@ if (VIX_BUILD_TESTS)
   endif()
 endif()
 
-# --------------------------- Runtime config --------------------------
+# ----------------------------------------------------
+# Runtime config (copy optional config.json next to binaries)
+# ----------------------------------------------------
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/config/config.json")
   file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/config/config.json
        DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
-# --------------------------- Status summary --------------------------
+# ----------------------------------------------------
+# Install/export (umbrella package)
+# ----------------------------------------------------
+option(VIX_ENABLE_INSTALL "Enable install/export rules for packaging" ON)
+
+if (VIX_ENABLE_INSTALL)
+  # 1) Headers publics (interfaces de build/install)
+  install(DIRECTORY modules/core/include/  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+          FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+  install(DIRECTORY modules/utils/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+          FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+  install(DIRECTORY modules/json/include/  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+          FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+  # Si l’ORM expose des headers publics :
+  # install(DIRECTORY modules/orm/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  #         FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+
+  # 2) Export set — on exporte la cible INTERFACE 'vix'
+  install(TARGETS vix
+          EXPORT VixTargets)
+
+  # Exporter aussi les INTERFACE auxiliaires si elles existent
+  if (TARGET vix_warnings)
+    install(TARGETS vix_warnings
+            EXPORT VixTargets)
+  endif()
+  if (TARGET vix_coverage)
+    install(TARGETS vix_coverage
+            EXPORT VixTargets)
+  endif()
+
+  # 3) Config files pour find_package(Vix)
+  set(VIX_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/Vix")
+
+  write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/VixConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+  )
+
+  # Fichier de config (fourni par cmake/VixConfig.cmake.in)
+  configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/VixConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/VixConfig.cmake"
+    INSTALL_DESTINATION "${VIX_INSTALL_CMAKEDIR}"
+  )
+
+  # 4) Export réel des cibles
+  install(EXPORT VixTargets
+          NAMESPACE Vix::
+          DESTINATION "${VIX_INSTALL_CMAKEDIR}")
+
+  install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/VixConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/VixConfigVersion.cmake"
+    DESTINATION "${VIX_INSTALL_CMAKEDIR}"
+  )
+
+  # 5) (Optionnel) Installer le binaire CLI s’il existe — NE PAS l’exporter
+  if (TARGET vix_cli)
+    install(TARGETS vix_cli
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+  endif()
+endif()
+
+# ----------------------------------------------------
+# Status summary
+# ----------------------------------------------------
 message(STATUS "------------------------------------------------------")
 message(STATUS "Vix umbrella configured")
 message(STATUS "Project version: ${PROJECT_VERSION}")
 message(STATUS "Build umbrella examples: ${VIX_BUILD_EXAMPLES}")
 message(STATUS "Build tests (GTest): ${VIX_BUILD_TESTS}")
-message(STATUS "Modules: json, utils, core, orm (cli optional)")
-message(STATUS "Resolved JSON target: ${JSON_TARGET}")
 message(STATUS "Sanitizers: ${VIX_ENABLE_SANITIZERS}")
 message(STATUS "Coverage: ${VIX_ENABLE_COVERAGE}")
 message(STATUS "Clang-Tidy: ${VIX_ENABLE_CLANG_TIDY}")
 message(STATUS "Cppcheck: ${VIX_ENABLE_CPPCHECK}")
 message(STATUS "LTO: ${VIX_ENABLE_LTO}")
+message(STATUS "Install/Export enabled: ${VIX_ENABLE_INSTALL}")
 message(STATUS "------------------------------------------------------")
+
