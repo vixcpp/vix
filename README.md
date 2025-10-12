@@ -187,23 +187,86 @@ cd vix
 # Initialize and update submodules
 
 git submodule update --init --recursive
+```
 
-# Configure and build (Release)
+# ⚙️ Dev local (sans packaging)
 
-cmake -S . -B build-rel -DCMAKE_BUILD_TYPE=Release
+```bash
+cmake -S . -B build-rel -DCMAKE_BUILD_TYPE=Release -DVIX_ENABLE_INSTALL=OFF
 cmake --build build-rel -j
 ```
 
-This builds all umbrella modules (core, utils, json, orm, cli).
+Builds all umbrella modules (core, utils, json, orm, cli) locally without installation.
 
-# 🧪 Build (Debug with Sanitizers)
+# 📦 Packaging / Installation
+
+```bash
+cmake -S . -B build-pkg -DCMAKE_BUILD_TYPE=Release -DVIX_ENABLE_INSTALL=ON
+cmake --build build-pkg -j
+sudo cmake --install build-pkg --prefix /usr/local
+```
+
+Installs the umbrella package (with all modules) system-wide in /usr/local.
+
+# 🔁 Rebuild & Reinstall Quickly
+
+```bash
+cmake -S . -B build-pkg -DCMAKE_BUILD_TYPE=Release -DVIX_ENABLE_INSTALL=ON
+cmake --build build-pkg -j
+sudo cmake --install build-pkg --prefix /usr/local
+```
+
+# 🧪 Debug Build (with Sanitizers)
 
 For developers who want to debug memory or undefined behavior:
 
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DVIX_ENABLE_SANITIZERS=ON
-cmake --build build -j
+cmake -S . -B build-debug -DCMAKE_BUILD_TYPE=Debug -DVIX_ENABLE_SANITIZERS=ON
+cmake --build build-debug -j
 ```
+
+# Configure and build (Release)
+
+```bash
+cmake -S . -B build-rel -DCMAKE_BUILD_TYPE=Release
+cmake --build build-rel -j
+```
+
+# 🧰 Example (CLI Project)
+
+Once installed, you can generate a new Vix project using the CLI:
+
+```bash
+vix new myapp
+cd vix/myapp
+cmake -S . -B build
+cmake --build build -j
+./build/myapp
+```
+
+You should see:
+
+```csharp
+[GET] / → {"message": "Hello world"}
+```
+
+# 🧠 Tips
+
+To rebuild all modules after updates:
+
+```bash
+git submodule update --remote --merge
+cmake --build build-pkg -j
+sudo cmake --install build-pkg --prefix /usr/local
+```
+
+# To check installed files:
+
+```bash
+cmake --install build-pkg --prefix /usr/local --dry-run
+```
+
+This builds all umbrella modules (core, utils, json, orm, cli).
 
 ### ⚙️ Optional Build Flags
 
