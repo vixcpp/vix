@@ -205,28 +205,35 @@ else()
   message(FATAL_ERROR "Missing 'modules/core'. Run: git submodule update --init --recursive")
 endif()
 
-# ORM knobs before adding it
-set(VIX_ORM_USE_MYSQL      ON  CACHE BOOL "Enable MySQL backend in vix_orm" FORCE)
-set(VIX_ORM_BUILD_EXAMPLES OFF CACHE BOOL "Build vix_orm examples"           FORCE)
-set(VIX_ORM_BUILD_TESTS    OFF CACHE BOOL "Build vix_orm tests"              FORCE)
-
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/orm/CMakeLists.txt")
-  message(STATUS "Adding 'modules/orm'...")
-  add_subdirectory(modules/orm orm_build)
-  if (TARGET Vix::orm)
-    target_link_libraries(vix INTERFACE Vix::orm)
-    set(VIX_HAS_ORM ON)
-  endif()
-else()
-  message(FATAL_ERROR "Missing 'modules/orm'. Run: git submodule update --init --recursive")
-endif()
-
+# CLI (tool)
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/cli/CMakeLists.txt")
   message(STATUS "Adding 'modules/cli'...")
   add_subdirectory(modules/cli cli_build)
 else()
-  message(STATUS "Skipping 'modules/cli' (not present).")
+  message(WARNING "Skipping 'modules/cli' (not present).")
 endif()
+
+# # ----------------------------------------------------
+# # ORM (optionnel)
+# # ----------------------------------------------------
+# option(VIX_ENABLE_ORM "Build Vix ORM module" OFF)
+
+# # Conserve les options internes sans FORCE
+# set(VIX_ORM_USE_MYSQL      ON  CACHE BOOL "Enable MySQL backend in vix_orm")
+# set(VIX_ORM_BUILD_EXAMPLES OFF CACHE BOOL "Build vix_orm examples")
+# set(VIX_ORM_BUILD_TESTS    OFF CACHE BOOL "Build vix_orm tests")
+
+# # Variable exportée vers VixConfig.cmake.in
+# set(VIX_HAS_ORM OFF)
+
+# if (VIX_ENABLE_ORM AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/orm/CMakeLists.txt")
+#   message(STATUS "Adding 'modules/orm'...")
+#   add_subdirectory(modules/orm orm_build)
+#   if (TARGET Vix::orm)
+#     target_link_libraries(vix INTERFACE Vix::orm)
+#     set(VIX_HAS_ORM ON)
+#   endif()
+# endif()
 
 # ----------------------------------------------------
 # Resolve JSON target name for downstreams
@@ -260,10 +267,38 @@ endif()
 # ----------------------------------------------------
 # Examples
 # ----------------------------------------------------
+# Security: Ensure VIX_HAS_ORM is defined (core-only => OFF)
+if (NOT DEFINED VIX_HAS_ORM)
+  set(VIX_HAS_ORM OFF)
+endif()
+
 if (VIX_BUILD_EXAMPLES)
   file(GLOB VIX_UMBRELLA_EXAMPLES
        CONFIGURE_DEPENDS
        "${CMAKE_CURRENT_SOURCE_DIR}/examples/*.cpp")
+
+  # Examples that require ORM
+  set(_ORM_EXAMPLES
+    demo_with_orm
+    error_handling
+    batch_insert_tx
+    users_crud
+    repository_crud_full
+    migrate_init
+    tx_unit_of_work
+    querybuilder_update
+  )
+
+# If the ORM is not packaged, filter them from the list
+  if (NOT VIX_HAS_ORM)
+    foreach(_ex IN LISTS _ORM_EXAMPLES)
+      # POSIX paths
+      list(FILTER VIX_UMBRELLA_EXAMPLES EXCLUDE REGEX ".*/${_ex}\\.cpp$")
+      # Windows paths (just in case)
+      list(FILTER VIX_UMBRELLA_EXAMPLES EXCLUDE REGEX ".*\\\\${_ex}\\.cpp$")
+    endforeach()
+    message(STATUS "Examples: ORM is OFF → filtered ORM-dependent samples: ${_ORM_EXAMPLES}")
+  endif()
 
   if (NOT VIX_UMBRELLA_EXAMPLES)
     message(STATUS "No example sources found under examples/. Skipping.")
@@ -414,11 +449,22 @@ if (VIX_ENABLE_INSTALL)
     DESTINATION "${VIX_INSTALL_CMAKEDIR}"
   )
 
-  # 5) (Optionnel) Installer le binaire CLI s’il existe — NE PAS l’exporter
+    # 5) Installer le binaire CLI s’il existe — NE PAS l’exporter
+  #    - Si la cible s'appelle 'vix_cli', on l'installe sous le nom 'vix'
+  #    - Si la cible s'appelle déjà 'vix', on l'installe tel quel
   if (TARGET vix_cli)
     install(TARGETS vix_cli
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+            RENAME vix)
+    message(STATUS "CLI install: installing target 'vix_cli' as 'vix'")
+  elseif (TARGET vix)
+    install(TARGETS vix
             RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+    message(STATUS "CLI install: installing target 'vix'")
+  else()
+    message(WARNING "CLI install: no target named 'vix_cli' or 'vix' — CLI will not be installed")
   endif()
+
 endif()
 
 # ----------------------------------------------------
