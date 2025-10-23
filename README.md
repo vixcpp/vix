@@ -17,7 +17,7 @@ All benchmarks were executed using **wrk**
 ```markdown
 | Framework            | Requests/sec | Avg Latency | Transfer/sec   |
 | -------------------- | ------------ | ----------- | -------------- |
-| **Vix.cpp (v1.7.0)** | **84,582**   | **2.38 ms** | **19.28 MB/s** |
+| **Vix.cpp (v1.7.0)** | **88,973**   | **2.27 ms** | **14.85 MB/s** |
 | Go (Fiber)           | 81,336       | 0.67 ms     | 10.16 MB/s     |
 | Node.js (Fastify)    | 4,220        | 16.00 ms    | 0.97 MB/s      |
 | PHP (Slim)           | 2,804        | 16.87 ms    | 0.49 MB/s      |
@@ -62,9 +62,9 @@ wrk -t8 -c200 -d30s --latency http://localhost:8080/hello
 ## Output:
 
 ```makefile
-Requests/sec: 84,582
-Transfer/sec: 19.28MB
-Latency:      2.38ms
+Requests/sec: 88,973
+Transfer/sec: 14.85MB
+Latency:      2.27ms
 ```
 
 # 🧩 Key Features
