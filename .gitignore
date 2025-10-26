@@ -69,3 +69,4 @@ hello_server
 # Keep only CMake package config template
 cmake/*
 !cmake/VixConfig.cmake.in
+*.bak
