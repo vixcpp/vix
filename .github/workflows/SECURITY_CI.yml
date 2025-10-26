@@ -11,7 +11,6 @@ permissions:
   contents: read
 
 env:
-  # Ajuste si tu as d'autres dépendances système
   DEPS: >
     build-essential cmake ninja-build
     clang llvm lld
@@ -27,8 +26,23 @@ jobs:
       matrix:
         compiler: [clang, gcc]
     steps:
-      - name: Checkout
+      - name: Checkout (with submodules)
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Sync & init submodules
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive
+          echo "---- submodule status ----"
+          git submodule status --recursive || true
+          echo "---- modules presence ----"
+          ls -la modules || true
+          ls -la modules/json || true
+          ls -la modules/utils || true
+          ls -la modules/core || true
 
       - name: Install dependencies
         run: |
@@ -38,11 +52,11 @@ jobs:
       - name: Select compiler
         run: |
           if [ "${{ matrix.compiler }}" = "clang" ]; then
-            echo "CC=clang"  >> $GITHUB_ENV
+            echo "CC=clang"    >> $GITHUB_ENV
             echo "CXX=clang++" >> $GITHUB_ENV
           else
-            echo "CC=gcc"    >> $GITHUB_ENV
-            echo "CXX=g++"   >> $GITHUB_ENV
+            echo "CC=gcc"      >> $GITHUB_ENV
+            echo "CXX=g++"     >> $GITHUB_ENV
           fi
 
       - name: Configure (Debug, Sanitizers ON)
@@ -50,7 +64,8 @@ jobs:
           cmake -G Ninja -S . -B build-sanitize \
             -DCMAKE_BUILD_TYPE=Debug \
             -DVIX_ENABLE_SANITIZERS=ON \
-            -DVIX_BUILD_EXAMPLES=ON
+            -DVIX_BUILD_EXAMPLES=ON \
+            -DVIX_BUILD_TESTS=ON
 
       - name: Build
         run: cmake --build build-sanitize -j
@@ -62,8 +77,6 @@ jobs:
       - name: Run example smoke tests
         shell: bash
         run: |
-          # Lancement rapide des binaires exemples (sans rester en écoute)
-          # On vérifie juste qu'ils démarrent et s'exécutent (ex: affichage usage/help)
           set -e
           EXE_DIR="build-sanitize"
           ls -1 "$EXE_DIR" | grep -E '(_example$|^main$|crud|validation)' || true
@@ -72,8 +85,23 @@ jobs:
     name: Static Analysis (clang-tidy + cppcheck)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout (with submodules)
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Sync & init submodules
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive
+          echo "---- submodule status ----"
+          git submodule status --recursive || true
+          echo "---- modules presence ----"
+          ls -la modules || true
+          ls -la modules/json || true
+          ls -la modules/utils || true
+          ls -la modules/core || true
 
       - name: Install dependencies
         run: |
@@ -85,11 +113,11 @@ jobs:
           cmake -G Ninja -S . -B build-analyze \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DVIX_BUILD_EXAMPLES=ON
+            -DVIX_BUILD_EXAMPLES=ON \
+            -DVIX_BUILD_TESTS=OFF
 
       - name: clang-tidy
         run: |
-          # Analyse des sources (modules + examples)
           find modules examples -name '*.cpp' -print0 | xargs -0 -n1 -P2 \
             clang-tidy -p build-analyze || (echo "::warning::clang-tidy reported issues"; exit 1)
 
@@ -103,8 +131,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Checkout
+      - name: Checkout (with submodules)
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Sync & init submodules
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive
+          echo "---- submodule status ----"
+          git submodule status --recursive || true
+          echo "---- modules presence ----"
+          ls -la modules || true
+          ls -la modules/json || true
+          ls -la modules/utils || true
+          ls -la modules/core || true
 
       - name: Install dependencies
         run: |
@@ -115,7 +158,9 @@ jobs:
         run: |
           cmake -G Ninja -S . -B build-rel \
             -DCMAKE_BUILD_TYPE=Release \
-            -DVIX_BUILD_EXAMPLES=ON
+            -DVIX_BUILD_EXAMPLES=ON \
+            -DVIX_BUILD_TESTS=OFF \
+            -DVIX_ENABLE_SANITIZERS=OFF
 
       - name: Build
         run: cmake --build build-rel -j
@@ -125,7 +170,6 @@ jobs:
         run: |
           set -e
           cd build-rel
-          # Liste des exécutables sur lesquels valgrind est pertinent et court
           CANDIDATES=$(ls -1 | grep -E '^(main|get_example|post_example|put_example|delete_example|json_builders_routes|env_time_port)$' || true)
           if [ -z "$CANDIDATES" ]; then
             echo "No example binaries found for valgrind."
@@ -133,7 +177,6 @@ jobs:
           fi
           for exe in $CANDIDATES; do
             echo "==> Valgrind: $exe (5s timeout)"
-            # On exécute avec timeout court pour éviter les jobs bloquants
             timeout 5s valgrind --leak-check=full --error-exitcode=1 ./$exe || \
               (echo "::error::Valgrind reported leaks in $exe"; exit 1)
           done
@@ -141,10 +184,25 @@ jobs:
   fuzz:
     name: Fuzz (optional)
     runs-on: ubuntu-latest
-    if: ${{ always() }} # lance le job mais sort proprement si pas de cible
+    if: ${{ always() }}
     steps:
-      - name: Checkout
+      - name: Checkout (with submodules)
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Sync & init submodules
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive
+          echo "---- submodule status ----"
+          git submodule status --recursive || true
+          echo "---- modules presence ----"
+          ls -la modules || true
+          ls -la modules/json || true
+          ls -la modules/utils || true
+          ls -la modules/core || true
 
       - name: Install Clang + LLVM (for libFuzzer)
         run: |
@@ -160,7 +218,6 @@ jobs:
             clang++ -g -O1 -fsanitize=fuzzer,address,undefined \
               -I modules -I include -std=c++20 \
               -o fuzz_http tests/fuzz_http.cpp
-            # Run briefly to smoke-test
             timeout 15s ./fuzz_http || true
           else
             echo "No fuzz target found (tests/fuzz_http.cpp). Skipping."
