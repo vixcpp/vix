@@ -17,17 +17,13 @@ All benchmarks were executed using **wrk**
 ```markdown
 | Framework            | Requests/sec | Avg Latency | Transfer/sec   |
 | -------------------- | ------------ | ----------- | -------------- |
-| **Vix.cpp (v1.7.0)** | **88,973**   | **2.27 ms** | **14.85 MB/s** |
+| **Vix.cpp (v1.7.1)** | **88,973**   | **2.21 ms** | **18.25 MB/s** |
 | Go (Fiber)           | 81,336       | 0.67 ms     | 10.16 MB/s     |
 | Node.js (Fastify)    | 4,220        | 16.00 ms    | 0.97 MB/s      |
 | PHP (Slim)           | 2,804        | 16.87 ms    | 0.49 MB/s      |
 | Crow (C++)           | 1,149        | 41.60 ms    | 0.35 MB/s      |
 | FastAPI (Python)     | 752          | 63.71 ms    | 0.11 MB/s      |
 ```
-
-🟢 Result
-Vix.cpp (v1.7.0) reaches ~84 K requests/sec with an average latency of 2.3 ms —
-matching Go in throughput while maintaining pure native C++ performance and low memory usage.
 
 ⚙️ Tested with: wrk -t8 -c200 -d30s http://localhost:8080/
 
@@ -63,8 +59,8 @@ wrk -t8 -c200 -d30s --latency http://localhost:8080/hello
 
 ```makefile
 Requests/sec: 88,973
-Transfer/sec: 14.85MB
-Latency:      2.27ms
+Transfer/sec: 18.25MB
+Latency:      2.21ms
 ```
 
 # 🧩 Key Features
@@ -238,10 +234,9 @@ Once installed, you can generate a new Vix project using the CLI:
 
 ```bash
 vix new myapp
-cd vix/myapp
-cmake -S . -B build
-cmake --build build -j
-./build/myapp
+cd myapp
+vix build
+vix run
 ```
 
 You should see:
