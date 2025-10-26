@@ -24,7 +24,7 @@ cmake_minimum_required(VERSION 3.20)
 #     Vix::json / vix::json / vix_json — we resolve them dynamically.
 # ====================================================================
 
-project(vix VERSION 1.8.4 LANGUAGES CXX)
+project(vix VERSION 1.9.0 LANGUAGES CXX)
 
 # Make find_package honor *_ROOT hints (e.g. MYSQLCPPCONN_ROOT)
 if (POLICY CMP0144)
@@ -66,6 +66,10 @@ if (VIX_ENABLE_WARNINGS)
     target_compile_options(vix_warnings INTERFACE /W4 /permissive-)
   else()
     target_compile_options(vix_warnings INTERFACE -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion)
+    # 👇 Silence des faux positifs GCC 13 (fmt/spdlog inlines)
+    target_compile_options(vix_warnings INTERFACE
+      $<$<CXX_COMPILER_ID:GNU>:-Wno-array-bounds>
+    )
   endif()
 endif()
 
@@ -184,9 +188,27 @@ endif()
 # ----------------------------------------------------
 # Submodules
 # ----------------------------------------------------
+option(VIX_FORCE_FETCH_JSON "Fetch a JSON backend if 'modules/json' submodule is missing" ON)
+
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/json/CMakeLists.txt")
   message(STATUS "Adding 'modules/json'...")
   add_subdirectory(modules/json json_build)
+  set(_VIX_JSON_BACKEND "submodule")
+elseif (VIX_FORCE_FETCH_JSON)
+  message(WARNING "modules/json submodule not found — fetching nlohmann/json as fallback")
+  include(FetchContent)
+  FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG        v3.11.3
+  )
+  FetchContent_MakeAvailable(nlohmann_json)
+
+  add_library(vix_json INTERFACE)
+  add_library(Vix::json ALIAS vix_json)
+  target_link_libraries(vix_json INTERFACE nlohmann_json::nlohmann_json)
+
+  set(_VIX_JSON_BACKEND "nlohmann_json")
 else()
   message(FATAL_ERROR "Missing 'modules/json'. Run: git submodule update --init --recursive")
 endif()
