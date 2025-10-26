@@ -32,6 +32,20 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Assert submodules present (json/utils/core)
+        run: |
+          echo "Submodule status:"
+          git submodule status --recursive || true
+
+          echo "Check modules/json/CMakeLists.txt"
+          test -f modules/json/CMakeLists.txt || (echo "::error::Missing modules/json/CMakeLists.txt"; exit 1)
+
+          echo "Check modules/utils/CMakeLists.txt"
+          test -f modules/utils/CMakeLists.txt || (echo "::error::Missing modules/utils/CMakeLists.txt"; exit 1)
+
+          echo "Check modules/core/CMakeLists.txt"
+          test -f modules/core/CMakeLists.txt || (echo "::error::Missing modules/core/CMakeLists.txt"; exit 1)
+
       - name: Sync & init submodules
         run: |
           git submodule sync --recursive
@@ -100,6 +114,20 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Assert submodules present (json/utils/core)
+        run: |
+          echo "Submodule status:"
+          git submodule status --recursive || true
+
+          echo "Check modules/json/CMakeLists.txt"
+          test -f modules/json/CMakeLists.txt || (echo "::error::Missing modules/json/CMakeLists.txt"; exit 1)
+
+          echo "Check modules/utils/CMakeLists.txt"
+          test -f modules/utils/CMakeLists.txt || (echo "::error::Missing modules/utils/CMakeLists.txt"; exit 1)
+
+          echo "Check modules/core/CMakeLists.txt"
+          test -f modules/core/CMakeLists.txt || (echo "::error::Missing modules/core/CMakeLists.txt"; exit 1)
+
       - name: Sync & init submodules
         run: |
           git submodule sync --recursive
@@ -160,6 +188,20 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+
+      - name: Assert submodules present (json/utils/core)
+        run: |
+          echo "Submodule status:"
+          git submodule status --recursive || true
+
+          echo "Check modules/json/CMakeLists.txt"
+          test -f modules/json/CMakeLists.txt || (echo "::error::Missing modules/json/CMakeLists.txt"; exit 1)
+
+          echo "Check modules/utils/CMakeLists.txt"
+          test -f modules/utils/CMakeLists.txt || (echo "::error::Missing modules/utils/CMakeLists.txt"; exit 1)
+
+          echo "Check modules/core/CMakeLists.txt"
+          test -f modules/core/CMakeLists.txt || (echo "::error::Missing modules/core/CMakeLists.txt"; exit 1)
 
       - name: Sync & init submodules
         run: |
@@ -224,6 +266,20 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+
+      - name: Assert submodules present (json/utils/core)
+        run: |
+          echo "Submodule status:"
+          git submodule status --recursive || true
+
+          echo "Check modules/json/CMakeLists.txt"
+          test -f modules/json/CMakeLists.txt || (echo "::error::Missing modules/json/CMakeLists.txt"; exit 1)
+
+          echo "Check modules/utils/CMakeLists.txt"
+          test -f modules/utils/CMakeLists.txt || (echo "::error::Missing modules/utils/CMakeLists.txt"; exit 1)
+
+          echo "Check modules/core/CMakeLists.txt"
+          test -f modules/core/CMakeLists.txt || (echo "::error::Missing modules/core/CMakeLists.txt"; exit 1)
 
       - name: Sync & init submodules
         run: |
