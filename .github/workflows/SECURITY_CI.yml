@@ -15,7 +15,7 @@ env:
     build-essential cmake ninja-build
     clang llvm lld
     g++ valgrind cppcheck
-    libboost-all-dev nlohmann-json3-dev libspdlog-dev
+    libboost-all-dev nlohmann-json3-dev libspdlog-dev libfmt-dev
 
 jobs:
   build-asan-ubsan:
