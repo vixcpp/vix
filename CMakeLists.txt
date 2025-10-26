@@ -184,9 +184,27 @@ endif()
 # ----------------------------------------------------
 # Submodules
 # ----------------------------------------------------
+option(VIX_FORCE_FETCH_JSON "Fetch a JSON backend if 'modules/json' submodule is missing" ON)
+
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/json/CMakeLists.txt")
   message(STATUS "Adding 'modules/json'...")
   add_subdirectory(modules/json json_build)
+  set(_VIX_JSON_BACKEND "submodule")
+elseif (VIX_FORCE_FETCH_JSON)
+  message(WARNING "modules/json submodule not found — fetching nlohmann/json as fallback")
+  include(FetchContent)
+  FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG        v3.11.3
+  )
+  FetchContent_MakeAvailable(nlohmann_json)
+
+  add_library(vix_json INTERFACE)
+  add_library(Vix::json ALIAS vix_json)
+  target_link_libraries(vix_json INTERFACE nlohmann_json::nlohmann_json)
+
+  set(_VIX_JSON_BACKEND "nlohmann_json")
 else()
   message(FATAL_ERROR "Missing 'modules/json'. Run: git submodule update --init --recursive")
 endif()

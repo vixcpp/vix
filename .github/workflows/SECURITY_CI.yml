@@ -32,31 +32,28 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Assert submodules present (json/utils/core)
+      - name: Forcer les URLs de sous-modules en HTTPS (pas SSH)
         run: |
-          echo "Submodule status:"
-          git submodule status --recursive || true
-
-          echo "Check modules/json/CMakeLists.txt"
-          test -f modules/json/CMakeLists.txt || (echo "::error::Missing modules/json/CMakeLists.txt"; exit 1)
-
-          echo "Check modules/utils/CMakeLists.txt"
-          test -f modules/utils/CMakeLists.txt || (echo "::error::Missing modules/utils/CMakeLists.txt"; exit 1)
-
-          echo "Check modules/core/CMakeLists.txt"
-          test -f modules/core/CMakeLists.txt || (echo "::error::Missing modules/core/CMakeLists.txt"; exit 1)
-
-      - name: Sync & init submodules
-        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
           git submodule sync --recursive
-          git submodule update --init --recursive
+
+      - name: Initialiser les sous-modules (profondeur minimale ok)
+        run: |
+          git submodule update --init --recursive --depth 1
           echo "---- submodule status ----"
           git submodule status --recursive || true
-          echo "---- modules presence ----"
+          echo "---- modules presence (ls) ----"
           ls -la modules || true
           ls -la modules/json || true
           ls -la modules/utils || true
           ls -la modules/core || true
+
+      - name: Vérifier la présence des sous-modules
+        run: |
+          test -f modules/json/CMakeLists.txt  || (echo "::error::modules/json manquant";  exit 1)
+          test -f modules/utils/CMakeLists.txt || (echo "::error::modules/utils manquant"; exit 1)
+          test -f modules/core/CMakeLists.txt  || (echo "::error::modules/core manquant";  exit 1)
+          echo "✅ Tous les sous-modules sont présents."
 
       - name: Install dependencies
         run: |
@@ -114,31 +111,28 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Assert submodules present (json/utils/core)
+      - name: Forcer les URLs de sous-modules en HTTPS (pas SSH)
         run: |
-          echo "Submodule status:"
-          git submodule status --recursive || true
-
-          echo "Check modules/json/CMakeLists.txt"
-          test -f modules/json/CMakeLists.txt || (echo "::error::Missing modules/json/CMakeLists.txt"; exit 1)
-
-          echo "Check modules/utils/CMakeLists.txt"
-          test -f modules/utils/CMakeLists.txt || (echo "::error::Missing modules/utils/CMakeLists.txt"; exit 1)
-
-          echo "Check modules/core/CMakeLists.txt"
-          test -f modules/core/CMakeLists.txt || (echo "::error::Missing modules/core/CMakeLists.txt"; exit 1)
-
-      - name: Sync & init submodules
-        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
           git submodule sync --recursive
-          git submodule update --init --recursive
+
+      - name: Initialiser les sous-modules (profondeur minimale ok)
+        run: |
+          git submodule update --init --recursive --depth 1
           echo "---- submodule status ----"
           git submodule status --recursive || true
-          echo "---- modules presence ----"
+          echo "---- modules presence (ls) ----"
           ls -la modules || true
           ls -la modules/json || true
           ls -la modules/utils || true
           ls -la modules/core || true
+
+      - name: Vérifier la présence des sous-modules
+        run: |
+          test -f modules/json/CMakeLists.txt  || (echo "::error::modules/json manquant";  exit 1)
+          test -f modules/utils/CMakeLists.txt || (echo "::error::modules/utils manquant"; exit 1)
+          test -f modules/core/CMakeLists.txt  || (echo "::error::modules/core manquant";  exit 1)
+          echo "✅ Tous les sous-modules sont présents."
 
       - name: Install dependencies
         run: |
@@ -189,31 +183,28 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Assert submodules present (json/utils/core)
+      - name: Forcer les URLs de sous-modules en HTTPS (pas SSH)
         run: |
-          echo "Submodule status:"
-          git submodule status --recursive || true
-
-          echo "Check modules/json/CMakeLists.txt"
-          test -f modules/json/CMakeLists.txt || (echo "::error::Missing modules/json/CMakeLists.txt"; exit 1)
-
-          echo "Check modules/utils/CMakeLists.txt"
-          test -f modules/utils/CMakeLists.txt || (echo "::error::Missing modules/utils/CMakeLists.txt"; exit 1)
-
-          echo "Check modules/core/CMakeLists.txt"
-          test -f modules/core/CMakeLists.txt || (echo "::error::Missing modules/core/CMakeLists.txt"; exit 1)
-
-      - name: Sync & init submodules
-        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
           git submodule sync --recursive
-          git submodule update --init --recursive
+
+      - name: Initialiser les sous-modules (profondeur minimale ok)
+        run: |
+          git submodule update --init --recursive --depth 1
           echo "---- submodule status ----"
           git submodule status --recursive || true
-          echo "---- modules presence ----"
+          echo "---- modules presence (ls) ----"
           ls -la modules || true
           ls -la modules/json || true
           ls -la modules/utils || true
           ls -la modules/core || true
+
+      - name: Vérifier la présence des sous-modules
+        run: |
+          test -f modules/json/CMakeLists.txt  || (echo "::error::modules/json manquant";  exit 1)
+          test -f modules/utils/CMakeLists.txt || (echo "::error::modules/utils manquant"; exit 1)
+          test -f modules/core/CMakeLists.txt  || (echo "::error::modules/core manquant";  exit 1)
+          echo "✅ Tous les sous-modules sont présents."
 
       - name: Install dependencies
         run: |
@@ -267,31 +258,28 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Assert submodules present (json/utils/core)
+      - name: Forcer les URLs de sous-modules en HTTPS (pas SSH)
         run: |
-          echo "Submodule status:"
-          git submodule status --recursive || true
-
-          echo "Check modules/json/CMakeLists.txt"
-          test -f modules/json/CMakeLists.txt || (echo "::error::Missing modules/json/CMakeLists.txt"; exit 1)
-
-          echo "Check modules/utils/CMakeLists.txt"
-          test -f modules/utils/CMakeLists.txt || (echo "::error::Missing modules/utils/CMakeLists.txt"; exit 1)
-
-          echo "Check modules/core/CMakeLists.txt"
-          test -f modules/core/CMakeLists.txt || (echo "::error::Missing modules/core/CMakeLists.txt"; exit 1)
-
-      - name: Sync & init submodules
-        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
           git submodule sync --recursive
-          git submodule update --init --recursive
+
+      - name: Initialiser les sous-modules (profondeur minimale ok)
+        run: |
+          git submodule update --init --recursive --depth 1
           echo "---- submodule status ----"
           git submodule status --recursive || true
-          echo "---- modules presence ----"
+          echo "---- modules presence (ls) ----"
           ls -la modules || true
           ls -la modules/json || true
           ls -la modules/utils || true
           ls -la modules/core || true
+
+      - name: Vérifier la présence des sous-modules
+        run: |
+          test -f modules/json/CMakeLists.txt  || (echo "::error::modules/json manquant";  exit 1)
+          test -f modules/utils/CMakeLists.txt || (echo "::error::modules/utils manquant"; exit 1)
+          test -f modules/core/CMakeLists.txt  || (echo "::error::modules/core manquant";  exit 1)
+          echo "✅ Tous les sous-modules sont présents."
 
       - name: Install Clang + LLVM (for libFuzzer)
         run: |
