@@ -24,7 +24,7 @@ cmake_minimum_required(VERSION 3.20)
 #     Vix::json / vix::json / vix_json — we resolve them dynamically.
 # ====================================================================
 
-project(vix VERSION 1.8.2 LANGUAGES CXX)
+project(vix VERSION 1.8.3 LANGUAGES CXX)
 
 # Make find_package honor *_ROOT hints (e.g. MYSQLCPPCONN_ROOT)
 if (POLICY CMP0144)
