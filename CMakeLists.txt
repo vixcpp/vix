@@ -66,6 +66,10 @@ if (VIX_ENABLE_WARNINGS)
     target_compile_options(vix_warnings INTERFACE /W4 /permissive-)
   else()
     target_compile_options(vix_warnings INTERFACE -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion)
+    # 👇 Silence des faux positifs GCC 13 (fmt/spdlog inlines)
+    target_compile_options(vix_warnings INTERFACE
+      $<$<CXX_COMPILER_ID:GNU>:-Wno-array-bounds>
+    )
   endif()
 endif()
 
