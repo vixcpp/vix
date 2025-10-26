@@ -65,3 +65,7 @@ build-rel/
 hello_server
 /cmake/
 /hello_world/
+
+# Keep only CMake package config template
+cmake/*
+!cmake/VixConfig.cmake.in

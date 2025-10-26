@@ -65,7 +65,8 @@ jobs:
             -DCMAKE_BUILD_TYPE=Debug \
             -DVIX_ENABLE_SANITIZERS=ON \
             -DVIX_BUILD_EXAMPLES=ON \
-            -DVIX_BUILD_TESTS=ON
+            -DVIX_BUILD_TESTS=ON \
+            -DVIX_ENABLE_INSTALL=OFF
 
       - name: Build
         run: cmake --build build-sanitize -j
@@ -79,7 +80,6 @@ jobs:
           else
             echo "::warning::Some tests failed OR no tests discovered."
             test -f Testing/Temporary/LastTest.log && cat Testing/Temporary/LastTest.log || true
-            # Non-fatal for stability
             exit 0
           fi
 
@@ -123,7 +123,8 @@ jobs:
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DVIX_BUILD_EXAMPLES=ON \
-            -DVIX_BUILD_TESTS=OFF
+            -DVIX_BUILD_TESTS=OFF \
+            -DVIX_ENABLE_INSTALL=OFF
 
       - name: clang-tidy
         run: |
@@ -183,7 +184,8 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DVIX_BUILD_EXAMPLES=ON \
             -DVIX_BUILD_TESTS=OFF \
-            -DVIX_ENABLE_SANITIZERS=OFF
+            -DVIX_ENABLE_SANITIZERS=OFF \
+            -DVIX_ENABLE_INSTALL=OFF
 
       - name: Build
         run: cmake --build build-rel -j
