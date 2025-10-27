@@ -1,7 +1,13 @@
-# Vix.cpp
+<p align="center">
+  <img src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1761579257/baniere-vix_p5wfns.png" alt="Vix.cpp Banner" width="100%">
+</p>
 
-![C++](https://img.shields.io/badge/C++20-Standard-blue)
-![License](https://img.shields.io/badge/License-MIT-green)
+<h1 align="center">Vix.cpp</h1>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/C++20-Standard-blue">
+  <img src="https://img.shields.io/badge/License-MIT-green">
+</p>
 
 **Vix.cpp** is a next-generation **modular C++ backend framework** — inspired by **FastAPI**, **Vue.js**, and **React.js**.  
 It brings modern developer ergonomics, productivity, and extreme performance to native C++ — with a fully modular design.
