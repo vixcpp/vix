@@ -2,10 +2,6 @@
   <img src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1761579257/baniere-vix_p5wfns.png" alt="Vix.cpp Banner" width="100%">
 </p>
 
-<p align="center">
-  <img src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1761579257/vix_logo_mel8vv.png" alt="Vix.cpp Logo" width="120">
-</p>
-
 <h1 align="center">Vix.cpp</h1>
 
 <p align="center">
