@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1761579257/baniere-vix_p5wfns.png" alt="Vix.cpp Banner" width="100%">
+  <img src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1761580245/dark-baniere_vix_aj2yrj.png" 
+       alt="Vix.cpp Banner" 
+       width="100%" 
+       style="max-height:200px; object-fit:contain;">
 </p>
 
 <h1 align="center">Vix.cpp</h1>
