@@ -6,19 +6,19 @@
 [submodule "modules/utils"]
     path = modules/utils
     url = https://github.com/vixcpp/utils.git
-    branch = dev
+	branch = dev
 
 [submodule "modules/cli"]
     path = modules/cli
     url = https://github.com/vixcpp/cli.git
-    branch = dev
+	branch = dev
 
 [submodule "modules/json"]
     path = modules/json
     url = https://github.com/vixcpp/json.git
-    branch = dev
+	branch = dev
 
 [submodule "modules/orm"]
     path = modules/orm
     url = https://github.com/vixcpp/orm.git
-    branch = dev
+	branch = dev
