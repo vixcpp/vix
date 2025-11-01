@@ -22,14 +22,14 @@ It brings modern developer ergonomics, productivity, and extreme performance to 
 All benchmarks were executed using **wrk**  
 `8 threads`, `200 connections`, for `30 seconds`, on the same machine (Ubuntu 24.04, Intel Xeon, C++20 build).
 
-| Framework            | Requests/sec | Avg Latency | Transfer/sec   |
-| -------------------- | ------------ | ----------- | -------------- |
-| **Vix.cpp (v1.9.0)** | **88,973**   | **2.21 ms** | **18.25 MB/s** |
-| Go (Fiber)           | 81,336       | 0.67 ms     | 10.16 MB/s     |
-| Node.js (Fastify)    | 4,220        | 16.00 ms    | 0.97 MB/s      |
-| PHP (Slim)           | 2,804        | 16.87 ms    | 0.49 MB/s      |
-| Crow (C++)           | 1,149        | 41.60 ms    | 0.35 MB/s      |
-| FastAPI (Python)     | 752          | 63.71 ms    | 0.11 MB/s      |
+| Framework             | Requests/sec | Avg Latency | Transfer/sec   |
+| --------------------- | ------------ | ----------- | -------------- |
+| **Vix.cpp (v1.10.1)** | **88,973**   | **2.21 ms** | **18.25 MB/s** |
+| Go (Fiber)            | 81,336       | 0.67 ms     | 10.16 MB/s     |
+| Node.js (Fastify)     | 4,220        | 16.00 ms    | 0.97 MB/s      |
+| PHP (Slim)            | 2,804        | 16.87 ms    | 0.49 MB/s      |
+| Crow (C++)            | 1,149        | 41.60 ms    | 0.35 MB/s      |
+| FastAPI (Python)      | 752          | 63.71 ms    | 0.11 MB/s      |
 
 ⚙️ Tested with: `wrk -t8 -c200 -d30s http://localhost:8080/`  
 🧩 Environment: Ubuntu 24.04, GCC 13, Asio standalone (no Boost).
