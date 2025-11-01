@@ -7,7 +7,7 @@
 // ============================================================================
 
 #include <vix.hpp>
-using namespace Vix;
+using namespace vix;
 
 int main()
 {

@@ -7,8 +7,8 @@
 #include <vix/json/Simple.hpp>
 #include <string>
 
-using namespace Vix;
-namespace J = Vix::json;
+using namespace vix;
+namespace J = vix::json;
 
 int main()
 {
@@ -39,7 +39,7 @@ int main()
             });
         }
         catch (...) {
-            res.status(http::status::bad_request).json({
+            res.status(400).json({
                 "error", "Invalid JSON"
             });
         } });

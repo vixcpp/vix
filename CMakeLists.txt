@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.20)
 # Purpose
 #   - Single entry point to configure and build the project.
 #   - Adds submodules (json, utils, core, orm, cli).
-#   - Exposes an umbrella INTERFACE target (Vix::vix) so consumers/examples
+#   - Exposes an umbrella INTERFACE target (vix::vix) so consumers/examples
 #     inherit public headers and transitive dependencies by linking it.
 #
 # Quick Start
@@ -15,13 +15,13 @@ cmake_minimum_required(VERSION 3.20)
 #
 # Conventions
 #   - C++20 baseline.
-#   - Module targets are namespaced with "Vix::" where possible.
+#   - Module targets are namespaced with "vix::" where possible.
 #   - Prefer target_link_libraries + usage requirements over global includes.
 #
 # Notes for Contributors
 #   - If modules/core has no .cpp sources yet, it builds header-only (INTERFACE).
 #   - The JSON module may export different target names across environments:
-#     Vix::json / vix::json / vix_json — we resolve them dynamically.
+#     vix::json / vix::json / vix_json — we resolve them dynamically.
 # ====================================================================
 
 project(vix VERSION 1.9.1 LANGUAGES CXX)
@@ -167,7 +167,7 @@ option(VIX_BUILD_TESTS "Build unit tests (GoogleTest)" ON)
 # Umbrella INTERFACE target — create it EARLY
 # ----------------------------------------------------
 add_library(vix INTERFACE)
-add_library(Vix::vix ALIAS vix)
+add_library(vix::vix ALIAS vix)
 
 # Public headers visibility (build/install)
 target_include_directories(vix INTERFACE
@@ -205,7 +205,13 @@ elseif (VIX_FORCE_FETCH_JSON)
   FetchContent_MakeAvailable(nlohmann_json)
 
   add_library(vix_json INTERFACE)
-  add_library(Vix::json ALIAS vix_json)
+# après avoir défini vix_json
+if (NOT TARGET vix::json)
+  add_library(vix::json ALIAS vix_json)
+else()
+  message(STATUS "[json] alias vix::json already exists — skipping alias creation")
+endif()
+
   target_link_libraries(vix_json INTERFACE nlohmann_json::nlohmann_json)
 
   set(_VIX_JSON_BACKEND "nlohmann_json")
@@ -251,8 +257,8 @@ endif()
 # if (VIX_ENABLE_ORM AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/orm/CMakeLists.txt")
 #   message(STATUS "Adding 'modules/orm'...")
 #   add_subdirectory(modules/orm orm_build)
-#   if (TARGET Vix::orm)
-#     target_link_libraries(vix INTERFACE Vix::orm)
+#   if (TARGET vix::orm)
+#     target_link_libraries(vix INTERFACE vix::orm)
 #     set(VIX_HAS_ORM ON)
 #   endif()
 # endif()
@@ -260,7 +266,7 @@ endif()
 # ----------------------------------------------------
 # Resolve JSON target name for downstreams
 # ----------------------------------------------------
-set(JSON_TARGET "Vix::json")
+set(JSON_TARGET "vix::json")
 if (NOT TARGET ${JSON_TARGET})
   if (TARGET vix::json)
     set(JSON_TARGET vix::json)
@@ -273,8 +279,8 @@ endif()
 
 # Link umbrella to core/utils/json
 target_link_libraries(vix INTERFACE
-  Vix::core
-  Vix::utils
+  vix::core
+  vix::utils
   ${JSON_TARGET}
 )
 
@@ -339,7 +345,7 @@ if (VIX_BUILD_EXAMPLES)
       endif()
 
       add_executable("${EXAMPLE_NAME}" "${EXAMPLE_SRC}")
-      target_link_libraries("${EXAMPLE_NAME}" PRIVATE Vix::vix)
+      target_link_libraries("${EXAMPLE_NAME}" PRIVATE vix::vix)
 
       if (TARGET vix_warnings)
         target_link_libraries("${EXAMPLE_NAME}" PRIVATE vix_warnings)
@@ -384,7 +390,7 @@ if (VIX_BUILD_TESTS)
   if (VIX_TEST_SOURCES)
     add_executable(vix_tests ${VIX_TEST_SOURCES})
     target_link_libraries(vix_tests PRIVATE
-      Vix::vix
+      vix::vix
       GTest::gtest
       GTest::gtest_main
     )
@@ -462,7 +468,7 @@ if (VIX_ENABLE_INSTALL)
 
   # 4) Export réel des cibles
   install(EXPORT VixTargets
-          NAMESPACE Vix::
+          NAMESPACE vix::
           DESTINATION "${VIX_INSTALL_CMAKEDIR}")
 
   install(FILES

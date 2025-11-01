@@ -3,7 +3,7 @@
 
 int main()
 {
-    using namespace Vix::orm;
+    using namespace vix::orm;
 
     try
     {

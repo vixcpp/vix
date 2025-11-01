@@ -6,7 +6,7 @@
 #include <vix/orm/orm.hpp>
 #include <iostream>
 
-using namespace Vix::orm;
+using namespace vix::orm;
 
 int main()
 {

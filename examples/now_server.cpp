@@ -8,7 +8,8 @@
 #include <vix/utils/Time.hpp>
 #include <vix/utils/Logger.hpp>
 
-using namespace Vix;
+using namespace vix;
+using namespace vix::utils;
 
 int main()
 {

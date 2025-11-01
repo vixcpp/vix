@@ -15,7 +15,7 @@ struct User
     int age{};
 };
 
-namespace Vix::orm
+namespace vix::orm
 {
     template <>
     struct Mapper<User>

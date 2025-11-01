@@ -2,9 +2,9 @@
 #include <vix/json/json.hpp>
 #include <string>
 
-using Vix::json::jget;
-using Vix::json::jset;
-using Vix::json::Json;
+using vix::json::jget;
+using vix::json::jset;
+using vix::json::Json;
 
 TEST(JPath, SetGet_SimpleObjectKey)
 {
