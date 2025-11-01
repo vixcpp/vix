@@ -8,7 +8,8 @@
 #include <vix/utils/UUID.hpp>
 #include <string>
 
-using namespace Vix;
+using namespace vix;
+using namespace vix::utils;
 
 int main()
 {

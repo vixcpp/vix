@@ -7,8 +7,8 @@
 #include <vix/json/Simple.hpp>
 #include <string>
 
-using namespace Vix;
-namespace J = Vix::json;
+using namespace vix;
+namespace J = vix::json;
 
 int main()
 {
@@ -25,7 +25,7 @@ int main()
             const std::string email = body.value("email", "");
             const int age           = body.value("age",   0);
 
-            res.status(http::status::created).json({
+            res.status(200).json({
                 "action", "create",
                 "status", "created",
                 "user", J::obj({
@@ -36,7 +36,7 @@ int main()
             });
         }
         catch (...) {
-            res.status(http::status::bad_request).json({
+            res.status(400).json({
                 "error", "Invalid JSON"
             });
         } });

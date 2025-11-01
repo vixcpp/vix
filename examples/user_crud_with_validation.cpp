@@ -20,10 +20,10 @@
 #include <sstream>
 #include <vector>
 
-using namespace Vix;
-namespace J = Vix::json;
+using namespace vix;
+namespace J = vix::json;
 using njson = nlohmann::json;
-using namespace Vix::utils;
+using namespace vix::utils;
 
 // --------------------------- Data Model -------------------------------------
 struct User

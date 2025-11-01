@@ -68,7 +68,7 @@ struct User
 // Defines how to convert between `User` objects and SQL parameters.
 // Note: reading (fromRow) is omitted here since ResultSet adapter is pending.
 // ============================================================================
-namespace Vix::orm
+namespace vix::orm
 {
     template <>
     struct Mapper<User>

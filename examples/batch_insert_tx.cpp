@@ -7,7 +7,7 @@
 #include <iostream>
 #include <vector>
 
-using namespace Vix::orm;
+using namespace vix::orm;
 
 int main(int argc, char **argv)
 {

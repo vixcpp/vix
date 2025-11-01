@@ -12,10 +12,10 @@
 #include <string>
 #include <vector>
 
-using namespace Vix;
-namespace J = Vix::json;
+using namespace vix;
+namespace J = vix::json;
 using njson = nlohmann::json;
-using namespace Vix::utils;
+using namespace vix::utils;
 
 // --------------------------- Data Model -------------------------------------
 struct User
@@ -127,7 +127,7 @@ int main()
             }
 
             // J::obj(std::move(flat)) crée un objet JSON à partir de la liste plate
-            res.status(http::status::bad_request).json({
+            res.status(400).json({
                 "errors", J::obj(std::move(flat))
             });
             return;
@@ -135,7 +135,7 @@ int main()
 
         User u;
         if (!parse_user(body, u)) {
-            res.status(http::status::bad_request).json({ "error", "Invalid fields" });
+            res.status(400).json({ "error", "Invalid fields" });
             return;
         }
 

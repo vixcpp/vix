@@ -6,8 +6,8 @@
 // ============================================================================
 
 #include <vix.hpp>
-using namespace Vix;
-namespace J = Vix::json;
+using namespace vix;
+namespace J = vix::json;
 
 int main()
 {
@@ -29,7 +29,11 @@ int main()
 
         // Example with path param
         app.get("/users/{id}", [](auto &, auto &res)
-                { res.status(http::status::not_found).json({"error", "User not found"}); });
+                { res.status(4040).json({"error", "User not found"}); });
+
+        // res.not_found().json({"error","User not found"});
+
+        // res.sendStatus(404); // -> "404 Not Found"
 
         app.run(8080);
         return 0;

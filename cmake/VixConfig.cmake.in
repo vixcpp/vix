@@ -1,0 +1,49 @@
+@PACKAGE_INIT@
+include(CMakeFindDependencyMacro)
+
+# Dépendances minimales
+find_dependency(Threads)
+
+# ✅ Trouver spdlog et nlohmann_json avant d’inclure VixTargets.cmake
+find_dependency(spdlog QUIET)
+find_dependency(nlohmann_json QUIET)
+
+# --- spdlog
+if (TARGET spdlog::spdlog AND NOT TARGET spdlog::spdlog_header_only)
+  add_library(spdlog::spdlog_header_only ALIAS spdlog::spdlog)
+endif()
+
+if (NOT TARGET spdlog::spdlog_header_only)
+  add_library(spdlog::spdlog_header_only INTERFACE IMPORTED)
+  # PACKAGE_PREFIX_DIR est injecté par @PACKAGE_INIT@
+  target_include_directories(spdlog::spdlog_header_only INTERFACE
+    "${PACKAGE_PREFIX_DIR}/include"
+    "/usr/include"
+    "/usr/local/include")
+endif()
+
+# --- nlohmann_json
+if (NOT TARGET nlohmann_json::nlohmann_json)
+  add_library(nlohmann_json::nlohmann_json INTERFACE IMPORTED)
+  target_include_directories(nlohmann_json::nlohmann_json INTERFACE
+    "${PACKAGE_PREFIX_DIR}/include"
+    "/usr/include"
+    "/usr/local/include")
+endif()
+
+# Charger les cibles exportées par l'installation (vix::vix, etc.)
+include("${CMAKE_CURRENT_LIST_DIR}/VixTargets.cmake")
+
+# Indiquer si l’ORM a été packagé (OFF pour ta release core-only)
+set(VIX_HAS_ORM @VIX_HAS_ORM@)
+
+# Ne charger VixOrm que si packagé
+if (VIX_HAS_ORM)
+  find_package(VixOrm CONFIG REQUIRED)
+  if (TARGET VixOrm::vix_orm AND NOT TARGET vix::vix_orm)
+    add_library(vix::vix_orm ALIAS VixOrm::vix_orm)
+  endif()
+  if (TARGET VixOrm::orm AND NOT TARGET vix::orm)
+    add_library(vix::orm ALIAS VixOrm::orm)
+  endif()
+endif()
