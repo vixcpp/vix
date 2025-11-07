@@ -1,8 +1,16 @@
-<p align="center">
-  <img src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1761580245/dark-baniere_vix_aj2yrj.png" 
-       alt="Vix.cpp Banner" 
-       width="100%" 
-       style="max-height:200px; object-fit:contain;">
+<p align="center" style="margin:0;">
+  <img 
+    src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1762524350/vixcpp_etndhz.png" 
+    alt="Vix.cpp Banner" 
+    width="100%" 
+    style="
+      display:block;
+      height:auto;
+      max-width:900px;
+      margin:auto;
+      object-fit:cover;
+      border-radius:8px;
+    ">
 </p>
 
 <h1 align="center">Vix.cpp</h1>
