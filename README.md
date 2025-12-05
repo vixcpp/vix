@@ -47,7 +47,7 @@ All benchmarks were executed using **wrk**
 
 | Framework             | Requests/sec | Avg Latency | Transfer/sec   |
 | --------------------- | ------------ | ----------- | -------------- |
-| **Vix.cpp (v1.10.1)** | **88,973**   | **2.21 ms** | **18.25 MB/s** |
+| **Vix.cpp (v1.10.3)** | **88,973**   | **2.21 ms** | **18.25 MB/s** |
 | Go (Fiber)            | 81,336       | 0.67 ms     | 10.16 MB/s     |
 | Node.js (Fastify)     | 4,220        | 16.00 ms    | 0.97 MB/s      |
 | PHP (Slim)            | 2,804        | 16.87 ms    | 0.49 MB/s      |
@@ -128,12 +128,6 @@ cmake --build build -j
 ./build/hello_routes
 ```
 
-> For full installation steps (Windows, Linux, macOS):  
-> 📘 [docs/installation.md](./docs/installation.md)
-
-> For build flags, packaging, and sanitizers:  
-> ⚙️ [docs/build.md](./docs/build.md)
-
 ---
 
 ## 🧰 Example (CLI Project)
@@ -153,25 +147,58 @@ Expected output:
 [GET] / → {"message": "Hello world"}
 ```
 
+---
+
+# 🎯 Script Mode — Run `.cpp` Files Directly
+
+Vix can execute a single `.cpp` file **like a script**, without creating a full project.
+
+```bash
+vix run file.cpp
+```
+
+### ✔ How it works
+
+- Generates a temporary CMake project under:  
+  `./.vix-scripts/<filename>/`
+- Compiles the `.cpp` file as a standalone executable
+- Runs it immediately
+- Stops cleanly on Ctrl+C (no gmake noise)
+
+### Example:
+
+```bash
+~/myapp/test$ vix run server.cpp
+Script mode: compiling server.cpp
+Using script build directory:
+  • .vix-scripts/server
+
+✔ Build succeeded
+[I] Server running on port 8080
+^C
+ℹ Server interrupted by user (SIGINT)
+```
+
+---
+
 ## 📚 Documentation
 
-- 🧭 [Introduction](./docs/introduction.md)
-- ⚡ [Quick Start](./docs/quick-start.md)
-- 🧱 [Architecture & Modules](./docs/architecture.md)
-- 💾 [ORM Overview](./docs/orm/overview.md)
-- 📈 [Benchmarks](./docs/benchmarks.md)
-- 🧰 [Examples](./docs/examples/overview.md)
+- 🧭 Introduction
+- ⚡ Quick Start
+- 🧱 Architecture & Modules
+- 💾 ORM Overview
+- 📈 Benchmarks
+- 🧰 Examples
 
 ---
 
 ## 🤝 Contributing
 
 Contributions are welcome!  
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
+Please read the contributing guidelines.
 
 ---
 
 ## 🪪 License
 
-Licensed under the **MIT License**.  
-See [LICENSE](./LICENSE) for more information.
+Licensed under the **MIT License**.
