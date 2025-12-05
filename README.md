@@ -1,3 +1,5 @@
+# Vix.cpp
+
 <p align="center" style="margin:0;">
   <img 
     src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1762524350/vixcpp_etndhz.png" 
@@ -20,31 +22,41 @@
   <img src="https://img.shields.io/badge/License-MIT-green">
 </p>
 
-**Vix.cpp** is a next-generation **modular C++ backend framework** — inspired by **FastAPI**, **Vue.js**, and **React.js**.  
-It brings modern developer ergonomics, productivity, and extreme performance to native C++ — with a fully modular design.
+---
+
+# 🌍 What is Vix?
+
+**Vix** is a next-generation **offline-first, peer-to-peer, ultra-fast runtime for modern C++**.
+
+Its goal is clear:
+
+> **A runtime capable of running apps like Node / Deno / Bun —  
+> but engineered for unstable, low-quality, real-world networks.**
+
+Vix is more than a backend framework:  
+it is a **modular runtime**, designed for distributed applications, edge systems, offline devices, and environments where traditional cloud frameworks fail.
+
+Inspired by **FastAPI**, **Vue.js**, **React**, and modern runtimes — but rebuilt from scratch in C++20 for raw speed and full control.
 
 ---
 
-## ⚡ Benchmarks
+# ⚡ Benchmarks
 
 All benchmarks were executed using **wrk**  
 `8 threads`, `200 connections`, for `30 seconds`, on the same machine (Ubuntu 24.04, Intel Xeon, C++20 build).
 
 | Framework             | Requests/sec | Avg Latency | Transfer/sec   |
 | --------------------- | ------------ | ----------- | -------------- |
-| **Vix.cpp (v1.10.1)** | **88,973**   | **2.21 ms** | **18.25 MB/s** |
+| **Vix.cpp (v1.10.3)** | **88,973**   | **2.21 ms** | **18.25 MB/s** |
 | Go (Fiber)            | 81,336       | 0.67 ms     | 10.16 MB/s     |
 | Node.js (Fastify)     | 4,220        | 16.00 ms    | 0.97 MB/s      |
 | PHP (Slim)            | 2,804        | 16.87 ms    | 0.49 MB/s      |
 | Crow (C++)            | 1,149        | 41.60 ms    | 0.35 MB/s      |
 | FastAPI (Python)      | 752          | 63.71 ms    | 0.11 MB/s      |
 
-⚙️ Tested with: `wrk -t8 -c200 -d30s http://localhost:8080/`  
-🧩 Environment: Ubuntu 24.04, GCC 13, Asio standalone (no Boost).
-
 ---
 
-## 🧭 Quick Example
+# 🧭 Quick Example
 
 ```cpp
 #include <vix.hpp>
@@ -53,36 +65,54 @@ using namespace Vix;
 int main() {
     App app;
 
-    // GET /
     app.get("/", [](auto&, auto& res) {
-        res.json({
-            "message", "Hello world"
-        });
+        res.json({ "message", "Hello world" });
     });
 
     app.run(8080);
 }
 ```
 
-Run benchmark locally:
+---
 
-```bash
-wrk -t8 -c200 -d30s --latency http://localhost:8080/
-```
+# 🧱 Why Vix Exists
+
+Cloud-first frameworks assume:
+
+- stable networks
+- predictable latency
+- always-online connectivity
+
+**But in most of the world, this is not reality.**
+
+Vix is built for:
+
+### ✔ Offline-first
+
+Applications continue functioning even without internet.
+
+### ✔ Peer-to-Peer
+
+Nodes sync and communicate locally without a central server.
+
+### ✔ Ultra-Fast Native Execution
+
+C++20 + Asio + zero-overhead abstractions.
 
 ---
 
-## 🧩 Key Features
+# 🧩 Key Features
 
-- ✅ **Modern C++20** — clean syntax, type safety, RAII
-- ⚙️ **Async HTTP server** — powered by standalone Asio
-- 🧭 **Routing system** — expressive path parameters (`/users/{id}`)
-- 💾 **ORM for MySQL/SQLite** — repository & query builder patterns
-- 🧠 **Middleware support** — logging, validation, sessions
-- 💡 **JSON-first design** — integrates `nlohmann::json` with helpers
-- 🧰 **Modular architecture** — core, cli, utils, orm, middleware, websocket
-- ⚡ **High performance** — 80k+ requests/sec on commodity hardware
-- 🪶 **Header-only modules** — easy to embed in any C++ project
+- 🌍 Offline-first runtime
+- 🔗 P2P-ready communication model
+- ⚙️ Async HTTP server
+- 🧭 Expressive routing
+- 💾 ORM for MySQL/SQLite
+- 🧠 Middleware system
+- 📡 WebSocket engine
+- 🧰 Modular design
+- 🚀 Developer experience similar to Node/Deno/Bun
+- ⚡ 80k+ requests/sec performance
 
 ---
 
@@ -97,12 +127,6 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ./build/hello_routes
 ```
-
-> For full installation steps (Windows, Linux, macOS):  
-> 📘 [docs/installation.md](./docs/installation.md)
-
-> For build flags, packaging, and sanitizers:  
-> ⚙️ [docs/build.md](./docs/build.md)
 
 ---
 
@@ -125,25 +149,56 @@ Expected output:
 
 ---
 
+# 🎯 Script Mode — Run `.cpp` Files Directly
+
+Vix can execute a single `.cpp` file **like a script**, without creating a full project.
+
+```bash
+vix run file.cpp
+```
+
+### ✔ How it works
+
+- Generates a temporary CMake project under:  
+  `./.vix-scripts/<filename>/`
+- Compiles the `.cpp` file as a standalone executable
+- Runs it immediately
+- Stops cleanly on Ctrl+C (no gmake noise)
+
+### Example:
+
+```bash
+~/myapp/test$ vix run server.cpp
+Script mode: compiling server.cpp
+Using script build directory:
+  • .vix-scripts/server
+
+✔ Build succeeded
+[I] Server running on port 8080
+^C
+ℹ Server interrupted by user (SIGINT)
+```
+
+---
+
 ## 📚 Documentation
 
-- 🧭 [Introduction](./docs/introduction.md)
-- ⚡ [Quick Start](./docs/quick-start.md)
-- 🧱 [Architecture & Modules](./docs/architecture.md)
-- 💾 [ORM Overview](./docs/orm/overview.md)
-- 📈 [Benchmarks](./docs/benchmarks.md)
-- 🧰 [Examples](./docs/examples/overview.md)
+- 🧭 Introduction
+- ⚡ Quick Start
+- 🧱 Architecture & Modules
+- 💾 ORM Overview
+- 📈 Benchmarks
+- 🧰 Examples
 
 ---
 
 ## 🤝 Contributing
 
 Contributions are welcome!  
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
+Please read the contributing guidelines.
 
 ---
 
 ## 🪪 License
 
-Licensed under the **MIT License**.  
-See [LICENSE](./LICENSE) for more information.
+Licensed under the **MIT License**.
