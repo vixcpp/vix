@@ -23,7 +23,7 @@ cmake_minimum_required(VERSION 3.20)
 #   - The JSON module may export different target names across environments:
 #     vix::json / vix::json / vix_json — we resolve them dynamically.
 # ====================================================================
-project(vix VERSION 1.10.4 LANGUAGES CXX)
+project(vix VERSION 1.10.5 LANGUAGES CXX)
 
 # Make find_package honor *_ROOT hints (e.g. MYSQLCPPCONN_ROOT)
 if (POLICY CMP0144)
