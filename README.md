@@ -47,7 +47,7 @@ All benchmarks were executed using **wrk**
 
 | Framework             | Requests/sec | Avg Latency | Transfer/sec   |
 | --------------------- | ------------ | ----------- | -------------- |
-| **Vix.cpp (v1.10.4)** | **88,973**   | **2.21 ms** | **18.25 MB/s** |
+| **Vix.cpp (v1.10.5)** | **88,973**   | **2.21 ms** | **18.25 MB/s** |
 | Go (Fiber)            | 81,336       | 0.67 ms     | 10.16 MB/s     |
 | Node.js (Fastify)     | 4,220        | 16.00 ms    | 0.97 MB/s      |
 | PHP (Slim)            | 2,804        | 16.87 ms    | 0.49 MB/s      |
