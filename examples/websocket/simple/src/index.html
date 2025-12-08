@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Vix WebSocket + LongPolling Client</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 20px;
+      }
+      #log {
+        background: #111;
+        color: #0f0;
+        height: 300px;
+        overflow-y: auto;
+        padding: 10px;
+      }
+      input,
+      button {
+        padding: 6px;
+        margin: 5px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Vix.cpp Client — WebSocket + Long Polling</h2>
+
+    <label>Pseudo:</label>
+    <input id="user" value="web-user" />
+
+    <label>Room:</label>
+    <input id="room" value="general" />
+
+    <hr />
+
+    <button id="connectWS">Connect WebSocket</button>
+    <button id="sendWS" disabled>Send WS</button>
+
+    <br />
+
+    <button id="startLP">Start Long-Poll Session</button>
+    <button id="sendLP" disabled>Send LP</button>
+
+    <hr />
+
+    <input id="msg" placeholder="Message..." size="40" />
+
+    <h3>Logs</h3>
+    <pre id="log"></pre>
+
+    <script>
+      function log(x) {
+        const el = document.getElementById("log");
+        el.textContent += x + "\n";
+        el.scrollTop = el.scrollHeight;
+      }
+
+      // -------------------------------
+      // 1) WebSocket client
+      // -------------------------------
+      let ws;
+
+      document.getElementById("connectWS").onclick = () => {
+        ws = new WebSocket("ws://127.0.0.1:9090/chat");
+
+        ws.onopen = () => {
+          log("✔️ WS connected");
+          document.getElementById("sendWS").disabled = false;
+        };
+
+        ws.onmessage = (ev) => log("📩 WS: " + ev.data);
+        ws.onerror = (ev) => log("❌ WS error: " + ev);
+        ws.onclose = () => {
+          log("❌ WS closed");
+          document.getElementById("sendWS").disabled = true;
+        };
+      };
+
+      document.getElementById("sendWS").onclick = () => {
+        const user = document.getElementById("user").value;
+        const room = document.getElementById("room").value;
+        const text = document.getElementById("msg").value;
+
+        if (!text) return;
+
+        const json = {
+          type: "chat.message",
+          room: room,
+          payload: { user, text },
+        };
+
+        ws.send(JSON.stringify(json));
+        log("➡️ WS sent: " + JSON.stringify(json));
+        document.getElementById("msg").value = "";
+      };
+
+      // -------------------------------
+      // 2) Long Polling client
+      // -------------------------------
+      let sessionId = null;
+      let lpActive = false;
+
+      async function pollLoop() {
+        while (lpActive) {
+          try {
+            const url = `/ws/poll?session_id=${sessionId}&max=50`;
+
+            const res = await fetch(url);
+            if (!res.ok) {
+              log("❌ LP poll error: " + res.status);
+              await new Promise((r) => setTimeout(r, 1000));
+              continue;
+            }
+
+            const arr = await res.json();
+
+            for (const msg of arr) {
+              log("📩 LP: " + JSON.stringify(msg));
+            }
+          } catch (e) {
+            log("❌ LP poll exception: " + e);
+          }
+
+          // Petite pause minimum (LP "standard")
+          await new Promise((r) => setTimeout(r, 100));
+        }
+      }
+
+      document.getElementById("startLP").onclick = () => {
+        sessionId = crypto.randomUUID();
+        log("📌 LP session_id = " + sessionId);
+
+        lpActive = true;
+        document.getElementById("sendLP").disabled = false;
+
+        pollLoop();
+      };
+
+      document.getElementById("sendLP").onclick = async () => {
+        const user = document.getElementById("user").value;
+        const room = document.getElementById("room").value;
+        const text = document.getElementById("msg").value;
+
+        if (!text) return;
+
+        const body = {
+          session_id: sessionId,
+          type: "chat.message",
+          room: room,
+          payload: { user, text },
+        };
+
+        const res = await fetch("/ws/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        log("➡️ LP sent: " + JSON.stringify(body));
+
+        document.getElementById("msg").value = "";
+      };
+    </script>
+  </body>
+</html>

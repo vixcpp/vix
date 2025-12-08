@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Vix WebSocket Demo – Softadastra Chat</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="app-header">
+        <h1>Softadastra Chat <span class="badge">Vix WebSocket</span></h1>
+        <div class="status">
+          Status:
+          <span id="ws-status" class="status-dot offline">Disconnected</span>
+        </div>
+      </header>
+
+      <main class="chat">
+        <div class="chat-sidebar">
+          <label>
+            Username
+            <input id="username" type="text" placeholder="anonymous" />
+          </label>
+          <button id="connect-btn">Connect</button>
+          <button id="disconnect-btn" disabled>Disconnect</button>
+        </div>
+
+        <div class="chat-main">
+          <div id="messages" class="messages"></div>
+
+          <form id="message-form" class="message-form">
+            <input
+              id="message-input"
+              type="text"
+              placeholder="Type a message..."
+              autocomplete="off"
+            />
+            <button type="submit">Send</button>
+          </form>
+        </div>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
