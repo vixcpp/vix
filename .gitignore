@@ -68,3 +68,4 @@ hello_server
 cmake/*
 !cmake/VixConfig.cmake.in
 *.bak
+db.sql

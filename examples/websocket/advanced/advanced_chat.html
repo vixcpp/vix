@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Vix WebSocket Rooms Chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- (CSS identique à la version précédente, je le laisse intact pour garder le style) -->
+    <style>
+      :root {
+        --bg: #050816;
+        --bg-alt: #0f172a;
+        --accent: #22c55e;
+        --accent-soft: rgba(34, 197, 94, 0.15);
+        --danger: #ef4444;
+        --text: #e5e7eb;
+        --muted: #64748b;
+        --border: #1e293b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+          Roboto, "Segoe UI", sans-serif;
+        background: radial-gradient(circle at top, #1f2937 0, #020617 55%);
+        color: var(--text);
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: stretch;
+      }
+
+      .app {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        max-width: 960px;
+        height: 100vh;
+        max-height: 95%;
+        margin: 16px;
+        border-radius: 20px;
+        overflow: hidden;
+        background: linear-gradient(135deg, #020617, #020617);
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.9),
+          0 0 0 1px rgba(15, 23, 42, 0.6);
+      }
+
+      .app-header {
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: radial-gradient(circle at top left, #1e293b 0, #020617 60%);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .app-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .logo-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--accent);
+        box-shadow: 0 0 12px var(--accent);
+      }
+
+      .app-title h1 {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        margin: 0;
+        text-transform: uppercase;
+        color: #e5e7eb;
+      }
+
+      .app-title span {
+        display: inline-block;
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--danger);
+        box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+        transition: all 0.15s ease;
+      }
+
+      .status-dot.online {
+        background: var(--accent);
+        box-shadow: 0 0 12px rgba(34, 197, 94, 0.8);
+      }
+
+      .status-text {
+        color: var(--muted);
+      }
+
+      .top-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 8px 12px;
+        background: rgba(15, 23, 42, 0.85);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .field-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        flex: 1 1 140px;
+        min-width: 120px;
+      }
+
+      .field-label {
+        font-size: 11px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .field-input {
+        height: 32px;
+        padding: 0 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(51, 65, 85, 0.9);
+        background: radial-gradient(circle at top, #020617 0, #020617 65%);
+        color: var(--text);
+        font-size: 13px;
+        outline: none;
+        transition: border 0.16s ease, box-shadow 0.16s ease,
+          background 0.16s ease;
+      }
+
+      .field-input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.4);
+        background: radial-gradient(circle at top, #020617 0, #020617 70%);
+      }
+
+      .btn-connect {
+        align-self: flex-end;
+        height: 32px;
+        padding: 0 16px;
+        border-radius: 999px;
+        border: none;
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+        color: #020617;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        box-shadow: 0 10px 24px -10px rgba(34, 197, 94, 0.7);
+      }
+
+      .btn-connect span.icon {
+        font-size: 14px;
+      }
+
+      .btn-connect[disabled] {
+        opacity: 0.6;
+        cursor: default;
+        box-shadow: none;
+      }
+
+      .app-main {
+        flex: 1;
+        display: grid;
+        grid-template-columns: minmax(0, 3fr) minmax(200px, 1.4fr);
+        min-height: 0;
+      }
+
+      @media (max-width: 800px) {
+        .app-main {
+          grid-template-columns: 1fr;
+          grid-template-rows: 1.8fr 1.2fr;
+        }
+      }
+
+      .chat-panel {
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid var(--border);
+        min-height: 0;
+      }
+
+      .sidebar {
+        display: flex;
+        flex-direction: column;
+        padding: 10px 12px;
+        gap: 10px;
+        background: radial-gradient(
+          circle at top right,
+          #0f172a 0,
+          #020617 70%
+        );
+      }
+
+      .sidebar-section-title {
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        background: radial-gradient(circle at top, #020617 0, #020617 65%);
+      }
+
+      .badge {
+        padding: 2px 6px;
+        border-radius: 999px;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        background: rgba(248, 250, 252, 0.06);
+        color: var(--muted);
+      }
+
+      .pill span.value {
+        font-weight: 500;
+      }
+
+      .messages-scroll {
+        flex: 1;
+        padding: 10px 12px 8px;
+        overflow-y: auto;
+        background: radial-gradient(
+            circle at top,
+            rgba(34, 197, 94, 0.02) 0,
+            transparent 45%
+          ),
+          radial-gradient(circle at center, #020617 0, #020617 60%);
+      }
+
+      .messages-scroll::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .messages-scroll::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .messages-scroll::-webkit-scrollbar-thumb {
+        background: rgba(30, 64, 175, 0.7);
+        border-radius: 999px;
+      }
+
+      .message {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        margin-bottom: 8px;
+        font-size: 13px;
+      }
+
+      .message.system {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .message.history .meta {
+        opacity: 0.85;
+      }
+
+      .message.me .bubble {
+        align-self: flex-end;
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+        color: #020617;
+      }
+
+      .message.me .meta .user {
+        color: var(--accent);
+      }
+
+      .message .meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .meta-left {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: baseline;
+      }
+
+      .meta .user {
+        font-weight: 500;
+        color: #e5e7eb;
+      }
+
+      .meta .room {
+        padding: 1px 6px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.9);
+        border: 1px solid rgba(51, 65, 85, 0.8);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .meta .time {
+        font-variant-numeric: tabular-nums;
+      }
+
+      .bubble {
+        align-self: flex-start;
+        max-width: 100%;
+        padding: 8px 10px;
+        border-radius: 14px;
+        background: rgba(15, 23, 42, 0.95);
+        border: 1px solid rgba(30, 64, 175, 0.7);
+        box-shadow: 0 10px 25px -12px rgba(15, 23, 42, 0.8);
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+
+      .bubble.system {
+        background: rgba(15, 23, 42, 0.85);
+        border-style: dashed;
+        border-color: rgba(148, 163, 184, 0.5);
+      }
+
+      .composer {
+        padding: 8px 10px;
+        border-top: 1px solid var(--border);
+        background: rgba(15, 23, 42, 0.95);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .composer-input {
+        flex: 1;
+        min-height: 34px;
+        max-height: 72px;
+        padding: 8px 10px;
+        border-radius: 12px;
+        border: 1px solid rgba(51, 65, 85, 0.9);
+        background: radial-gradient(circle at top, #020617 0, #020617 70%);
+        color: var(--text);
+        font-size: 13px;
+        outline: none;
+        resize: none;
+      }
+
+      .composer-input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.4);
+      }
+
+      .btn-send {
+        height: 34px;
+        width: 80px;
+        border-radius: 999px;
+        border: none;
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+        color: #020617;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+      }
+
+      .btn-send[disabled] {
+        opacity: 0.5;
+        cursor: default;
+      }
+
+      .hint {
+        font-size: 11px;
+        color: var(--muted);
+        padding: 0 12px 8px;
+      }
+
+      .activity-log {
+        flex: 1;
+        min-height: 0;
+        border-radius: 14px;
+        border: 1px solid rgba(30, 64, 175, 0.7);
+        background: radial-gradient(circle at top, #020617 0, #020617 70%);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .activity-header {
+        padding: 6px 10px;
+        border-bottom: 1px solid rgba(30, 64, 175, 0.7);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .activity-body {
+        padding: 6px 10px;
+        overflow-y: auto;
+        font-size: 11px;
+      }
+
+      .activity-body div {
+        margin-bottom: 4px;
+        color: var(--muted);
+      }
+
+      .activity-body .accent {
+        color: var(--accent);
+      }
+
+      .activity-body::-webkit-scrollbar {
+        width: 4px;
+      }
+
+      .activity-body::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.6);
+        border-radius: 999px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="app-header">
+        <div class="app-title">
+          <div class="logo-dot"></div>
+          <div>
+            <h1>Vix WebSocket Chat</h1>
+            <span>Rooms + history — WS + LongPolling fallback</span>
+          </div>
+        </div>
+        <div class="status">
+          <div class="status-dot" id="statusDot"></div>
+          <div class="status-text" id="statusText">Disconnected</div>
+        </div>
+      </header>
+
+      <section class="top-bar">
+        <div class="field-group">
+          <label class="field-label" for="userInput">Pseudo</label>
+          <input
+            class="field-input"
+            id="userInput"
+            placeholder="alice, bob..."
+          />
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="roomInput">Room</label>
+          <input
+            class="field-input"
+            id="roomInput"
+            placeholder="africa, general, europe..."
+          />
+        </div>
+        <button class="btn-connect" id="connectBtn">
+          <span class="icon">●</span>
+          <span>Connect</span>
+        </button>
+      </section>
+
+      <main class="app-main">
+        <section class="chat-panel">
+          <div class="sidebar">
+            <div>
+              <div class="sidebar-section-title">Session</div>
+              <div class="pill">
+                <span class="badge">User</span>
+                <span class="value" id="currentUserLabel">—</span>
+              </div>
+            </div>
+            <div>
+              <div class="sidebar-section-title">Room</div>
+              <div class="pill">
+                <span class="badge">Current</span>
+                <span class="value" id="currentRoomLabel">—</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="messages-scroll" id="messages"></div>
+
+          <div class="hint">
+            Enter to send • Ctrl+Enter for newline • Fallback LP if WS fails
+          </div>
+
+          <div class="composer">
+            <textarea
+              id="composerInput"
+              class="composer-input"
+              rows="1"
+              placeholder="Type a message..."
+            ></textarea>
+            <button class="btn-send" id="sendBtn" disabled>
+              <span>Send</span>
+            </button>
+          </div>
+        </section>
+
+        <aside class="sidebar">
+          <div class="activity-log">
+            <div class="activity-header">
+              <span>Activity</span>
+              <span id="activityCounter">0 events</span>
+            </div>
+            <div class="activity-body" id="activityLog"></div>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <script>
+      // --- Configuration ---
+      const WS_PORT = 9091; // WebSocket port (from config.json)
+      const HTTP_PORT = 8080; // HTTP app port (vix::App)
+
+      // Base HTTP pour /ws/poll et /ws/send
+      // Si tu ouvres le fichier en file:// ou depuis un autre port,
+      // on force les appels API vers le backend Vix (8080).
+      const host = window.location.hostname || "localhost";
+      const HTTP_BASE =
+        window.location.protocol === "https:"
+          ? `https://${host}:${HTTP_PORT}`
+          : `http://${host}:${HTTP_PORT}`;
+
+      // --- State ---
+      let ws = null;
+      let currentUser = "anonymous";
+      let currentRoom = "general";
+      let connectedWS = false;
+      let lpMode = false; // vrai si on est en mode LP
+      let lpActive = false; // boucle LP en cours ou pas
+      let activityCount = 0;
+
+      // Session ID LP pour /ws/poll et /ws/send
+      let lpSessionId =
+        "lp-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+      // --- DOM ---
+      const statusDot = document.getElementById("statusDot");
+      const statusText = document.getElementById("statusText");
+      const connectBtn = document.getElementById("connectBtn");
+      const userInput = document.getElementById("userInput");
+      const roomInput = document.getElementById("roomInput");
+      const currentUserLabel = document.getElementById("currentUserLabel");
+      const currentRoomLabel = document.getElementById("currentRoomLabel");
+      const messagesEl = document.getElementById("messages");
+      const composerInput = document.getElementById("composerInput");
+      const sendBtn = document.getElementById("sendBtn");
+      const activityLog = document.getElementById("activityLog");
+      const activityCounter = document.getElementById("activityCounter");
+
+      // --- Utils ---
+      function formatTime(d) {
+        return d.toLocaleTimeString(undefined, {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+      }
+
+      function appendActivity(text, accent = false) {
+        activityCount++;
+        const div = document.createElement("div");
+        div.textContent = `[${formatTime(new Date())}] ${text}`;
+        if (accent) div.classList.add("accent");
+        activityLog.appendChild(div);
+        activityLog.scrollTop = activityLog.scrollHeight;
+        activityCounter.textContent = `${activityCount} events`;
+      }
+
+      function updateConnectionStatus() {
+        statusDot.classList.remove("online");
+
+        if (connectedWS) {
+          statusDot.classList.add("online");
+          statusText.textContent = "Connected (WebSocket)";
+          connectBtn.disabled = true;
+          sendBtn.disabled = false;
+        } else if (lpMode) {
+          statusDot.classList.add("online");
+          statusText.textContent = "Connected (LongPolling)";
+          connectBtn.disabled = true;
+          sendBtn.disabled = false;
+        } else {
+          statusText.textContent = "Disconnected";
+          connectBtn.disabled = false;
+          sendBtn.disabled = true;
+        }
+      }
+
+      // --- Messages UI ---
+      function addMessage({ kind, type, room, user, text }) {
+        const container = document.createElement("div");
+        container.classList.add("message");
+
+        if (kind === "system") {
+          container.classList.add("system");
+        } else if (kind === "history") {
+          container.classList.add("history");
+        }
+
+        const isMe = user && user === currentUser && type === "chat.message";
+        if (isMe) {
+          container.classList.add("me");
+        }
+
+        const meta = document.createElement("div");
+        meta.classList.add("meta");
+
+        const metaLeft = document.createElement("div");
+        metaLeft.classList.add("meta-left");
+
+        if (user) {
+          const userSpan = document.createElement("span");
+          userSpan.classList.add("user");
+          userSpan.textContent = user;
+          metaLeft.appendChild(userSpan);
+        }
+
+        if (room) {
+          const roomSpan = document.createElement("span");
+          roomSpan.classList.add("room");
+          roomSpan.textContent = room;
+          metaLeft.appendChild(roomSpan);
+        }
+
+        const typeSpan = document.createElement("span");
+        typeSpan.style.fontSize = "10px";
+        typeSpan.style.textTransform = "uppercase";
+        typeSpan.style.letterSpacing = "0.08em";
+        typeSpan.textContent = kind === "history" ? "history" : type;
+        metaLeft.appendChild(typeSpan);
+
+        const timeSpan = document.createElement("span");
+        timeSpan.classList.add("time");
+        timeSpan.textContent = formatTime(new Date());
+
+        meta.appendChild(metaLeft);
+        meta.appendChild(timeSpan);
+
+        const bubble = document.createElement("div");
+        bubble.classList.add("bubble");
+        if (kind === "system") bubble.classList.add("system");
+        bubble.textContent = text || "";
+
+        container.appendChild(meta);
+        container.appendChild(bubble);
+
+        messagesEl.appendChild(container);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+
+      function handleJsonEnvelope(obj) {
+        const type = obj.type || "";
+        const room = obj.room || (obj.payload && obj.payload.room) || "";
+        const kind = obj.kind || "";
+        const payload = obj.payload || {};
+
+        const payloadUser = payload.user || "";
+        const payloadText =
+          payload.text ||
+          (type === "chat.system" ? JSON.stringify(payload) : "");
+
+        addMessage({
+          kind: kind,
+          type: type,
+          room: room,
+          user: payloadUser,
+          text: payloadText,
+        });
+      }
+
+      function parseIncoming(raw) {
+        try {
+          const obj = JSON.parse(raw);
+          if (Array.isArray(obj)) {
+            for (const item of obj) handleJsonEnvelope(item);
+          } else {
+            handleJsonEnvelope(obj);
+          }
+        } catch (e) {
+          // Fallback texte brut
+          addMessage({
+            kind: "system",
+            type: "raw",
+            room: "",
+            user: "server",
+            text: raw,
+          });
+        }
+      }
+
+      // --- Envoi WebSocket / LongPolling ---
+      function sendViaWS(type, payload) {
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        const message = { type, payload: payload || {} };
+        ws.send(JSON.stringify(message));
+      }
+
+      async function sendViaLP(type, payload) {
+        const body = {
+          session_id: lpSessionId,
+          type: type,
+          room: payload.room || "",
+          payload: payload || {},
+        };
+
+        try {
+          const res = await fetch(`${HTTP_BASE}/ws/send`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+
+          if (!res.ok) {
+            appendActivity(`LP send error: HTTP ${res.status}`);
+          } else {
+            appendActivity(`LP send OK (type=${type})`);
+          }
+        } catch (e) {
+          appendActivity("LP send error (network)", false);
+          console.error("LP send error", e);
+        }
+      }
+
+      function sendMessage(type, payload) {
+        if (connectedWS) {
+          sendViaWS(type, payload);
+        } else if (lpMode) {
+          sendViaLP(type, payload);
+        } else {
+          appendActivity("Not connected, message ignored", false);
+        }
+      }
+
+      // --- LongPolling loop ---
+      async function longPollLoop() {
+        lpActive = true;
+        appendActivity(
+          `Starting long-poll loop (session ${lpSessionId})`,
+          true
+        );
+
+        while (lpActive) {
+          try {
+            const url = `${HTTP_BASE}/ws/poll?session_id=${encodeURIComponent(
+              lpSessionId
+            )}&max=50`;
+
+            const res = await fetch(url, {
+              method: "GET",
+              headers: { Accept: "application/json" },
+            });
+
+            if (!res.ok) {
+              appendActivity(`LP poll HTTP ${res.status}`, false);
+              await new Promise((r) => setTimeout(r, 1000));
+              continue;
+            }
+
+            const data = await res.json();
+            if (Array.isArray(data)) {
+              for (const item of data) {
+                handleJsonEnvelope(item);
+              }
+            }
+          } catch (e) {
+            appendActivity("LP poll network error", false);
+            console.error("LP poll error", e);
+            await new Promise((r) => setTimeout(r, 1500));
+          }
+        }
+
+        appendActivity("Long-poll loop stopped", false);
+      }
+
+      function startLP() {
+        if (lpMode) return;
+        lpMode = true;
+        lpActive = true;
+        updateConnectionStatus();
+
+        appendActivity("Switching to LongPolling mode…", true);
+
+        sendViaLP("chat.join", {
+          room: currentRoom,
+          user: currentUser,
+        });
+
+        longPollLoop();
+      }
+
+      function stopLP() {
+        lpMode = false;
+        lpActive = false;
+        updateConnectionStatus();
+      }
+
+      // --- WebSocket connect ---
+      function connectWS() {
+        const wsHost = host || "localhost";
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const url = `${protocol}//${wsHost}:${WS_PORT}/`;
+
+        appendActivity(`Connecting via WebSocket: ${url}`, true);
+
+        ws = new WebSocket(url);
+
+        ws.onopen = () => {
+          connectedWS = true;
+          stopLP(); // on coupe LP si jamais il tournait
+          updateConnectionStatus();
+          appendActivity("WebSocket connection opened", true);
+
+          // join room courante
+          sendViaWS("chat.join", {
+            room: currentRoom,
+            user: currentUser,
+          });
+        };
+
+        ws.onmessage = (event) => {
+          parseIncoming(event.data);
+        };
+
+        ws.onclose = () => {
+          connectedWS = false;
+          updateConnectionStatus();
+          appendActivity(
+            "WebSocket connection closed, switching to LongPolling…",
+            false
+          );
+
+          // Fallback LP
+          if (!lpMode) {
+            startLP();
+          }
+        };
+
+        ws.onerror = (event) => {
+          appendActivity("WebSocket error (see console)", false);
+          console.error("WS error", event);
+        };
+      }
+
+      // --- Connexion principale ---
+      function connect() {
+        currentUser = userInput.value.trim() || "anonymous";
+        currentRoom = roomInput.value.trim() || "general";
+
+        currentUserLabel.textContent = currentUser;
+        currentRoomLabel.textContent = currentRoom;
+
+        connectWS();
+      }
+
+      function joinRoom(newRoom) {
+        if (!newRoom) return;
+
+        // leave ancienne room
+        sendMessage("chat.leave", {
+          room: currentRoom,
+          user: currentUser,
+        });
+
+        currentRoom = newRoom;
+        currentRoomLabel.textContent = currentRoom;
+
+        // join nouvelle room
+        sendMessage("chat.join", {
+          room: currentRoom,
+          user: currentUser,
+        });
+
+        appendActivity(`Switched to room "${currentRoom}"`, true);
+      }
+
+      function sendCurrentMessage() {
+        const text = composerInput.value.trim();
+        if (!text) return;
+
+        sendMessage("chat.message", {
+          room: currentRoom,
+          user: currentUser,
+          text: text,
+        });
+
+        composerInput.value = "";
+        composerInput.focus();
+      }
+
+      // --- Events UI ---
+      connectBtn.addEventListener("click", () => {
+        if (connectedWS || lpMode) return;
+        connect();
+      });
+
+      sendBtn.addEventListener("click", () => {
+        sendCurrentMessage();
+      });
+
+      composerInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          sendCurrentMessage();
+        }
+      });
+
+      roomInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          const newRoom = roomInput.value.trim() || "general";
+          joinRoom(newRoom);
+        }
+      });
+
+      // Valeurs par défaut
+      userInput.value = "alice";
+      roomInput.value = "africa";
+      currentUserLabel.textContent = "—";
+      currentRoomLabel.textContent = "—";
+
+      updateConnectionStatus();
+    </script>
+  </body>
+</html>

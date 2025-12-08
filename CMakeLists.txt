@@ -23,7 +23,7 @@ cmake_minimum_required(VERSION 3.20)
 #   - The JSON module may export different target names across environments:
 #     vix::json / vix::json / vix_json — we resolve them dynamically.
 # ====================================================================
-project(vix VERSION 1.11.0 LANGUAGES CXX)
+project(vix VERSION 1.12.0 LANGUAGES CXX)
 
 # Make find_package honor *_ROOT hints (e.g. MYSQLCPPCONN_ROOT)
 if (POLICY CMP0144)
@@ -176,6 +176,14 @@ target_include_directories(vix INTERFACE
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
+target_include_directories(vix INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/core/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/utils/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/json/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/websocket/include> 
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+
 # Attach warnings/coverage to umbrella (propagates to consumers)
 if (TARGET vix_warnings)
   target_link_libraries(vix INTERFACE vix_warnings)
@@ -232,6 +240,17 @@ else()
   message(FATAL_ERROR "Missing 'modules/core'. Run: git submodule update --init --recursive")
 endif()
 
+# ----------------------------------------------------
+# WebSocket module
+# ----------------------------------------------------
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/websocket/CMakeLists.txt")
+  message(STATUS "Adding 'modules/websocket'...")
+  set(VIX_WEBSOCKET_WITH_JSON "AUTO" CACHE STRING "Link JSON backend (AUTO|ON|OFF)" FORCE)
+  add_subdirectory(modules/websocket websocket_build)
+else()
+  message(WARNING "Skipping 'modules/websocket' (not present).")
+endif()
+
 # CLI (tool)
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/cli/CMakeLists.txt")
   message(STATUS "Adding 'modules/cli'...")
@@ -281,6 +300,7 @@ target_link_libraries(vix INTERFACE
   vix::core
   vix::utils
   ${JSON_TARGET}
+  vix::websocket
 )
 
 # Propagate sanitizers to umbrella (and thus to consumers)
@@ -367,6 +387,15 @@ if (VIX_BUILD_EXAMPLES)
 endif()
 
 # ----------------------------------------------------
+# WebSocket umbrella examples (simple + advanced)
+# ----------------------------------------------------
+if (VIX_BUILD_EXAMPLES
+    AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples/websocket/CMakeLists.txt}")
+  message(STATUS "Examples: enabling WebSocket examples (simple + advanced)")
+  add_subdirectory(examples/websocket)
+endif()
+
+# ----------------------------------------------------
 # Tests
 # ----------------------------------------------------
 if (VIX_BUILD_TESTS)
@@ -425,11 +454,13 @@ option(VIX_ENABLE_INSTALL "Enable install/export rules for packaging" ON)
 
 if (VIX_ENABLE_INSTALL)
   # 1) Headers publics (interfaces de build/install)
-  install(DIRECTORY modules/core/include/  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  install(DIRECTORY modules/core/include/      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
           FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
-  install(DIRECTORY modules/utils/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  install(DIRECTORY modules/utils/include/     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
           FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
-  install(DIRECTORY modules/json/include/  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  install(DIRECTORY modules/json/include/      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+          FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+  install(DIRECTORY modules/websocket/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}   
           FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
   # Si l’ORM expose des headers publics :
   # install(DIRECTORY modules/orm/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
