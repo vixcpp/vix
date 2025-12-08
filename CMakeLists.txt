@@ -23,7 +23,7 @@ cmake_minimum_required(VERSION 3.20)
 #   - The JSON module may export different target names across environments:
 #     vix::json / vix::json / vix_json — we resolve them dynamically.
 # ====================================================================
-project(vix VERSION 1.12.0 LANGUAGES CXX)
+project(vix VERSION 1.12.1 LANGUAGES CXX)
 
 # Make find_package honor *_ROOT hints (e.g. MYSQLCPPCONN_ROOT)
 if (POLICY CMP0144)
@@ -453,24 +453,28 @@ endif()
 option(VIX_ENABLE_INSTALL "Enable install/export rules for packaging" ON)
 
 if (VIX_ENABLE_INSTALL)
-  # 1) Headers publics (interfaces de build/install)
+  # 1) Public headers (build/install interfaces)
   install(DIRECTORY modules/core/include/      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
           FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
   install(DIRECTORY modules/utils/include/     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
           FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
   install(DIRECTORY modules/json/include/      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
           FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
-  install(DIRECTORY modules/websocket/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}   
+  install(DIRECTORY modules/websocket/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
           FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
-  # Si l’ORM expose des headers publics :
+  # If the ORM exposes public headers:
   # install(DIRECTORY modules/orm/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   #         FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
 
-  # 2) Export set — on exporte la cible INTERFACE 'vix'
+  # 2) Export set — export the umbrella INTERFACE target 'vix'
+  #
+  # Other modules (core/utils/json/websocket, etc.) must also call
+  # "install(TARGETS ... EXPORT VixTargets)" in their own CMakeLists
+  # so that their targets appear inside VixTargets.cmake.
   install(TARGETS vix
           EXPORT VixTargets)
 
-  # Exporter aussi les INTERFACE auxiliaires si elles existent
+  # Also export auxiliary INTERFACE targets if they exist
   if (TARGET vix_warnings)
     install(TARGETS vix_warnings
             EXPORT VixTargets)
@@ -480,7 +484,7 @@ if (VIX_ENABLE_INSTALL)
             EXPORT VixTargets)
   endif()
 
-  # 3) Config files pour find_package(Vix)
+  # 3) Config files for find_package(Vix)
   set(VIX_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/Vix")
 
   write_basic_package_version_file(
@@ -489,14 +493,40 @@ if (VIX_ENABLE_INSTALL)
     COMPATIBILITY SameMajorVersion
   )
 
-  # Fichier de config (fourni par cmake/VixConfig.cmake.in)
+  # ----------------------------------------------------------------
+  # Flags exported to VixConfig.cmake.in
+  #  → describe what this installed build actually uses.
+  # ----------------------------------------------------------------
+  # JSON: the umbrella always links vix::json → ON
+  set(VIX_WITH_JSON       ON)
+
+  # Boost filesystem/system: core uses Boost::filesystem → ON
+  set(VIX_WITH_BOOST_FS   ON)
+
+  # OpenSSL: adjust if you disable SSL support in core
+  set(VIX_WITH_OPENSSL    ON)
+
+  # MySQL: only when ORM (or core) links MySQL explicitly
+  set(VIX_WITH_MYSQL      OFF)
+
+  # ORM packaged or not (core-only → OFF)
+  if (NOT DEFINED VIX_HAS_ORM)
+    set(VIX_HAS_ORM OFF)
+  endif()
+
+  # SQLite : WebSocket module uses SQLite::SQLite3 for message store
+  set(VIX_WITH_SQLITE     ON)
+
+  # ----------------------------------------------------------------
+
+  # Config file used by find_package(Vix) (cmake/VixConfig.cmake.in)
   configure_package_config_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/VixConfig.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/VixConfig.cmake"
     INSTALL_DESTINATION "${VIX_INSTALL_CMAKEDIR}"
   )
 
-  # 4) Export réel des cibles
+  # 4) Export the targets for downstream projects
   install(EXPORT VixTargets
           NAMESPACE vix::
           DESTINATION "${VIX_INSTALL_CMAKEDIR}")
@@ -507,23 +537,21 @@ if (VIX_ENABLE_INSTALL)
     DESTINATION "${VIX_INSTALL_CMAKEDIR}"
   )
 
-    # 5) Installer le binaire CLI s’il existe — NE PAS l’exporter
-  #    - Si la cible s'appelle 'vix_cli', on l'installe sous le nom 'vix'
-  #    - Si la cible s'appelle déjà 'vix', on l'installe tel quel
+  # 5) Install the CLI binary if it exists — DO NOT export it
+  #    - The CLI target should be named 'vix_cli' (executable).
+  #    - It is installed as 'vix' into bin/.
   if (TARGET vix_cli)
     install(TARGETS vix_cli
             RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
             RENAME vix)
     message(STATUS "CLI install: installing target 'vix_cli' as 'vix'")
-  elseif (TARGET vix)
-    install(TARGETS vix
-            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-    message(STATUS "CLI install: installing target 'vix'")
   else()
-    message(WARNING "CLI install: no target named 'vix_cli' or 'vix' — CLI will not be installed")
+    message(STATUS "CLI install: no 'vix_cli' target detected — CLI will not be installed")
   endif()
 
 endif()
+
+
 
 # ----------------------------------------------------
 # Status summary
