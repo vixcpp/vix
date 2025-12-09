@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [1.12.2] - 2025-12-09
+
+### Added
+- 
+
+### Changed
+- 
+
+### Removed
+- 
+
 
 chore: prepare v1.12.2 (stdout auto-config, CLI refinements, submodule bumps)
 
