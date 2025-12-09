@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+chore: prepare v1.12.2 (stdout auto-config, CLI refinements, submodule bumps)
+
+This release improves stdout behavior, developer experience, and aligns
+all submodules with the latest work.
+
+🧩 Core
+
+- Added StdoutConfig (automatic stdout line-buffering via VIX_STDOUT_MODE)
+- Apps launched via Vix runtime now default to line-buffered stdout
+- Ensures consistent server log flushing across all HTTP/WebSocket apps
+
+🧩 CLI
+
+- Improved RunCommand: unified stdout export for presets/fallback/script mode
+- More robust command runner with filtered live output + proper ErrorHandler usage
+- Updated README and build configuration
+- Ensures deterministic behavior for all build/run workflows
+
+🔧 Umbrella (root)
+
+- Updated CMakeLists.txt and README.md
+- Bumped submodules:
+  • modules/cli → latest dev commit
+  • modules/core → latest dev commit
+- Synced submodule pointers to match development branches
+
+Version: v1.12.2
+
 ## [1.12.1] - 2025-12-08
 
 ### Added
