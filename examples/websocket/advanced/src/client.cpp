@@ -110,7 +110,6 @@ ClientPtr create_chat_client(std::string host,
 
     // ───────────── Handlers ─────────────
 
-    // Quand la connexion WS s'ouvre → join de la room courante
     client->on_open([client, user, room]
                     {
                         std::cout << "[client] Connected ✅" << std::endl;
@@ -122,14 +121,12 @@ ClientPtr create_chat_client(std::string host,
                                 "user", user,
                             }); });
 
-    // Réception des messages
     client->on_message([](const std::string &msg)
                        {
                            auto jm = JsonMessage::parse(msg);
 
                            if (!jm)
                            {
-                               // Pas du JSON du protocole → afficher brut
                                std::cout << msg << std::endl;
                                return;
                            }
@@ -139,7 +136,7 @@ ClientPtr create_chat_client(std::string host,
                            if (type == "chat.system")
                            {
                                std::string text     = jm->get_string("text");
-                               std::string roomName = jm->get_string("room"); // optionnel
+                               std::string roomName = jm->get_string("room"); 
 
                                if (!roomName.empty())
                                {
@@ -170,7 +167,6 @@ ClientPtr create_chat_client(std::string host,
                            }
                            else
                            {
-                               // Types non gérés explicitement → dump brut
                                std::cout << msg << std::endl;
                            } });
 
@@ -283,16 +279,12 @@ int main()
     if (room.empty())
         room = "general";
 
-    // Création du client configuré
     auto client = create_chat_client("localhost", "9090", "/", user, room);
 
-    // Connexion (async à l’intérieur)
     client->connect();
 
-    // Boucle CLI bloquante
     run_chat_cli(client, user, room);
 
-    // Fermeture propre
     client->close();
     return 0;
 }

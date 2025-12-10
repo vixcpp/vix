@@ -9,15 +9,12 @@ namespace ws = vix::websocket;
 
 int main()
 {
-    // Charge la config si tu veux (websocket.port, etc.)
     ws::App app{"config/config.json"};
     auto &server = app.server();
 
-    // 1) Log simple sur stdout
     std::cout << "[minimal] WebSocket server starting on port "
               << server.port() << std::endl;
 
-    // 2) Message de bienvenue à l'ouverture de la connexion
     server.on_open([](ws::Session &session)
                    {
                        vix::json::kvs payload{
@@ -31,14 +28,13 @@ int main()
 
                        std::cout << "[minimal] New session opened, welcome sent" << std::endl; });
 
-    // 3) Handler /chat : echo + broadcast
-    [[maybe_unused]] auto &chatRoute = app.ws(
+    (void)app.ws(
         "/chat",
         [&server](ws::Session &session,
                   const std::string &type,
                   const vix::json::kvs &payload)
         {
-            (void)session; // pas utilisé
+            (void)session;
 
             if (type == "chat.message")
             {

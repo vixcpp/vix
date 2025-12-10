@@ -174,7 +174,7 @@ int main()
             session.send_text(JsonMessage::serialize(msg));
         });
 
-    wsApp.ws(
+    (void)wsApp.ws(
         "/chat",
         [&ws, &store, &metrics](Session &session,
                                 const std::string &type,
