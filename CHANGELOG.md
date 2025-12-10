@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [1.12.3] - 2025-12-10
+
+### Added
+- 
+
+### Changed
+- 
+
+### Removed
+- 
+
 
 ## [v1.12.3] – Added Dev Mode for Projects
 
