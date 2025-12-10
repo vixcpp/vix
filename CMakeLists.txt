@@ -387,6 +387,26 @@ if (VIX_BUILD_EXAMPLES)
 endif()
 
 # ----------------------------------------------------
+# Subdirectory-based examples (http/, http_crud/, ...)
+# ----------------------------------------------------
+if (VIX_BUILD_EXAMPLES
+    AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples/CMakeLists.txt}")
+  message(STATUS "Examples: enabling grouped examples via examples/CMakeLists.txt")
+  add_subdirectory(examples)
+endif()
+
+# ----------------------------------------------------
+# HTTP + WebSocket hybrid examples (http_ws/)
+# ----------------------------------------------------
+if (VIX_BUILD_EXAMPLES
+    AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples/http_ws/CMakeLists.txt}")
+  message(STATUS "Examples: enabling HTTP+WebSocket examples (http_ws)")
+  add_subdirectory(examples/http_ws)
+else()
+  message(STATUS "Examples: http_ws directory not found or has no CMakeLists.txt")
+endif()
+
+# ----------------------------------------------------
 # WebSocket umbrella examples (simple + advanced)
 # ----------------------------------------------------
 if (VIX_BUILD_EXAMPLES

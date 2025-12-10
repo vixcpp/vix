@@ -8,17 +8,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+
+v1.12.4: major examples overhaul + core/cli/websocket sync
+
+• Examples refactor: - Removed outdated examples (CRUD, ORM demos, legacy error-handling, trace_route, etc.) - Introduced new structured example layout:
+examples/http/
+examples/http_crud/
+examples/http_ws/
+examples/orm/
+examples/websocket/ - Added EXAMPLES_README.md and WebSocket example readme - Updated main.cpp with new Request/Response API
+
+• WebSocket module: - Updated advanced + simple examples to new Runtime API - Added chat_room, simple_server, simple_client - Updated examples/websocket CMakeLists
+
+• Core updates: - Improved Request/Response facade - Updated App.cpp, RequestHandler, Config, and umbrella headers - Synced module changes with the new HTTP DX
+
+• CLI updates: - Integrated core/websocket changes for dev/run modes
+
+• Root project: - Updated top-level CMakeLists.txt - Cleaned README for v1.12.4
+
+This version brings a unified example structure and prepares Vix for the new DX-first API.
+
 ## [1.12.3] - 2025-12-10
 
 ### Added
-- 
+
+-
 
 ### Changed
-- 
+
+-
 
 ### Removed
-- 
 
+-
 
 ## [v1.12.3] – Added Dev Mode for Projects
 

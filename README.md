@@ -140,6 +140,60 @@ int main() {
 }
 ```
 
+### Minimal HTTP + WebSocket Server
+
+This example shows the **smallest fully working HTTP + WS hybrid server**.
+
+### Features
+
+- Basic GET route
+- Simple WS connection handling
+- Auto-start server
+
+### Example (summary)
+
+```cpp
+#include <vix.hpp>
+#include <vix/websocket/AttachedRuntime.hpp>
+
+using namespace vix;
+
+int main()
+{
+    auto bundle = vix::make_http_and_ws("config/config.json");
+    auto &[app, ws] = bundle;
+
+    app.get("/", [](const Request &, Response &res)
+            { res.json({"framework", "Vix.cpp",
+                        "message", "HTTP + WebSocket example (basic) 🚀"}); });
+
+    ws.on_open([&ws](auto &session)
+               {
+        (void)session;
+
+        ws.broadcast_json("chat.system", {
+            "user", "server",
+            "text", "Welcome to Vix WebSocket! 👋"
+        }); });
+
+    vix::run_http_and_ws(app, ws, 8080);
+
+    return 0;
+}
+```
+
+## Minimal WebSocket Client
+
+```cpp
+auto client = Client::create("localhost", "9090", "/");
+
+client->on_open([] {
+    std::cout << "Connected!" << std::endl;
+});
+
+client->send("chat.message", {"text", "Hello world!"});
+```
+
 ---
 
 # 🧱 Why Vix Exists
