@@ -8,17 +8,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+
+## [v1.12.3] – Added Dev Mode for Projects
+
+### Added
+
+- New **`vix dev`** workflow for full applications (not only single-file scripts).
+- Automatic **project hot-reload** using `run_project_watch` for CMake-based Vix apps.
+- Brand-new **`DevCommand`** (`vix dev`) integrated into the CLI.
+- Spinner-based progress indicators for Configure / Build steps.
+- Improved detection between script mode and project mode.
+
+### Changed
+
+- `RunCommand` routing now supports watch mode for full project runs.
+- Unified dev experience: `vix dev` now forwards to the correct execution flow with consistent UX.
+- Cleaner CLI output and improved developer hints/messages.
+
+### Fixed
+
+- Watcher not triggering correctly for some CMake-based projects.
+- Missing includes and namespace issues inside the CLI module.
+- Several small UX inconsistencies (e.g., duplicate “Ctrl+C” messages).
+
 ## [1.12.2] - 2025-12-09
 
 ### Added
-- 
+
+-
 
 ### Changed
-- 
+
+-
 
 ### Removed
-- 
 
+-
 
 chore: prepare v1.12.2 (stdout auto-config, CLI refinements, submodule bumps)
 

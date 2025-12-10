@@ -54,7 +54,7 @@ Results represent steady-state throughput on a simple `"OK"` endpoint.
 
 | Framework                 | Requests/sec               | Avg Latency     | Transfer/sec   |
 | ------------------------- | -------------------------- | --------------- | -------------- |
-| ⭐ **Vix.cpp (v1.12.2)**  | **~98,942** _(pinned CPU)_ | **7.3–10.8 ms** | **~13.8 MB/s** |
+| ⭐ **Vix.cpp (v1.12.3)**  | **~98,942** _(pinned CPU)_ | **7.3–10.8 ms** | **~13.8 MB/s** |
 | **Vix.cpp (default run)** | 81,300 – 81,400            | 9.7–10.8 ms     | ≈ 11.3 MB/s    |
 | Go (Fiber)                | 81,336                     | 0.67 ms         | 10.16 MB/s     |
 | **Deno**                  | ~48,868                    | 16.34 ms        | ~6.99 MB/s     |
