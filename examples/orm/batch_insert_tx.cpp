@@ -6,6 +6,7 @@
 #include <vix/orm/orm.hpp>
 #include <iostream>
 #include <vector>
+#include <string>
 
 using namespace vix::orm;
 
@@ -18,7 +19,7 @@ int main(int argc, char **argv)
 
     try
     {
-        ConnectionPool pool{host, user, pass, db};
+        ConnectionPool pool{make_mysql_factory(host, user, pass, db)};
 
         Transaction tx(pool);
         auto &c = tx.conn();
@@ -31,6 +32,7 @@ int main(int argc, char **argv)
             const char *email;
             int age;
         };
+
         std::vector<Row> rows = {
             {"Zoe", "zoe@example.com", 23},
             {"Mina", "mina@example.com", 31},

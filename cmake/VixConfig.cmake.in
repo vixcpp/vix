@@ -84,22 +84,28 @@ endif()
 include("${CMAKE_CURRENT_LIST_DIR}/VixTargets.cmake")
 
 # -------------------------------------------------------
-# 4) ORM — optional extra module
+# 4) ORM — optional extra module (bundled in Vix)
 # -------------------------------------------------------
 
 # @VIX_HAS_ORM@ is substituted by configure_package_config_file()
 set(VIX_HAS_ORM @VIX_HAS_ORM@)
 
 if (VIX_HAS_ORM)
-  # ORM packaged separately (e.g. VixOrm package installed alongside Vix)
-  find_package(VixOrm CONFIG REQUIRED)
+  # The ORM is built and installed as part of this Vix package.
+  # Its targets are exported via VixTargets.cmake, typically:
+  #   - vix::orm     (preferred)
+  #   - vix_orm      (internal name, if any)
+  #
+  # We DO NOT call find_package(VixOrm) here anymore. Everything is
+  # self-contained inside this Vix installation.
 
-  # Provide umbrella-consistent aliases if needed
-  if (TARGET VixOrm::vix_orm AND NOT TARGET vix::vix_orm)
-    add_library(vix::vix_orm ALIAS VixOrm::vix_orm)
+  if (NOT TARGET vix::orm AND TARGET vix_orm)
+    add_library(vix::orm ALIAS vix_orm)
   endif()
 
-  if (TARGET VixOrm::orm AND NOT TARGET vix::orm)
-    add_library(vix::orm ALIAS VixOrm::orm)
+  if (NOT TARGET vix::orm)
+    message(WARNING
+      "VIX_HAS_ORM is ON but no 'vix::orm' target was found in VixTargets.cmake. "
+      "Check that modules/orm was built and installed correctly.")
   endif()
 endif()

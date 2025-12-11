@@ -9,13 +9,18 @@
 
 #include <vix/orm/orm.hpp>
 #include <iostream>
+#include <string>
 
 using namespace vix::orm;
 
 class CreateUsers : public Migration
 {
 public:
-    std::string id() const override { return "2025_10_10_000001_create_users"; }
+    std::string id() const override
+    {
+        return "2025_10_10_000001_create_users";
+    }
+
     void up(Connection &c) override
     {
         auto st = c.prepare(
@@ -29,6 +34,7 @@ public:
             ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
         st->exec();
     }
+
     void down(Connection &c) override
     {
         auto st = c.prepare("DROP TABLE IF EXISTS users");
@@ -39,7 +45,11 @@ public:
 class CreateOrders : public Migration
 {
 public:
-    std::string id() const override { return "2025_10_10_000002_create_orders"; }
+    std::string id() const override
+    {
+        return "2025_10_10_000002_create_orders";
+    }
+
     void up(Connection &c) override
     {
         auto st = c.prepare(
@@ -53,6 +63,7 @@ public:
             ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
         st->exec();
     }
+
     void down(Connection &c) override
     {
         auto st = c.prepare("DROP TABLE IF EXISTS orders");
@@ -69,13 +80,16 @@ int main(int argc, char **argv)
 
     try
     {
-        // Direct connection (no pool needed just to migrate)
-        auto raw = make_mysql_conn(host, user, pass, db);
-        MySQLConnection conn{raw};
+        ConnectionPool pool{make_mysql_factory(host, user, pass, db),
+                            PoolConfig{.min = 1, .max = 2}};
+
+        PooledConn pc{pool};
+        auto &conn = pc.get();
 
         MigrationsRunner runner{conn};
         CreateUsers m1;
         CreateOrders m2;
+
         runner.add(&m1);
         runner.add(&m2);
         runner.runAll();

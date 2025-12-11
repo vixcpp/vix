@@ -1,13 +1,11 @@
 /**
  * @file tx_unit_of_work.cpp
  * @brief Example — Execute multiple statements atomically with Transaction / UnitOfWork.
- *
- * Note: BaseRepository<T> uses ConnectionPool internally; for a single atomic
- * unit, we show direct SQL on uow.conn() so everything shares the same tx.
  */
 
 #include <vix/orm/orm.hpp>
 #include <iostream>
+#include <string>
 
 using namespace vix::orm;
 
@@ -20,13 +18,11 @@ int main(int argc, char **argv)
 
     try
     {
-        ConnectionPool pool{host, user, pass, db};
+        ConnectionPool pool{make_mysql_factory(host, user, pass, db)};
 
-        // Group two operations in one atomic unit
         UnitOfWork uow{pool};
         auto &c = uow.conn();
 
-        // Insert a user
         {
             auto st = c.prepare("INSERT INTO users(name,email,age) VALUES(?,?,?)");
             st->bind(1, std::string("Alice"));
@@ -35,7 +31,6 @@ int main(int argc, char **argv)
             st->exec();
         }
 
-        // Insert an order for that user (assume id=LAST_INSERT_ID())
         auto userId = c.lastInsertId();
         {
             auto st = c.prepare("INSERT INTO orders(user_id,total) VALUES(?,?)");

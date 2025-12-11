@@ -12,10 +12,15 @@ int main()
 {
     try
     {
-        auto raw = make_mysql_conn("tcp://127.0.0.1:3306", "root", "", "db_does_not_exist");
+        auto raw = make_mysql_conn("tcp://127.0.0.1:3306",
+                                   "root",
+                                   "",
+                                   "db_does_not_exist");
+
         MySQLConnection c{raw};
         auto st = c.prepare("SELECT 1");
         st->exec();
+
         std::cout << "[INFO] This message may not be reached if connection fails.\n";
     }
     catch (const DBError &e)
