@@ -7,10 +7,17 @@ int main()
 
     try
     {
-        ConnectionPool pool{"tcp://127.0.0.1:3306", "root", "", "vixdb"};
-        auto &conn = UnitOfWork{pool}.conn(); // simple ping
-        auto st = conn.prepare("SELECT 1");   // exec() OK même sans ResultSet adapter
+        ConnectionPool pool{make_mysql_factory("tcp://127.0.0.1:3306",
+                                               "root",
+                                               "",
+                                               "vixdb")};
+
+        UnitOfWork uow{pool};
+        auto &conn = uow.conn();
+
+        auto st = conn.prepare("SELECT 1");
         st->exec();
+
         std::cout << "ORM alive!\n";
     }
     catch (const std::exception &e)

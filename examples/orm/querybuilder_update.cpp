@@ -1,12 +1,11 @@
 /**
  * @file querybuilder_update.cpp
  * @brief Example — Build an UPDATE query with QueryBuilder and execute it.
- *
- * NOTE: ResultSet is not implemented yet, so we demonstrate exec().
  */
 
 #include <vix/orm/orm.hpp>
 #include <iostream>
+#include <string>
 
 using namespace vix::orm;
 
@@ -19,9 +18,8 @@ int main(int argc, char **argv)
 
     try
     {
-        ConnectionPool pool{host, user, pass, db};
+        ConnectionPool pool{make_mysql_factory(host, user, pass, db)};
 
-        // Build: UPDATE users SET age=? WHERE email=?
         QueryBuilder qb;
         qb.raw("UPDATE users SET age=? WHERE email=?")
             .param(29)
@@ -29,9 +27,12 @@ int main(int argc, char **argv)
 
         PooledConn pc(pool);
         auto st = pc.get().prepare(qb.sql());
+
         const auto &ps = qb.params();
         for (std::size_t i = 0; i < ps.size(); ++i)
+        {
             st->bind(i + 1, ps[i]);
+        }
 
         auto affected = st->exec();
         std::cout << "[OK] affected rows = " << affected << "\n";

@@ -8,17 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+
+feat(orm): full ORM integration into Vix build system for v1.12.4
+
+- Connected vix::orm to the top-level CMakeLists for correct package export.
+- Updated VixConfig.cmake.in to export ORM targets (vix::orm, drivers, includes).
+- Refreshed ORM examples: batch_insert_tx, transactions, migrations, querybuilder, error handling.
+- Updated CLI generator (vix new) to support ORM-ready application templates.
+- Synced new commits across modules/orm and modules/cli to match the 1.12.4 API.
+
 ## [1.12.4] - 2025-12-11
 
 ### Added
-- 
+
+-
 
 ### Changed
-- 
+
+-
 
 ### Removed
-- 
 
+-
 
 v1.12.4: major examples overhaul + core/cli/websocket sync
 

@@ -23,7 +23,7 @@ cmake_minimum_required(VERSION 3.20)
 #   - The JSON module may export different target names across environments:
 #     vix::json / vix::json / vix_json — we resolve them dynamically.
 # ====================================================================
-project(vix VERSION 1.12.3 LANGUAGES CXX)
+project(vix VERSION 1.12.5 LANGUAGES CXX)
 
 # Make find_package honor *_ROOT hints (e.g. MYSQLCPPCONN_ROOT)
 if (POLICY CMP0144)
@@ -173,16 +173,16 @@ target_include_directories(vix INTERFACE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/core/include>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/utils/include>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/json/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/websocket/include>
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-target_include_directories(vix INTERFACE
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/core/include>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/utils/include>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/json/include>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/websocket/include> 
-  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-)
+# Ajouter les headers de l'ORM si le module existe
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/orm/include")
+  target_include_directories(vix INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/orm/include>
+  )
+endif()
 
 # Attach warnings/coverage to umbrella (propagates to consumers)
 if (TARGET vix_warnings)
@@ -259,27 +259,37 @@ else()
   message(WARNING "Skipping 'modules/cli' (not present).")
 endif()
 
-# # ----------------------------------------------------
-# # ORM (optionnel)
-# # ----------------------------------------------------
-# option(VIX_ENABLE_ORM "Build Vix ORM module" OFF)
+# ----------------------------------------------------
+# ORM (optionnel)
+# ----------------------------------------------------
+option(VIX_ENABLE_ORM "Build Vix ORM module" ON)
 
-# # Conserve les options internes sans FORCE
-# set(VIX_ORM_USE_MYSQL      ON  CACHE BOOL "Enable MySQL backend in vix_orm")
-# set(VIX_ORM_BUILD_EXAMPLES OFF CACHE BOOL "Build vix_orm examples")
-# set(VIX_ORM_BUILD_TESTS    OFF CACHE BOOL "Build vix_orm tests")
+# Conserve les options internes SANS FORCE (pour pouvoir les override en ligne de commande)
+set(VIX_ORM_USE_MYSQL      ON  CACHE BOOL "Enable MySQL backend in vix_orm")
+set(VIX_ORM_BUILD_EXAMPLES OFF CACHE BOOL "Build vix_orm examples")
+set(VIX_ORM_BUILD_TESTS    OFF CACHE BOOL "Build vix_orm tests")
 
-# # Variable exportée vers VixConfig.cmake.in
-# set(VIX_HAS_ORM OFF)
+# Variable exportée vers VixConfig.cmake.in
+set(VIX_HAS_ORM OFF)
 
-# if (VIX_ENABLE_ORM AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/orm/CMakeLists.txt")
-#   message(STATUS "Adding 'modules/orm'...")
-#   add_subdirectory(modules/orm orm_build)
-#   if (TARGET vix::orm)
-#     target_link_libraries(vix INTERFACE vix::orm)
-#     set(VIX_HAS_ORM ON)
-#   endif()
-# endif()
+if (VIX_ENABLE_ORM AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/orm/CMakeLists.txt")
+  message(STATUS "Adding 'modules/orm' (ORM module)...")
+  add_subdirectory(modules/orm orm_build)
+
+  if (TARGET vix::orm)
+    message(STATUS "Linking ORM into umbrella target (vix::orm)")
+    target_link_libraries(vix INTERFACE vix::orm)
+    set(VIX_HAS_ORM ON)
+  elseif (TARGET Vix::orm)
+    message(STATUS "Linking ORM into umbrella target (Vix::orm)")
+    target_link_libraries(vix INTERFACE Vix::orm)
+    set(VIX_HAS_ORM ON)
+  else()
+    message(WARNING "modules/orm found but vix::orm target is missing.")
+  endif()
+else()
+  message(STATUS "ORM module disabled or modules/orm missing.")
+endif()
 
 # ----------------------------------------------------
 # Resolve JSON target name for downstreams
@@ -320,11 +330,15 @@ if (NOT DEFINED VIX_HAS_ORM)
 endif()
 
 if (VIX_BUILD_EXAMPLES)
+  # On prend:
+  #  - les exemples "généraux" dans examples/*.cpp
+  #  - les exemples ORM dans examples/orm/*.cpp
   file(GLOB VIX_UMBRELLA_EXAMPLES
        CONFIGURE_DEPENDS
-       "${CMAKE_CURRENT_SOURCE_DIR}/examples/*.cpp")
+       "${CMAKE_CURRENT_SOURCE_DIR}/examples/*.cpp"
+       "${CMAKE_CURRENT_SOURCE_DIR}/examples/orm/*.cpp")
 
-  # Examples that require ORM
+  # Examples that require ORM (noms de fichiers sans extension)
   set(_ORM_EXAMPLES
     demo_with_orm
     error_handling
@@ -335,6 +349,7 @@ if (VIX_BUILD_EXAMPLES)
     tx_unit_of_work
     querybuilder_update
   )
+
 
 # If the ORM is not packaged, filter them from the list
   if (NOT VIX_HAS_ORM)
@@ -482,9 +497,11 @@ if (VIX_ENABLE_INSTALL)
           FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
   install(DIRECTORY modules/websocket/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
           FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
-  # If the ORM exposes public headers:
-  # install(DIRECTORY modules/orm/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-  #         FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+  if (VIX_HAS_ORM AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/orm/include")
+    install(DIRECTORY modules/orm/include/
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+  endif()
 
   # 2) Export set — export the umbrella INTERFACE target 'vix'
   #
@@ -526,13 +543,14 @@ if (VIX_ENABLE_INSTALL)
   # OpenSSL: adjust if you disable SSL support in core
   set(VIX_WITH_OPENSSL    ON)
 
-  # MySQL: only when ORM (or core) links MySQL explicitly
-  set(VIX_WITH_MYSQL      OFF)
-
   # ORM packaged or not (core-only → OFF)
   if (NOT DEFINED VIX_HAS_ORM)
     set(VIX_HAS_ORM OFF)
   endif()
+
+  # MySQL: ne PAS imposer MySQL globalement pour l'instant
+  # (les projets qui ont besoin de MySQL géreront leurs propres deps)
+  set(VIX_WITH_MYSQL OFF)
 
   # SQLite : WebSocket module uses SQLite::SQLite3 for message store
   set(VIX_WITH_SQLITE     ON)
@@ -570,8 +588,6 @@ if (VIX_ENABLE_INSTALL)
   endif()
 
 endif()
-
-
 
 # ----------------------------------------------------
 # Status summary
