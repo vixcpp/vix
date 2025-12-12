@@ -8,28 +8,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+
+### WebSocket
+
+- Add SQLite-based message store with WAL support (`SqliteMessageStore`)
+- Introduce long-polling fallback for unstable or offline-first environments
+- Improve WebSocket client lifecycle (reconnect, heartbeat, write queue)
+- Fix header/source separation issues (remove cpp logic from headers)
+- Normalize message payload handling using typed JSON `{ type, payload }`
+- Improve router and server API consistency
+- Internal cleanup and error-handling improvements
+
+### ORM
+
+- Fix CMake integration issues when used from umbrella Vix project
+- Ensure ORM targets are correctly exported and linkable by Vix apps
+- Minor build-system cleanups
+
+### Internal
+
+- Synchronize `websocket` and `orm` modules with umbrella repository
+- Improve build stability and warning cleanup
+
 ## [1.13.1] - 2025-12-12
 
 ### Added
-- 
+
+-
 
 ### Changed
-- 
+
+-
 
 ### Removed
-- 
+
+-
 
 ## [1.13.0] - 2025-12-12
 
 ### Added
-- 
+
+-
 
 ### Changed
-- 
+
+-
 
 ### Removed
-- 
 
+-
 
 ### 🚀 Highlights
 
