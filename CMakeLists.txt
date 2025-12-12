@@ -13,7 +13,7 @@ cmake_minimum_required(VERSION 3.20)
 #   cmake --build build -j
 # ====================================================================
 
-project(vix VERSION 1.13.0 LANGUAGES CXX)
+project(vix VERSION 1.13.3 LANGUAGES CXX)
 
 # Make find_package honor *_ROOT hints (e.g. MYSQLCPPCONN_ROOT)
 if (POLICY CMP0144)
@@ -355,6 +355,33 @@ if (VIX_ENABLE_SANITIZERS)
 endif()
 
 # ----------------------------------------------------
+# Examples filtering
+# ----------------------------------------------------
+# Examples that require ORM at all
+set(_ORM_EXAMPLES
+  demo_with_orm
+  error_handling
+  batch_insert_tx
+  users_crud
+  repository_crud_full
+  migrate_init
+  tx_unit_of_work
+  querybuilder_update
+)
+
+# Subset of ORM examples that require MySQL backend
+set(_ORM_MYSQL_EXAMPLES
+  demo_with_orm
+  error_handling
+  batch_insert_tx
+  users_crud
+  repository_crud_full
+  migrate_init
+  tx_unit_of_work
+  querybuilder_update
+)
+
+# ----------------------------------------------------
 # Examples (flat: examples/*.cpp and examples/orm/*.cpp)
 # ----------------------------------------------------
 if (VIX_BUILD_EXAMPLES)
@@ -363,23 +390,22 @@ if (VIX_BUILD_EXAMPLES)
        "${CMAKE_CURRENT_SOURCE_DIR}/examples/*.cpp"
        "${CMAKE_CURRENT_SOURCE_DIR}/examples/orm/*.cpp")
 
-  set(_ORM_EXAMPLES
-    demo_with_orm
-    error_handling
-    batch_insert_tx
-    users_crud
-    repository_crud_full
-    migrate_init
-    tx_unit_of_work
-    querybuilder_update
-  )
-
+  # 1) If ORM is OFF → remove all ORM examples
   if (NOT VIX_HAS_ORM)
     foreach(_ex IN LISTS _ORM_EXAMPLES)
       list(FILTER VIX_UMBRELLA_EXAMPLES EXCLUDE REGEX ".*/${_ex}\\.cpp$")
       list(FILTER VIX_UMBRELLA_EXAMPLES EXCLUDE REGEX ".*\\\\${_ex}\\.cpp$")
     endforeach()
     message(STATUS "Examples: ORM OFF → filtered ORM examples: ${_ORM_EXAMPLES}")
+  endif()
+
+  # 2) If ORM is ON but MySQL backend is OFF → remove MySQL-based ORM examples
+  if (VIX_HAS_ORM AND NOT VIX_ORM_USE_MYSQL)
+    foreach(_ex IN LISTS _ORM_MYSQL_EXAMPLES)
+      list(FILTER VIX_UMBRELLA_EXAMPLES EXCLUDE REGEX ".*/${_ex}\\.cpp$")
+      list(FILTER VIX_UMBRELLA_EXAMPLES EXCLUDE REGEX ".*\\\\${_ex}\\.cpp$")
+    endforeach()
+    message(STATUS "Examples: MySQL OFF → filtered MySQL ORM examples: ${_ORM_MYSQL_EXAMPLES}")
   endif()
 
   if (VIX_UMBRELLA_EXAMPLES)
@@ -400,7 +426,7 @@ if (VIX_BUILD_EXAMPLES)
       add_executable("${EXAMPLE_NAME}" "${EXAMPLE_SRC}")
       target_link_libraries("${EXAMPLE_NAME}" PRIVATE vix::vix)
 
-      # ✅ ORM examples: add explicit ORM link only for examples/orm/*
+      # ✅ Link ORM only for examples/orm/*
       if (VIX_HAS_ORM AND TARGET vix::orm AND EXAMPLE_SRC MATCHES "examples[/\\\\]orm[/\\\\]")
         target_link_libraries("${EXAMPLE_NAME}" PRIVATE vix::orm)
       endif()

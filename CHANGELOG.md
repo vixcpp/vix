@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
-## [1.13.2] - 2025-12-12
+## [1.13.3] - 2025-12-12
 
 ### Added
 - 
@@ -19,6 +19,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - 
 
+
+## v1.13.3 — Patch Release
+
+### Fixed
+
+- Fixed SQLite integration in WebSocket module (missing includes, symbols, WAL usage).
+- Fixed `SqliteMessageStore` compilation errors with proper `sqlite3.h` usage.
+- Split WebSocket router implementation into `.cpp` (no implementation in headers).
+- Fixed Long Polling and WebSocket bridge consistency.
+
+### Build / CMake
+
+- ORM examples are now **automatically disabled** when MySQL support is OFF.
+- Prevented MySQL-dependent ORM examples from breaking default builds.
+- Improved umbrella CMake example filtering logic.
+- Safer linking of optional modules (ORM, WebSocket).
+
+### Internal
+
+- Reduced header coupling and improved compile hygiene.
+- More robust optional-feature handling (SQLite / MySQL / ORM).
+
+## [1.13.2] - 2025-12-12
+
+### Added
+
+-
+
+### Changed
+
+-
+
+### Removed
+
+-
 
 ### WebSocket
 
