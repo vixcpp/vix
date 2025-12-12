@@ -3,109 +3,72 @@
 include(CMakeFindDependencyMacro)
 
 # -------------------------------------------------------
-# 1) Core and common dependencies
+# 0) Optional deps that may be referenced by exported targets
+#    MUST be defined BEFORE including VixTargets.cmake
 # -------------------------------------------------------
 
-# Threads (always safe, always available)
+# MySQLCppConn is ONLY needed if vix::orm was built with MySQL,
+# but VixTargets.cmake may reference MySQLCppConn::MySQLCppConn.
+# We DO NOT force consumers to have MySQL installed.
+# If the real package exists, it will define the target; otherwise we create a stub.
+find_package(MySQLCppConn QUIET CONFIG)
+if (NOT TARGET MySQLCppConn::MySQLCppConn)
+  add_library(MySQLCppConn::MySQLCppConn INTERFACE IMPORTED)
+endif()
+
+# -------------------------------------------------------
+# 1) Load exported Vix targets
+# -------------------------------------------------------
+include("${CMAKE_CURRENT_LIST_DIR}/VixTargets.cmake")
+
+# -------------------------------------------------------
+# 2) Core and common dependencies
+# -------------------------------------------------------
+
 find_dependency(Threads REQUIRED)
 
-# fmt : used by vix::utils (and potentially other modules).
-# It is considered a *mandatory* dependency of Vix.
 find_dependency(fmt CONFIG REQUIRED)
 
-# spdlog : logging backend used by utils/core.
-# If you want to make spdlog optional, replace REQUIRED with QUIET
-# and guard it behind a @VIX_WITH_SPDLOG@ option.
 find_dependency(spdlog CONFIG REQUIRED)
-
-# nlohmann_json : only required when JSON support is enabled.
-# If JSON is disabled in a particular build, ensure nothing links it.
-if(@VIX_WITH_JSON@)
-  find_dependency(nlohmann_json CONFIG REQUIRED)
-endif()
-
-# Boost (filesystem + system) : required when the core module uses Boost::filesystem.
-# If filesystem is disabled in a particular build, expose it via @VIX_WITH_BOOST_FS@.
-if(@VIX_WITH_BOOST_FS@)
-  find_dependency(Boost REQUIRED COMPONENTS filesystem system)
-endif()
-
-# OpenSSL : optional, depending on how the core module was built.
-if(@VIX_WITH_OPENSSL@)
-  find_dependency(OpenSSL REQUIRED)
-endif()
-
-# MySQL : only needed when the ORM (or core) links the MySQL C++ connector.
-if(@VIX_WITH_MYSQL@)
-  find_dependency(MySQL REQUIRED)
-endif()
-
-# SQLite3 : required by vix::websocket when the WebSocket module is built
-# with the SQLite message store enabled.
-if(@VIX_WITH_SQLITE@)
-  find_dependency(SQLite3 REQUIRED)
-
-  # Normalize target name → ensure SQLite::SQLite3 exists
-  if (TARGET SQLite::SQLite3)
-    # OK
-  elseif (TARGET SQLite::SQLite3::SQLite3)
-    add_library(SQLite::SQLite3 ALIAS SQLite::SQLite3::SQLite3)
-  elseif (TARGET sqlite3)
-    add_library(SQLite::SQLite3 ALIAS sqlite3)
-  else()
-    message(FATAL_ERROR
-      "SQLite was requested (@VIX_WITH_SQLITE@ = ON) "
-      "but no suitable SQLite::SQLite3 target was found.")
-  endif()
-endif()
-
-# -------------------------------------------------------
-# 2) Backward compatibility aliases (spdlog, etc.)
-# -------------------------------------------------------
-
-# Some environments expect the alias spdlog::spdlog_header_only.
-# If the installed spdlog package does not provide it, create an ALIAS.
 if (TARGET spdlog::spdlog AND NOT TARGET spdlog::spdlog_header_only)
   add_library(spdlog::spdlog_header_only ALIAS spdlog::spdlog)
 endif()
 
-# IMPORTANT:
-# Do NOT create fake IMPORTED targets for missing dependencies such as
-# nlohmann_json or fmt. If they are missing, it means the installation
-# environment is incomplete, and find_dependency(REQUIRED) should fail.
-# This prevents hidden misconfigurations and ensures correctness.
+if (@VIX_WITH_JSON@)
+  find_dependency(nlohmann_json CONFIG REQUIRED)
+endif()
+
+if (@VIX_WITH_BOOST_FS@)
+  find_dependency(Boost REQUIRED COMPONENTS filesystem system)
+endif()
+
+if (@VIX_WITH_OPENSSL@)
+  find_dependency(OpenSSL REQUIRED)
+endif()
 
 # -------------------------------------------------------
-# 3) Load exported Vix targets
+# 3) SQLite (optional)
 # -------------------------------------------------------
+if (@VIX_WITH_SQLITE@)
+  find_dependency(SQLite3 REQUIRED)
 
-# This file contains all exported targets such as:
-#   vix::vix, vix::core, vix::utils, vix::json, vix::websocket
-include("${CMAKE_CURRENT_LIST_DIR}/VixTargets.cmake")
+  if (TARGET SQLite::SQLite3)
+    # ok
+  elseif (TARGET SQLite3::SQLite3)
+    add_library(SQLite::SQLite3 ALIAS SQLite3::SQLite3)
+  elseif (TARGET sqlite3)
+    add_library(SQLite::SQLite3 ALIAS sqlite3)
+  endif()
+
+  if (NOT TARGET SQLite::SQLite3)
+    message(FATAL_ERROR "SQLite requested but no usable SQLite target was found.")
+  endif()
+endif()
 
 # -------------------------------------------------------
-# 4) ORM — optional extra module (bundled in Vix)
+# 4) ORM presence flag (informational)
 # -------------------------------------------------------
-
-# @VIX_HAS_ORM@ is substituted by configure_package_config_file()
 set(VIX_HAS_ORM @VIX_HAS_ORM@)
-
-if (VIX_HAS_ORM)
-  # The ORM is built and installed as part of this Vix package.
-  # Its targets are exported via VixTargets.cmake, typically:
-  #   - vix::orm     (preferred)
-  #   - vix_orm      (internal name, if any)
-  #
-  # We DO NOT call find_package(VixOrm) here anymore. Everything is
-  # self-contained inside this Vix installation.
-
-  if (NOT TARGET vix::orm AND TARGET vix_orm)
-    add_library(vix::orm ALIAS vix_orm)
-  endif()
-
-  if (NOT TARGET vix::orm)
-    message(WARNING
-      "VIX_HAS_ORM is ON but no 'vix::orm' target was found in VixTargets.cmake. "
-      "Check that modules/orm was built and installed correctly.")
-  endif()
+if (VIX_HAS_ORM AND NOT TARGET vix::orm)
+  set(VIX_HAS_ORM OFF)
 endif()
