@@ -1,117 +1,16 @@
 # Example — users_crud.cpp
 
-````cpp
-/**
- * @file users_crud.cpp
- * @brief Example — Basic CRUD operations with Vix ORM.
- *
- * This example demonstrates how to use the Vix ORM core classes
- * (`ConnectionPool`, `BaseRepository`, and `Mapper<T>`) to perform
- * a simple `INSERT` on a `users` table.
- *
- * ───────────────────────────────────────────────────────────────────────────
- *  Requirements
- * ───────────────────────────────────────────────────────────────────────────
- *  - MySQL server accessible on localhost or custom TCP host.
- *  - A table `users` with columns:
- *
- *    ```sql
- *    CREATE TABLE users (
- *      id BIGINT AUTO_INCREMENT PRIMARY KEY,
- *      name VARCHAR(255) NOT NULL,
- *      email VARCHAR(255) NOT NULL,
- *      age INT NOT NULL
- *    );
- *    ```
- *
- *  - Compiled with:
- *    ```bash
- *    cmake -S .. -B build -DVIX_ORM_BUILD_EXAMPLES=ON -DVIX_ORM_USE_MYSQL=ON
- *    cmake --build build -j
- *    ./build/vix_orm_users tcp://127.0.0.1:3306 root password vixdb
- *    ```
- *
- * ───────────────────────────────────────────────────────────────────────────
- *  Example flow
- * ───────────────────────────────────────────────────────────────────────────
- *  1. Define a C++ struct `User` representing the table.
- *  2. Provide a `Mapper<User>` specialization describing how to
- *     convert a `User` to SQL insert/update parameters.
- *  3. Use a `ConnectionPool` to manage MySQL connections.
- *  4. Create a `BaseRepository<User>` and call `create()`.
- *
- * ───────────────────────────────────────────────────────────────────────────
- *  Output example
- * ───────────────────────────────────────────────────────────────────────────
- *  ```
- *  [OK] Insert user → id=42
- *  ```
- */
-
+```cpp
 #include <vix/orm/orm.hpp>
+#include <vix/orm/ConnectionPool.hpp>
+#include <vix/orm/MySQLDriver.hpp>
 #include <iostream>
-#include <string>
+#include <vector>
 
-// ============================================================================
-// Entity definition
-// ----------------------------------------------------------------------------
-// Represents a single row in the `users` table.
-// ============================================================================
-struct User
-{
-    std::int64_t id{};
-    std::string name;
-    std::string email;
-    int age{};
-};
+using namespace vix::orm;
 
-// ============================================================================
-// Mapper specialization for User
-// ----------------------------------------------------------------------------
-// Defines how to convert between `User` objects and SQL parameters.
-// Note: reading (fromRow) is omitted here since ResultSet adapter is pending.
-// ============================================================================
-namespace Vix::orm
-{
-    template <>
-    struct Mapper<User>
-    {
-        static User fromRow(const ResultRow &)
-        {
-            // Not implemented yet (ResultSet adapter pending)
-            return {};
-        }
-
-        static std::vector<std::pair<std::string, std::any>> toInsertParams(const User &u)
-        {
-            return {
-                {"name", u.name},
-                {"email", u.email},
-                {"age", u.age}};
-        }
-
-        static std::vector<std::pair<std::string, std::any>> toUpdateParams(const User &u)
-        {
-            return {
-                {"name", u.name},
-                {"email", u.email},
-                {"age", u.age}};
-        }
-    };
-} // namespace Vix::orm
-
-// ============================================================================
-// Entry point
-// ----------------------------------------------------------------------------
-// Demonstrates connecting, creating a repository, and inserting a record.
-// ============================================================================
 int main(int argc, char **argv)
 {
-    using namespace Vix::orm;
-
-    // ------------------------------------------------------------------------
-    // 1. Retrieve DB credentials (defaults or CLI arguments)
-    // ------------------------------------------------------------------------
     std::string host = (argc > 1 ? argv[1] : "tcp://127.0.0.1:3306");
     std::string user = (argc > 2 ? argv[2] : "root");
     std::string pass = (argc > 3 ? argv[3] : "");
@@ -119,38 +18,51 @@ int main(int argc, char **argv)
 
     try
     {
-        // --------------------------------------------------------------------
-        // 2. Initialize a connection pool
-        // --------------------------------------------------------------------
-        ConnectionPool pool{host, user, pass, db};
+        auto factory = make_mysql_factory(host, user, pass, db);
 
-        // --------------------------------------------------------------------
-        // 3. Create repository for `users`
-        // --------------------------------------------------------------------
-        BaseRepository<User> users{pool, "users"};
+        PoolConfig cfg;
+        cfg.min = 1;
+        cfg.max = 8;
 
-        // --------------------------------------------------------------------
-        // 4. Insert a user (CREATE)
-        // --------------------------------------------------------------------
-        std::uint64_t id = users.create(User{
-            0,
-            "Gaspard",
-            "gaspardkirira@outlook.com",
-            28});
+        ConnectionPool pool{factory, cfg};
+        pool.warmup();
 
-        // --------------------------------------------------------------------
-        // 5. Display success result
-        // --------------------------------------------------------------------
-        std::cout << "[OK] Insert user → id=" << id << "\n";
+        Transaction tx(pool);
+        auto &c = tx.conn();
+
+        auto st = c.prepare("INSERT INTO users(name,email,age) VALUES(?,?,?)");
+
+        struct Row
+        {
+            const char *name;
+            const char *email;
+            int age;
+        };
+        std::vector<Row> rows = {
+            {"Zoe", "zoe@example.com", 23},
+            {"Mina", "mina@example.com", 31},
+            {"Omar", "omar@example.com", 35},
+        };
+
+        std::uint64_t total = 0;
+        for (const auto &r : rows)
+        {
+            st->bind(1, r.name);
+            st->bind(2, r.email);
+            st->bind(3, r.age);
+            total += st->exec();
+        }
+
+        tx.commit();
+        std::cout << "[OK] inserted rows = " << total << "\n";
         return 0;
     }
     catch (const std::exception &e)
     {
-        // --------------------------------------------------------------------
-        // 6. Error handling (DB connection or execution failure)
-        // --------------------------------------------------------------------
         std::cerr << "[ERR] " << e.what() << "\n";
         return 1;
     }
 }
-````
+
+
+```

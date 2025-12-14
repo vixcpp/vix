@@ -8,17 +8,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+
+## ORM Migrations & CLI Stabilization
+
+### Added
+
+- New ORM migrations engine with file-based `.up.sql` / `.down.sql` support
+- Internal migrator tool (`vix_orm_migrator`) used by the CLI
+- `vix orm` command with subcommands:
+  - `migrate`
+  - `rollback`
+  - `status`
+- Support for CLI flags:
+  - `--db`, `--dir`, `--host`, `--user`, `--pass`, `--steps`
+- Environment-based configuration via `VIX_ORM_*`
+- Automatic project root and migrations directory detection
+- New ORM documentation:
+  - Migrations overview
+  - Batch insert
+  - Repository & QueryBuilder examples
+- Application-level ORM workflow (no longer tied to ORM module paths)
+
+### Changed
+
+- ORM examples moved from source tree to documentation
+- ORM usage clarified to always target application databases
+- CLI help improved with full ORM usage examples
+- README updated to reflect new ORM & CLI capabilities
+
+### Fixed
+
+- Logger initialization issues (`static auto& logger`) across:
+  - core
+  - utils
+  - middleware
+  - websocket
+- CMake linkage inconsistencies between modules
+- Incorrect default database usage during migrations (`vixdb` vs app DB)
+- Rollback failures caused by mismatched migration directories
+
+### Removed
+
+- Legacy ORM example source files
+- Deprecated ORM documentation pages
+- Old migrate_init example binaries
+
+### Notes
+
+- Databases must be created manually before running migrations
+- Migrations are now strictly application-scoped
+
 ## [1.13.3] - 2025-12-12
 
 ### Added
-- 
+
+-
 
 ### Changed
-- 
+
+-
 
 ### Removed
-- 
 
+-
 
 ## v1.13.3 — Patch Release
 

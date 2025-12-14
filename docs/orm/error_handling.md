@@ -4,12 +4,15 @@
 #include <vix/orm/orm.hpp>
 #include <iostream>
 
-using namespace Vix::orm;
+using namespace vix::orm;
 
-int main()
+int main(int argc, char **argv)
 {
+    (void)argc;
+    (void)argv;
     try
     {
+        // Intentionally wrong DB name to show error
         auto raw = make_mysql_conn("tcp://127.0.0.1:3306", "root", "", "db_does_not_exist");
         MySQLConnection c{raw};
         auto st = c.prepare("SELECT 1");
@@ -26,4 +29,6 @@ int main()
     }
     return 0;
 }
+
+
 ```

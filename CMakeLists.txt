@@ -13,7 +13,7 @@ cmake_minimum_required(VERSION 3.20)
 #   cmake --build build -j
 # ====================================================================
 
-project(vix VERSION 1.13.3 LANGUAGES CXX)
+project(vix VERSION 1.14.0 LANGUAGES CXX)
 
 # Make find_package honor *_ROOT hints (e.g. MYSQLCPPCONN_ROOT)
 if (POLICY CMP0144)
@@ -130,10 +130,11 @@ if (VIX_ENABLE_COVERAGE AND CMAKE_BUILD_TYPE MATCHES "Debug")
 endif()
 
 # ----------------------------------------------------
-# Sanitizers (opt-in, GCC/Clang)
+# Sanitizers (opt-in, GCC/Clang) — as INTERFACE target
 # ----------------------------------------------------
 set(_VIX_SAN_COMMON "")
 set(_VIX_SAN_TYPES  "")
+
 if (VIX_ENABLE_SANITIZERS)
   if (MSVC)
     message(FATAL_ERROR "Sanitizers are not supported on MSVC. Use Clang or GCC.")
@@ -142,14 +143,11 @@ if (VIX_ENABLE_SANITIZERS)
   set(_VIX_SAN_COMMON -O1 -g -fno-omit-frame-pointer)
   set(_VIX_SAN_TYPES  -fsanitize=address,undefined)
 
-  add_compile_options(${_VIX_SAN_COMMON} ${_VIX_SAN_TYPES})
-  add_link_options(${_VIX_SAN_TYPES})
+  add_library(vix_sanitizers INTERFACE)
+  target_compile_options(vix_sanitizers INTERFACE ${_VIX_SAN_COMMON} ${_VIX_SAN_TYPES})
+  target_link_options(vix_sanitizers INTERFACE ${_VIX_SAN_TYPES})
 
-  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    message(STATUS "Using GCC sanitizers (ensure libasan/libubsan are installed).")
-  elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    message(STATUS "Using Clang sanitizers (compiler-rt).")
-  endif()
+  message(STATUS "Sanitizers enabled via vix_sanitizers interface target.")
 endif()
 
 # ----------------------------------------------------
@@ -192,37 +190,6 @@ if (TARGET vix_warnings)
 endif()
 if (TARGET vix_coverage)
   target_link_libraries(vix INTERFACE vix_coverage)
-endif()
-
-# Base include dirs (only if they exist)
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/core/include")
-  target_include_directories(vix INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/core/include>
-  )
-endif()
-
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/utils/include")
-  target_include_directories(vix INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/utils/include>
-  )
-endif()
-
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/json/include")
-  target_include_directories(vix INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/json/include>
-  )
-endif()
-
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/websocket/include")
-  target_include_directories(vix INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/websocket/include>
-  )
-endif()
-
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/orm/include")
-  target_include_directories(vix INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/modules/orm/include>
-  )
 endif()
 
 # Install include interface root
@@ -349,9 +316,8 @@ elseif (TARGET vix_websocket)
 endif()
 
 # Propagate sanitizers to consumers (umbrella)
-if (VIX_ENABLE_SANITIZERS)
-  target_compile_options(vix INTERFACE ${_VIX_SAN_COMMON} ${_VIX_SAN_TYPES})
-  target_link_options(vix INTERFACE ${_VIX_SAN_TYPES})
+if (TARGET vix_sanitizers)
+  target_link_libraries(vix INTERFACE vix_sanitizers)
 endif()
 
 # ----------------------------------------------------
@@ -435,9 +401,8 @@ if (VIX_BUILD_EXAMPLES)
         target_link_libraries("${EXAMPLE_NAME}" PRIVATE vix_warnings)
       endif()
 
-      if (VIX_ENABLE_SANITIZERS)
-        target_compile_options("${EXAMPLE_NAME}" PRIVATE ${_VIX_SAN_COMMON} ${_VIX_SAN_TYPES})
-        target_link_options("${EXAMPLE_NAME}" PRIVATE ${_VIX_SAN_TYPES})
+      if (TARGET vix_sanitizers)
+        target_link_libraries("${EXAMPLE_NAME}" PRIVATE vix_sanitizers)
       endif()
 
       if (TARGET vix_coverage)

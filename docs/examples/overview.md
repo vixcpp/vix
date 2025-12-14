@@ -1,46 +1,221 @@
-# Examples — Overview (Vix.cpp)
+# Vix – Request & Response Examples
 
-This directory showcases runnable examples that cover routing, JSON helpers, validation, logging, time/env utilities, and CRUD patterns.
+This document shows **complete, real-world examples** demonstrating how **simple, expressive, and powerful Vix** is.
+
+No low-level types.
+No `vhttp::`.
+No `ResponseWrapper`.
+Just **Request** and **Response**.
 
 ---
 
-## Quick Start
+## 1. Hello World (JSON)
 
-Build examples (assuming umbrella build):
-
-```bash
-cmake -S . -B build-rel -DCMAKE_BUILD_TYPE=Release
-cmake --build build-rel -j
+```cpp
+app.get("/", [](Request req, Response res) {
+    return json::o("message", "Hello from Vix");
+});
 ```
 
-Run any example from the build directory:
+---
 
-```bash
-./build-rel/<example_name>
+## 2. Route Parameters
+
+```cpp
+app.get("/users/{id}", [](Request req, Response res) {
+    auto id = req.param("id");
+    return json::o("user_id", id);
+});
 ```
 
 ---
 
-## Catalog
+## 3. Query Parameters
 
-| Example                     | What it shows                                          | Link                             |
-| --------------------------- | ------------------------------------------------------ | -------------------------------- |
-| `hello_routes`              | Basic GET routes and path params                       | `./hello_routes.md`              |
-| `user_crud_with_validation` | Full CRUD + validation + JSON responses                | `./user_crud_with_validation.md` |
-| `post_put_delete`           | Individual POST/PUT/DELETE examples                    | `./post_put_delete.md`           |
-| `json_builders_routes`      | JSON builders with `Vix::json::obj/array/tokens`       | `./json_builders_routes.md`      |
-| `logger_context_and_uuid`   | Contextual logging (request_id/module) + async logging | `./logger_context_and_uuid.md`   |
-| `env_time_port`             | Env helpers + time utilities + ISO8601 responses       | `./env_time_port.md`             |
+```cpp
+app.get("/search", [](Request req, Response res) {
+    auto q = req.query_value("q", "none");
+    auto page = req.query_value("page", "1");
 
-> Each page provides the source code, how to run, and sample outputs (curl / wrk).
+    return json::o(
+        "query", q,
+        "page", page
+    );
+});
+```
 
 ---
 
-## Tips
+## 4. Automatic Status + Payload (FastAPI style)
 
-- Use `wrk` to stress‑test:
-  ```bash
-  wrk -t8 -c200 -d30s --latency http://localhost:8080/
-  ```
-- Prefer `-G Ninja` for iterative edits.
-- Keep ports unique if you run multiple examples at once.
+```cpp
+app.get("/missing", [](Request req, Response res) {
+    return std::pair{
+        404,
+        json::o("error", "Not found")
+    };
+});
+```
+
+---
+
+## 5. Redirect
+
+```cpp
+app.get("/go", [](Request req, Response res) {
+    res.redirect("https://vixcpp.com");
+});
+```
+
+---
+
+## 6. Automatic Status Message
+
+```cpp
+app.get("/forbidden", [](Request req, Response res) {
+    res.status(403).send();
+});
+```
+
+---
+
+## 7. POST JSON Body
+
+```cpp
+app.post("/echo", [](Request req, Response res) {
+    return json::o(
+        "received", req.json()
+    );
+});
+```
+
+---
+
+## 8. Typed JSON Parsing
+
+```cpp
+struct UserInput {
+    std::string name;
+    int age;
+};
+
+app.post("/users", [](Request req, Response res) {
+    UserInput input = req.json_as<UserInput>();
+
+    return std::pair{
+        201,
+        json::o(
+            "name", input.name,
+            "age", input.age
+        )
+    };
+});
+```
+
+---
+
+## 9. Headers
+
+```cpp
+app.get("/headers", [](Request req, Response res) {
+    res.header("X-App", "Vix")
+       .type("text/plain")
+       .send("Hello headers");
+});
+```
+
+---
+
+## 10. Request-Scoped State
+
+```cpp
+app.get("/state", [](Request req, Response res) {
+    req.set_state<int>(42);
+
+    return json::o(
+        "value", req.state<int>()
+    );
+});
+```
+
+---
+
+## 11. Void Handler
+
+```cpp
+app.get("/manual", [](Request req, Response res) {
+    res.status(200)
+       .json(json::o("ok", true));
+});
+```
+
+---
+
+## 12. Params Map Access
+
+```cpp
+app.get("/items/{id}", [](Request req, Response res) {
+    const auto& params = req.params();
+    return json::o("id", params.at("id"));
+});
+```
+
+---
+
+## 13. 204 No Content
+
+```cpp
+app.delete("/items/{id}", [](Request req, Response res) {
+    res.status(204).send();
+});
+```
+
+```cpp
+#include <vix.hpp>
+using namespace vix;
+
+int main()
+{
+    App app;
+
+    // Basic JSON response (auto send)
+    app.get("/", [](Request req, Response res) {
+        return vix::json::o("message", "Hello from Vix");
+    });
+    // Path params + return {status, payload}
+    app.get("/users/{id}", [](Request req, Response res) {
+        auto id = req.param("id");
+        return std::pair{200, vix::json::o("id", id)};
+    });
+    // Plain text return (const char*)
+    app.get("/txt", [](const Request&, Response&) {
+        return "Hello world";
+    });
+    // Redirect
+    app.get("/go", [](Request req, Response res) {
+        res.redirect("https://vixcpp.com");
+    });
+    // Status only → auto message (like Express sendStatus)
+    app.get("/missing", [](Request req, Response res) {
+        res.status(404).send();
+    });
+    // JSON echo (body → json)
+    app.post("/echo", [](Request req, Response res) {
+        return vix::json::o("received", req.json());
+    });
+
+    app.run(8080);
+}
+```
+
+---
+
+## Philosophy
+
+- Zero magic
+- Zero runtime overhead
+- Compile-time safety
+- Expressive like FastAPI / Express
+- Pure modern C++
+
+Vix lets you write **business logic**, not plumbing.

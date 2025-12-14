@@ -2,9 +2,13 @@
 
 ```cpp
 #include <vix/orm/orm.hpp>
-#include <iostream>
+#include <vix/orm/ConnectionPool.hpp>
+#include <vix/orm/MySQLDriver.hpp>
 
-using namespace Vix::orm;
+#include <iostream>
+#include <string>
+
+using namespace vix::orm;
 
 int main(int argc, char **argv)
 {
@@ -15,9 +19,15 @@ int main(int argc, char **argv)
 
     try
     {
-        ConnectionPool pool{host, user, pass, db};
+        auto factory = make_mysql_factory(host, user, pass, db);
 
-        // Build: UPDATE users SET age=? WHERE email=?
+        PoolConfig cfg;
+        cfg.min = 1;
+        cfg.max = 8;
+
+        ConnectionPool pool{factory, cfg};
+        pool.warmup();
+
         QueryBuilder qb;
         qb.raw("UPDATE users SET age=? WHERE email=?")
             .param(29)
@@ -25,6 +35,7 @@ int main(int argc, char **argv)
 
         PooledConn pc(pool);
         auto st = pc.get().prepare(qb.sql());
+
         const auto &ps = qb.params();
         for (std::size_t i = 0; i < ps.size(); ++i)
             st->bind(i + 1, ps[i]);
@@ -39,4 +50,6 @@ int main(int argc, char **argv)
         return 1;
     }
 }
+
+
 ```
