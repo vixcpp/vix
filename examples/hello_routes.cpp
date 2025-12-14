@@ -31,9 +31,18 @@ int main()
         app.get("/users/{id}", [](auto &, auto &res)
                 { res.status(4040).json({"error", "User not found"}); });
 
-        // res.not_found().json({"error","User not found"});
+        app.get("/hello", [](const Request &, Response &)
+                { return vix::json::o("message", "Hello", "id", 20); });
 
-        // res.sendStatus(404); // -> "404 Not Found"
+        app.get("/txt", [](const Request &, Response &)
+                {
+                        return "Hello world"; // const char*
+                });
+
+        app.get("/mix", [](Request &, Response &res)
+                {
+                res.status(201).send("Created");
+                return vix::json::o("ignored", true); });
 
         app.run(8080);
         return 0;
