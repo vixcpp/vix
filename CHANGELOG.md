@@ -8,17 +8,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+
+## v1.14.3 — 2025-12-17
+
+### Fixed
+
+- Fixed JSON umbrella integration: `<vix.hpp>` now reliably exposes `vix::json` builders (`o`, `a`, `kv`).
+- Fixed missing `OrderedJson` type in core `RequestHandler`.
+- Fixed compilation errors in examples relying on implicit JSON availability.
+- Fixed `vix_json` CMake include paths for both build-tree and install-tree usage.
+
+### Internal
+
+- Improved Core ↔ JSON module boundary consistency.
+- Stabilized umbrella build (`vix::vix`) dependency propagation.
+
+### Compatibility
+
+- No breaking API changes.
+- Existing applications continue to work without modification.
+
 ## [1.14.2] - 2025-12-17
 
 ### Added
-- 
+
+-
 
 ### Changed
-- 
+
+-
 
 ### Removed
-- 
 
+-
 
 ## v1.14.2 — 2025-12-17
 
