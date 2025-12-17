@@ -246,6 +246,20 @@ else()
   message(FATAL_ERROR "Missing 'modules/utils'. Run: git submodule update --init --recursive")
 endif()
 
+if (TARGET spdlog::spdlog)
+  get_target_property(_spdlog_inc spdlog::spdlog INTERFACE_INCLUDE_DIRECTORIES)
+  if (_spdlog_inc)
+    target_include_directories(vix::utils SYSTEM PRIVATE ${_spdlog_inc})
+  endif()
+endif()
+
+if (TARGET fmt::fmt)
+  get_target_property(_fmt_inc fmt::fmt INTERFACE_INCLUDE_DIRECTORIES)
+  if (_fmt_inc)
+    target_include_directories(vix::utils SYSTEM PRIVATE ${_fmt_inc})
+  endif()
+endif()
+
 # --- Core ---
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/core/CMakeLists.txt")
   message(STATUS "Adding 'modules/core'...")

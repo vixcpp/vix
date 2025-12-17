@@ -69,3 +69,5 @@ cmake/*
 !cmake/VixConfig.cmake.in
 *.bak
 db.sql
+revoir.md
+main.cpp
