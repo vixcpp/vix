@@ -8,17 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+
+## v1.14.2 — 2025-12-17
+
+### Fixed
+
+- **core/http**: fixed `RequestHandler` build failures by using the local `OrderedJson` alias and preventing name lookup from resolving to POSIX `::send()` (now uses `this->send()` internally).
+- **json**: improved unified include header `vix/json.hpp` and ensured `OrderedJson` exposure is consistent across the JSON module.
+
 ## [1.14.1] - 2025-12-17
 
 ### Added
-- 
+
+-
 
 ### Changed
-- 
+
+-
 
 ### Removed
-- 
 
+-
 
 ## v1.14.1 — Stability, Cache & Build Hygiene Release
 
