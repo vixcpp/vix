@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
-## [1.14.3] - 2025-12-17
+## [1.14.4] - 2025-12-17
 
 ### Added
 - 
@@ -19,6 +19,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - 
 
+
+## v1.14.4
+
+### Fixed
+
+- Fixed ORM migrator build after driver abstraction refactor.
+- Replaced deprecated MySQL connection APIs with the factory-based `Connection` interface.
+- Fixed CI failures caused by abstract `Connection` instantiation.
+- Ensured the migrator compiles correctly when database drivers are disabled.
+
+## [1.14.3] - 2025-12-17
+
+### Added
+
+-
+
+### Changed
+
+-
+
+### Removed
+
+-
 
 ## v1.14.3 — 2025-12-17
 
