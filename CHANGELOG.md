@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
-## [1.14.0] - 2025-12-14
+## [1.14.1] - 2025-12-17
 
 ### Added
 - 
@@ -19,6 +19,82 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - 
 
+
+## v1.14.1 — Stability, Cache & Build Hygiene Release
+
+**Release date:** 2025-12-17
+
+### ✨ Highlights
+
+- Finalized **HTTP GET cache** system across core and middleware.
+- Integrated cache as a **first-class middleware** in the request pipeline.
+- Added comprehensive **cache and middleware tests**.
+- Achieved **strict warning-free builds** (`-Weffc++`) across all modules.
+
+---
+
+### 🧱 Core & Middleware
+
+- Completed HTTP cache implementation (Memory, File, LRU stores).
+- Introduced cache utilities (`CacheKey`, HTTP header helpers).
+- Clean integration with `HTTPServer`, `Router`, and `Session`.
+- Added HTTP cache middleware for transparent GET caching.
+- Added periodic middleware support for timed/background tasks.
+- Middleware pipeline refined and stabilized.
+
+---
+
+### 🛠️ Build & Quality
+
+- Enforced **strict warning hygiene** with `-Weffc++`.
+- Fixed:
+  - sign-conversion warnings
+  - ignored return values (`chdir`, `setenv`, etc.)
+  - `[[nodiscard]]` API misuse in examples
+- Isolated GCC/libstdc++ false positives (`std::regex`) without masking project warnings.
+- Improved and unified **CMake configuration** across all modules.
+
+---
+
+### 🧪 Tests
+
+- Added and stabilized HTTP cache smoke tests.
+- Added middleware-level tests validating cache behavior.
+- Improved test CMake configuration for consistency.
+
+---
+
+### 📦 Modules Updated
+
+- `core`
+- `middleware`
+- `cli`
+- `websocket`
+- `orm`
+- `utils`
+- `json`
+
+---
+
+### 🔒 Stability & Compatibility
+
+- No breaking API changes.
+- Focus on correctness, performance, and long-term maintainability.
+- Stable foundation for upcoming **offline-first** and **sync/WAL** features.
+
+## [1.14.0] - 2025-12-14
+
+### Added
+
+-
+
+### Changed
+
+-
+
+### Removed
+
+-
 
 ## ORM Migrations & CLI Stabilization
 
