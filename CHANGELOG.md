@@ -8,17 +8,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+
+## v1.14.5 — 2025-01-18
+
+### Added
+
+- New CLI command: `vix pack`.
+- Package a Vix project into `dist/<name>@<version>/`.
+- Optional `.vixpkg` archive generation.
+- Manifest v2 (`vix.manifest.v2`) with:
+  - Package metadata (name, version, kind, license).
+  - ABI detection (OS, architecture).
+  - Toolchain information (C++ compiler, standard, CMake).
+  - Layout flags (include, src, lib, modules, README).
+  - Exports and dependencies from `vix.toml`.
+
+### Security
+
+- Payload integrity via SHA256 content digest.
+- Stable payload hashing excluding generated files.
+- Optional Ed25519 signature using `minisign`:
+  - `meta/payload.digest`
+  - `meta/payload.digest.minisig`
+  - Secret key via `VIX_MINISIGN_SECKEY`.
+
+### Changed
+
+- CLI help updated to include `vix pack`.
+- Internal CLI and middleware refactoring to support packaging flow.
+
+### Notes
+
+- Signing is optional and enabled only when `minisign` is available.
+- Manifest generation avoids self-referential hashing.
+
 ## [1.14.4] - 2025-12-17
 
 ### Added
-- 
+
+-
 
 ### Changed
-- 
+
+-
 
 ### Removed
-- 
 
+-
 
 ## v1.14.4
 

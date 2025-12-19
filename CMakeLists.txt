@@ -295,6 +295,7 @@ option(VIX_ORM_USE_MYSQL "Enable MySQL backend in vix_orm" ON)
 set(VIX_ORM_BUILD_EXAMPLES OFF CACHE BOOL "Build vix_orm examples")
 set(VIX_ORM_BUILD_TESTS    OFF CACHE BOOL "Build vix_orm tests")
 
+set(VIX_UMBRELLA_BUILD ON CACHE BOOL "Building Vix from umbrella" FORCE)
 set(VIX_HAS_ORM OFF)
 if (VIX_ENABLE_ORM AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/orm/CMakeLists.txt")
   message(STATUS "Adding 'modules/orm'...")
