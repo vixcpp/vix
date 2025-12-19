@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
-## [1.14.5] - 2025-12-19
+## [1.14.6] - 2025-12-19
 
 ### Added
 - 
@@ -19,6 +19,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - 
 
+
+## 1.14.6 — 2025-XX-XX
+
+### CLI
+
+- Updated `modules/cli` to the latest version.
+- Improved `vix pack` user experience:
+  - Minisign password prompt is now visible when `--verbose` is enabled.
+  - Prevents silent blocking during package signing.
+- Added `vix verify` command:
+  - Manifest v2 validation.
+  - Payload digest verification.
+  - Optional minisign signature verification.
+  - Auto-detection of `dist/<name>@<version>` packages.
+- Improved CLI help output:
+  - Clearer command grouping.
+  - Better descriptions for `pack` and `verify`.
+  - More practical usage examples.
+
+### Packaging & Security
+
+- Clear separation between signed and unsigned packages.
+- Environment-based key discovery:
+  - `VIX_MINISIGN_SECKEY` for package signing.
+  - `VIX_MINISIGN_PUBKEY` for signature verification.
+- More robust verification feedback and strict modes.
+
+### Developer Experience
+
+- Smoother packaging and verification workflow.
+- More predictable CLI behavior with explicit output.
+- Improved diagnostics in verbose mode.
+
+---
+
+This release focuses on **polishing the CLI**, strengthening **package security**,
+and delivering a **professional packaging & verification workflow** for Vix.
+
+## [1.14.5] - 2025-12-19
+
+### Added
+
+-
+
+### Changed
+
+-
+
+### Removed
+
+-
 
 ## v1.14.5 — 2025-01-18
 
