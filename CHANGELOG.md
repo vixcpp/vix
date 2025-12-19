@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
-## [1.14.6] - 2025-12-19
+## [1.14.7] - 2025-12-19
 
 ### Added
 - 
@@ -19,6 +19,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - 
 
+
+## v1.14.7 — CLI Packaging Stability Update
+
+### Fixed
+
+- Fixed `vix pack` potentially blocking when minisign required interactive input.
+- Prevented unintended blocking behavior when signing is auto-detected.
+
+### Added
+
+- Integrated new CLI signing modes from vix-cli v1.9.2:
+  - `--sign=auto` (default, non-blocking)
+  - `--sign=never`
+  - `--sign=required` (fail-fast, explicit)
+
+### Improved
+
+- More predictable and professional packaging workflow.
+- Clear separation between optional and mandatory cryptographic signing.
+- Improved developer experience for CI/CD and non-interactive environments.
+
+## [1.14.6] - 2025-12-19
+
+### Added
+
+-
+
+### Changed
+
+-
+
+### Removed
+
+-
 
 ## 1.14.6 — 2025-XX-XX
 
