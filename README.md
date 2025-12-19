@@ -28,6 +28,8 @@
 
 **Vix** is a next-generation **offline-first, peer-to-peer, ultra-fast runtime for modern C++**.
 
+[Japanese](README-JP.md)
+
 Its goal is clear:
 
 > **A runtime capable of running apps like Node / Deno / Bun —  
