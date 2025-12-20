@@ -24,7 +24,7 @@
 
 ---
 
-# 🌍 What is Vix?
+# What is Vix?
 
 **Vix** is a next-generation **offline-first, peer-to-peer, ultra-fast runtime for modern C++**.
 
@@ -68,8 +68,6 @@ Results represent steady-state throughput on a simple `"OK"` endpoint.
 
 ---
 
-## 📝 Notes
-
 ### ✔ Why Vix.cpp reaches Go-level performance
 
 - zero-cost abstractions
@@ -81,13 +79,6 @@ Results represent steady-state throughput on a simple `"OK"` endpoint.
 - predictable threading model
 
 ---
-
-## 🦕 Deno benchmark (reference)
-
-```bash
-$ wrk -t8 -c800 -d30s --latency http://127.0.0.1:8000
-Requests/sec: 48,868.73
-```
 
 ### ✔ Vix.cpp recommended benchmark mode
 
@@ -132,7 +123,7 @@ using namespace Vix;
 int main() {
     App app;
 
-    app.get("/", [](auto&, auto& res) {
+    app.get("/", [](Request, Request res) {
         res.json({ "message", "Hello world" });
     });
 
@@ -140,13 +131,13 @@ int main() {
 }
 ```
 
-### QueryBuilder ORM
+## Route Parameters
 
 ```cpp
-QueryBuilder qb;
-qb.raw("UPDATE users SET age=? WHERE email=?")
-  .param(29)
-  .param("zoe@example.com");
+app.get("/users/{id}", [](Request req, Response res) {
+    auto id = req.param("id");
+    return json::o("user_id", id);
+});
 ```
 
 ### Minimal HTTP + WebSocket Server
@@ -203,170 +194,9 @@ client->on_open([] {
 client->send("chat.message", {"text", "Hello world!"});
 ```
 
-## 1. Hello World (JSON)
-
-```cpp
-app.get("/", [](Request req, Response res) {
-    return json::o("message", "Hello from Vix");
-});
-```
-
 ---
 
-## 2. Route Parameters
-
-```cpp
-app.get("/users/{id}", [](Request req, Response res) {
-    auto id = req.param("id");
-    return json::o("user_id", id);
-});
-```
-
----
-
-## 3. Query Parameters
-
-```cpp
-app.get("/search", [](Request req, Response res) {
-    auto q = req.query_value("q", "none");
-    auto page = req.query_value("page", "1");
-
-    return json::o(
-        "query", q,
-        "page", page
-    );
-});
-```
-
----
-
-## 4. Automatic Status + Payload (FastAPI style)
-
-```cpp
-app.get("/missing", [](Request req, Response res) {
-    return std::pair{
-        404,
-        json::o("error", "Not found")
-    };
-});
-```
-
----
-
-## 5. Redirect
-
-```cpp
-app.get("/go", [](Request req, Response res) {
-    res.redirect("https://vixcpp.com");
-});
-```
-
----
-
-## 6. Automatic Status Message
-
-```cpp
-app.get("/forbidden", [](Request req, Response res) {
-    res.status(403).send();
-});
-```
-
----
-
-## 7. POST JSON Body
-
-```cpp
-app.post("/echo", [](Request req, Response res) {
-    return json::o(
-        "received", req.json()
-    );
-});
-```
-
----
-
-## 8. Typed JSON Parsing
-
-```cpp
-struct UserInput {
-    std::string name;
-    int age;
-};
-
-app.post("/users", [](Request req, Response res) {
-    UserInput input = req.json_as<UserInput>();
-
-    return std::pair{
-        201,
-        json::o(
-            "name", input.name,
-            "age", input.age
-        )
-    };
-});
-```
-
----
-
-## 9. Headers
-
-```cpp
-app.get("/headers", [](Request req, Response res) {
-    res.header("X-App", "Vix")
-       .type("text/plain")
-       .send("Hello headers");
-});
-```
-
----
-
-## 10. Request-Scoped State
-
-```cpp
-app.get("/state", [](Request req, Response res) {
-    req.set_state<int>(42);
-
-    return json::o(
-        "value", req.state<int>()
-    );
-});
-```
-
----
-
-## 11. Void Handler
-
-```cpp
-app.get("/manual", [](Request req, Response res) {
-    res.status(200)
-       .json(json::o("ok", true));
-});
-```
-
----
-
-## 12. Params Map Access
-
-```cpp
-app.get("/items/{id}", [](Request req, Response res) {
-    const auto& params = req.params();
-    return json::o("id", params.at("id"));
-});
-```
-
----
-
-## 13. 204 No Content
-
-```cpp
-app.delete("/items/{id}", [](Request req, Response res) {
-    res.status(204).send();
-});
-```
-
----
-
-# 🧱 Why Vix Exists
+# Why Vix Exists
 
 Cloud-first frameworks assume:
 
@@ -392,107 +222,149 @@ C++20 + Asio + zero-overhead abstractions.
 
 ---
 
-# 🧩 Key Features
+## Key Features
 
-- 🌍 Offline-first runtime
-- 🔗 P2P-ready communication model
-- ⚙️ Async HTTP server
-- 🧭 Expressive routing
-- 💾 ORM for MySQL/SQLite
-- 🧠 Middleware system
-- 📡 WebSocket engine
-- 🧰 Modular design
-- 🚀 Developer experience similar to Node/Deno/Bun
-- ⚡ 80k+ requests/sec performance
+- Offline-first runtime architecture
+- Peer-to-peer–ready communication model
+- Asynchronous HTTP server
+- Expressive and composable routing
+- ORM support for MySQL and SQLite
+- Middleware system
+- WebSocket engine
+- Modular architecture
+- Developer experience comparable to Node.js, Deno, and Bun
+- High-performance runtime (80k+ requests/sec)
 
 ---
 
 ## 🚀 Getting Started
 
-To set up Vix.cpp on your system:
+To build **Vix.cpp** from source:
 
 ```bash
 git clone https://github.com/vixcpp/vix.git
 cd vix
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
-./build/hello_routes
 ```
+
+> This builds the Vix runtime and CLI.  
+> Make sure the resulting `vix` binary is available in your `PATH`.
 
 ---
 
 ## 🧰 Example (CLI Project)
 
-Once installed, you can generate a new project using the CLI:
+Create and run a new Vix project using the CLI:
 
 ```bash
 vix new myapp
 cd myapp
+
 vix build
 vix run
+```
 
-vix dev file.cpp
-vix run file.cpp
-vix orm migrate
+Common development commands:
+
+```bash
+vix dev                # watch, rebuild, reload
+vix run                # build (if needed) and run
+vix check              # validate project or compile a single .cpp (no execution)
+vix tests              # run project tests
+vix orm migrate        # run ORM migrations
 ```
 
 ---
 
-# 🎯 Script Mode — Run `.cpp` Files Directly
+## Script Mode — Run `.cpp` Files Directly
 
 Vix can execute a single `.cpp` file **like a script**, without creating a full project.
 
 ```bash
-vix run file.cpp
-vix dev file.cpp
-```
-
-### ✔ How it works
-
-- Generates a temporary CMake project under:  
-  `./.vix-scripts/<filename>/`
-- Compiles the `.cpp` file as a standalone executable
-- Runs it immediately
-- Stops cleanly on Ctrl+C (no gmake noise)
-
-### Example:
-
-```bash
-~/myapp/test$ vix run server.cpp
-Script mode: compiling server.cpp
-Using script build directory:
-  • .vix-scripts/server
-
-✔ Build succeeded
-[I] Server running on port 8080
-^C
-ℹ Server interrupted by user (SIGINT)
+vix run main.cpp        # run once
+vix dev main.cpp        # run + watch (hot reload)
 ```
 
 ---
 
-## 📚 Documentation
+### ▶Run once (`vix run`)
 
-- 🧭 [Introduction](docs/introduction.md)
-- ⚡ [Quick Start](docs/quick-start.md)
-- 🧱 [Architecture & Modules](docs/architecture.md)
-- 💾 [ORM Overview](docs/orm/overview.md)
-- 📈 [Benchmarks](docs/benchmarks.md)
-- 🧰 [Examples](docs/examples/overview.md)
-- 🛠️ [Build & Installation](docs/build.md)
-- ⚙️ [CLI Options](docs/options.md)
+Runs the file once, then exits.
 
-## 📦 Module Documentation Index
+```bash
+~/dev/scripts$ vix run main.cpp
+Hello, world
+```
 
-- 🧩 **Core Module** — [docs/modules/core.md](docs/modules/core.md)
-- 📡 **WebSocket Module** — [docs/modules/websocket.md](docs/modules/websocket.md)
-- 🗃️ **ORM Module** — [docs/modules/orm.md](docs/modules/orm.md)
-- 🔧 **JSON Module** — [docs/modules/json.md](docs/modules/json.md)
-- 🛠️ **Utils Module** — [docs/modules/utils.md](docs/modules/utils.md)
-- 🧰 **CLI Module** — [docs/modules/cli.md](docs/modules/cli.md)
-- ⚙️ **Rix Library (Essential C++ utilities)** — [docs/modules/rix.md](docs/modules/rix.md)
+---
 
-📊 Summary
+### Watch mode (`vix dev`)
+
+Runs the file **in watch mode**.  
+Vix recompiles and restarts automatically when the file changes.
+
+```bash
+~/dev/scripts$ vix dev main.cpp
+Starting Vix dev mode.
+➜ Tip: use `Ctrl+C` to stop dev mode; edit your files and Vix will rebuild & restart automatically.
+Watcher Process started (hot reload).
+➜ Watching: /home/softadastra/dev/scripts/main.cpp
+🏃 Script started (pid=125953)
+Hello, world
+```
+
+---
+
+### ✔ How Script Mode Works
+
+When running a `.cpp` file directly, Vix:
+
+- Creates a temporary build directory under:
+  ```
+  ./.vix-scripts/<filename>/
+  ```
+- Generates a minimal CMake project internally
+- Compiles the file as a standalone executable
+- Runs it immediately
+- In `dev` mode:
+  - Watches the source file
+  - Rebuilds and restarts automatically on changes
+- Stops cleanly on `Ctrl+C` (no noisy build output)
+
+---
+
+### Mental model
+
+| Command            | Behavior                           |
+| ------------------ | ---------------------------------- |
+| `vix run main.cpp` | Compile → run once                 |
+| `vix dev main.cpp` | Compile → run → watch & hot-reload |
+
+---
+
+## Documentation
+
+- [Introduction](docs/introduction.md)
+- [Quick Start](docs/quick-start.md)
+- [Architecture & Modules](docs/architecture.md)
+- [ORM Overview](docs/orm/overview.md)
+- [Benchmarks](docs/benchmarks.md)
+- [Examples](docs/examples/overview.md)
+- [Build & Installation](docs/build.md)
+- [CLI Options](docs/options.md)
+- [CLI Reference](docs/vix-cli-help.md)
+
+## Module Documentation Index
+
+- **Core Module** — [docs/modules/core.md](docs/modules/core.md)
+- **WebSocket Module** — [docs/modules/websocket.md](docs/modules/websocket.md)
+- **ORM Module** — [docs/modules/orm.md](docs/modules/orm.md)
+- **JSON Module** — [docs/modules/json.md](docs/modules/json.md)
+- **Utils Module** — [docs/modules/utils.md](docs/modules/utils.md)
+- **CLI Module** — [docs/modules/cli.md](docs/modules/cli.md)
+
+## Summary
 
 Vix.cpp sits at the top of modern backend runtimes, matching or exceeding high-performance frameworks like Go Fiber, and outperforming Deno, Node, PHP, Python, and even several C++ frameworks like Crow.
 
@@ -503,7 +375,7 @@ Vix.cpp = the C++ runtime pushing boundaries.
 ## 🤝 Contributing
 
 Contributions are welcome!  
-Please read the contributing guidelines.
+Please read the [contributing guidelines](CONTRIBUTING.md).
 
 ---
 
