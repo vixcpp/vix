@@ -1,82 +1,119 @@
-# 🧪 Vix.cpp — Security Testing Guide
+# Vix.cpp — Security Testing Guide
 
-This document describes how to **audit, test, and validate** the security of **Vix.cpp** and its modules.  
+This document describes how to **audit, test, and validate** the security properties of **Vix.cpp**.
 It is primarily intended for **maintainers** and **core contributors**.
 
----
-
-## 🧭 Overview
-
-Vix.cpp includes several layers of protection:
-
-| Layer                   | Description                                                             |
-| ----------------------- | ----------------------------------------------------------------------- |
-| 🔒 **Memory safety**    | Use of smart pointers, RAII, and optional sanitizers                    |
-| 🧰 **Input validation** | Validation utilities under `Vix::utils::Validation`                     |
-| 🌐 **HTTP safety**      | Controlled header parsing and path sanitization                         |
-| ⚙️ **Runtime checks**   | Optional AddressSanitizer (ASan) and UndefinedBehaviorSanitizer (UBSan) |
-| 🧠 **Static analysis**  | Support for clang-tidy, cppcheck, and Coverity                          |
-
-Maintainers are encouraged to periodically **run full sanitizer builds** and **fuzz endpoints** before major releases.
+The goal is to ensure that every release of Vix.cpp remains **safe, robust, and predictable** under real-world conditions.
 
 ---
 
-## 🧩 1. Sanitizer Testing (ASan + UBSan)
+## Overview
 
-Sanitizers detect memory leaks, invalid reads/writes, and undefined behavior at runtime.
+Security in Vix.cpp is based on **defensive engineering practices**, not on custom or opaque security layers.
 
-### 🔧 Build with Sanitizers
+The project relies on:
+
+- Modern C++ memory safety patterns (RAII, clear ownership)
+- Compiler-based runtime checks (sanitizers)
+- Static analysis tools
+- Careful validation of external inputs
+- Continuous testing and review
+
+There is **no custom security framework** inside Vix.cpp.  
+All security testing relies on **standard, well-known tooling**.
+
+---
+
+## 1. Runtime Sanitizer Testing
+
+Sanitizers are the **primary security signal** during development.
+
+### Supported Sanitizers
+
+- AddressSanitizer (ASan)
+- UndefinedBehaviorSanitizer (UBSan)
+- ThreadSanitizer (TSan, when applicable)
+
+### Build with Sanitizers
 
 ```bash
-cmake -S . -B build-sanitize \
+cmake -S . -B build-san \
   -DCMAKE_BUILD_TYPE=Debug \
   -DVIX_ENABLE_SANITIZERS=ON
-cmake --build build-sanitize -j
+cmake --build build-san -j
 ```
 
-# ▶️ Run examples with ASan/UBSan enabled
+Run the CLI or examples:
 
 ```bash
-cd build-sanitize
-ASAN_OPTIONS=detect_leaks=1 ./main
+cd build-san
+./vix --help
 ```
 
-# Typical output (no errors):
+Any sanitizer finding must be treated as a **blocking error**.
 
-```sql
-==12345== All heap blocks were freed -- no leaks are possible
-```
+---
 
-. 💡 Tip: Use -fsanitize=address,undefined in your own modules for deep inspection.
+## 2. CLI & Script Mode Validation
 
-# 🔬 2. Fuzz Testing
+The Vix CLI is part of the attack surface and must be tested accordingly.
 
-Fuzz testing helps uncover unexpected behavior under random or malformed input.
-
-## ⚙️ Install dependencies (Linux/macOS)
+Recommended checks:
 
 ```bash
-sudo apt install clang llvm
+vix check .
+vix check main.cpp
+vix run main.cpp --san
+vix tests
 ```
 
-## 🧠 Run a simple fuzz test
+Verify that:
 
-Create tests/fuzz_http.cpp:
+- Invalid inputs do not crash the CLI
+- Errors are reported clearly
+- Exit codes are consistent
+- No undefined behavior occurs under sanitizers
+
+---
+
+## 3. Static Analysis
+
+Static analysis complements runtime checks.
+
+### clang-tidy
+
+```bash
+cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+clang-tidy -p build $(find . -name '*.cpp')
+```
+
+Focus areas:
+
+- Undefined behavior warnings
+- Lifetime and ownership issues
+- Dangerous casts and conversions
+
+### cppcheck
+
+```bash
+cppcheck --enable=all --std=c++20 --inconclusive --quiet .
+```
+
+---
+
+## 4. Fuzz Testing (Advanced)
+
+Fuzz testing is optional but recommended for **parsers and protocol boundaries**.
+
+Vix.cpp does not provide built-in fuzz targets.
+Contributors may create standalone fuzz harnesses using LLVM libFuzzer.
+
+Example structure:
 
 ```cpp
-#include <vix/core.h>
-#include <string>
-
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-    try {
-        std::string input(reinterpret_cast<const char*>(data), size);
-        // Simulate route parsing
-        Vix::Router r;
-        r.add("/users/{id}", [](auto&, auto&, auto&){});
-        r.match(input);
-    } catch (...) {
-        // ignore malformed input
-    }
+    // Feed arbitrary input into parsing or decoding logic
+    // Ensure no crashes, UB, or infinite loops
     return 0;
 }
 ```
@@ -84,150 +121,93 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 Build and run:
 
 ```bash
-clang++ -g -fsanitize=fuzzer,address,undefined \
-  -Iinclude -o fuzz_http tests/fuzz_http.cpp
-./fuzz_http
+clang++ -fsanitize=fuzzer,address,undefined fuzz_target.cpp -o fuzz_target
+./fuzz_target
 ```
 
-. Fuzzer will mutate inputs and test your route-matching logic for memory or logic errors.
+Any crash or sanitizer report is considered a security defect.
 
-# 🧱 3. Static Analysis
+---
 
-## 🔍 Run clang-tidy
+## 5. Unit Tests & Regression Coverage
 
-```bash
-cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -B build
-clang-tidy -p build $(find modules -name '*.cpp')
-```
+All security-related fixes must include **regression tests**.
 
-## 🧮 Run cppcheck
+Guidelines:
 
-```bash
-cppcheck --enable=all --std=c++20 --inconclusive --quiet modules/
-```
+- Tests must fail before the fix
+- Tests must pass after the fix
+- Prefer minimal reproductions
 
-## 🧠 Optional (Advanced): Coverity Scan
-
-If integrated with Coverity:
-
-```bash
-cov-build --dir cov-int cmake --build build
-tar czvf vix-cov.tgz cov-int
-```
-
-## 🔐 4. Dependency Audit
-
-📦 Check system libraries
-
-```bash
-ldd build/vix_cli | grep -E 'boost|ssl|crypto'
-```
-
-## 🧩 Update dependencies
-
-Ensure system dependencies are up to date:
-
-```bash
-sudo apt update && sudo apt upgrade libboost-all-dev nlohmann-json3-dev
-```
-
-## ⚙️ Verify header integrity
-
-```bash
-sha256sum modules/json/include/vix/json/json.hpp
-```
-
-# 🧰 5. Security Unit Tests
-
-Write test cases for:
-. Request parameter sanitization
-
-. Validation rules (regex injection, XSS, overflow)
-
-. JSON parser boundaries
-
-## Example:
-
-```cpp
-#include <gtest/gtest.h>
-#include <vix/utils/Validation.hpp>
-
-using namespace Vix::utils;
-
-TEST(ValidationTest, RejectsInvalidEmail) {
-    Schema sch{{"email", match(R"(^[^@\s]+@[^@\s]+\.[^@\s]+$)")}};
-    auto data = std::unordered_map<std::string, std::string>{{"email", "not-an-email"}};
-    auto res = validate_map(data, sch);
-    EXPECT_TRUE(res.is_err());
-}
-
-```
-
-# Run:
+Run the test suite:
 
 ```bash
 ctest --output-on-failure
 ```
 
-# 🧪 6. Runtime Hardening Flags
+---
 
-Always compile releases with secure flags:
+## 6. Compiler Hardening Flags (Release Builds)
+
+Release builds should enable standard hardening flags.
+
+Recommended flags:
+
+```text
+-fstack-protector-strong
+-D_FORTIFY_SOURCE=2
+-fno-omit-frame-pointer
+```
+
+Example:
 
 ```bash
--ffunction-sections -fdata-sections -fstack-protector-strong -D_FORTIFY_SOURCE=2
+cmake -S . -B build-rel \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_FLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2"
 ```
 
-On Linux:
+---
+
+## 7. Valgrind (Optional)
+
+Valgrind can be used as a secondary memory diagnostic tool:
 
 ```bash
-cmake -DCMAKE_CXX_FLAGS="-O2 -fstack-protector-strong -D_FORTIFY_SOURCE=2" -B build-rel
+valgrind --leak-check=full ./build-rel/vix
 ```
 
-# ⚡ 7. Optional: Valgrind Leak Check
+Expected result:
 
-```bash
-valgrind --leak-check=full --show-leak-kinds=all ./build/main
-```
+- No invalid reads or writes
+- No definitely lost memory
 
-Example clean output:
+---
 
-```yaml
-HEAP SUMMARY:
-  definitely lost: 0 bytes in 0 blocks
-  indirectly lost: 0 bytes in 0 blocks
-```
+## 8. Recommended Testing Frequency
 
-```markdown
-## 📊 8. Recommended Frequency
+| Test Type       | Recommended Frequency     |
+| --------------- | ------------------------- |
+| Unit tests      | Every commit / PR         |
+| Sanitizers      | Before every release      |
+| Static analysis | Regularly or via CI       |
+| Fuzz testing    | Before large refactors    |
+| Valgrind        | Optional, targeted checks |
 
-Fréquences recommandées pour les différents types de tests et audits :
+---
 
-| **Test Type**    | **Recommended Frequency**        |
-| ---------------- | -------------------------------- |
-| Unit tests       | Every commit / PR                |
-| Sanitizers       | Before each release              |
-| Fuzz tests       | Weekly or before large refactors |
-| Static analysis  | Monthly or automated via CI      |
-| Dependency audit | Quarterly                        |
-```
+## Summary
 
-```markdown
-## 🧾 Summary
+Security in Vix.cpp is ensured through:
 
-Résumé des outils recommandés pour assurer la qualité du code :
+- Compiler-based runtime checks
+- Strict testing discipline
+- Standard and transparent tooling
+- Clear failure semantics
 
-| **Tool**    | **Purpose**             | **Command**                         |
-| ----------- | ----------------------- | ----------------------------------- |
-| ASan/UBSan  | Detect memory/UB errors | `-DVIX_ENABLE_SANITIZERS=ON`        |
-| Clang-Tidy  | Static analysis         | `clang-tidy -p build ...`           |
-| Cppcheck    | Light static check      | `cppcheck --enable=all modules/`    |
-| Valgrind    | Leak detection          | `valgrind --leak-check=full ./main` |
-| LLVM Fuzzer | Fuzzing                 | `clang++ -fsanitize=fuzzer,address` |
-```
+Every release must pass **sanitizers, tests, and static analysis** before being considered stable.
 
-🧠 Goal:
-Every release of Vix.cpp must pass sanitizer, fuzzing, and static analysis tests
-to ensure long-term stability and security of the framework.
+---
 
-Maintained by the Vix.cpp Security Team
-📧 mailto:vixcpp.security@gmail.com
+Maintained by the Vix.cpp maintainers  
+Contact: gaspardkirira@outlook.com

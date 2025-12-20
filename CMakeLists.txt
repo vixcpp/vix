@@ -13,7 +13,7 @@ cmake_minimum_required(VERSION 3.20)
 #   cmake --build build -j
 # ====================================================================
 
-project(vix VERSION 1.14.0 LANGUAGES CXX)
+project(vix VERSION 1.15.0 LANGUAGES CXX)
 
 # Make find_package honor *_ROOT hints (e.g. MYSQLCPPCONN_ROOT)
 if (POLICY CMP0144)

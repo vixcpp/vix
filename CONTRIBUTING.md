@@ -1,32 +1,49 @@
-# 🧭 Contributing to Vix.cpp
+# Contributing to Vix.cpp
 
-Thank you for your interest in contributing to **Vix.cpp** —  
+Thank you for your interest in contributing to **Vix.cpp**,  
 a modern, high-performance C++ backend framework.
 
-We welcome contributions of all kinds:
-
-- 🧱 Core improvements (routing, HTTP, middleware, etc.)
-- ⚙️ Utility modules (logging, validation, JSON, etc.)
-- 🧩 Examples and documentation
-- 🐛 Bug reports and performance tuning
+This document explains **how to contribute effectively**, what kinds of contributions are welcome, and the standards expected when submitting changes.
 
 ---
 
-## 🧠 Philosophy
+## Project Scope & Contribution Areas
 
-Vix.cpp aims to bring **FastAPI-like developer experience** and **Go-like speed**  
-to the C++ world — without sacrificing simplicity or readability.
+We welcome contributions in the following areas:
 
-Contributions should always follow these principles:
+- Core runtime improvements (HTTP server, routing, middleware, async model)
+- Utility modules (logging, validation, JSON, configuration)
+- CLI tooling (commands, UX, diagnostics, dev workflow)
+- ORM and database integrations
+- WebSocket and real-time components
+- Documentation, guides, and examples
+- Bug fixes, performance improvements, and benchmarks
 
-- 🧼 Clear and readable C++20 code
-- 🧩 Modular, header-only where possible
-- ⚡ High performance and low memory overhead
-- 🧠 Self-documenting with concise comments
+If you are unsure where to start, look for issues labeled **`good first issue`** or **`devx`**.
 
 ---
 
-## ⚙️ Setup for Local Development
+## Project Philosophy
+
+Vix.cpp aims to bring:
+
+- FastAPI-like developer experience
+- Go-like performance characteristics
+- C++20/23 correctness and control
+
+All contributions should follow these core principles:
+
+- Clear, readable, modern C++ (C++20 minimum)
+- Modular design with minimal coupling
+- High performance and predictable memory usage
+- Explicit behavior and well-defined ownership
+- Concise, meaningful comments where needed
+
+Simplicity and correctness are preferred over cleverness.
+
+---
+
+## Local Development Setup
 
 ### 1. Clone the repository
 
@@ -36,65 +53,77 @@ cd vix
 git submodule update --init --recursive
 ```
 
-2. Build with CMake
+### 2. Configure and build
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build -j
 ```
 
-You can enable examples for quick testing:
+To enable examples:
 
 ```bash
 cmake -S . -B build -DVIX_BUILD_EXAMPLES=ON
 ```
 
-## 🧪 Running Examples
+---
 
-To test your environment:
+## Running Examples
+
+To verify your setup:
 
 ```bash
 cd build
 ./main
 ```
 
-##### Test the basic route:
+Test the basic route:
 
 ```bash
 curl http://localhost:8080/hello
 ```
 
-### Expected output:
+Expected output:
 
 ```json
 { "message": "Hello, Vix!" }
 ```
 
-# 🧩 Code Style Guidelines
+---
 
-Follow C++ Core Guidelines and modern C++20 conventions.
-Prefer auto only when the type is obvious.
-Use namespaces to organize code (Vix::core, Vix::utils, etc.).
-Avoid global state (use singletons or dependency injection when necessary).
-Each .hpp file should have proper include guards or #pragma once.
+## Code Style Guidelines
 
-## Example
+Vix.cpp follows modern C++ best practices:
+
+- Follow the C++ Core Guidelines
+- Prefer explicit types over excessive `auto`
+- Use namespaces consistently (`Vix::core`, `Vix::utils`, etc.)
+- Avoid global state; use dependency injection or scoped singletons
+- All headers must use `#pragma once` or include guards
+- Header files should not include unnecessary dependencies
+
+### Example
 
 ```cpp
 namespace Vix::utils {
+
 class Logger {
 public:
-    static Logger& getInstance();
-    void info(const std::string& msg);
+    static Logger& instance();
+    void info(const std::string& message);
+
 private:
     Logger() = default;
 };
+
 } // namespace Vix::utils
 ```
 
-# 🧱 CMake Conventions
+---
 
-Each module must define its own CMakeLists.txt:
+## CMake Conventions
+
+Each module must define its own `CMakeLists.txt`.
 
 ```cmake
 add_library(vix_core STATIC
@@ -107,16 +136,21 @@ target_link_libraries(vix_core PUBLIC Boost::asio nlohmann_json::nlohmann_json)
 add_library(Vix::core ALIAS vix_core)
 ```
 
-Use the Vix:: namespace for all exported targets.
-Never use global include_directories() — use target_include_directories().
+Rules:
 
-# 🧩 Submitting Changes
+- Use the `Vix::` namespace for all exported targets
+- Never use global `include_directories()`
+- Prefer `target_*` commands exclusively
+
+---
+
+## Submitting Changes
 
 1. Fork the repository
 2. Create a feature branch:
 
 ```bash
-git checkout -b feat/my-awesome-feature
+git checkout -b feat/my-feature
 ```
 
 3. Make your changes and commit them:
@@ -128,77 +162,94 @@ git commit -m "feat(core): add new router handler"
 4. Push your branch:
 
 ```bash
-git push origin feat/my-awesome-feature
+git push origin feat/my-feature
 ```
 
-5. Open a Pull Request (PR) with:
+5. Open a Pull Request including:
+   - A clear description of the change
+   - Motivation and design decisions
+   - Linked issues (if applicable)
+   - Benchmarks or usage examples when relevant
 
-. A clear description of your change
-. Linked issues (if any)
-. Example usage or benchmark results
+---
 
-# 🧪 Testing Guidelines
+## Testing Guidelines
 
-All modules must include basic unit tests under /tests or /unittests.
+All new features and fixes must include tests.
+
+- Place unit tests under `tests/` or `unittests/`
+- Use GoogleTest for consistency
+
+Run tests with:
 
 ```bash
 cd build
 ctest --output-on-failure
 ```
 
-Use GoogleTest for consistency:
+Example test:
 
 ```cpp
 #include <gtest/gtest.h>
 
 TEST(LoggerTest, BasicOutput) {
-    auto& log = Vix::Logger::getInstance();
-    EXPECT_NO_THROW(log.info("Hello"));
+    auto& logger = Vix::utils::Logger::instance();
+    EXPECT_NO_THROW(logger.info("Hello"));
 }
 ```
 
-# ⚡ Performance Benchmarks
+---
 
-Before merging significant changes, run:
+## Performance Considerations
+
+For performance-sensitive changes, run benchmarks before submitting:
 
 ```bash
 wrk -t8 -c100 -d10s http://localhost:8080/hello
 ```
 
-Record your results (Requests/sec, Latency, Memory).
+Include results when relevant:
 
-```markdown
-## 🧾 Commit Convention
+- Requests/sec
+- Latency (avg / p99)
+- Memory impact
 
-Suivez le format [Conventional Commits](https://www.conventionalcommits.org/) :
+---
 
-| Type        | Description                |
-| ----------- | -------------------------- |
-| `feat:`     | New feature or improvement |
-| `fix:`      | Bug fix                    |
-| `refactor:` | Code refactoring           |
-| `test:`     | Adding or improving tests  |
-| `docs:`     | Documentation updates      |
-| `chore:`    | Maintenance tasks          |
-```
+## Commit Convention
 
-# Example:
+Vix.cpp follows **Conventional Commits**:
+
+| Type      | Description                    |
+| --------- | ------------------------------ |
+| feat:     | New feature or improvement     |
+| fix:      | Bug fix                        |
+| refactor: | Internal code refactoring      |
+| test:     | Adding or improving tests      |
+| docs:     | Documentation updates          |
+| chore:    | Maintenance or tooling changes |
+
+Examples:
 
 ```bash
 feat(core): add middleware chaining support
 fix(utils): prevent null pointer in UUID generator
 ```
 
-# 💬 Communication
+---
 
-Open issues for bugs or ideas.
-Discuss architecture in PR comments or GitHub Discussions.
-Be respectful and concise.
+## Communication
 
-# 🪪 License
+- Use GitHub Issues for bugs and feature proposals
+- Use Pull Request discussions for design decisions
+- Keep discussions technical, respectful, and focused
+
+---
+
+## License
 
 By contributing to Vix.cpp, you agree that your contributions
-will be licensed under the same MIT License as the main project.
+will be licensed under the **MIT License**, the same as the main project.
 
 ---
 

@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
-## [1.14.7] - 2025-12-19
+## [1.15.0] - 2025-12-20
 
 ### Added
 - 
@@ -19,6 +19,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - 
 
+
+## v1.15.0 — 2025-12-20
+
+### Added
+
+- **`vix check`**: validate a project or compile a single `.cpp` file without execution.
+- **`vix tests`**: run project tests (alias of `vix check --tests`).
+- **`vix verify`**: verify packaged artifacts and signatures.
+- CLI reference documentation (`docs/vix-cli-help.md`).
+- Pull Request template to standardize contributions.
+
+### Changed
+
+- Improved global CLI help output formatting and readability.
+- Updated README with clearer CLI usage and script mode examples.
+- Updated security testing documentation with realistic, tool-based practices.
+- Improved contributing guidelines and code of conduct.
+
+### Removed
+
+- Deprecated `SECURITY.md` in favor of a more accurate security testing guide.
+
+### Notes
+
+- This release significantly improves **CLI usability**, **testing workflow**, and **project governance**.
+- Recommended upgrade for all users relying on the Vix CLI.
+
+## [1.14.7] - 2025-12-19
+
+### Added
+
+-
+
+### Changed
+
+-
+
+### Removed
+
+-
 
 ## v1.14.7 — CLI Packaging Stability Update
 
