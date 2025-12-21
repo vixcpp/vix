@@ -140,6 +140,80 @@ app.get("/users/{id}", [](Request req, Response res) {
 });
 ```
 
+# 🧠 Vix REPL — Interactive Runtime Shell
+
+## ▶️ Starting the REPL
+
+```bash
+vix
+```
+
+Example startup:
+
+```
+Vix.cpp v1.x (CLI) — Modern C++ backend runtime
+[GCC 13.3.0] on linux
+Exit: Ctrl+C / Ctrl+D | Clear: Ctrl+L | Type help for help
+vix>
+```
+
+---
+
+## 🧮 Math Expressions
+
+You can type expressions directly:
+
+```text
+1 + 2
+10 * (3 + 4)
+```
+
+## 🧩 JSON Support
+
+The REPL supports **strict JSON** using `nlohmann::json`.
+
+### Objects
+
+```text
+user = {"name":"Gaspard","age":10}
+user
+```
+
+### Arrays
+
+```text
+nums = [1,2,3,4]
+nums
+```
+
+## 🖨️ print / println
+
+### Basic output
+
+```text
+print("Hello")
+println("Hello world")
+```
+
+### Mix strings and expressions
+
+```text
+x = 3
+println("x =", x)
+println("x+1 =", x+1)
+```
+
+## ⚙️ Built-in Vix API
+
+The REPL exposes a built-in `Vix` object.
+
+### Working directory
+
+```text
+cwd()
+Vix.cwd()
+```
+
 ### Minimal HTTP + WebSocket Server
 
 This example shows the **smallest fully working HTTP + WS hybrid server**.

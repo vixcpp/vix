@@ -8,17 +8,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+
+## 1.16.0 — 2025-01-XX
+
+### 🚀 Highlights
+
+- **REPL is now the default mode**  
+  Running `vix` starts the interactive shell automatically  
+  (no more `vix repl`).
+
+- **Modern runtime experience**  
+  Behavior aligned with Python, Node.js, and Deno.
+
+---
+
+### ✨ Added
+
+- Default interactive REPL when running `vix`
+- Dedicated `README_REPL.md` with:
+  - Math expressions
+  - Variables
+  - JSON usage
+  - `print` / `println`
+  - Built-in `Vix` API examples
+- Improved CLI documentation (`docs/modules/cli.md`)
+
+---
+
+### 🧠 Improved
+
+- REPL argument evaluation:
+  - Correct handling of string literals
+  - Math expressions with variables
+  - Mixed arguments (`println("x =", x+1)`)
+- REPL execution flow stability
+- Error messages clarity in interactive mode
+- Overall CLI UX consistency
+
+---
+
+### 🧹 Changed
+
+- Removed `vix repl` as a required entry point
+- REPL is now the primary interaction mode
+- CLI documentation updated to reflect new behavior
+
+---
+
+### 🔧 Internal
+
+- REPL flow refactoring and cleanup
+- Better separation between CLI dispatcher and REPL runtime
+- Documentation structure improvements
+
+---
+
+### ⚠️ Notes
+
+- JSON literals must be **strictly valid JSON**
+  (`{"key":"value"}`, not `{key, value}`)
+
 ## [1.15.0] - 2025-12-20
 
 ### Added
-- 
+
+-
 
 ### Changed
-- 
+
+-
 
 ### Removed
-- 
 
+-
 
 ## v1.15.0 — 2025-12-20
 
