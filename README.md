@@ -123,7 +123,7 @@ using namespace Vix;
 int main() {
     App app;
 
-    app.get("/", [](Request, Request res) {
+    app.get("/", [](Request req, Response res) {
         res.json({ "message", "Hello world" });
     });
 
