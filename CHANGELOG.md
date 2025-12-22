@@ -9,6 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## v1.16.1 — REPL Isolation & Stability
+
+### ✨ Improvements
+
+- Fully isolated the REPL from CLI commands (`build`, `run`, `check`, `tests`, `verify`)
+- Disabled execution of CLI commands and flags inside the REPL
+- Removed CLI flags from REPL autocompletion to avoid misleading suggestions
+- Disabled `help <command>` and CLI command listing inside the REPL
+- Improved REPL UX consistency with a sandboxed, Bun/Deno-like experience
+
+### 🧠 Behavior Changes
+
+- The REPL is now a **pure interactive sandbox** for:
+  - math expressions
+  - variables
+  - JSON literals
+  - `print / println`
+  - `Vix` API (`cd`, `cwd`, `env`, `args`, `exit`, etc.)
+- All project-related CLI commands must now be executed **outside** the REPL
+
+### 🛠 Internal
+
+- Removed remaining runtime dependencies between the REPL and the CLI dispatcher
+- Simplified REPL command completion logic
+
+---
+
 ## 1.16.0 — 2025-01-XX
 
 ### 🚀 Highlights
