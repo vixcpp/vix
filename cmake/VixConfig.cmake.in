@@ -7,13 +7,30 @@ include(CMakeFindDependencyMacro)
 #    MUST be defined BEFORE including VixTargets.cmake
 # -------------------------------------------------------
 
-# MySQLCppConn is ONLY needed if vix::orm was built with MySQL,
-# but VixTargets.cmake may reference MySQLCppConn::MySQLCppConn.
-# We DO NOT force consumers to have MySQL installed.
-# If the real package exists, it will define the target; otherwise we create a stub.
 find_package(MySQLCppConn QUIET CONFIG)
 if (NOT TARGET MySQLCppConn::MySQLCppConn)
   add_library(MySQLCppConn::MySQLCppConn INTERFACE IMPORTED)
+endif()
+
+# -------------------------------------------------------
+# 0bis) Compression deps (optional) — MUST exist before VixTargets.cmake
+# -------------------------------------------------------
+if (@VIX_WITH_ZLIB@)
+  find_dependency(ZLIB QUIET)
+
+  # Safety net: if ZLIB was found but did not create the target
+  if (ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
+    add_library(ZLIB::ZLIB INTERFACE IMPORTED)
+    target_include_directories(ZLIB::ZLIB INTERFACE "${ZLIB_INCLUDE_DIRS}")
+    target_link_libraries(ZLIB::ZLIB INTERFACE "${ZLIB_LIBRARIES}")
+  endif()
+
+  # If Vix exports ZLIB::ZLIB, we must have it
+  if (NOT TARGET ZLIB::ZLIB)
+    message(FATAL_ERROR
+      "Vix was built with gzip support (VIX_WITH_ZLIB=ON), but ZLIB::ZLIB is not available on this system."
+    )
+  endif()
 endif()
 
 # -------------------------------------------------------

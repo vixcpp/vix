@@ -13,6 +13,16 @@ int main()
 {
     App app;
 
+    app.get("/", [](auto &, auto &res)
+            {
+                res.send("ok"); // light
+            });
+
+    app.get_heavy("/users", [](auto &, auto &res)
+                  {
+    // DB query (heavy) -> executor
+    res.send("users"); });
+
     app.get("/users/{id}", [](Request &req, Response &res)
             {
         auto id   = req.param("id");
