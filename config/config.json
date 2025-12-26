@@ -1,24 +1,17 @@
 {
-  "database": {
-    "default": {
-      "ENGINE": "mysql",
-      "NAME": "mydb",
-      "USER": "myuser",
-      "PASSWORD": "",
-      "HOST": "localhost",
-      "PORT": 3306
-    }
-  },
-
   "server": {
     "port": 8080,
-    "request_timeout": 5000
+    "request_timeout": 2000,
+    "io_threads": 0
   },
-
-  "websocket": {
-    "port": 9090,
-    "max_message_size": 65536,
-    "idle_timeout": 60,
-    "ping_interval": 30
+  "logging": {
+    "async": true,
+    "queue_max": 20000,
+    "drop_on_overflow": true
+  },
+  "waf": {
+    "mode": "basic",
+    "max_target_len": 4096,
+    "max_body_bytes": 1048576
   }
 }

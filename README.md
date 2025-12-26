@@ -123,8 +123,8 @@ using namespace Vix;
 int main() {
     App app;
 
-    app.get("/", [](Request req, Response res) {
-        res.json({ "message", "Hello world" });
+    app.get("/", [](Request&, Response& res){
+        res.send("Hello from Vix.cpp 🚀");
     });
 
     app.run(8080);

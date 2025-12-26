@@ -1,0 +1,195 @@
+<!-- python3 -m http.server 5173 -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Vix Security Demo — CORS + IP Filter + Rate Limit</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+    <style>
+      body {
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      h1 {
+        margin-bottom: 8px;
+      }
+      .hint {
+        color: #444;
+        margin-bottom: 16px;
+      }
+      button {
+        padding: 10px 14px;
+        margin: 6px 8px 6px 0;
+        cursor: pointer;
+      }
+      pre {
+        background: #0b0b0b;
+        color: #eaeaea;
+        padding: 14px;
+        border-radius: 10px;
+        overflow: auto;
+        min-height: 220px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+      code {
+        background: #f3f3f3;
+        padding: 2px 6px;
+        border-radius: 6px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>Vix.cpp — Security Middleware Demo</h1>
+
+    <p class="hint">
+      API server: <code>http://localhost:8080</code><br />
+      This page must be served from another origin (ex:
+      <code>http://0.0.0.0:5173</code> or <code>http://localhost:5173</code>)
+    </p>
+
+    <div class="row">
+      <button id="btnPingAllowed">→ GET /api/ping (allowed IP)</button>
+      <button id="btnPingDenied">→ GET /api/ping (DENIED IP)</button>
+      <button id="btnRateLimit">→ Spam /api/ping (rate limit)</button>
+      <button id="btnPreflight">→ OPTIONS /api/echo (preflight)</button>
+      <button id="btnPost">→ POST /api/echo</button>
+    </div>
+
+    <pre id="out">Ready.</pre>
+
+    <script>
+      const API = "http://localhost:8080";
+      const out = document.getElementById("out");
+
+      function log(x) {
+        out.textContent =
+          typeof x === "string" ? x : JSON.stringify(x, null, 2);
+      }
+
+      async function show(res) {
+        const text = await res.text().catch(() => "");
+        const headers = {};
+        res.headers.forEach((v, k) => (headers[k] = v));
+        return { ok: res.ok, status: res.status, headers, body: text };
+      }
+
+      // IMPORTANT:
+      // We use a demo header X-Vix-Ip (not X-Forwarded-For).
+      // Your server must allow it in CORS allow_headers and read it in IP filter + rate limit.
+
+      // ------------------------------------------------------------
+      // Allowed IP
+      // ------------------------------------------------------------
+      document.getElementById("btnPingAllowed").onclick = async () => {
+        try {
+          const res = await fetch(`${API}/api/ping`, {
+            method: "GET",
+            headers: {
+              "X-Vix-Ip": "9.9.9.9",
+            },
+            // If you don't need cookies, you can remove this line.
+            credentials: "include",
+          });
+          log(await show(res));
+        } catch (e) {
+          log(String(e));
+        }
+      };
+
+      // ------------------------------------------------------------
+      // Denied IP (matches ip_opt.deny = {"1.2.3.4"})
+      // ------------------------------------------------------------
+      document.getElementById("btnPingDenied").onclick = async () => {
+        try {
+          const res = await fetch(`${API}/api/ping`, {
+            method: "GET",
+            headers: {
+              "X-Vix-Ip": "1.2.3.4",
+            },
+            credentials: "include",
+          });
+          log(await show(res));
+        } catch (e) {
+          log(String(e));
+        }
+      };
+
+      // ------------------------------------------------------------
+      // Rate limit demo (spam requests)
+      // ------------------------------------------------------------
+      document.getElementById("btnRateLimit").onclick = async () => {
+        const results = [];
+
+        for (let i = 1; i <= 6; i++) {
+          try {
+            const res = await fetch(`${API}/api/ping`, {
+              method: "GET",
+              headers: {
+                "X-Vix-Ip": "9.9.9.9",
+              },
+              credentials: "include",
+            });
+
+            const meta = await show(res);
+            meta.request = i;
+            results.push(meta);
+          } catch (e) {
+            results.push({ request: i, error: String(e) });
+          }
+        }
+
+        log(results);
+      };
+
+      // ------------------------------------------------------------
+      // Explicit preflight test (for POST /api/echo)
+      // ------------------------------------------------------------
+      document.getElementById("btnPreflight").onclick = async () => {
+        try {
+          const res = await fetch(`${API}/api/echo`, {
+            method: "OPTIONS",
+            headers: {
+              Origin: window.location.origin,
+              "Access-Control-Request-Method": "POST",
+              "Access-Control-Request-Headers": "content-type, x-vix-ip",
+            },
+          });
+
+          log(await show(res));
+        } catch (e) {
+          log(String(e));
+        }
+      };
+
+      // ------------------------------------------------------------
+      // POST (triggers automatic browser preflight)
+      // ------------------------------------------------------------
+      document.getElementById("btnPost").onclick = async () => {
+        try {
+          const res = await fetch(`${API}/api/echo`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Vix-Ip": "9.9.9.9",
+            },
+            body: JSON.stringify({ hello: "world" }),
+            credentials: "include",
+          });
+
+          log(await show(res));
+        } catch (e) {
+          log(String(e));
+        }
+      };
+    </script>
+  </body>
+</html>

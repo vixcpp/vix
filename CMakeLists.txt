@@ -68,6 +68,9 @@ option(VIX_ENABLE_WEBSOCKET    "Build Vix WebSocket module"               ON)
 option(VIX_ENABLE_CLI          "Build Vix CLI module"                     ON)
 
 option(VIX_FORCE_FETCH_JSON    "Fetch JSON backend if modules/json missing" ON)
+option(VIX_BENCH_MODE "Disable heavy security/logging checks for benchmarks" OFF)
+option(VIX_ENABLE_MIDDLEWARE   "Build Vix middleware module"              ON)
+option(VIX_ENABLE_HTTP_COMPRESSION "Enable HTTP compression middleware deps (zlib/brotli)" ON)
 
 # ----------------------------------------------------
 # Tooling / Static analysis
@@ -184,6 +187,35 @@ endif()
 add_library(vix INTERFACE)
 add_library(vix::vix ALIAS vix)
 
+# ----------------------------------------------------
+# Optional deps: HTTP compression (zlib + brotli)
+# Propagate defs/libs to all consumers through vix::vix
+# ----------------------------------------------------
+if (VIX_ENABLE_HTTP_COMPRESSION)
+  # ---- zlib (gzip) ----
+  find_package(ZLIB QUIET)
+  if (ZLIB_FOUND)
+    message(STATUS "Compression: zlib found -> gzip enabled")
+    target_compile_definitions(vix INTERFACE VIX_HAS_ZLIB=1)
+    target_link_libraries(vix INTERFACE ZLIB::ZLIB)
+  else()
+    message(STATUS "Compression: zlib not found -> gzip disabled")
+  endif()
+
+  # ---- brotli (br) ----
+  find_library(BROTLI_ENC NAMES brotlienc)
+  find_library(BROTLI_COMMON NAMES brotlicommon)
+
+  if (BROTLI_ENC AND BROTLI_COMMON)
+    message(STATUS "Compression: brotli found -> br enabled")
+    target_compile_definitions(vix INTERFACE VIX_HAS_BROTLI=1)
+    target_link_libraries(vix INTERFACE ${BROTLI_ENC} ${BROTLI_COMMON})
+  else()
+    message(STATUS "Compression: brotli not found -> br disabled")
+  endif()
+endif()
+
+
 # Attach warnings/coverage to umbrella (propagates to consumers)
 if (TARGET vix_warnings)
   target_link_libraries(vix INTERFACE vix_warnings)
@@ -268,6 +300,48 @@ else()
   message(FATAL_ERROR "Missing 'modules/core'. Run: git submodule update --init --recursive")
 endif()
 
+# --- Middleware (optional) ---
+set(VIX_HAS_MIDDLEWARE OFF)
+if (VIX_ENABLE_MIDDLEWARE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/middleware/CMakeLists.txt")
+  message(STATUS "Adding 'modules/middleware'...")
+  add_subdirectory(modules/middleware middleware_build)
+
+  # Normalise: expose vix::middleware
+  if (TARGET vix::middleware OR TARGET vix_middleware)
+    set(VIX_HAS_MIDDLEWARE ON)
+    if (TARGET vix_middleware AND NOT TARGET vix::middleware)
+      add_library(vix::middleware ALIAS vix_middleware)
+    endif()
+  else()
+    message(WARNING "Middleware module added but no vix::middleware target was exported.")
+  endif()
+else()
+  message(STATUS "Middleware: disabled or not present.")
+endif()
+
+# Bench mode (compile-time flags)
+if (VIX_BENCH_MODE)
+  message(STATUS "Bench mode enabled: defining VIX_BENCH_MODE")
+
+  # Resolve the real core target (vix::core is an ALIAS in your tree)
+  set(_VIX_CORE_REAL "")
+
+  if (TARGET vix_core)
+    set(_VIX_CORE_REAL vix_core)
+  elseif (TARGET vix-core)
+    set(_VIX_CORE_REAL vix-core)
+  elseif (TARGET core)
+    set(_VIX_CORE_REAL core)
+  endif()
+
+  if (_VIX_CORE_REAL)
+    target_compile_definitions(${_VIX_CORE_REAL} PUBLIC VIX_BENCH_MODE=1)
+  else()
+    message(WARNING "Bench mode requested but could not find real core target (tried: vix_core, vix-core, core).")
+  endif()
+endif()
+
+
 # --- WebSocket (optional) ---
 set(VIX_HAS_WEBSOCKET OFF)
 if (VIX_ENABLE_WEBSOCKET AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/websocket/CMakeLists.txt")
@@ -328,6 +402,14 @@ if (TARGET vix::websocket)
 elseif (TARGET vix_websocket)
   add_library(vix::websocket ALIAS vix_websocket)
   target_link_libraries(vix INTERFACE vix::websocket)
+endif()
+
+# Link middleware only if it exists
+if (TARGET vix::middleware)
+  target_link_libraries(vix INTERFACE vix::middleware)
+elseif (TARGET vix_middleware)
+  add_library(vix::middleware ALIAS vix_middleware)
+  target_link_libraries(vix INTERFACE vix::middleware)
 endif()
 
 # Propagate sanitizers to consumers (umbrella)
@@ -511,6 +593,11 @@ set(VIX_WITH_OPENSSL  ON)     # adjust if you ever disable SSL in core
 set(VIX_WITH_MYSQL    OFF)    # do NOT require MySQL for consumers by default
 set(VIX_WITH_SQLITE   OFF)    # will be set ON only if websocket exists
 
+set(VIX_WITH_ZLIB OFF)
+if (VIX_ENABLE_HTTP_COMPRESSION AND ZLIB_FOUND)
+  set(VIX_WITH_ZLIB ON)
+endif()
+
 if (TARGET vix::websocket OR TARGET vix_websocket)
   set(VIX_WITH_SQLITE ON)
 endif()
@@ -539,6 +626,11 @@ if (VIX_ENABLE_INSTALL)
 
   if (VIX_HAS_ORM AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/orm/include")
     install(DIRECTORY modules/orm/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+  endif()
+
+  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/middleware/include")
+    install(DIRECTORY modules/middleware/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
             FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
   endif()
 
@@ -605,6 +697,7 @@ message(STATUS "Project version   : ${PROJECT_VERSION}")
 message(STATUS "JSON backend      : ${_VIX_JSON_BACKEND}")
 message(STATUS "WebSocket built   : ${VIX_HAS_WEBSOCKET}")
 message(STATUS "ORM packaged      : ${VIX_HAS_ORM}")
+message(STATUS "Middleware built : ${VIX_HAS_MIDDLEWARE}")
 message(STATUS "Examples          : ${VIX_BUILD_EXAMPLES}")
 message(STATUS "Tests             : ${VIX_BUILD_TESTS}")
 message(STATUS "Sanitizers        : ${VIX_ENABLE_SANITIZERS}")

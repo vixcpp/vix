@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Vix — CORS + CSRF demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 2rem;
+      background: #0f172a;
+      color: #e5e7eb;
+    }
+
+    h1 {
+      margin-bottom: 1rem;
+    }
+
+    button {
+      padding: 0.6rem 1rem;
+      margin-right: 0.5rem;
+      margin-bottom: 0.5rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #2563eb;
+      color: white;
+      font-weight: 500;
+    }
+
+    button.secondary {
+      background: #334155;
+    }
+
+    pre {
+      background: #020617;
+      padding: 1rem;
+      border-radius: 6px;
+      margin-top: 1rem;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>Vix — CORS + CSRF test</h1>
+
+  <p>
+    Backend: <code>http://localhost:8080</code><br>
+    Origin: <code>http://localhost:5173</code> (or any static server)
+  </p>
+
+  <button onclick="getCsrf()">1️⃣ Get CSRF token</button>
+  <button onclick="postFail()" class="secondary">2️⃣ POST (FAIL)</button>
+  <button onclick="postOk()">3️⃣ POST (OK)</button>
+
+  <pre id="log">Ready.</pre>
+
+  <script>
+    const API = "http://localhost:8080";
+
+    const log = (msg) => {
+      const el = document.getElementById("log");
+      el.textContent += "\n" + msg;
+      el.scrollTop = el.scrollHeight;
+      console.log(msg);
+    };
+
+    async function getCsrf() {
+      log("→ GET /api/csrf");
+
+      const res = await fetch(API + "/api/csrf", {
+        method: "GET",
+        credentials: "include", // IMPORTANT: send/receive cookies
+      });
+
+      const text = await res.text();
+      log("← " + res.status + " " + text);
+    }
+
+    async function postFail() {
+      log("→ POST /api/update (missing CSRF header)");
+
+      const res = await fetch(API + "/api/update", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: "x=1"
+      });
+
+      const text = await res.text();
+      log("← " + res.status + " " + text);
+    }
+
+    async function postOk() {
+      log("→ POST /api/update (correct CSRF header)");
+
+      const res = await fetch(API + "/api/update", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "X-CSRF-Token": "abc" // must match cookie
+        },
+        body: "x=1"
+      });
+
+      const text = await res.text();
+      log("← " + res.status + " " + text);
+    }
+  </script>
+</body>
+</html>
