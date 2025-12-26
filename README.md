@@ -159,61 +159,6 @@ vix>
 
 ---
 
-## 🧮 Math Expressions
-
-You can type expressions directly:
-
-```text
-1 + 2
-10 * (3 + 4)
-```
-
-## 🧩 JSON Support
-
-The REPL supports **strict JSON** using `nlohmann::json`.
-
-### Objects
-
-```text
-user = {"name":"Gaspard","age":10}
-user
-```
-
-### Arrays
-
-```text
-nums = [1,2,3,4]
-nums
-```
-
-## 🖨️ print / println
-
-### Basic output
-
-```text
-print("Hello")
-println("Hello world")
-```
-
-### Mix strings and expressions
-
-```text
-x = 3
-println("x =", x)
-println("x+1 =", x+1)
-```
-
-## ⚙️ Built-in Vix API
-
-The REPL exposes a built-in `Vix` object.
-
-### Working directory
-
-```text
-cwd()
-Vix.cwd()
-```
-
 ### Minimal HTTP + WebSocket Server
 
 This example shows the **smallest fully working HTTP + WS hybrid server**.
@@ -228,31 +173,29 @@ This example shows the **smallest fully working HTTP + WS hybrid server**.
 
 ```cpp
 #include <vix.hpp>
-#include <vix/websocket/AttachedRuntime.hpp>
+#include <vix/websocket/Runtime.hpp>
 
 using namespace vix;
 
 int main()
 {
-    auto bundle = vix::make_http_and_ws("config/config.json");
-    auto &[app, ws] = bundle;
+    vix::serve_http_and_ws([](auto &app, auto &ws){
 
-    app.get("/", [](const Request &, Response &res)
-            { res.json({"framework", "Vix.cpp",
-                        "message", "HTTP + WebSocket example (basic) 🚀"}); });
+        // HTTP
+        app.get("/", [](auto&, auto& res)
+        {
+            res.send("HTTP + WebSocket");
+        });
 
-    ws.on_open([&ws](auto &session)
-               {
-        (void)session;
+        // WebSocket
+        ws.on_typed_message([&ws](auto&,
+                    const std::string& type,
+                    const vix::json::kvs& payload){
+            if (type == "ping")
+                ws.broadcast_json("pong", payload);
+        });
 
-        ws.broadcast_json("chat.system", {
-            "user", "server",
-            "text", "Welcome to Vix WebSocket! 👋"
-        }); });
-
-    vix::run_http_and_ws(app, ws, 8080);
-
-    return 0;
+    });
 }
 ```
 
@@ -315,11 +258,49 @@ C++20 + Asio + zero-overhead abstractions.
 
 To build **Vix.cpp** from source:
 
+## 🐧 Linux / Ubuntu
+
+### Prerequisites
+
+```bash
+sudo apt update
+sudo apt install -y \
+  g++-12 cmake make git \                # Build tools
+  libboost-all-dev \                     # Boost (asio, beast)
+  nlohmann-json3-dev \                   # JSON (nlohmann/json)
+  libspdlog-dev \                        # Logging (spdlog)
+  zlib1g-dev \                           # gzip / ZLIB
+  libmysqlcppconn-dev                   # Optional: MySQL Connector/C++ for ORM
+```
+
+Optional dependencies:
+
+```bash
+sudo apt install -y libmysqlcppconn-dev libsqlite3-dev
+```
+
+---
+
+## 🍎 macOS
+
+### Prerequisites
+
+Install Homebrew first, then:
+
+```bash
+brew install cmake ninja llvm boost nlohmann-json spdlog fmt mysql sqlite3 zlib
+export ZLIB_ROOT="$(brew --prefix zlib)"
+```
+
+### Build
+
 ```bash
 git clone https://github.com/vixcpp/vix.git
 cd vix
+git submodule update --init --recursive
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
+sudo cmake --install build --prefix /usr/local
 ```
 
 > This builds the Vix runtime and CLI.  

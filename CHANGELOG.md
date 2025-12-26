@@ -9,6 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## v1.17.0
+
+### Added
+
+- `vix install` command to install/setup a Vix project or `.vixpkg` artifact.
+- Middleware integrated into the default Vix runtime (works out-of-the-box).
+- A full set of middleware-focused examples:
+  - Auth (API key, JWT, RBAC)
+  - CORS (basic/strict)
+  - CSRF (strict + demos)
+  - Rate limiting (servers + pipeline demos)
+  - IP filtering (servers + pipeline demos)
+  - Body limit
+  - Compression
+  - HTTP cache
+  - ETag
+  - Security headers
+  - Static files
+  - JSON/form/multipart parsing
+  - Group builder examples
+
+### Changed
+
+- Updated CMake configuration and `VixConfig.cmake` to expose the middleware stack correctly for downstream projects.
+- Updated README/docs to reflect the new install workflow and middleware usage.
+
+### Notes
+
+- No breaking changes expected.
+
 ## v1.16.1 — REPL Isolation & Stability
 
 ### ✨ Improvements

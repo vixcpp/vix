@@ -13,7 +13,7 @@ cmake_minimum_required(VERSION 3.20)
 #   cmake --build build -j
 # ====================================================================
 
-project(vix VERSION 1.16.1 LANGUAGES CXX)
+project(vix VERSION 1.17.1 LANGUAGES CXX)
 
 # Make find_package honor *_ROOT hints (e.g. MYSQLCPPCONN_ROOT)
 if (POLICY CMP0144)
@@ -654,8 +654,7 @@ if (VIX_ENABLE_INSTALL)
     COMPATIBILITY SameMajorVersion
   )
 
-  # Export flags for consumers (substituted into VixConfig.cmake)
-  set(VIX_HAS_ORM ${VIX_HAS_ORM})                 # already computed
+  set(VIX_HAS_ORM ${VIX_HAS_ORM})                
   set(VIX_ORM_WITH_MYSQL OFF)
   if (VIX_HAS_ORM AND VIX_ORM_USE_MYSQL)
     set(VIX_ORM_WITH_MYSQL ON)
