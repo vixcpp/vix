@@ -1,5 +1,9 @@
 # Vix.cpp
 
+<p align="center">
+  <a href="README.md">English</a> | <strong>日本語</strong>
+</p>
+
 <p align="center" style="margin:0;">
   <img 
     src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1762524350/vixcpp_etndhz.png" 
@@ -27,8 +31,6 @@
 # 🌍 Vix とは？
 
 **Vix** は、次世代の **オフラインファースト・ピアツーピア・超高速 C++ モダンランタイム**です。
-
-[English](README.md)
 
 目標は明確です。
 
