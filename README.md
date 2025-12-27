@@ -28,7 +28,7 @@
 
 **Vix** is a next-generation **offline-first, peer-to-peer, ultra-fast runtime for modern C++**.
 
-[Japanese](README-JP.md)
+[Japanese](README.ja.md)
 
 Its goal is clear:
 
