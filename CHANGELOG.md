@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## v1.17.3
+
+### Added
+
+- `vix build --target <triple>`: cross-compilation support with auto-generated CMake toolchain.
+
+  - Automatically generates `vix-toolchain.cmake`
+  - Passes `CMAKE_TOOLCHAIN_FILE` and `VIX_TARGET_TRIPLE`
+  - Cache-safe: reuses build directories when configuration is unchanged
+  - Compatible with `--preset`, `--static`, `--clean`
+
+- Optional `--sysroot <path>` support for cross builds
+  - Enables proper discovery of target libraries (e.g. zlib)
+  - Designed for real cross environments (ARM, embedded, SBCs)
+
+### Improved
+
+- Smarter build directory reuse via configuration signatures
+- More explicit error messages when cross toolchains or sysroots are missing
+
 ## v1.17.0
 
 ### Added
