@@ -1,5 +1,9 @@
 # Vix.cpp
 
+<p align="center">
+  <strong>English</strong> | <a href="README.ja.md">日本語</a>
+</p>
+
 <p align="center" style="margin:0;">
   <img 
     src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1762524350/vixcpp_etndhz.png" 
@@ -27,8 +31,6 @@
 # What is Vix?
 
 **Vix** is a next-generation **offline-first, peer-to-peer, ultra-fast runtime for modern C++**.
-
-[Japanese](README.ja.md)
 
 Its goal is clear:
 
