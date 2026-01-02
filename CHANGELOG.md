@@ -9,6 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## v1.17.4 — 2026-01-02
+
+### 🔧 Fixed
+
+- **CMake / Packaging**
+
+  - Fixed `find_package(Vix)` failures caused by missing `Boost::filesystem` / `Boost::system` targets.
+  - Ensured all required dependencies are resolved **before** loading `VixTargets.cmake`.
+  - Removed deprecated `FindBoost` behavior in exported configs (CMP0167-safe).
+  - Stabilized consumer builds on macOS (AppleClang + Homebrew Boost) and Linux.
+
+- **Core**
+
+  - Removed `Boost::filesystem` from `vix::core` public link interface.
+  - Restricted Boost dependency to `Boost::system` only (Asio / Beast).
+  - Updated HTTP server internals and headers accordingly.
+  - Prevented Boost symbols from leaking into consumer CMake targets.
+
+- **WebSocket**
+  - Cleaned `vix::websocket` exported link interface.
+  - Fixed missing `Boost::system` target errors in downstream applications.
+  - Improved module behavior with modern CMake dependency resolution.
+
+### ✨ Improved
+
+- More robust umbrella CMake configuration for multi-module installs.
+- Clearer separation between internal dependencies and public API surface.
+- Better cross-platform developer experience when using:
+  ```bash
+  find_package(Vix CONFIG REQUIRED)
+  ```
+
 ## v1.17.3
 
 ### Added

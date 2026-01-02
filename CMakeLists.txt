@@ -588,7 +588,7 @@ option(VIX_ENABLE_INSTALL "Enable install/export rules for packaging" ON)
 
 # Compute feature flags as real ON/OFF at configure-time (NO generator expressions)
 set(VIX_WITH_JSON     ON)     # umbrella always links JSON backend
-set(VIX_WITH_BOOST_FS ON)     # adjust if you ever disable Boost::filesystem in core
+set(VIX_WITH_BOOST_FS OFF)    # do NOT require Boost for consumers by default
 set(VIX_WITH_OPENSSL  ON)     # adjust if you ever disable SSL in core
 set(VIX_WITH_MYSQL    OFF)    # do NOT require MySQL for consumers by default
 set(VIX_WITH_SQLITE   OFF)    # will be set ON only if websocket exists
