@@ -2,75 +2,23 @@
 
 include(CMakeFindDependencyMacro)
 
-# -------------------------------------------------------
-# 0) Optional deps that may be referenced by exported targets
-#    MUST be defined BEFORE including VixTargets.cmake
-# -------------------------------------------------------
-
-find_package(MySQLCppConn QUIET CONFIG)
-if (NOT TARGET MySQLCppConn::MySQLCppConn)
-  add_library(MySQLCppConn::MySQLCppConn INTERFACE IMPORTED)
-endif()
-
-# -------------------------------------------------------
-# 0bis) Compression deps (optional) — MUST exist before VixTargets.cmake
-# -------------------------------------------------------
-if (@VIX_WITH_ZLIB@)
-  find_dependency(ZLIB QUIET)
-
-  # Safety net: if ZLIB was found but did not create the target
-  if (ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
-    add_library(ZLIB::ZLIB INTERFACE IMPORTED)
-    target_include_directories(ZLIB::ZLIB INTERFACE "${ZLIB_INCLUDE_DIRS}")
-    target_link_libraries(ZLIB::ZLIB INTERFACE "${ZLIB_LIBRARIES}")
-  endif()
-
-  # If Vix exports ZLIB::ZLIB, we must have it
-  if (NOT TARGET ZLIB::ZLIB)
-    message(FATAL_ERROR
-      "Vix was built with gzip support (VIX_WITH_ZLIB=ON), but ZLIB::ZLIB is not available on this system."
-    )
-  endif()
-endif()
-
-# -------------------------------------------------------
-# 1) Load exported Vix targets
-# -------------------------------------------------------
-include("${CMAKE_CURRENT_LIST_DIR}/VixTargets.cmake")
-
-# -------------------------------------------------------
-# 2) Core and common dependencies
-# -------------------------------------------------------
-
+# ---- deps that exported targets may reference ----
 find_dependency(Threads REQUIRED)
-
 find_dependency(fmt CONFIG REQUIRED)
-
 find_dependency(spdlog CONFIG REQUIRED)
-if (TARGET spdlog::spdlog AND NOT TARGET spdlog::spdlog_header_only)
-  add_library(spdlog::spdlog_header_only ALIAS spdlog::spdlog)
+
+if (@VIX_WITH_OPENSSL@)
+  find_dependency(OpenSSL REQUIRED)
 endif()
 
 if (@VIX_WITH_JSON@)
   find_dependency(nlohmann_json CONFIG REQUIRED)
 endif()
 
-if (@VIX_WITH_BOOST_FS@)
-  find_dependency(Boost REQUIRED COMPONENTS filesystem system)
-endif()
-
-if (@VIX_WITH_OPENSSL@)
-  find_dependency(OpenSSL REQUIRED)
-endif()
-
-# -------------------------------------------------------
-# 3) SQLite (optional)
-# -------------------------------------------------------
 if (@VIX_WITH_SQLITE@)
   find_dependency(SQLite3 REQUIRED)
 
   if (TARGET SQLite::SQLite3)
-    # ok
   elseif (TARGET SQLite3::SQLite3)
     add_library(SQLite::SQLite3 ALIAS SQLite3::SQLite3)
   elseif (TARGET sqlite3)
@@ -82,9 +30,28 @@ if (@VIX_WITH_SQLITE@)
   endif()
 endif()
 
-# -------------------------------------------------------
-# 4) ORM presence flag (informational)
-# -------------------------------------------------------
+# Optional (only if referenced by exported targets)
+find_package(MySQLCppConn QUIET CONFIG)
+if (NOT TARGET MySQLCppConn::MySQLCppConn)
+  add_library(MySQLCppConn::MySQLCppConn INTERFACE IMPORTED)
+endif()
+
+if (@VIX_WITH_ZLIB@)
+  find_dependency(ZLIB QUIET)
+  if (ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
+    add_library(ZLIB::ZLIB INTERFACE IMPORTED)
+    target_include_directories(ZLIB::ZLIB INTERFACE "${ZLIB_INCLUDE_DIRS}")
+    target_link_libraries(ZLIB::ZLIB INTERFACE "${ZLIB_LIBRARIES}")
+  endif()
+  if (NOT TARGET ZLIB::ZLIB)
+    message(FATAL_ERROR "Vix built with gzip support but ZLIB::ZLIB is unavailable.")
+  endif()
+endif()
+
+# ---- load exported targets ----
+include("${CMAKE_CURRENT_LIST_DIR}/VixTargets.cmake")
+
+# ---- informational flags ----
 set(VIX_HAS_ORM @VIX_HAS_ORM@)
 if (VIX_HAS_ORM AND NOT TARGET vix::orm)
   set(VIX_HAS_ORM OFF)

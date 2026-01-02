@@ -82,40 +82,6 @@ Results represent steady-state throughput on a simple `"OK"` endpoint.
 
 ---
 
-### ✔ Vix.cpp recommended benchmark mode
-
-When benchmarking from inside the Vix.cpp repository (using the built-in example):
-
-```bash
-cd ~/vixcpp/vix
-export VIX_LOG_LEVEL=critical
-export VIX_LOG_ASYNC=false
-
-# Run the optimized example server
-vix run example main
-```
-
-Then, in another terminal:
-
-```bash
-wrk -t8 -c800 -d30s --latency http://127.0.0.1:8080/bench
-```
-
-If you want CPU pinning for more stable results:
-
-```bash
-taskset -c 2 ./build/main
-wrk -t8 -c800 -d30s --latency http://127.0.0.1:8080/bench
-```
-
-#### 🏁 Result: ~98,942 req/s
-
-✔ Fast-path routing gives +1–3%
-
-Use /fastbench to bypass RequestHandler overhead.
-
----
-
 # 🧭 Quick Example
 
 ```cpp
@@ -156,7 +122,7 @@ Example startup:
 Vix.cpp v1.x (CLI) — Modern C++ backend runtime
 [GCC 13.3.0] on linux
 Exit: Ctrl+C / Ctrl+D | Clear: Ctrl+L | Type help for help
-vix>
+>>>
 ```
 
 ---
@@ -199,18 +165,6 @@ int main()
 
     });
 }
-```
-
-## Minimal WebSocket Client
-
-```cpp
-auto client = Client::create("localhost", "9090", "/");
-
-client->on_open([] {
-    std::cout << "Connected!" << std::endl;
-});
-
-client->send("chat.message", {"text", "Hello world!"});
 ```
 
 ---
@@ -260,6 +214,8 @@ C++20 + Asio + zero-overhead abstractions.
 
 To build **Vix.cpp** from source:
 
+---
+
 ## 🐧 Linux / Ubuntu
 
 ### Prerequisites
@@ -267,12 +223,14 @@ To build **Vix.cpp** from source:
 ```bash
 sudo apt update
 sudo apt install -y \
-  g++-12 cmake make git \                # Build tools
-  libboost-all-dev \                     # Boost (asio, beast)
-  nlohmann-json3-dev \                   # JSON (nlohmann/json)
-  libspdlog-dev \                        # Logging (spdlog)
-  zlib1g-dev \                           # gzip / ZLIB
-  libmysqlcppconn-dev                   # Optional: MySQL Connector/C++ for ORM
+  g++-12 cmake make git \
+  libboost-all-dev \
+  nlohmann-json3-dev \
+  libspdlog-dev \
+  libfmt-dev \
+  zlib1g-dev \
+  libsqlite3-dev \
+  libmysqlcppconn-dev   # Optional: ORM (MySQL)
 ```
 
 Optional dependencies:
@@ -290,7 +248,16 @@ sudo apt install -y libmysqlcppconn-dev libsqlite3-dev
 Install Homebrew first, then:
 
 ```bash
-brew install cmake ninja llvm boost nlohmann-json spdlog fmt mysql sqlite3 zlib
+brew install cmake ninja boost nlohmann-json spdlog fmt sqlite3 zlib
+```
+
+ℹ️ Notes
+
+AppleClang (default on macOS) is fully supported.
+llvm is optional and only needed if you explicitly want clang++ from Homebrew.
+In rare cases, you may need:
+
+```bash
 export ZLIB_ROOT="$(brew --prefix zlib)"
 ```
 
@@ -300,9 +267,18 @@ export ZLIB_ROOT="$(brew --prefix zlib)"
 git clone https://github.com/vixcpp/vix.git
 cd vix
 git submodule update --init --recursive
+
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
+
 sudo cmake --install build --prefix /usr/local
+
+```
+
+### Verify
+
+```bash
+vix --version
 ```
 
 > This builds the Vix runtime and CLI.  
