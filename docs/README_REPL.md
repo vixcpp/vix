@@ -91,34 +91,52 @@ name
 
 The REPL supports **strict JSON** using `nlohmann::json`.
 
-### Objects
-
+### 1. Simple Objects
 ```text
 user = {"name":"Gaspard","age":10}
-user
 ```
 
-### Arrays
-
+### 2. Arrays
 ```text
-nums = [1,2,3,4]
-nums
+items = [1, 2, 3]
 ```
 
-### Nested data
-
+### 3. Nested Objects & Arrays
 ```text
 profile = {
-  "name":"Gaspard",
-  "meta":{"country":"UG","verified":true},
-  "tags":["cpp","vix","repl"]
+  "name": "Gaspard",
+  "meta": { "country": "UG", "verified": true },
+  "tags": ["cpp", "vix", "repl"]
 }
-profile
 ```
 
-> ⚠️ JSON must be **valid**  
-> ❌ `{ "name", "Gaspard" }`  
-> ✅ `{ "name": "Gaspard" }`
+### 4. Array of Objects
+```text
+users = [
+  { "id": 1, "name": "Alice" },
+  { "id": 2, "name": "Bob" }
+]
+```
+
+### 5. Mixed Types
+```text
+config = {
+  "active": true,
+  "threshold": 3.14,
+  "backup": null
+}
+```
+
+### ❓ Troubleshooting & Common Errors
+
+The JSON parser is **strict**. Here are common syntax mistakes:
+
+| Error Type | Invalid Syntax ❌ | Correct Syntax ✅ |
+| :--- | :--- | :--- |
+| **Missing Colon** | `{"name" "Gaspard"}` | `{"name": "Gaspard"}` |
+| **Comma instead of Colon** | `{"name", "Gaspard"}` | `{"name": "Gaspard"}` |
+| **Trailing Comma** | `{"a": 1,}` | `{"a": 1}` |
+| **Single Quotes** | `{'name': 'Gaspard'}` | `{"name": "Gaspard"}` |
 
 ---
 
