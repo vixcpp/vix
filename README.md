@@ -1,97 +1,112 @@
 # Vix.cpp
 
-<p align="center" style="margin:0;">
+<p align="center">
   <img 
     src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1762524350/vixcpp_etndhz.png" 
     alt="Vix.cpp Banner" 
-    width="100%" 
-    style="
-      display:block;
-      height:auto;
-      max-width:900px;
-      margin:auto;
-      object-fit:cover;
-      border-radius:8px;
-    ">
+    width="100%"
+    style="max-width:900px;border-radius:8px;"
+  />
 </p>
 
 <h1 align="center">Vix.cpp</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/C++20-Standard-blue">
-  <img src="https://img.shields.io/badge/License-MIT-green">
+  ⚡ Offline-first · Peer-to-peer · Ultra-fast C++ runtime
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/C%2B%2B-20-blue" />
+  <img src="https://img.shields.io/badge/License-MIT-green" />
+  <img src="https://img.shields.io/github/actions/workflow/status/vixcpp/vix/SECURITY_CI.yml?label=CI" />
+  <img src="https://img.shields.io/github/stars/vixcpp/vix?style=flat" />
+  <img src="https://img.shields.io/github/forks/vixcpp/vix?style=flat" />
+  <img src="https://img.shields.io/github/issues/vixcpp/vix" />
+  <img src="https://img.shields.io/badge/Status-Active-success" />
+  <img src="https://img.shields.io/github/v/tag/vixcpp/vix" />
+</p>
+
+<p align="center">
+⭐ If this vision resonates with you, consider starring the project.
 </p>
 
 ---
 
-# What is Vix?
+## What is Vix.cpp?
 
-**Vix** is a next-generation **offline-first, peer-to-peer, ultra-fast runtime for modern C++**.
+**Vix.cpp** is a modern **C++ runtime** designed as a serious alternative to **Node.js, Deno, and Bun** —  
+but engineered **from day one** for:
 
-[Japanese](README.ja.md)
+- unstable networks
+- offline-first environments
+- peer-to-peer systems
+- extreme native performance
 
-Its goal is clear:
+> **Run applications like Node/Deno/Bun —  
+> with C++ speed, control, and predictability.**
 
-> **A runtime capable of running apps like Node / Deno / Bun —  
-> but engineered for unstable, low-quality, real-world networks.**
-
-Vix is more than a backend framework:  
-it is a **modular runtime**, designed for distributed applications, edge systems, offline devices, and environments where traditional cloud frameworks fail.
-
-Inspired by **FastAPI**, **Vue.js**, **React**, and modern runtimes — but rebuilt from scratch in C++20 for raw speed and full control.
-
----
-
-# ⚡ Benchmarks (Updated — Dec 2025)
-
-All benchmarks were executed using **wrk**  
-`8 threads`, `800 connections`, for **30 seconds**, on the same machine:  
-**Ubuntu 24.04 — Intel Xeon — C++20 optimized build — Logging disabled**
-
-Results represent steady-state throughput on a simple `"OK"` endpoint.
+Vix is not just a backend framework.  
+It is a **runtime layer** for real-world distributed systems.
 
 ---
 
-## 🚀 Requests per second
+## Who is Vix.cpp for?
 
-| Framework                 | Requests/sec               | Avg Latency     | Transfer/sec   |
-| ------------------------- | -------------------------- | --------------- | -------------- |
-| ⭐ **Vix.cpp (v1.12.3)**  | **~98,942** _(pinned CPU)_ | **7.3–10.8 ms** | **~13.8 MB/s** |
-| **Vix.cpp (default run)** | 81,300 – 81,400            | 9.7–10.8 ms     | ≈ 11.3 MB/s    |
-| Go (Fiber)                | 81,336                     | 0.67 ms         | 10.16 MB/s     |
-| **Deno**                  | ~48,868                    | 16.34 ms        | ~6.99 MB/s     |
-| Node.js (Fastify)         | 4,220                      | 16.00 ms        | 0.97 MB/s      |
-| PHP (Slim)                | 2,804                      | 16.87 ms        | 0.49 MB/s      |
-| Crow (C++)                | 1,149                      | 41.60 ms        | 0.35 MB/s      |
-| FastAPI (Python)          | 752                        | 63.71 ms        | 0.11 MB/s      |
+Vix.cpp is built for developers who:
 
-> 🔥 **New record:** When pinned to a single core (`taskset -c 2`)  
-> Vix.cpp reaches **~99k req/s**, surpassing Go and matching the fastest C++ microframeworks.
+- Build backend systems in **modern C++**
+- Need **predictable performance** (no GC pauses)
+- Target **offline-first or unreliable networks**
+- Work on **edge, local, or P2P systems**
+- Want a **Node/Deno-like DX**, but native
+
+If you’ve ever thought _“I wish Node was faster and more reliable”_ —  
+Vix is for you.
 
 ---
 
-### ✔ Why Vix.cpp reaches Go-level performance
+## Why Vix exists
 
-- zero-cost abstractions
-- custom ThreadPool tuned for HTTP workloads
-- optimized HTTP pipeline
-- fast-path routing
-- Beast-based IO
-- minimal memory allocations
-- predictable threading model
+Most modern runtimes assume:
+
+- stable internet
+- cloud-first infrastructure
+- predictable latency
+- always-online connectivity
+
+That is **not reality** for much of the world.
+
+**Vix.cpp is built for real conditions first.**
 
 ---
 
-# 🧭 Quick Example
+## Performance is not a feature — it’s a requirement
+
+Vix.cpp is designed to remove overhead, unpredictability, and GC pauses.
+
+### ⚡ Benchmarks (Dec 2025)
+
+| Framework                   | Requests/sec | Avg Latency |
+| --------------------------- | ------------ | ----------- |
+| ⭐ **Vix.cpp (pinned CPU)** | **~99,000**  | 7–10 ms     |
+| Vix.cpp (default)           | ~81,400      | 9–11 ms     |
+| Go (Fiber)                  | ~81,300      | ~0.6 ms     |
+| Deno                        | ~48,800      | ~16 ms      |
+| Node.js (Fastify)           | ~4,200       | ~16 ms      |
+| PHP (Slim)                  | ~2,800       | ~17 ms      |
+| FastAPI (Python)            | ~750         | ~64 ms      |
+
+---
+
+## It really is this simple
 
 ```cpp
 #include <vix.hpp>
-using namespace Vix;
 
 int main() {
-    App app;
+    Vix::App app;
 
-    app.get("/", [](Request&, Response& res){
+    app.get("/", [](auto&, auto& res){
         res.send("Hello from Vix.cpp 🚀");
     });
 
@@ -99,280 +114,14 @@ int main() {
 }
 ```
 
-## Route Parameters
-
-```cpp
-app.get("/users/{id}", [](Request req, Response res) {
-    auto id = req.param("id");
-    return json::o("user_id", id);
-});
-```
-
-# 🧠 Vix REPL — Interactive Runtime Shell
-
-## ▶️ Starting the REPL
-
-```bash
-vix
-```
-
-Example startup:
-
-```
-Vix.cpp v1.x (CLI) — Modern C++ backend runtime
-[GCC 13.3.0] on linux
-Exit: Ctrl+C / Ctrl+D | Clear: Ctrl+L | Type help for help
->>>
-```
-
 ---
 
-### Minimal HTTP + WebSocket Server
-
-This example shows the **smallest fully working HTTP + WS hybrid server**.
-
-### Features
-
-- Basic GET route
-- Simple WS connection handling
-- Auto-start server
-
-### Example (summary)
-
-```cpp
-#include <vix.hpp>
-#include <vix/websocket/Runtime.hpp>
-
-using namespace vix;
-
-int main()
-{
-    vix::serve_http_and_ws([](auto &app, auto &ws){
-
-        // HTTP
-        app.get("/", [](auto&, auto& res)
-        {
-            res.send("HTTP + WebSocket");
-        });
-
-        // WebSocket
-        ws.on_typed_message([&ws](auto&,
-                    const std::string& type,
-                    const vix::json::kvs& payload){
-            if (type == "ping")
-                ws.broadcast_json("pong", payload);
-        });
-
-    });
-}
-```
-
----
-
-# Why Vix Exists
-
-Cloud-first frameworks assume:
-
-- stable networks
-- predictable latency
-- always-online connectivity
-
-**But in most of the world, this is not reality.**
-
-Vix is built for:
-
-### ✔ Offline-first
-
-Applications continue functioning even without internet.
-
-### ✔ Peer-to-Peer
-
-Nodes sync and communicate locally without a central server.
-
-### ✔ Ultra-Fast Native Execution
-
-C++20 + Asio + zero-overhead abstractions.
-
----
-
-## Key Features
-
-- Offline-first runtime architecture
-- Peer-to-peer–ready communication model
-- Asynchronous HTTP server
-- Expressive and composable routing
-- ORM support for MySQL and SQLite
-- Middleware system
-- WebSocket engine
-- Modular architecture
-- Developer experience comparable to Node.js, Deno, and Bun
-- High-performance runtime (80k+ requests/sec)
-
----
-
-## 🚀 Getting Started
-
-To build **Vix.cpp** from source:
-
----
-
-## 🐧 Linux / Ubuntu
-
-### Prerequisites
+## Script mode — Run C++ like a script
 
 ```bash
-sudo apt update
-sudo apt install -y \
-  g++-12 cmake make git \
-  libboost-all-dev \
-  nlohmann-json3-dev \
-  libspdlog-dev \
-  libfmt-dev \
-  zlib1g-dev \
-  libsqlite3-dev \
-  libmysqlcppconn-dev   # Optional: ORM (MySQL)
+vix run main.cpp
+vix dev main.cpp
 ```
-
-Optional dependencies:
-
-```bash
-sudo apt install -y libmysqlcppconn-dev libsqlite3-dev
-```
-
----
-
-## 🍎 macOS
-
-### Prerequisites
-
-Install Homebrew first, then:
-
-```bash
-brew install cmake ninja boost nlohmann-json spdlog fmt sqlite3 zlib
-```
-
-ℹ️ Notes
-
-AppleClang (default on macOS) is fully supported.
-llvm is optional and only needed if you explicitly want clang++ from Homebrew.
-In rare cases, you may need:
-
-```bash
-export ZLIB_ROOT="$(brew --prefix zlib)"
-```
-
-### Build
-
-```bash
-git clone https://github.com/vixcpp/vix.git
-cd vix
-git submodule update --init --recursive
-
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j
-
-sudo cmake --install build --prefix /usr/local
-
-```
-
-### Verify
-
-```bash
-vix --version
-```
-
-> This builds the Vix runtime and CLI.  
-> Make sure the resulting `vix` binary is available in your `PATH`.
-
----
-
-## 🧰 Example (CLI Project)
-
-Create and run a new Vix project using the CLI:
-
-```bash
-vix new myapp
-cd myapp
-
-vix build
-vix run
-```
-
-Common development commands:
-
-```bash
-vix dev                # watch, rebuild, reload
-vix run                # build (if needed) and run
-vix check              # validate project or compile a single .cpp (no execution)
-vix tests              # run project tests
-vix orm migrate        # run ORM migrations
-```
-
----
-
-## Script Mode — Run `.cpp` Files Directly
-
-Vix can execute a single `.cpp` file **like a script**, without creating a full project.
-
-```bash
-vix run main.cpp        # run once
-vix dev main.cpp        # run + watch (hot reload)
-```
-
----
-
-### ▶Run once (`vix run`)
-
-Runs the file once, then exits.
-
-```bash
-~/dev/scripts$ vix run main.cpp
-Hello, world
-```
-
----
-
-### Watch mode (`vix dev`)
-
-Runs the file **in watch mode**.  
-Vix recompiles and restarts automatically when the file changes.
-
-```bash
-~/dev/scripts$ vix dev main.cpp
-Starting Vix dev mode.
-➜ Tip: use `Ctrl+C` to stop dev mode; edit your files and Vix will rebuild & restart automatically.
-Watcher Process started (hot reload).
-➜ Watching: /home/softadastra/dev/scripts/main.cpp
-🏃 Script started (pid=125953)
-Hello, world
-```
-
----
-
-### ✔ How Script Mode Works
-
-When running a `.cpp` file directly, Vix:
-
-- Creates a temporary build directory under:
-  ```
-  ./.vix-scripts/<filename>/
-  ```
-- Generates a minimal CMake project internally
-- Compiles the file as a standalone executable
-- Runs it immediately
-- In `dev` mode:
-  - Watches the source file
-  - Rebuilds and restarts automatically on changes
-- Stops cleanly on `Ctrl+C` (no noisy build output)
-
----
-
-### Mental model
-
-| Command            | Behavior                           |
-| ------------------ | ---------------------------------- |
-| `vix run main.cpp` | Compile → run once                 |
-| `vix dev main.cpp` | Compile → run → watch & hot-reload |
 
 ---
 
@@ -397,21 +146,12 @@ When running a `.cpp` file directly, Vix:
 - **Utils Module** — [docs/modules/utils.md](docs/modules/utils.md)
 - **CLI Module** — [docs/modules/cli.md](docs/modules/cli.md)
 
-## Summary
-
-Vix.cpp sits at the top of modern backend runtimes, matching or exceeding high-performance frameworks like Go Fiber, and outperforming Deno, Node, PHP, Python, and even several C++ frameworks like Crow.
-
-Vix.cpp = the C++ runtime pushing boundaries.
-
 ---
 
-## 🤝 Contributing
+## ⭐ Support the project
 
-Contributions are welcome!  
-Please read the [contributing guidelines](CONTRIBUTING.md).
+If you believe in modern C++ tooling, offline-first systems, and native performance,
+please consider starring the repository.
 
----
+MIT License
 
-## 🪪 License
-
-Licensed under the **MIT License**.
