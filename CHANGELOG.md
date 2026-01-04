@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## v1.17.5 — Performance & CLI Stability Release
+
+### 🚀 Performance
+
+- **core:** remove logger context and console synchronization from HTTP access logs, reducing contention under load
+- **utils:** snapshot `spdlog` logger instances to avoid global mutex contention and improve logging throughput
+
+### 🖥️ CLI & Tooling
+
+- **cli(run):** remove capture-based configure phase and switch to live execution for more predictable runtime behavior
+- **cli:** clean and stabilize CMake output during configure while keeping build and run steps intact
+- **cli:** remove dead helpers left after the build UX rewrite
+
+### 🧹 Maintenance
+
+- Internal cleanup across `cli`, `core`, and `utils` modules
+- No breaking changes
+
+### ✅ Notes
+
+This release focuses on **runtime performance**, **log scalability**, and **CLI robustness**, especially under high load and iterative development workflows.
+
 ## v1.17.4 — 2026-01-02
 
 ### 🔧 Fixed

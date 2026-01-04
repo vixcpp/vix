@@ -40,25 +40,25 @@ using namespace vix;
 
 int main()
 {
-    App app;
+        App app;
 
-    // Apply on /api/*
-    app.use("/api", middleware::app::ip_filter_allow_deny_dev(
-                        "x-forwarded-for",
-                        {"10.0.0.1", "127.0.0.1"}, // allow
-                        {"9.9.9.9"},               // deny (priority)
-                        true                       // fallback to x-real-ip, etc.
-                        ));
+        // Apply on /api/*
+        app.use("/api", middleware::app::ip_filter_allow_deny_dev(
+                            "x-forwarded-for",
+                            {"10.0.0.1", "127.0.0.1"}, // allow
+                            {"9.9.9.9"},               // deny (priority)
+                            true                       // fallback to x-real-ip, etc.
+                            ));
 
-    // Routes
-    app.get("/", [](Request &, Response &res)
-            { res.send("public route"); });
+        // Routes
+        app.get("/", [](Request &, Response &res)
+                { res.send("public route"); });
 
-    app.get("/api/hello", [](Request &req, Response &res)
-            { res.json({"ok", true,
-                        "message", "Hello from /api/hello",
-                        "x_forwarded_for", req.header("x-forwarded-for"),
-                        "x_real_ip", req.header("x-real-ip")}); });
+        app.get("/api/hello", [](Request &req, Response &res)
+                { res.json({"ok", true,
+                            "message", "Hello from /api/hello",
+                            "x_forwarded_for", req.header("x-forwarded-for"),
+                            "x_real_ip", req.header("x-real-ip")}); });
 
-    app.run(8080);
+        app.run(8080);
 }
