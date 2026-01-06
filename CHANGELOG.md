@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## v1.17.7 — Build & Run Reliability Improvements
+
+### 🐛 Fixed
+
+- **CLI (run):** Reuse the last successful build preset instead of defaulting to
+  `dev-ninja`, ensuring consistent behavior between `vix build` and `vix run`.
+- **CLI (run):** Cleaned up script build error handling to provide clearer and
+  more actionable diagnostics.
+- **CLI (run):** Improved logging of environment declarations during script
+  execution for better debugging and transparency.
+
+### 🛠 Improvements
+
+- More predictable run flow after builds across presets.
+- Smoother iterative workflows (build → run) with fewer surprises.
+
+### ✅ Notes
+
+No breaking changes. This release focuses on **stability and correctness** of the
+CLI build/run pipeline.
+
 ## v1.17.6 — CLI Stability & Toolchain Fixes
 
 ### 🐛 Fixed
