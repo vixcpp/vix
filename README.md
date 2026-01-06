@@ -34,7 +34,7 @@
 
 ## What is Vix.cpp?
 
-**Vix.cpp** is a modern **C++ runtime** designed as a serious alternative to **Node.js, Deno, and Bun** —  
+**Vix.cpp** is a modern **C++ runtime** designed as a serious alternative to **Node.js, Deno, and Bun**
 but engineered **from day one** for:
 
 - unstable networks
@@ -42,7 +42,7 @@ but engineered **from day one** for:
 - peer-to-peer systems
 - extreme native performance
 
-> **Run applications like Node/Deno/Bun —  
+> **Run applications like Node/Deno/Bun
 > with C++ speed, control, and predictability.**
 
 Vix is not just a backend framework.  
@@ -60,7 +60,7 @@ Vix.cpp is built for developers who:
 - Work on **edge, local, or P2P systems**
 - Want a **Node/Deno-like DX**, but native
 
-If you’ve ever thought _“I wish Node was faster and more reliable”_ —  
+If you’ve ever thought _“I wish Node was faster and more reliable”_
 Vix is for you.
 
 ---
@@ -80,7 +80,7 @@ That is **not reality** for much of the world.
 
 ---
 
-## Performance is not a feature — it’s a requirement
+## Performance is not a feature it’s a requirement
 
 Vix.cpp is designed to remove overhead, unpredictability, and GC pauses.
 
@@ -116,7 +116,7 @@ int main() {
 
 ---
 
-## Script mode — Run C++ like a script
+## Script mode Run C++ like a script
 
 ```bash
 vix run main.cpp
@@ -139,12 +139,12 @@ vix dev main.cpp
 
 ## Module Documentation Index
 
-- **Core Module** — [docs/modules/core.md](docs/modules/core.md)
-- **WebSocket Module** — [docs/modules/websocket.md](docs/modules/websocket.md)
-- **ORM Module** — [docs/modules/orm.md](docs/modules/orm.md)
-- **JSON Module** — [docs/modules/json.md](docs/modules/json.md)
-- **Utils Module** — [docs/modules/utils.md](docs/modules/utils.md)
-- **CLI Module** — [docs/modules/cli.md](docs/modules/cli.md)
+- **Core** : [docs/modules/core.md](docs/modules/core.md)
+- **WebSocket** : [docs/modules/websocket.md](docs/modules/websocket.md)
+- **ORM** : [docs/modules/orm.md](docs/modules/orm.md)
+- **JSON** : [docs/modules/json.md](docs/modules/json.md)
+- **Utils** : [docs/modules/utils.md](docs/modules/utils.md)
+- **CLI** : [docs/modules/cli.md](docs/modules/cli.md)
 
 ---
 
@@ -154,4 +154,3 @@ If you believe in modern C++ tooling, offline-first systems, and native performa
 please consider starring the repository.
 
 MIT License
-

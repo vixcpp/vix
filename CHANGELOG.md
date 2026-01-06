@@ -9,6 +9,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## v1.17.6 — CLI Stability & Toolchain Fixes
+
+### 🐛 Fixed
+
+- **CLI:** Fixed `--linker lld|mold` integration.
+
+  - Fast linker flags are now applied via `CMAKE_*_LINKER_FLAGS`
+    (`EXE`, `SHARED`, `MODULE`) to ensure the selected linker is reliably
+    used at link time.
+  - Removed incorrect propagation of linker flags through
+    `CMAKE_C_FLAGS` / `CMAKE_CXX_FLAGS`, preventing CMake
+    “unused variables” warnings and inconsistent behavior.
+
+- **CLI:** Improved `run` / `build` flow integration.
+  - Unified preset and build-directory resolution across
+    `RunDetail`, `RunFlow`, and `RunCommand`.
+  - Fixed edge cases that could lead to missing helper symbols
+    or mismatched build state during execution.
+
+### 🛠 Internal
+
+- Cleaner and more predictable linker configuration under CMake.
+- Improved robustness of the CLI execution pipeline.
+- No breaking changes.
+
+### ✅ Notes
+
+This release focuses on **CLI correctness**, **toolchain reliability**, and
+a more stable execution model when using fast linkers and advanced build
+configurations.
+
 ## v1.17.5 — Performance & CLI Stability Release
 
 ### 🚀 Performance
