@@ -31,3 +31,7 @@
 	path = modules/middleware
 	url = https://github.com/vixcpp/middleware.git
 	branch = dev
+[submodule "modules/p2p"]
+	path = modules/p2p
+	url = https://github.com/vixcpp/p2p.git
+	branch = dev
