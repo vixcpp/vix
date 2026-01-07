@@ -33,5 +33,5 @@
 	branch = dev
 [submodule "modules/p2p"]
 	path = modules/p2p
-	url = https://github.com/vixcpp/p2p.git
+	url = git@github.com:vixcpp/p2p.git
 	branch = dev
