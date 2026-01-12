@@ -31,3 +31,19 @@
 	path = modules/middleware
 	url = https://github.com/vixcpp/middleware.git
 	branch = dev
+[submodule "modules/p2p"]
+	path = modules/p2p
+	url = git@github.com:vixcpp/p2p.git
+	branch = dev
+[submodule "modules/net"]
+	path = modules/net
+	url = https://github.com/vixcpp/net.git
+	branch = dev
+[submodule "modules/sync"]
+	path = modules/sync
+	url = https://github.com/vixcpp/sync.git
+	branch = dev
+[submodule "modules/cache"]
+	path = modules/cache
+	url = https://github.com/vixcpp/cache.git
+	branch = dev
