@@ -9,6 +9,112 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## v1.18.0 — Modular networking & secure P2P foundation
+
+### Highlights
+
+- Major architectural cleanup and modular extraction
+- P2P stack now fully decoupled from core
+- Cache, net, and sync promoted to first-class modules
+- Clear dependency layering across the ecosystem
+
+---
+
+### 🧩 New Modules
+
+- **net**  
+  Low-level networking primitives and reachability utilities  
+  (connectivity probing, network helpers).
+
+- **cache**  
+  Standalone HTTP cache engine with pluggable stores  
+  (memory, LRU, file-based).
+
+- **sync**  
+  Offline-first synchronization engine  
+  (WAL, outbox, retries, sync workers).
+
+---
+
+### 🧠 Core
+
+- Removed embedded cache and sync implementations
+- Core now focuses strictly on:
+  - HTTP server
+  - routing
+  - request / response lifecycle
+  - sessions & configuration
+- Much cleaner public surface and faster compile times
+
+---
+
+### 🧱 Middleware
+
+- Explicit dependency on cache (no implicit coupling)
+- JSON and utils remain optional
+- Scoped strictly to HTTP middleware pipeline
+- Extensive smoke test coverage restored and stabilized
+
+---
+
+### 🌐 P2P
+
+Integrated **v0.5.1** (latest)
+
+#### P2P v0.5.1 — Latest
+
+- Removed dependency on `vix::core`
+- Requires `vix::net` only
+- `sync`, `cache`, and `utils` are optional
+- Cleaner, modular build
+- Internal refactors (discovery, node, router)
+
+#### P2P v0.5.0
+
+- Complete secure transport layer (Phase 6)
+- Encrypted envelopes with AEAD
+- Per-peer session keys derived from handshake
+- Replay protection using nonce counters
+- Decrypt-before-dispatch logic
+- Handshake & control messages kept plaintext
+- Foundation for secure WAL / Outbox sync (Phase 6.6)
+
+#### P2P v0.4.0
+
+- AEAD support (encrypt + authenticate)
+- Extended envelope format (nonce + auth tag)
+- Session key storage per peer
+- Secure channels with nonce tracking
+- NullCrypto implementation for development
+
+#### P2P v0.3.0
+
+- HTTP bootstrap service for peer discovery
+- Bootstrap.hpp and BootstrapHttp.cpp
+- Extended node lifecycle for bootstrap integration
+- Manual test registry added
+
+net
+├─ cache
+├─ sync
+└─ p2p
+└─ (optional sync integration)
+
+core
+└─ middleware
+└─ cache (required)
+
+This release establishes a **clean, scalable foundation** for:
+
+- offline-first sync
+- secure edge routing
+- future P2P + WAL integration
+- long-term maintainability
+
+---
+
+### 📐 Architectural State (v1.18.0)
+
 ## v1.17.7 — Build & Run Reliability Improvements
 
 ### 🐛 Fixed
