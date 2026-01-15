@@ -18,7 +18,7 @@ int main()
     App app;
 
     // GET /
-    app.get("/", [](auto &, auto &res)
+    app.get("/", [](Request &, Response &res)
             { res.json({"framework", "Vix.cpp",
                         "message", "Hello from basic_get.cpp 👋"}); });
 

@@ -15,13 +15,13 @@ int main()
     App app;
 
     // PUT /users/{id}
-    app.put("/users/{id}", [](auto &req, auto &res, auto &params)
+    app.put("/users/{id}", [](Request &req, Response &res)
             {
-        const std::string id = params["id"];
+        const std::string id = req.param("id");
 
         try {
             // Parsing with nlohmann::json for input is fine (Vix supports it internally)
-            auto body = nlohmann::json::parse(req.body());
+            auto body = json::Json::parse(req.body());
 
             const std::string name  = body.value("name",  "");
             const std::string email = body.value("email", "");
@@ -45,5 +45,4 @@ int main()
         } });
 
     app.run(8080);
-    return 0;
 }

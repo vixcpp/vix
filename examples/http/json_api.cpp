@@ -14,7 +14,6 @@
 //
 
 #include <vix.hpp>
-#include <nlohmann/json.hpp>
 
 using namespace vix;
 
@@ -23,25 +22,22 @@ int main()
     App app;
 
     // In-memory fake "database"
-    std::vector<nlohmann::json> users = {
+    std::vector<json::Json> users = {
         {{"id", 1}, {"name", "Alice"}, {"role", "admin"}},
         {{"id", 2}, {"name", "Bob"}, {"role", "user"}}};
 
-    // --------------------------------------------------------
     // GET /api/users
     //
     // Returns the full list of users as JSON.
-    // --------------------------------------------------------
-    app.get("/api/users", [&users](auto &, auto &res)
+    app.get("/api/users", [&users](Request &, Response &res)
             {
-        json payload = {
+        json::Json payload = {
             {"count", users.size()},
             {"items", users}
         };
 
         res.json(payload); });
 
-    // --------------------------------------------------------
     // POST /api/users
     //
     // Expects a JSON body like:
@@ -52,45 +48,42 @@ int main()
     //   - assign a new incremental id
     //   - push it into the in-memory vector
     //   - return the created user
-    // --------------------------------------------------------
-    app.post("/api/users", [&users](auto &req, auto &res)
+    app.post("/api/users", [&users](Request &req, Response &res)
              {
         try
         {
             // req is typically a boost::beast::http::request<string_body>
             const auto& body = req.body();
-            auto data = json::parse(body);
+            json::Json data = json::Json::parse(body);
 
             // Generate a very simple new id
             int newId = users.empty()
                         ? 1
                         : (users.back().value("id", 0) + 1);
 
-            json user = {
+            json::Json user = json::Json({
                 {"id",   newId},
                 {"name", data.value("name", "unknown")},
                 {"role", data.value("role", "user")}
-            };
+            });
 
             users.push_back(user);
 
-            res.status(201).json({
+            res.status(201).send(vix::json::kv({
                 {"message", "User created"},
                 {"user",    user}
-            });
+            }));
         }
         catch (const std::exception& e)
         {
-            res.status(400).json({
+            res.status(400).send(vix::json::kv({
                 {"error",   "Invalid JSON payload"},
                 {"details", e.what()}
-            });
+            }));
         } });
 
-    // --------------------------------------------------------
     // Root route: hint for trying the API
-    // --------------------------------------------------------
-    app.get("/", [](auto &, auto &res)
+    app.get("/", [](Request &, Response &res)
             { res.json({"api", "/api/users",
                         "hint1", "GET /api/users",
                         "hint2", "POST /api/users with JSON body {\"name\":\"Charlie\",\"role\":\"user\"}"}); });

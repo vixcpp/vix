@@ -29,9 +29,7 @@ int main()
 {
     namespace http = boost::beast::http;
 
-    // -----------------------------
     // Case 1: deny list blocks
-    // -----------------------------
     {
         auto raw = make_req("1.2.3.4");
         http::response<http::string_body> res;
@@ -55,9 +53,7 @@ int main()
         assert(res.result_int() == 403);
     }
 
-    // -----------------------------
     // Case 2: allow list lets through
-    // -----------------------------
     {
         auto raw = make_req("9.9.9.9");
         http::response<http::string_body> res;
@@ -81,9 +77,7 @@ int main()
         assert(res.result_int() == 200);
     }
 
-    // -----------------------------
     // Case 3: allow list blocks others
-    // -----------------------------
     {
         auto raw = make_req("2.2.2.2");
         http::response<http::string_body> res;

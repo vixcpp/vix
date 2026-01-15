@@ -24,34 +24,24 @@ using namespace vix;
 
 int main()
 {
-    // ------------------------------------------------------------
-    // 1) Construct the HTTP App + WebSocket Server together
-    // ------------------------------------------------------------
+    // Construct the HTTP App + WebSocket Server together
     // The config file path can be omitted; if omitted,
     // Vix will automatically look for config/config.json.
     //
     auto bundle = vix::make_http_and_ws("config/config.json");
     auto &[app, ws] = bundle;
 
-    // ------------------------------------------------------------
-    // 2) Register HTTP routes
-    // ------------------------------------------------------------
-
     // GET /
-    app.get("/", [](auto &, auto &res)
+    app.get("/", [](Request &, Response &res)
             { res.json({"framework", "Vix.cpp",
                         "message", "HTTP + WebSocket example (basic) 🚀"}); });
 
     // GET /hello/{name}
-    app.get("/hello/{name}", [](auto &, auto &res, auto &params)
-            { res.json({"greeting", "Hello " + params["name"] + " 👋",
+    app.get("/hello/{name}", [](Request &req, Response &res)
+            { res.json({"greeting", "Hello " + req.param("name") + " 👋",
                         "powered_by", "Vix.cpp"}); });
 
-    // ------------------------------------------------------------
-    // 3) Register WebSocket event handlers
-    // ------------------------------------------------------------
-
-    // When a new WebSocket connection opens:
+    // Register WebSocket event handlers
     ws.on_open([&ws](auto &session)
                {
         (void)session;
@@ -62,10 +52,11 @@ int main()
         }); });
 
     // When a typed message is received:
-    ws.on_typed_message([&ws](auto &session,
-                              const std::string &type,
-                              const vix::json::kvs &payload)
-                        {
+    ws.on_typed_message(
+        [&ws](auto &session,
+              const std::string &type,
+              const vix::json::kvs &payload)
+        {
         (void)session;
 
         // Basic chat echo example
@@ -73,9 +64,7 @@ int main()
             ws.broadcast_json("chat.message", payload);
         } });
 
-    // ------------------------------------------------------------
     // 4) Start HTTP + WebSocket together
-    // ------------------------------------------------------------
     // This function:
     //   - runs the WebSocket server in a background thread
     //   - installs a shutdown callback on the HTTP server

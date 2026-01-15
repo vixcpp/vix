@@ -13,12 +13,12 @@ int main()
 {
     App app;
 
-    app.get("/", [](auto &, auto &res)
+    app.get("/", [](Request &, Response &res)
             {
                 res.send("ok"); // light
             });
 
-    app.get_heavy("/users", [](auto &, auto &res)
+    app.get_heavy("/users", [](Request &, Response &res)
                   {
     // DB query (heavy) -> executor
     res.send("users"); });

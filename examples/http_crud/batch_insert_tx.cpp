@@ -1,11 +1,17 @@
-# Example — json_builders_routes
+/**
+ * @file batch_insert_tx.cpp
+ * @brief Example — Insert multiple rows efficiently in a single transaction.
+ */
 
-```cpp
 #include <vix/orm/orm.hpp>
+#include <vix/orm/ConnectionPool.hpp>
+#include <vix/orm/MySQLDriver.hpp>
+
 #include <iostream>
 #include <vector>
+#include <string>
 
-using namespace Vix::orm;
+using namespace vix::orm;
 
 int main(int argc, char **argv)
 {
@@ -16,7 +22,14 @@ int main(int argc, char **argv)
 
     try
     {
-        ConnectionPool pool{host, user, pass, db};
+        auto factory = make_mysql_factory(host, user, pass, db);
+
+        PoolConfig cfg;
+        cfg.min = 1;
+        cfg.max = 8;
+
+        ConnectionPool pool{factory, cfg};
+        pool.warmup();
 
         Transaction tx(pool);
         auto &c = tx.conn();
@@ -29,6 +42,7 @@ int main(int argc, char **argv)
             const char *email;
             int age;
         };
+
         std::vector<Row> rows = {
             {"Zoe", "zoe@example.com", 23},
             {"Mina", "mina@example.com", 31},
@@ -54,4 +68,3 @@ int main(int argc, char **argv)
         return 1;
     }
 }
-```

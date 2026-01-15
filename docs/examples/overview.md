@@ -180,7 +180,7 @@ int main()
 
     // Basic JSON response (auto send)
     app.get("/", [](Request req, Response res) {
-        return vix::json::o("message", "Hello from Vix");
+        res.send("message", "Hello from Vix");
     });
     // Path params + return {status, payload}
     app.get("/users/{id}", [](Request req, Response res) {

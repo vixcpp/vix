@@ -5,8 +5,8 @@
 ![Status](https://img.shields.io/badge/Status-Stable-success)
 ![Performance](https://img.shields.io/badge/Throughput-80k%2B%20req%2Fs-orange)
 
-> **vix.cpp/core** — The foundational module of the [**Vix.cpp**](https://github.com/vixcpp/vix) framework.  
-> Provides the high-performance HTTP server, router, middleware system, and base runtime.  
+> **vix.cpp/core** — The foundational module of the [**Vix.cpp**](https://github.com/vixcpp/vix) framework.
+> Provides the high-performance HTTP server, router, middleware system, and base runtime.
 > Every other Vix module builds on top of this layer.
 
 ---
@@ -79,22 +79,22 @@ cmake --build build -j$(nproc)
 #include <vix/core.h>
 
 int main() {
-    Vix::App app;
+    vix::App app;
 
-    app.get("/hello", [](auto&, auto& res) {
-        res.json({{"message", "Hello, World!"}});
+    app.get("/hello", [](Request&, Response& res) {
+        res.send("message", "Hello, World!");
     });
 
-    app.get("/users/{id}", [](auto&, auto& res, auto& params) {
-        res.json({{"user_id", params["id"]}});
+    app.get("/users/{id}", [](Request& req, Response& res) {
+        res.json({{"user_id", req.param("id")}});
     });
 
     app.run(8080);
 }
 ```
 
-✅ Supports `GET`, `POST`, `PUT`, `DELETE`  
-✅ Automatic path parameter extraction  
+✅ Supports `GET`, `POST`, `PUT`, `DELETE`
+✅ Automatic path parameter extraction
 ✅ Helper methods: `res.json()`, `res.text()`, `res.status()`
 
 ---
@@ -148,5 +148,5 @@ Transfer/sec: 18.25MB
 
 ## 🧾 License
 
-**MIT License** © [Gaspard Kirira](https://github.com/gkirira)  
+**MIT License** © [Gaspard Kirira](https://github.com/gkirira)
 See [LICENSE](../../LICENSE) for details.

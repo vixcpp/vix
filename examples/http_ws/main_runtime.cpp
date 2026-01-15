@@ -19,23 +19,17 @@ int main()
         "config/config.json", 8080,
         [](auto &app, auto &ws)
         {
-            // --------------------------------------------------------
-            // HTTP routes (Express / FastAPI style)
-            // --------------------------------------------------------
-
+            // HTTP routes
             app.get("/", [](auto &, auto &res)
                     { res.json({"framework", "Vix.cpp",
                                 "mode", "runtime",
                                 "message", "HTTP + WebSocket via serve_http_and_ws() 🚀"}); });
 
-            app.get("/hello/{name}", [](auto &, auto &res, auto &params)
-                    { res.json({"greeting", "Hello " + params["name"] + " 👋",
+            app.get("/hello/{name}", [](Request &req, Response &res)
+                    { res.json({"greeting", "Hello " + req.param("name") + " 👋",
                                 "powered_by", "Vix.cpp"}); });
 
-            // --------------------------------------------------------
             // WebSocket handlers
-            // --------------------------------------------------------
-
             // Fired when a client opens a WebSocket connection
             ws.on_open([&ws](auto &session)
                        {

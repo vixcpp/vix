@@ -4,8 +4,12 @@
  */
 
 #include <vix/orm/orm.hpp>
+#include <vix/orm/ConnectionPool.hpp>
+#include <vix/orm/MySQLDriver.hpp>
+
 #include <iostream>
 #include <cstdint>
+#include <string>
 
 struct User
 {
@@ -21,20 +25,32 @@ namespace vix::orm
     struct Mapper<User>
     {
         static User fromRow(const ResultRow &) { return {}; } // pending
-        static std::vector<std::pair<std::string, std::any>> toInsertParams(const User &u)
+
+        static std::vector<std::pair<std::string, std::any>>
+        toInsertParams(const User &u)
         {
-            return {{"name", u.name}, {"email", u.email}, {"age", u.age}};
+            return {
+                {"name", u.name},
+                {"email", u.email},
+                {"age", u.age},
+            };
         }
-        static std::vector<std::pair<std::string, std::any>> toUpdateParams(const User &u)
+
+        static std::vector<std::pair<std::string, std::any>>
+        toUpdateParams(const User &u)
         {
-            return {{"name", u.name}, {"email", u.email}, {"age", u.age}};
+            return {
+                {"name", u.name},
+                {"email", u.email},
+                {"age", u.age},
+            };
         }
     };
-} // namespace Vix::orm
+} // namespace vix::orm
 
 int main(int argc, char **argv)
 {
-    using namespace Vix::orm;
+    using namespace vix::orm;
 
     std::string host = (argc > 1 ? argv[1] : "tcp://127.0.0.1:3306");
     std::string user = (argc > 2 ? argv[2] : "root");
@@ -43,11 +59,20 @@ int main(int argc, char **argv)
 
     try
     {
-        ConnectionPool pool{host, user, pass, db};
+        auto factory = make_mysql_factory(host, user, pass, db);
+
+        PoolConfig cfg;
+        cfg.min = 1;
+        cfg.max = 8;
+
+        ConnectionPool pool{factory, cfg};
+        pool.warmup();
+
         BaseRepository<User> repo{pool, "users"};
 
         // Create
-        std::int64_t id = static_cast<std::int64_t>(repo.create(User{0, "Bob", "gaspardkirira@example.com", 30}));
+        std::int64_t id = static_cast<std::int64_t>(
+            repo.create(User{0, "Bob", "gaspardkirira@example.com", 30}));
         std::cout << "[OK] create → id=" << id << "\n";
 
         // Update

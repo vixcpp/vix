@@ -5,17 +5,17 @@
 #include <vix/json/Simple.hpp>
 #include <string>
 
-using namespace Vix;
-namespace J = Vix::json;
+using namespace vix;
+namespace J = vix::json;
 
 int main()
 {
     App app;
 
     // DELETE /users/{id}
-    app.del("/users/{id}", [](auto &, auto &res, auto &params)
+    app.del("/users/{id}", [](Request &req, Response &res)
             {
-        const std::string id = params["id"];
+        const std::string id = req.param("id");
 
         // In a real app you'd remove the resource from DB or memory here
         res.json({
@@ -25,5 +25,6 @@ int main()
         }); });
 
     app.run(8080);
+    return 0;
 }
 ```

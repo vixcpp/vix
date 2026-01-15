@@ -21,7 +21,7 @@ int main()
     App app;
 
     // GET /trace
-    app.get("/trace", [](auto &req, auto &res)
+    app.get("/trace", [](Request &req, Response &res)
             {
         Logger::Context ctx;
         ctx.request_id = utils::uuid4();
@@ -29,7 +29,7 @@ int main()
         Logger::getInstance().setContext(ctx);
 
         std::string path(req.target().data(), req.target().size());
-        std::string method(req.method_string().data(), req.method_string().size());
+        std::string method(req.method().data(), req.method().size());
 
         Logger::getInstance().logf(
             Logger::Level::INFO,
@@ -44,5 +44,4 @@ int main()
         }); });
 
     app.run(8080);
-    return 0;
 }

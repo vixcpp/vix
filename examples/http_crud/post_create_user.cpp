@@ -15,11 +15,10 @@ int main()
     App app;
 
     // POST /users
-    app.post("/users", [](auto &req, auto &res)
+    app.post("/users", [](Request &req, Response &res)
              {
         try {
-            // Parse body as nlohmann::json for simplicity (still supported)
-            auto body = nlohmann::json::parse(req.body());
+            auto body = json::Json::parse(req.body());
 
             const std::string name  = body.value("name",  "");
             const std::string email = body.value("email", "");
@@ -42,5 +41,4 @@ int main()
         } });
 
     app.run(8080);
-    return 0;
 }

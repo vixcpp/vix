@@ -15,9 +15,9 @@ int main()
     App app;
 
     // DELETE /users/{id}
-    app.del("/users/{id}", [](auto &, auto &res, auto &params)
+    app.del("/users/{id}", [](Request &req, Response &res)
             {
-        const std::string id = params["id"];
+        const std::string id = req.param("id");
 
         // In a real app you'd remove the resource from DB or memory here
         res.json({

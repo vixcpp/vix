@@ -17,12 +17,12 @@ int main()
     log.setPattern("[%H:%M:%S.%e] [%^%l%$] %v");
     log.setLevel(Logger::Level::INFO);
 
-    const int port = utils::env_int("PORT", 8080);
+    const int port = utils::env_int("PORT", 8081);
 
     App app;
 
     // GET /now → returns current ISO 8601 timestamp and epoch ms
-    app.get("/now", [](auto &, auto &res)
+    app.get("/now", [](Request &, Response &res)
             { res.json({"iso8601", utils::iso8601_now(),
                         "ms", static_cast<long long>(utils::now_ms())}); });
 

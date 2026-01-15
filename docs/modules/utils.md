@@ -5,14 +5,14 @@
 ![Status](https://img.shields.io/badge/Status-Stable-success)
 ![spdlog](https://img.shields.io/badge/Logging-spdlog-orange)
 
-> **vix.cpp/utils** — Foundational utility layer for the **Vix.cpp** framework.  
+> **vix.cpp/utils** — Foundational utility layer for the **Vix.cpp** framework.
 > Includes environment management, logging, validation, UUIDs, timestamps, and build metadata.
 
 ---
 
 ## 🚀 Overview
 
-The **Utils module** provides lightweight, reusable helpers used throughout Vix.cpp and standalone C++ apps.  
+The **Utils module** provides lightweight, reusable helpers used throughout Vix.cpp and standalone C++ apps.
 It is designed to simplify configuration, logging, and validation with zero runtime dependencies beyond `spdlog`.
 
 ---
@@ -36,7 +36,7 @@ It is designed to simplify configuration, logging, and validation with zero runt
 #include <vix/utils/UUID.hpp>
 #include <vix/utils/Version.hpp>
 #include <iostream>
-using namespace Vix::utils;
+using namespace vix::utils;
 
 int main() {
     std::cout << "version=" << version() << "\n";
@@ -63,7 +63,7 @@ uuid4=550e8400-e29b-41d4-a716-446655440000
 #include <vix/utils/Logger.hpp>
 #include <vix/utils/Env.hpp>
 #include <vix/utils/UUID.hpp>
-using namespace Vix::utils;
+using namespace vix::utils;
 using Vix::Logger;
 
 int main() {
@@ -99,7 +99,7 @@ int main() {
 #include <vix/utils/Validation.hpp>
 #include <vix/utils/Logger.hpp>
 #include <unordered_map>
-using namespace Vix::utils;
+using namespace vix::utils;
 using Vix::Logger;
 
 int main() {
@@ -168,5 +168,5 @@ cmake --build build -j$(nproc)
 
 ## 🧾 License
 
-**MIT License** © [Gaspard Kirira](https://github.com/gkirira)  
+**MIT License** © [Gaspard Kirira](https://github.com/gkirira)
 See [LICENSE](../../LICENSE) for details.

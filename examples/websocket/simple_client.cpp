@@ -23,32 +23,24 @@ int main()
 {
     using vix::websocket::Server;
 
-    // ------------------------------------------------------------
     // 1) Load configuration
-    // ------------------------------------------------------------
     //
     // The Config loader will try to find "config/config.json"
     // relative to the project root or the current working directory.
     //
     vix::config::Config cfg{"config/config.json"};
 
-    // ------------------------------------------------------------
     // 2) Create a thread pool executor for the WebSocket server
-    // ------------------------------------------------------------
     auto exec = vix::experimental::make_threadpool_executor(
         4, // min threads
         8, // max threads
         0  // default priority
     );
 
-    // ------------------------------------------------------------
     // 3) Construct the WebSocket server
-    // ------------------------------------------------------------
     Server ws(cfg, std::move(exec));
 
-    // ------------------------------------------------------------
     // 4) On new connection
-    // ------------------------------------------------------------
     ws.on_open(
         [&ws](auto &session)
         {
@@ -64,9 +56,7 @@ int main()
                 });
         });
 
-    // ------------------------------------------------------------
     // 5) On typed message
-    // ------------------------------------------------------------
     ws.on_typed_message(
         [&ws](auto &session,
               const std::string &type,
@@ -88,9 +78,7 @@ int main()
             }
         });
 
-    // ------------------------------------------------------------
     // 6) Start the WebSocket server (blocking)
-    // ------------------------------------------------------------
     ws.listen_blocking();
 
     return 0;

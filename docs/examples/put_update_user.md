@@ -5,21 +5,20 @@
 #include <vix/json/Simple.hpp>
 #include <string>
 
-using namespace Vix;
-namespace J = Vix::json;
+using namespace vix;
+namespace J = vix::json;
 
 int main()
 {
     App app;
 
     // PUT /users/{id}
-    app.put("/users/{id}", [](auto &req, auto &res, auto &params)
+    app.put("/users/{id}", [](Request &req, Response &res)
             {
-        const std::string id = params["id"];
+        const std::string id = req.param("id");
 
         try {
-            // Parsing with nlohmann::json for input is fine (Vix supports it internally)
-            auto body = nlohmann::json::parse(req.body());
+            auto body = json::Json::parse(req.body());
 
             const std::string name  = body.value("name",  "");
             const std::string email = body.value("email", "");
@@ -37,7 +36,7 @@ int main()
             });
         }
         catch (...) {
-            res.status(http::status::bad_request).json({
+            res.status(400).json({
                 "error", "Invalid JSON"
             });
         } });

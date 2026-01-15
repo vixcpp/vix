@@ -23,10 +23,10 @@
 #include <sstream>
 #include <vector>
 
-using namespace Vix;
-namespace J = Vix::json;
+using namespace vix;
+namespace J = vix::json;
 using njson = nlohmann::json;
-using namespace Vix::utils;
+using namespace vix::utils;
 
 // --------------------------- Data Model -------------------------------------
 struct User
@@ -110,7 +110,7 @@ int main()
     App app;
 
     // CREATE (POST /users)
-    app.post("/users", [](auto &req, auto &res)
+    app.post("/users", [](Request &req, Response &res)
              {
         njson body;
         try {
@@ -172,9 +172,9 @@ int main()
         }); });
 
     // READ (GET /users/{id})
-    app.get("/users/{id}", [](auto & /*req*/, auto &res, auto &params)
+    app.get("/users/{id}", [](Request &req, Response &res)
             {
-        const std::string id = params["id"];
+        const std::string id = req.param("id");
         std::lock_guard<std::mutex> lock(g_mtx);
         auto it = g_users.find(id);
         if (it == g_users.end()) {
@@ -188,9 +188,9 @@ int main()
         }); });
 
     // UPDATE (PUT /users/{id})
-    app.put("/users/{id}", [](auto &req, auto &res, auto &params)
+    app.put("/users/{id}", [](Request &req, Response &res)
             {
-        const std::string id = params["id"];
+        const std::string id = req.param("id");
 
         njson body;
         try {
@@ -226,9 +226,9 @@ int main()
         }); });
 
     // DELETE (DELETE /users/{id})
-    app.del("/users/{id}", [](auto & /*req*/, auto &res, auto &params)
+    app.del("/users/{id}", [](Request &req, Response &res)
             {
-        const std::string id = params["id"];
+        const std::string id = req.param("id");
         std::lock_guard<std::mutex> lock(g_mtx);
         const auto n = g_users.erase(id);
         if (!n) {
@@ -244,8 +244,5 @@ int main()
 
     // Lancement
     app.run(8080);
-    return 0;
 }
-
-
 ```

@@ -22,9 +22,9 @@ int main()
     // Example:
     //   GET /hello/Alice  -> { "greeting": "Hello Alice 👋" }
     //
-    app.get("/hello/{name}", [](auto &, auto &res, auto &params)
+    app.get("/hello/{name}", [](Request &req, Response &res)
             {
-        const auto name = params["name"];
+        const auto name = req.param("name");
         res.json({
             "greeting",   "Hello " + name + " 👋",
             "powered_by", "Vix.cpp"
@@ -35,21 +35,23 @@ int main()
     // Example:
     //   GET /posts/2025/hello-world
     //
-    app.get("/posts/{year}/{slug}", [](auto &, auto &res, auto &params)
+    app.get("/posts", [](Request &req, Response &res)
             {
-        const auto year = params["year"];
-        const auto slug = params["slug"];
+        const auto year = req.query_value("year");
+        const auto slug = req.query_value("slug");
 
-        res.json({
-            "year",       year,
-            "slug",       slug,
-            "title",      "Post: " + slug,
-            "message",    "This is an example route with multiple params.",
-            "powered_by", "Vix.cpp"
-        }); });
+        res.json(json::kv({
+            {"year",       year},
+            {"slug",       slug},
+            {"title",      "Post: " + slug},
+            {"message",    "This is an example route with multiple params."},
+            {"powered_by", "Vix.cpp"},
+            {"params", req.params()},
+            {"query", req.query()}
+        })); });
 
     // Optional: a root route for discoverability
-    app.get("/", [](auto &, auto &res)
+    app.get("/", [](Request &, Response &res)
             { res.json({"routes", "/hello/{name}, /posts/{year}/{slug}",
                         "hint", "Try GET /hello/Alice or /posts/2025/hello-world"}); });
 

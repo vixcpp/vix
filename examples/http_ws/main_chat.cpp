@@ -20,13 +20,10 @@ int main()
 {
     vix::serve_http_and_ws(
         "config/config.json", 8080,
-        [](auto &app, auto &ws)
+        [](App &app, auto &ws)
         {
-            // --------------------------------------------------------
             // HTTP: basic API for client bootstrapping
-            // --------------------------------------------------------
-
-            app.get("/", [](auto &, auto &res)
+            app.get("/", [](Request &, Response &res)
                     { res.json({"name", "Vix Chat Example",
                                 "description", "HTTP + WebSocket powered chat server",
                                 "framework", "Vix.cpp"}); });
@@ -36,7 +33,6 @@ int main()
                                 "service", "chat",
                                 "version", "1.0.0"}); });
 
-            // --------------------------------------------------------
             // WebSocket: chat protocol
             //
             // Client messages are expected as:
@@ -48,8 +44,6 @@ int main()
             //       "room": "general"    // optional
             //   }
             // }
-            // --------------------------------------------------------
-
             ws.on_open([&ws](auto &session)
                        {
                 (void)session;
@@ -69,9 +63,13 @@ int main()
 
                     if (type == "chat.join")
                     {
+                        nlohmann::json j = vix::websocket::detail::ws_kvs_to_nlohmann(payload);
+                        std::string user = j.at("user");
+
                         // Example: { "user": "Alice", "room": "general" }
-                        ws.broadcast_json("chat.system", {"user", payload.at("user"),
-                                                          "text", payload.at("user") + " joined the chat 🚀"});
+                        ws.broadcast_json("chat.system",
+                                          {"user", user,
+                                           "text", user + " joined the chat 🚀"});
                     }
                     else if (type == "chat.message")
                     {
@@ -86,8 +84,9 @@ int main()
                     else
                     {
                         // Unknown type → optional debug
-                        ws.broadcast_json("chat.unknown", {"info", "Unknown message type",
-                                                           "type", type});
+                        ws.broadcast_json("chat.unknown",
+                                          {"info", "Unknown message type",
+                                           "type", type});
                     }
                 });
         });

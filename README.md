@@ -1,9 +1,9 @@
 # Vix.cpp
 
 <p align="center">
-  <img 
-    src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1762524350/vixcpp_etndhz.png" 
-    alt="Vix.cpp Banner" 
+  <img
+    src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1762524350/vixcpp_etndhz.png"
+    alt="Vix.cpp Banner"
     width="100%"
     style="max-width:900px;border-radius:8px;"
   />
@@ -45,7 +45,7 @@ but engineered **from day one** for:
 > **Run applications like Node/Deno/Bun
 > with C++ speed, control, and predictability.**
 
-Vix is not just a backend framework.  
+Vix is not just a backend framework.
 It is a **runtime layer** for real-world distributed systems.
 
 ---
@@ -106,7 +106,7 @@ Vix.cpp is designed to remove overhead, unpredictability, and GC pauses.
 int main() {
     Vix::App app;
 
-    app.get("/", [](auto&, auto& res){
+    app.get("/", [](Request&, Response& res){
         res.send("Hello from Vix.cpp 🚀");
     });
 

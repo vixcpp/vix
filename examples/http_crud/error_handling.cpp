@@ -1,6 +1,8 @@
-# Example — error_handling.cpp
+/**
+ * @file error_handling.cpp
+ * @brief Example — Minimal error handling with DBError.
+ */
 
-```cpp
 #include <vix/orm/orm.hpp>
 #include <iostream>
 
@@ -13,7 +15,8 @@ int main(int argc, char **argv)
     try
     {
         // Intentionally wrong DB name to show error
-        auto raw = make_mysql_conn("tcp://127.0.0.1:3306", "root", "", "db_does_not_exist");
+        auto raw = make_mysql_factory("tcp://127.0.0.1:3306", "root", "", "db_does_not_exist");
+        //.....
         std::cout << "[INFO] This message may not be reached if connection fails.\n";
     }
     catch (const DBError &e)
@@ -26,6 +29,3 @@ int main(int argc, char **argv)
     }
     return 0;
 }
-
-
-```

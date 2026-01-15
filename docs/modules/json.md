@@ -5,14 +5,14 @@
 ![Status](https://img.shields.io/badge/Status-Stable-success)
 ![JSON](https://img.shields.io/badge/JSON-nlohmann%2Fjson-orange)
 
-> **vix.cpp/json** — A high-level JSON utility library built on top of [nlohmann/json](https://github.com/nlohmann/json).  
+> **vix.cpp/json** — A high-level JSON utility library built on top of [nlohmann/json](https://github.com/nlohmann/json).
 > Provides expressive, concise, and safe helpers for working with JSON in C++.
 
 ---
 
 ## 🚀 Overview
 
-The **Vix JSON module** offers a lightweight abstraction over `nlohmann::json`,  
+The **Vix JSON module** offers a lightweight abstraction over `nlohmann::json`,
 designed for simplicity and expressiveness. It adds helpers for:
 
 - Fast JSON object/array construction (`o()`, `a()`, `kv()`)
@@ -37,7 +37,7 @@ designed for simplicity and expressiveness. It adds helpers for:
 #include <vix/json/json.hpp>
 #include <iostream>
 
-using namespace Vix::json;
+using namespace vix::json;
 
 int main() {
     auto user = o(
@@ -65,11 +65,20 @@ int main() {
 ## 🧱 JSON Builders
 
 ```cpp
-auto obj1 = o("id", 1, "name", "Vix", "active", true);
-auto arr1 = a(1, 2, 3, 4);
+#include <vix/json/json.hpp>
+#include <iostream>
+using namespace vix::json;
 
-auto obj2 = kv({{"key1", "val1"}, {"key2", 2}});
-std::cout << dumps(obj1, 2) << "\n" << dumps(arr1, 2);
+int main()
+{
+    Json obj1 = o("id", 1, "name", "Vix", "active", true);
+    Json arr1 = a(1, 2, 3, 4);
+
+    Json obj2 = kv({{"key1", "val1"}, {"key2", 2}});
+
+    std::cout << dumps(obj1, 2) << "\n"
+              << dumps(arr1, 2) << std::endl;
+}
 ```
 
 **Example Output**
@@ -88,10 +97,28 @@ std::cout << dumps(obj1, 2) << "\n" << dumps(arr1, 2);
 ## 💾 JSON File Operations
 
 ```cpp
-auto j = loads(R"({"a":1,"b":[10,20]})");
-dump_file("out.json", j, 2);
-auto j2 = load_file("out.json");
-std::cout << dumps(j2, 2) << "\n";
+#include <vix/json/json.hpp>
+#include <iostream>
+using namespace vix::json;
+
+int main()
+{
+    Json j = loads(R"({"a":1,"b":[10,20]})");
+    dump_file("out.json", j, 2);
+    Json j2 = load_file("out.json");
+    std::cout << dumps(j2, 2) << std::endl;
+}
+```
+**Output**
+
+```json
+{
+  "a": 1,
+  "b": [
+    10,
+    20
+  ]
+}
 ```
 
 **Features**
@@ -105,15 +132,24 @@ std::cout << dumps(j2, 2) << "\n";
 ## 🧭 JPath Access
 
 ```cpp
-Json j = obj();
-jset(j, "user.langs[2]", "cpp");
-jset(j, "user.profile.name", "Gaspard");
-jset(j, R"(user["display.name"])", "Ada L.");
+#include <vix/json/json.hpp>
+#include <iostream>
 
-if (auto v = jget(j, "user.langs[2]")) {
-    std::cout << v->get<std::string>() << "\n"; // cpp
+using namespace vix::json;
+
+int main()
+{
+    Json j = obj();
+    jset(j, "user.langs[2]", "cpp");
+    jset(j, "user.profile.name", "Gaspard");
+    jset(j, R"(user["display.name"])", "Ada L.");
+
+    if (auto v = jget(j, "user.langs[2]"))
+    {
+        std::cout << v->get<std::string>() << "\n";
+    }
+    std::cout << dumps(j, 2) << "\n";
 }
-std::cout << dumps(j, 2) << "\n";
 ```
 
 **Output**
@@ -160,14 +196,22 @@ This module is automatically included when you build the umbrella **Vix.cpp** pr
 
 ```cpp
 #include <vix/json/json.hpp>
-using namespace Vix::json;
+using namespace vix::json;
 
 auto j = o("framework", "Vix.cpp", "version", "1.7.0");
+```
+**Output**
+
+```json
+{
+  "framework": "Vix.cpp",
+  "version": "1.7.0",
+}
 ```
 
 ---
 
 ## 🧾 License
 
-**MIT License** © [Gaspard Kirira](https://github.com/gkirira)  
+**MIT License** © [Gaspard Kirira](https://github.com/gkirira)
 See [LICENSE](../../LICENSE) for details.
