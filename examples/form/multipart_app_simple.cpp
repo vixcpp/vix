@@ -1,5 +1,16 @@
-// ============================================================================
-// multipart_app_simple.cpp — Multipart parser (App) simple example (Vix.cpp)
+/**
+ *
+ *  @file multipart_app_simple.cpp — Multipart parser (App) simple example (Vix.cpp)
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 // ----------------------------------------------------------------------------
 // Run:
 //   vix run multipart_app_simple.cpp
@@ -33,22 +44,22 @@ using namespace vix;
 
 int main()
 {
-    App app;
+  App app;
 
-    app.use("/mp", middleware::app::cors_dev());
-    app.use("/mp", middleware::app::multipart_save_dev("uploads"));
+  app.use("/mp", middleware::app::cors_dev());
+  app.use("/mp", middleware::app::multipart_save_dev("uploads"));
 
-    app.options("/mp", [](Request &, Response &res)
-                { res.status(204).send(""); });
+  app.options("/mp", [](Request &, Response &res)
+              { res.status(204).send(""); });
 
-    app.get("/", [](Request &, Response &res)
-            { res.send("POST /mp multipart/form-data (saves files to ./uploads/)"); });
+  app.get("/", [](Request &, Response &res)
+          { res.send("POST /mp multipart/form-data (saves files to ./uploads/)"); });
 
-    app.post("/mp", [](Request &req, Response &res)
-             {
+  app.post("/mp", [](Request &req, Response &res)
+           {
                  auto &form = req.state<middleware::parsers::MultipartForm>();
                  res.json(middleware::app::multipart_json(form)); });
 
-    app.run(8080);
-    return 0;
+  app.run(8080);
+  return 0;
 }

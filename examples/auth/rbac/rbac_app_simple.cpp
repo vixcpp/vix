@@ -1,6 +1,16 @@
-// ============================================================================
-// rbac_app_simple.cpp — RBAC (roles + perms) example (Vix.cpp)
-// ----------------------------------------------------------------------------
+/**
+ *
+ *  @file rbac_app_simple.cpp — RBAC (roles + perms) example (Vix.cpp)
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 // Run:
 //   vix run rbac_app_simple.cpp
 //
@@ -42,48 +52,48 @@ static const std::string TOKEN_NO_PERM =
 
 int main()
 {
-    App app;
+  App app;
 
-    // 1) JWT auth (puts JwtClaims into request state)
-    vix::middleware::auth::JwtOptions jwt_opt{};
-    jwt_opt.secret = "dev_secret";
-    jwt_opt.verify_exp = false;
+  // 1) JWT auth (puts JwtClaims into request state)
+  vix::middleware::auth::JwtOptions jwt_opt{};
+  jwt_opt.secret = "dev_secret";
+  jwt_opt.verify_exp = false;
 
-    // 2) RBAC: build Authz from JwtClaims, then enforce rules
-    vix::middleware::auth::RbacOptions rbac_opt{};
-    rbac_opt.require_auth = true;
-    rbac_opt.use_resolver = false; // keep the example simple
+  // 2) RBAC: build Authz from JwtClaims, then enforce rules
+  vix::middleware::auth::RbacOptions rbac_opt{};
+  rbac_opt.require_auth = true;
+  rbac_opt.use_resolver = false; // keep the example simple
 
-    auto jwt_mw = vix::middleware::app::adapt_ctx(vix::middleware::auth::jwt(jwt_opt));
-    auto ctx_mw = vix::middleware::app::adapt_ctx(vix::middleware::auth::rbac_context(rbac_opt));
-    auto role_mw = vix::middleware::app::adapt_ctx(vix::middleware::auth::require_role("admin"));
-    auto perm_mw = vix::middleware::app::adapt_ctx(vix::middleware::auth::require_perm("products:write"));
+  auto jwt_mw = vix::middleware::app::adapt_ctx(vix::middleware::auth::jwt(jwt_opt));
+  auto ctx_mw = vix::middleware::app::adapt_ctx(vix::middleware::auth::rbac_context(rbac_opt));
+  auto role_mw = vix::middleware::app::adapt_ctx(vix::middleware::auth::require_role("admin"));
+  auto perm_mw = vix::middleware::app::adapt_ctx(vix::middleware::auth::require_perm("products:write"));
 
-    // Protect only /admin
-    app.use(vix::middleware::app::when(
-        [](const Request &req)
-        { return req.path() == "/admin"; },
-        std::move(jwt_mw)));
-    app.use(vix::middleware::app::when(
-        [](const Request &req)
-        { return req.path() == "/admin"; },
-        std::move(ctx_mw)));
-    app.use(vix::middleware::app::when(
-        [](const Request &req)
-        { return req.path() == "/admin"; },
-        std::move(role_mw)));
-    app.use(vix::middleware::app::when(
-        [](const Request &req)
-        { return req.path() == "/admin"; },
-        std::move(perm_mw)));
+  // Protect only /admin
+  app.use(vix::middleware::app::when(
+      [](const Request &req)
+      { return req.path() == "/admin"; },
+      std::move(jwt_mw)));
+  app.use(vix::middleware::app::when(
+      [](const Request &req)
+      { return req.path() == "/admin"; },
+      std::move(ctx_mw)));
+  app.use(vix::middleware::app::when(
+      [](const Request &req)
+      { return req.path() == "/admin"; },
+      std::move(role_mw)));
+  app.use(vix::middleware::app::when(
+      [](const Request &req)
+      { return req.path() == "/admin"; },
+      std::move(perm_mw)));
 
-    // Public
-    app.get("/", [](Request &, Response &res)
-            { res.send("RBAC example: /admin requires role=admin + perm=products:write"); });
+  // Public
+  app.get("/", [](Request &, Response &res)
+          { res.send("RBAC example: /admin requires role=admin + perm=products:write"); });
 
-    // Protected
-    app.get("/admin", [](Request &req, Response &res)
-            {
+  // Protected
+  app.get("/admin", [](Request &req, Response &res)
+          {
         auto& authz = req.state<vix::middleware::auth::Authz>();
 
         res.json({
@@ -93,17 +103,17 @@ int main()
             "has_products_write", authz.has_perm("products:write")
         }); });
 
-    std::cout
-        << "Vix RBAC example running:\n"
-        << "  http://localhost:8080/\n"
-        << "  http://localhost:8080/admin\n\n"
-        << "TOKEN_OK:\n  " << TOKEN_OK << "\n\n"
-        << "TOKEN_NO_PERM:\n  " << TOKEN_NO_PERM << "\n\n"
-        << "Try:\n"
-        << "  curl -i http://localhost:8080/admin\n"
-        << "  curl -i -H \"Authorization: Bearer " << TOKEN_OK << "\" http://localhost:8080/admin\n"
-        << "  curl -i -H \"Authorization: Bearer " << TOKEN_NO_PERM << "\" http://localhost:8080/admin\n";
+  std::cout
+      << "Vix RBAC example running:\n"
+      << "  http://localhost:8080/\n"
+      << "  http://localhost:8080/admin\n\n"
+      << "TOKEN_OK:\n  " << TOKEN_OK << "\n\n"
+      << "TOKEN_NO_PERM:\n  " << TOKEN_NO_PERM << "\n\n"
+      << "Try:\n"
+      << "  curl -i http://localhost:8080/admin\n"
+      << "  curl -i -H \"Authorization: Bearer " << TOKEN_OK << "\" http://localhost:8080/admin\n"
+      << "  curl -i -H \"Authorization: Bearer " << TOKEN_NO_PERM << "\" http://localhost:8080/admin\n";
 
-    app.run(8080);
-    return 0;
+  app.run(8080);
+  return 0;
 }

@@ -1,6 +1,16 @@
-// ============================================================================
-// csrf_strict_server.cpp — CSRF middleware example (Vix.cpp)
-// ----------------------------------------------------------------------------
+/**
+ *
+ *  @file csrf_strict_server.cpp — CSRF middleware example (Vix.cpp)
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 // Run:
 //   vix run csrf_strict_server.cpp
 //
@@ -27,17 +37,17 @@ using namespace vix;
 
 int main()
 {
-    App app;
+  App app;
 
-    app.use("/api", middleware::app::csrf_dev());
+  app.use("/api", middleware::app::csrf_dev());
 
-    app.get("/api/csrf", [](Request &, Response &res)
-            {
+  app.get("/api/csrf", [](Request &, Response &res)
+          {
         res.header("Set-Cookie", "csrf_token=abc; Path=/; SameSite=Lax");
         res.json({ "csrf_token", "abc" }); });
 
-    app.post("/api/update", [](Request &, Response &res)
-             { res.json({"ok", true, "message", "CSRF passed ✅"}); });
+  app.post("/api/update", [](Request &, Response &res)
+           { res.json({"ok", true, "message", "CSRF passed ✅"}); });
 
-    app.run(8080);
+  app.run(8080);
 }

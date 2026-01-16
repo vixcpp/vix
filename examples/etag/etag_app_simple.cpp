@@ -1,5 +1,16 @@
-// ============================================================================
-// etag_app_simple.cpp — ETag middleware example (Vix.cpp)
+/**
+ *
+ *  @file etag_app_simple.cpp — ETag middleware example (Vix.cpp)
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 // ----------------------------------------------------------------------------
 // Run:
 //   vix run etag_app_simple.cpp
@@ -21,30 +32,30 @@ using namespace vix;
 
 static void print_help()
 {
-    std::cout
-        << "Vix ETag example running:\n"
-        << "  http://localhost:8080/x\n\n"
-        << "Try:\n"
-        << "  curl -i http://localhost:8080/x\n"
-        << "  curl -i -H 'If-None-Match: <etag>' http://localhost:8080/x\n"
-        << "  curl -I http://localhost:8080/x\n";
+  std::cout
+      << "Vix ETag example running:\n"
+      << "  http://localhost:8080/x\n\n"
+      << "Try:\n"
+      << "  curl -i http://localhost:8080/x\n"
+      << "  curl -i -H 'If-None-Match: <etag>' http://localhost:8080/x\n"
+      << "  curl -I http://localhost:8080/x\n";
 }
 
 int main()
 {
-    App app;
+  App app;
 
-    // Install ETag middleware globally
-    auto mw = vix::middleware::app::adapt_ctx(
-        vix::middleware::performance::etag({.weak = true,
-                                            .add_cache_control_if_missing = false,
-                                            .min_body_size = 1}));
-    app.use(std::move(mw));
+  // Install ETag middleware globally
+  auto mw = vix::middleware::app::adapt_ctx(
+      vix::middleware::performance::etag({.weak = true,
+                                          .add_cache_control_if_missing = false,
+                                          .min_body_size = 1}));
+  app.use(std::move(mw));
 
-    app.head("/x", [](Request &, Response &res)
-             { res.status(200); });
+  app.head("/x", [](Request &, Response &res)
+           { res.status(200); });
 
-    print_help();
-    app.run(8080);
-    return 0;
+  print_help();
+  app.run(8080);
+  return 0;
 }

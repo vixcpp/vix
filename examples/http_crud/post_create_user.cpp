@@ -1,7 +1,16 @@
-// ============================================================================
-// post_create_user.cpp — POST example (new Vix.cpp API)
-// POST /users -> {"action":"create","status":"created","user":{...}}
-// ============================================================================
+/**
+ *
+ *  @file examples/http_crud/post_create_user.cpp
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 
 #include <vix.hpp>
 #include <vix/json/Simple.hpp>
@@ -12,11 +21,11 @@ namespace J = vix::json;
 
 int main()
 {
-    App app;
+  App app;
 
-    // POST /users
-    app.post("/users", [](Request &req, Response &res)
-             {
+  // POST /users
+  app.post("/users", [](Request &req, Response &res)
+           {
         try {
             auto body = json::Json::parse(req.body());
 
@@ -40,5 +49,5 @@ int main()
             });
         } });
 
-    app.run(8080);
+  app.run(8080);
 }

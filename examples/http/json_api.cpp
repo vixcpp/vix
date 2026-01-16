@@ -1,17 +1,16 @@
-//
-// examples/http/json_api.cpp
-//
-// Simple JSON API example using Vix.cpp.
-//
-// Demonstrates:
-//   - A small "users" API under /api/users
-//   - GET /api/users        → returns a JSON array
-//   - POST /api/users       → accepts a JSON body and echoes basic info
-//
-// Note:
-//   This example uses nlohmann::json for parsing the request body.
-//   Make sure nlohmann/json.hpp is available in your include path.
-//
+/**
+ *
+ *  @file examples/http/json_api.cpp
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 
 #include <vix.hpp>
 
@@ -19,18 +18,18 @@ using namespace vix;
 
 int main()
 {
-    App app;
+  App app;
 
-    // In-memory fake "database"
-    std::vector<json::Json> users = {
-        {{"id", 1}, {"name", "Alice"}, {"role", "admin"}},
-        {{"id", 2}, {"name", "Bob"}, {"role", "user"}}};
+  // In-memory fake "database"
+  std::vector<json::Json> users = {
+      {{"id", 1}, {"name", "Alice"}, {"role", "admin"}},
+      {{"id", 2}, {"name", "Bob"}, {"role", "user"}}};
 
-    // GET /api/users
-    //
-    // Returns the full list of users as JSON.
-    app.get("/api/users", [&users](Request &, Response &res)
-            {
+  // GET /api/users
+  //
+  // Returns the full list of users as JSON.
+  app.get("/api/users", [&users](Request &, Response &res)
+          {
         json::Json payload = {
             {"count", users.size()},
             {"items", users}
@@ -38,18 +37,18 @@ int main()
 
         res.json(payload); });
 
-    // POST /api/users
-    //
-    // Expects a JSON body like:
-    //   { "name": "Charlie", "role": "user" }
-    //
-    // For simplicity, we:
-    //   - parse the body
-    //   - assign a new incremental id
-    //   - push it into the in-memory vector
-    //   - return the created user
-    app.post("/api/users", [&users](Request &req, Response &res)
-             {
+  // POST /api/users
+  //
+  // Expects a JSON body like:
+  //   { "name": "Charlie", "role": "user" }
+  //
+  // For simplicity, we:
+  //   - parse the body
+  //   - assign a new incremental id
+  //   - push it into the in-memory vector
+  //   - return the created user
+  app.post("/api/users", [&users](Request &req, Response &res)
+           {
         try
         {
             // req is typically a boost::beast::http::request<string_body>
@@ -82,12 +81,12 @@ int main()
             }));
         } });
 
-    // Root route: hint for trying the API
-    app.get("/", [](Request &, Response &res)
-            { res.json({"api", "/api/users",
-                        "hint1", "GET /api/users",
-                        "hint2", "POST /api/users with JSON body {\"name\":\"Charlie\",\"role\":\"user\"}"}); });
+  // Root route: hint for trying the API
+  app.get("/", [](Request &, Response &res)
+          { res.json({"api", "/api/users",
+                      "hint1", "GET /api/users",
+                      "hint2", "POST /api/users with JSON body {\"name\":\"Charlie\",\"role\":\"user\"}"}); });
 
-    app.run(8080);
-    return 0;
+  app.run(8080);
+  return 0;
 }

@@ -1,6 +1,16 @@
-// ============================================================================
-// http_cache_app_debug.cpp — HTTP Cache (Debug + Vary)
-// ----------------------------------------------------------------------------
+/**
+ *
+ *  @file  http_cache_app_debug.cpp — HTTP Cache (Debug + Vary)
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 // Run:
 //   vix run examples/http_cache_app_debug.cpp
 //
@@ -30,11 +40,11 @@ using namespace vix;
 
 static void register_routes(App &app)
 {
-    app.get("/", [](Request &, Response &res)
-            { res.text("home (not cached)"); });
+  app.get("/", [](Request &, Response &res)
+          { res.text("home (not cached)"); });
 
-    app.get("/api/users", [](Request &req, Response &res)
-            {
+  app.get("/api/users", [](Request &req, Response &res)
+          {
         // ✅ Request API you actually have:
         // - req.has_header(name)
         // - req.header(name) -> std::string
@@ -51,24 +61,24 @@ static void register_routes(App &app)
 
 int main()
 {
-    App app;
+  App app;
 
-    app.use("/api/", middleware::app::http_cache({
-                         .ttl_ms = 30'000,
-                         .allow_bypass = true,
-                         .bypass_header = "x-vix-cache",
-                         .bypass_value = "bypass",
+  app.use("/api/", middleware::app::http_cache({
+                       .ttl_ms = 30'000,
+                       .allow_bypass = true,
+                       .bypass_header = "x-vix-cache",
+                       .bypass_value = "bypass",
 
-                         // Create different cache entries per language header
-                         .vary_headers = {"accept-language"},
+                       // Create different cache entries per language header
+                       .vary_headers = {"accept-language"},
 
-                         // Useful for demo/learning
-                         .add_debug_header = true,
-                         .debug_header = "x-vix-cache-status",
-                     }));
+                       // Useful for demo/learning
+                       .add_debug_header = true,
+                       .debug_header = "x-vix-cache-status",
+                   }));
 
-    register_routes(app);
+  register_routes(app);
 
-    app.run(8080);
-    return 0;
+  app.run(8080);
+  return 0;
 }

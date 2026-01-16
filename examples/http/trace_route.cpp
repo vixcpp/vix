@@ -1,5 +1,18 @@
+/**
+ *
+ *  @file examples/http/trace_route.cpp
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
+
 // ============================================================================
-// trace_route.cpp — Demo: contextual logging + request tracing (new Vix.cpp API)
 // GET /trace -> {"rid": "<uuid>", "ok": true}
 // ============================================================================
 
@@ -13,16 +26,16 @@ using namespace vix::utils;
 
 int main()
 {
-    auto &log = Logger::getInstance();
-    log.setPattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %v");
-    log.setLevel(Logger::Level::INFO);
-    log.setAsync(true);
+  auto &log = Logger::getInstance();
+  log.setPattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %v");
+  log.setLevel(Logger::Level::INFO);
+  log.setAsync(true);
 
-    App app;
+  App app;
 
-    // GET /trace
-    app.get("/trace", [](Request &req, Response &res)
-            {
+  // GET /trace
+  app.get("/trace", [](Request &req, Response &res)
+          {
         Logger::Context ctx;
         ctx.request_id = utils::uuid4();
         ctx.module     = "trace_handler";
@@ -43,5 +56,5 @@ int main()
             "ok",  true
         }); });
 
-    app.run(8080);
+  app.run(8080);
 }

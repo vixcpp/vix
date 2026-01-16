@@ -1,5 +1,16 @@
-// ============================================================================
-// security_cors_csrf_server.cpp — CORS + CSRF (Vix.cpp)
+/**
+ *
+ *  @file security_cors_csrf_server.cpp — CORS + CSRF (Vix.cpp)
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 // ----------------------------------------------------------------------------
 // Goal:
 //   - OPTIONS handled by CORS middleware (preflight)
@@ -51,33 +62,33 @@ using namespace vix;
 
 int main()
 {
-    App app;
+  App app;
 
-    // Apply on /api (order matters)
-    middleware::app::protect_prefix(app, "/api",
-                                    middleware::app::cors_dev({"https://example.com"}));
+  // Apply on /api (order matters)
+  middleware::app::protect_prefix(app, "/api",
+                                  middleware::app::cors_dev({"https://example.com"}));
 
-    // CSRF expects: cookie "csrf_token" and header "x-csrf-token" by default
-    middleware::app::protect_prefix(app, "/api",
-                                    middleware::app::csrf_dev("csrf_token", "x-csrf-token", false));
-    // ou strict:
-    // middleware::app::protect_prefix(app, "/api",
-    //     middleware::app::csrf_strict_dev("csrf_token", "x-csrf-token"));
+  // CSRF expects: cookie "csrf_token" and header "x-csrf-token" by default
+  middleware::app::protect_prefix(app, "/api",
+                                  middleware::app::csrf_dev("csrf_token", "x-csrf-token", false));
+  // ou strict:
+  // middleware::app::protect_prefix(app, "/api",
+  //     middleware::app::csrf_strict_dev("csrf_token", "x-csrf-token"));
 
-    // Routes
-    app.get("/api/csrf", [](Request &, Response &res)
-            {
+  // Routes
+  app.get("/api/csrf", [](Request &, Response &res)
+          {
         res.header("Set-Cookie", "csrf_token=abc; Path=/; SameSite=Lax");
         res.header("X-Request-Id", "req_123");
         res.json({ "csrf_token", "abc" }); });
 
-    app.post("/api/update", [](Request &, Response &res)
-             {
+  app.post("/api/update", [](Request &, Response &res)
+           {
         res.header("X-Request-Id", "req_456");
         res.json({ "ok", true, "message", "CORS ✅ + CSRF ✅" }); });
 
-    app.get("/", [](Request &, Response &res)
-            { res.send("Welcome"); });
+  app.get("/", [](Request &, Response &res)
+          { res.send("Welcome"); });
 
-    app.run(8080);
+  app.run(8080);
 }

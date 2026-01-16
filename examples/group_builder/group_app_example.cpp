@@ -1,5 +1,16 @@
-// ============================================================================
-// group_app_example.cpp — Groups + protect() demo (Vix.cpp)
+/**
+ *
+ *  @file group_app_example.cpp — Groups + protect() demo (Vix.cpp)
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 // ----------------------------------------------------------------------------
 // Run:
 //   vix run group_app_example.cpp
@@ -22,15 +33,15 @@ using namespace vix;
 
 int main()
 {
-    App app;
+  App app;
 
-    // Root
-    app.get("/", [](Request &, Response &res)
-            { res.send("Welcome. Try /api/public, /api/secure, /api/admin/dashboard"); });
+  // Root
+  app.get("/", [](Request &, Response &res)
+          { res.send("Welcome. Try /api/public, /api/secure, /api/admin/dashboard"); });
 
-    // GROUP: /api
-    app.group("/api", [&](App::Group &api)
-              {
+  // GROUP: /api
+  app.group("/api", [&](App::Group &api)
+            {
         // Public API
         api.get("/public", [](Request &, Response &res)
         {
@@ -67,21 +78,21 @@ int main()
             });
         }); });
 
-    // Help
-    std::cout
-        << "Vix Groups example running:\n"
-        << "  http://localhost:8080/\n"
-        << "  http://localhost:8080/api/public\n"
-        << "  http://localhost:8080/api/secure\n"
-        << "  http://localhost:8080/api/admin/dashboard\n\n"
-        << "API KEY:\n"
-        << "  secret\n\n"
-        << "Try:\n"
-        << "  curl -i http://localhost:8080/api/public\n"
-        << "  curl -i http://localhost:8080/api/secure\n"
-        << "  curl -i -H \"x-api-key: secret\" http://localhost:8080/api/secure\n"
-        << "  curl -i \"http://localhost:8080/api/secure?api_key=secret\"\n";
+  // Help
+  std::cout
+      << "Vix Groups example running:\n"
+      << "  http://localhost:8080/\n"
+      << "  http://localhost:8080/api/public\n"
+      << "  http://localhost:8080/api/secure\n"
+      << "  http://localhost:8080/api/admin/dashboard\n\n"
+      << "API KEY:\n"
+      << "  secret\n\n"
+      << "Try:\n"
+      << "  curl -i http://localhost:8080/api/public\n"
+      << "  curl -i http://localhost:8080/api/secure\n"
+      << "  curl -i -H \"x-api-key: secret\" http://localhost:8080/api/secure\n"
+      << "  curl -i \"http://localhost:8080/api/secure?api_key=secret\"\n";
 
-    app.run(8080);
-    return 0;
+  app.run(8080);
+  return 0;
 }

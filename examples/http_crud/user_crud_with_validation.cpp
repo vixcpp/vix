@@ -1,12 +1,16 @@
-// ============================================================================
-// user_crud_with_validation.cpp — Full CRUD + Validation (Vix.cpp, nouvelle API)
-// ----------------------------------------------------------------------------
-// Routes:
-//   POST   /users          → Create user (with validation)
-//   GET    /users/{id}     → Read user
-//   PUT    /users/{id}     → Update user
-//   DELETE /users/{id}     → Delete user
-// ============================================================================
+/**
+ *
+ *  @file examples/http_crud/user_crud_with_validation.cpp
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 
 #include <vix.hpp>                  // App, http, ResponseWrapper, etc.
 #include <vix/json/Simple.hpp>      // Vix::json::token, obj(), array()
@@ -28,10 +32,10 @@ using namespace vix::utils;
 // --------------------------- Data Model -------------------------------------
 struct User
 {
-    std::string id;
-    std::string name;
-    std::string email;
-    int age{};
+  std::string id;
+  std::string name;
+  std::string email;
+  int age{};
 };
 
 static std::mutex g_mtx;
@@ -40,75 +44,75 @@ static std::unordered_map<std::string, User> g_users;
 // --------------------------- Helpers ----------------------------------------
 static J::kvs user_to_kvs(const User &u)
 {
-    return J::obj({"id", u.id,
-                   "name", u.name,
-                   "email", u.email,
-                   "age", static_cast<long long>(u.age)});
+  return J::obj({"id", u.id,
+                 "name", u.name,
+                 "email", u.email,
+                 "age", static_cast<long long>(u.age)});
 }
 
 static std::string to_string_safe(const njson &j)
 {
-    if (j.is_string())
-        return j.get<std::string>();
-    if (j.is_number_integer())
-        return std::to_string(j.get<long long>());
-    if (j.is_number_unsigned())
-        return std::to_string(j.get<unsigned long long>());
-    if (j.is_number_float())
-        return std::to_string(j.get<double>());
-    if (j.is_boolean())
-        return j.get<bool>() ? "true" : "false";
-    return {};
+  if (j.is_string())
+    return j.get<std::string>();
+  if (j.is_number_integer())
+    return std::to_string(j.get<long long>());
+  if (j.is_number_unsigned())
+    return std::to_string(j.get<unsigned long long>());
+  if (j.is_number_float())
+    return std::to_string(j.get<double>());
+  if (j.is_boolean())
+    return j.get<bool>() ? "true" : "false";
+  return {};
 }
 
 static bool parse_user(const njson &j, User &out)
 {
-    try
-    {
-        out.name = j.value("name", std::string{});
-        out.email = j.value("email", std::string{});
+  try
+  {
+    out.name = j.value("name", std::string{});
+    out.email = j.value("email", std::string{});
 
-        if (j.contains("age"))
-        {
-            if (j["age"].is_string())
-                out.age = std::stoi(j["age"].get<std::string>());
-            else if (j["age"].is_number_integer())
-                out.age = static_cast<int>(j["age"].get<long long>());
-            else if (j["age"].is_number_unsigned())
-                out.age = static_cast<int>(j["age"].get<unsigned long long>());
-            else if (j["age"].is_number_float())
-                out.age = static_cast<int>(j["age"].get<double>());
-            else
-                out.age = 0;
-        }
-        else
-        {
-            out.age = 0;
-        }
-        return true;
-    }
-    catch (...)
+    if (j.contains("age"))
     {
-        return false;
+      if (j["age"].is_string())
+        out.age = std::stoi(j["age"].get<std::string>());
+      else if (j["age"].is_number_integer())
+        out.age = static_cast<int>(j["age"].get<long long>());
+      else if (j["age"].is_number_unsigned())
+        out.age = static_cast<int>(j["age"].get<unsigned long long>());
+      else if (j["age"].is_number_float())
+        out.age = static_cast<int>(j["age"].get<double>());
+      else
+        out.age = 0;
     }
+    else
+    {
+      out.age = 0;
+    }
+    return true;
+  }
+  catch (...)
+  {
+    return false;
+  }
 }
 
 static std::string gen_id_from_email(const std::string &email)
 {
-    const auto h = std::hash<std::string>{}(email) & 0xFFFFFFull;
-    std::ostringstream oss;
-    oss << h;
-    return oss.str();
+  const auto h = std::hash<std::string>{}(email) & 0xFFFFFFull;
+  std::ostringstream oss;
+  oss << h;
+  return oss.str();
 }
 
 // --------------------------- Main -------------------------------------------
 int main()
 {
-    App app;
+  App app;
 
-    // CREATE (POST /users)
-    app.post("/users", [](Request &req, Response &res)
-             {
+  // CREATE (POST /users)
+  app.post("/users", [](Request &req, Response &res)
+           {
         njson body;
         try {
             body = njson::parse(req.body());
@@ -168,9 +172,9 @@ int main()
             "user",   user_to_kvs(u)
         }); });
 
-    // READ (GET /users/{id})
-    app.get("/users/{id}", [](Request &req, Response &res)
-            {
+  // READ (GET /users/{id})
+  app.get("/users/{id}", [](Request &req, Response &res)
+          {
         const std::string id = req.param("id");
         std::lock_guard<std::mutex> lock(g_mtx);
         auto it = g_users.find(id);
@@ -184,9 +188,9 @@ int main()
             "user", user_to_kvs(it->second)
         }); });
 
-    // UPDATE (PUT /users/{id})
-    app.put("/users/{id}", [](Request &req, Response &res)
-            {
+  // UPDATE (PUT /users/{id})
+  app.put("/users/{id}", [](Request &req, Response &res)
+          {
         const std::string id = req.param("id");
 
         njson body;
@@ -222,9 +226,9 @@ int main()
             "user",   user_to_kvs(it->second)
         }); });
 
-    // DELETE (DELETE /users/{id})
-    app.del("/users/{id}", [](Request &req, Response &res)
-            {
+  // DELETE (DELETE /users/{id})
+  app.del("/users/{id}", [](Request &req, Response &res)
+          {
         const std::string id = req.param("id");
         std::lock_guard<std::mutex> lock(g_mtx);
         const auto n = g_users.erase(id);
@@ -239,6 +243,6 @@ int main()
             "user_id", id
         }); });
 
-    // Lancement
-    app.run(8080);
+  // Lancement
+  app.run(8080);
 }

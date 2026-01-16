@@ -1,30 +1,36 @@
-// ============================================================================
-// main.cpp — Quick Start Example (Vix.cpp)
-// ---------------------------------------------------------------------------
-// A minimal HTTP server built with Vix.cpp.
-// Run →  ./main
-// Then visit →  http://localhost:8080/hello
-// ============================================================================
+/**
+ *
+ *  @file main.cpp
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 #include <vix.hpp>
 
 using namespace vix;
 
 int main()
 {
-    App app;
+  App app;
 
-    app.get("/", [](Request &, Response &res)
-            {
-                res.send("ok"); // light
-            });
+  app.get("/", [](Request &, Response &res)
+          {
+            res.send("ok"); // light
+          });
 
-    app.get_heavy("/users", [](Request &, Response &res)
-                  {
+  app.get_heavy("/users", [](Request &, Response &res)
+                {
     // DB query (heavy) -> executor
     res.send("users"); });
 
-    app.get("/users/{id}", [](Request &req, Response &res)
-            {
+  app.get("/users/{id}", [](Request &req, Response &res)
+          {
         auto id   = req.param("id");
         auto page = req.query_value("page", "1");
 
@@ -34,8 +40,8 @@ int main()
             "page",      page
         }); });
 
-    app.post("/echo/{id}", [](Request &req, Response &res)
-             {
+  app.post("/echo/{id}", [](Request &req, Response &res)
+           {
     const auto &body = req.json();
 
     res.json({
@@ -45,5 +51,5 @@ int main()
         "params", req.params()
     }); });
 
-    app.run(8080);
+  app.run(8080);
 }

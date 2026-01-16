@@ -1,6 +1,16 @@
-// ============================================================================
-// body_limit_app.cpp — Body limit middleware example (Vix.cpp)
-//
+/**
+ *
+ *  @file  body_limit_app.cpp — Body limit middleware example (Vix.cpp)
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 // Run:
 //   vix run vix/examples/body_limit_app.cpp
 //
@@ -35,43 +45,43 @@ using namespace vix;
 
 static void register_routes(App &app)
 {
-    app.get("/", [](Request &, Response &res)
-            { res.send("body_limit example: /api/ping, /api/echo, /api/strict"); });
+  app.get("/", [](Request &, Response &res)
+          { res.send("body_limit example: /api/ping, /api/echo, /api/strict"); });
 
-    app.get("/api/ping", [](Request &, Response &res)
-            { res.json({"ok", true, "msg", "pong"}); });
+  app.get("/api/ping", [](Request &, Response &res)
+          { res.json({"ok", true, "msg", "pong"}); });
 
-    app.post("/api/echo", [](Request &req, Response &res)
-             { res.json({"ok", true,
-                         "bytes", static_cast<long long>(req.body().size()),
-                         "content_type", req.header("content-type")}); });
+  app.post("/api/echo", [](Request &req, Response &res)
+           { res.json({"ok", true,
+                       "bytes", static_cast<long long>(req.body().size()),
+                       "content_type", req.header("content-type")}); });
 
-    app.post("/api/strict", [](Request &req, Response &res)
-             { res.json({"ok", true,
-                         "msg", "strict accepted",
-                         "bytes", static_cast<long long>(req.body().size())}); });
+  app.post("/api/strict", [](Request &req, Response &res)
+           { res.json({"ok", true,
+                       "msg", "strict accepted",
+                       "bytes", static_cast<long long>(req.body().size())}); });
 }
 
 int main()
 {
-    App app;
+  App app;
 
-    // /api: max 32 bytes (demo), chunked allowed
-    app.use("/api", middleware::app::body_limit_dev(
-                        32,    // max_bytes
-                        false, // apply_to_get
-                        true   // allow_chunked
-                        ));
+  // /api: max 32 bytes (demo), chunked allowed
+  app.use("/api", middleware::app::body_limit_dev(
+                      32,    // max_bytes
+                      false, // apply_to_get
+                      true   // allow_chunked
+                      ));
 
-    // /api/strict: max 32 bytes, chunked NOT allowed => 411 if missing Content-Length
-    app.use("/api/strict", middleware::app::body_limit_dev(
-                               32,    // max_bytes
-                               false, // apply_to_get
-                               false  // allow_chunked (strict)
-                               ));
+  // /api/strict: max 32 bytes, chunked NOT allowed => 411 if missing Content-Length
+  app.use("/api/strict", middleware::app::body_limit_dev(
+                             32,    // max_bytes
+                             false, // apply_to_get
+                             false  // allow_chunked (strict)
+                             ));
 
-    register_routes(app);
+  register_routes(app);
 
-    app.run(8080);
-    return 0;
+  app.run(8080);
+  return 0;
 }

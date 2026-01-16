@@ -1,6 +1,15 @@
 /**
  * @file simple_client.cpp
  * @brief Minimal WebSocket client example for Vix.cpp
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
  *
  * This example demonstrates the simplest possible interactive WebSocket
  * client built with the Vix.cpp WebSocket module. It connects to a server,
@@ -61,16 +70,16 @@
 
 int main()
 {
-    using vix::websocket::Client;
-    using vix::websocket::JsonMessage;
+  using vix::websocket::Client;
+  using vix::websocket::JsonMessage;
 
-    auto client = Client::create("localhost", "9090", "/");
+  auto client = Client::create("localhost", "9090", "/");
 
-    client->on_open([]
-                    { std::cout << "[client] Connected ✅" << std::endl; });
+  client->on_open([]
+                  { std::cout << "[client] Connected ✅" << std::endl; });
 
-    client->on_message([](const std::string &msg)
-                       {
+  client->on_message([](const std::string &msg)
+                     {
         auto jm = JsonMessage::parse(msg);
 
         if (!jm)
@@ -99,42 +108,42 @@ int main()
             std::cout << msg << std::endl;
         } });
 
-    client->on_close([]
-                     { std::cout << "[client] Disconnected." << std::endl; });
+  client->on_close([]
+                   { std::cout << "[client] Disconnected." << std::endl; });
 
-    client->on_error([](const boost::system::error_code &ec)
-                     { std::cerr << "[client] error: " << ec.message() << std::endl; });
+  client->on_error([](const boost::system::error_code &ec)
+                   { std::cerr << "[client] error: " << ec.message() << std::endl; });
 
-    client->enable_auto_reconnect(true, std::chrono::seconds(3));
-    client->enable_heartbeat(std::chrono::seconds(20));
+  client->enable_auto_reconnect(true, std::chrono::seconds(3));
+  client->enable_heartbeat(std::chrono::seconds(20));
 
-    client->connect();
+  client->connect();
 
-    // Prompt username
-    std::cout << "Pseudo: ";
-    std::string user;
-    std::getline(std::cin, user);
-    if (user.empty())
-        user = "anonymous";
+  // Prompt username
+  std::cout << "Pseudo: ";
+  std::string user;
+  std::getline(std::cin, user);
+  if (user.empty())
+    user = "anonymous";
 
-    std::cout << "Type messages, /quit to exit\n";
+  std::cout << "Type messages, /quit to exit\n";
 
-    // Message loop
-    for (std::string line; std::getline(std::cin, line);)
-    {
-        if (line == "/quit")
-            break;
+  // Message loop
+  for (std::string line; std::getline(std::cin, line);)
+  {
+    if (line == "/quit")
+      break;
 
-        client->send(
-            "chat.message",
-            {
-                "user",
-                user,
-                "text",
-                line,
-            });
-    }
+    client->send(
+        "chat.message",
+        {
+            "user",
+            user,
+            "text",
+            line,
+        });
+  }
 
-    client->close();
-    return 0;
+  client->close();
+  return 0;
 }

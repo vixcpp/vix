@@ -1,6 +1,16 @@
-//
-// examples/websocket/simple_server.cpp
-//
+/**
+ *
+ *  @file simple_server.cpp
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 // Minimal WebSocket server using Vix.cpp.
 //
 // This example demonstrates:
@@ -21,65 +31,65 @@
 
 int main()
 {
-    using vix::websocket::Server;
+  using vix::websocket::Server;
 
-    // 1) Load configuration
-    //
-    // The Config loader will try to find "config/config.json"
-    // relative to the project root or the current working directory.
-    //
-    vix::config::Config cfg{"config/config.json"};
+  // 1) Load configuration
+  //
+  // The Config loader will try to find "config/config.json"
+  // relative to the project root or the current working directory.
+  //
+  vix::config::Config cfg{"config/config.json"};
 
-    // 2) Create a thread pool executor for the WebSocket server
-    auto exec = vix::experimental::make_threadpool_executor(
-        4, // min threads
-        8, // max threads
-        0  // default priority
-    );
+  // 2) Create a thread pool executor for the WebSocket server
+  auto exec = vix::experimental::make_threadpool_executor(
+      4, // min threads
+      8, // max threads
+      0  // default priority
+  );
 
-    // 3) Construct the WebSocket server
-    Server ws(cfg, std::move(exec));
+  // 3) Construct the WebSocket server
+  Server ws(cfg, std::move(exec));
 
-    // 4) On new connection
-    ws.on_open(
-        [&ws](auto &session)
-        {
-            (void)session;
+  // 4) On new connection
+  ws.on_open(
+      [&ws](auto &session)
+      {
+        (void)session;
 
-            ws.broadcast_json(
-                "chat.system",
-                {
-                    "user",
-                    "server",
-                    "text",
-                    "Welcome to the simple WebSocket server 👋",
-                });
-        });
-
-    // 5) On typed message
-    ws.on_typed_message(
-        [&ws](auto &session,
-              const std::string &type,
-              const vix::json::kvs &payload)
-        {
-            (void)session;
-
-            if (type == "chat.message")
+        ws.broadcast_json(
+            "chat.system",
             {
-                // echo / broadcast chat messages
-                ws.broadcast_json("chat.message", payload);
-            }
-            else
-            {
-                // optional: broadcast unknown message types for debugging
-                ws.broadcast_json("chat.unknown",
-                                  {"type", type,
-                                   "info", "Unknown message type"});
-            }
-        });
+                "user",
+                "server",
+                "text",
+                "Welcome to the simple WebSocket server 👋",
+            });
+      });
 
-    // 6) Start the WebSocket server (blocking)
-    ws.listen_blocking();
+  // 5) On typed message
+  ws.on_typed_message(
+      [&ws](auto &session,
+            const std::string &type,
+            const vix::json::kvs &payload)
+      {
+        (void)session;
 
-    return 0;
+        if (type == "chat.message")
+        {
+          // echo / broadcast chat messages
+          ws.broadcast_json("chat.message", payload);
+        }
+        else
+        {
+          // optional: broadcast unknown message types for debugging
+          ws.broadcast_json("chat.unknown",
+                            {"type", type,
+                             "info", "Unknown message type"});
+        }
+      });
+
+  // 6) Start the WebSocket server (blocking)
+  ws.listen_blocking();
+
+  return 0;
 }

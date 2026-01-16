@@ -1,6 +1,16 @@
-// ============================================================================
-// jwt_app_simple.cpp — JWT middleware (App) super simple
-// ----------------------------------------------------------------------------
+/**
+ *
+ *  @file jwt_app_simple.cpp — JWT middleware (App) super simple
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 // Run:
 //   vix run jwt_app_simple.cpp
 //
@@ -28,22 +38,22 @@ static const std::string kToken =
 
 int main()
 {
-    App app;
+  App app;
 
-    // 🔐 Protect ONLY /secure (dev preset: verify_exp = false)
-    app.use("/secure", middleware::app::jwt_dev("dev_secret"));
+  // 🔐 Protect ONLY /secure (dev preset: verify_exp = false)
+  app.use("/secure", middleware::app::jwt_dev("dev_secret"));
 
-    app.get("/", [](Request &, Response &res)
-            { res.send(
-                  "JWT example:\n"
-                  "  GET /secure requires Bearer token.\n"
-                  "\n"
-                  "Try:\n"
-                  "  curl -i http://localhost:8080/secure\n"
-                  "  curl -i -H \"Authorization: Bearer <TOKEN>\" http://localhost:8080/secure\n"); });
+  app.get("/", [](Request &, Response &res)
+          { res.send(
+                "JWT example:\n"
+                "  GET /secure requires Bearer token.\n"
+                "\n"
+                "Try:\n"
+                "  curl -i http://localhost:8080/secure\n"
+                "  curl -i -H \"Authorization: Bearer <TOKEN>\" http://localhost:8080/secure\n"); });
 
-    app.get("/secure", [](Request &req, Response &res)
-            {
+  app.get("/secure", [](Request &req, Response &res)
+          {
                 auto &claims = req.state<vix::middleware::auth::JwtClaims>();
                 res.json({"ok", true,
                           "sub", claims.subject,
@@ -51,16 +61,16 @@ int main()
                 res.status(501).json({"ok", false,
                                       "error", "JWT middleware not enabled (VIX_ENABLE_JWT)"}); });
 
-    std::cout
-        << "Vix JWT example running:\n"
-        << "  http://localhost:8080/\n"
-        << "  http://localhost:8080/secure\n\n"
-        << "Use this token:\n"
-        << "  " << kToken << "\n\n"
-        << "Test:\n"
-        << "  curl -i -H \"Authorization: Bearer " << kToken
-        << "\" http://localhost:8080/secure\n";
+  std::cout
+      << "Vix JWT example running:\n"
+      << "  http://localhost:8080/\n"
+      << "  http://localhost:8080/secure\n\n"
+      << "Use this token:\n"
+      << "  " << kToken << "\n\n"
+      << "Test:\n"
+      << "  curl -i -H \"Authorization: Bearer " << kToken
+      << "\" http://localhost:8080/secure\n";
 
-    app.run(8080);
-    return 0;
+  app.run(8080);
+  return 0;
 }

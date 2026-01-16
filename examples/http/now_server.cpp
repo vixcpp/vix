@@ -1,5 +1,17 @@
+/**
+ *
+ *  @file now_server.cpp — Demo route: current time in ISO 8601 and milliseconds
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 // ============================================================================
-// now_server.cpp — Demo route: current time in ISO 8601 and milliseconds
 // GET /now -> {"iso8601":"2025-10-09T10:34:12.123Z","ms":1696848852123}
 // ============================================================================
 
@@ -13,21 +25,21 @@ using namespace vix::utils;
 
 int main()
 {
-    auto &log = Logger::getInstance();
-    log.setPattern("[%H:%M:%S.%e] [%^%l%$] %v");
-    log.setLevel(Logger::Level::INFO);
+  auto &log = Logger::getInstance();
+  log.setPattern("[%H:%M:%S.%e] [%^%l%$] %v");
+  log.setLevel(Logger::Level::INFO);
 
-    const int port = utils::env_int("PORT", 8081);
+  const int port = utils::env_int("PORT", 8081);
 
-    App app;
+  App app;
 
-    // GET /now → returns current ISO 8601 timestamp and epoch ms
-    app.get("/now", [](Request &, Response &res)
-            { res.json({"iso8601", utils::iso8601_now(),
-                        "ms", static_cast<long long>(utils::now_ms())}); });
+  // GET /now → returns current ISO 8601 timestamp and epoch ms
+  app.get("/now", [](Request &, Response &res)
+          { res.json({"iso8601", utils::iso8601_now(),
+                      "ms", static_cast<long long>(utils::now_ms())}); });
 
-    log.log(Logger::Level::INFO, "Starting server on port {}", port);
+  log.log(Logger::Level::INFO, "Starting server on port {}", port);
 
-    app.run(port);
-    return 0;
+  app.run(port);
+  return 0;
 }

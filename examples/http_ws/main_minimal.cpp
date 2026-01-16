@@ -1,10 +1,16 @@
-//
-// examples/http_ws/main_minimal.cpp
-//
-// Minimal HTTP + WebSocket example.
-//
-// This is intentionally tiny, to show the shape of the API.
-//
+/**
+ *
+ *  @file examples/http_ws/main_minimal.cpp
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 
 #include <vix.hpp>
 #include <vix/websocket/AttachedRuntime.hpp>
@@ -13,9 +19,9 @@ using namespace vix;
 
 int main()
 {
-    // Use default config path "config/config.json" and port 8080
-    vix::serve_http_and_ws([](auto &app, auto &ws)
-                           {
+  // Use default config path "config/config.json" and port 8080
+  vix::serve_http_and_ws([](auto &app, auto &ws)
+                         {
         // Minimal HTTP route
         app.get("/", [](auto&, auto& res) {
             res.json({
@@ -37,5 +43,5 @@ int main()
                 }
             }); });
 
-    return 0;
+  return 0;
 }

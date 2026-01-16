@@ -1,19 +1,18 @@
-// ============================================================================
-// security_cors_ip_rate_server.cpp — CORS + IP Filter + Rate Limit (Vix.cpp)
-// ----------------------------------------------------------------------------
-// FIX:
-//   - Add explicit OPTIONS routes so middleware can attach CORS headers.
-//   - Use X-Vix-Ip consistently for browser demo.
-//   - Rate limit key uses x-vix-ip.
-// ----------------------------------------------------------------------------
-// Run:
-//   vix run security_cors_ip_rate_server.cpp
-// ============================================================================
-/*
+/**
+ *
+ *  @file security_cors_ip_rate_server.cpp — CORS + IP Filter + Rate Limit (Vix.cpp)
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
 ===============================================================================
 CURL TESTS
 ===============================================================================
-
 # 0) Run server
 vix run security_cors_ip_rate_server.cpp
 
@@ -54,42 +53,42 @@ using namespace vix;
 
 static void register_options_routes(App &app)
 {
-    // Without explicit OPTIONS routes, Vix core may auto-return 204
-    // BEFORE middleware runs => preflight has no CORS headers.
+  // Without explicit OPTIONS routes, Vix core may auto-return 204
+  // BEFORE middleware runs => preflight has no CORS headers.
 
-    app.options("/api/ping", [](Request &, Response &res)
-                {
+  app.options("/api/ping", [](Request &, Response &res)
+              {
         res.header("X-OPTIONS-HIT", "ping");
         res.status(204).send(); });
 
-    app.options("/api/echo", [](Request &, Response &res)
-                {
+  app.options("/api/echo", [](Request &, Response &res)
+              {
         res.header("X-OPTIONS-HIT", "echo");
         res.status(204).send(); });
 }
 
 int main()
 {
-    App app;
+  App app;
 
-    // Apply all on /api prefix (ORDER MATTERS)
-    app.use("/api", middleware::app::cors_ip_demo());
-    app.use("/api", middleware::app::ip_filter_dev("x-vix-ip", {"1.2.3.4"}));
-    app.use("/api", middleware::app::rate_limit_custom_dev(
-                        5.0,       // capacity (burst)
-                        0.0,       // refill_per_sec (demo: easy to trigger)
-                        "x-vix-ip" // key header (must match IP filter header)
-                        ));
+  // Apply all on /api prefix (ORDER MATTERS)
+  app.use("/api", middleware::app::cors_ip_demo());
+  app.use("/api", middleware::app::ip_filter_dev("x-vix-ip", {"1.2.3.4"}));
+  app.use("/api", middleware::app::rate_limit_custom_dev(
+                      5.0,       // capacity (burst)
+                      0.0,       // refill_per_sec (demo: easy to trigger)
+                      "x-vix-ip" // key header (must match IP filter header)
+                      ));
 
-    // Public
-    app.get("/", [](Request &, Response &res)
-            { res.send("public route"); });
+  // Public
+  app.get("/", [](Request &, Response &res)
+          { res.send("public route"); });
 
-    // Critical for browser preflight headers
-    register_options_routes(app);
+  // Critical for browser preflight headers
+  register_options_routes(app);
 
-    app.get("/api/ping", [](Request &req, Response &res)
-            {
+  app.get("/api/ping", [](Request &req, Response &res)
+          {
         res.header("X-Request-Id", "req_ping_1");
         res.json({
             "ok", true,
@@ -97,8 +96,8 @@ int main()
             "ip", req.header("x-vix-ip")
         }); });
 
-    app.post("/api/echo", [](Request &req, Response &res)
-             {
+  app.post("/api/echo", [](Request &req, Response &res)
+           {
         res.header("X-Request-Id", "req_echo_1");
         res.json({
             "ok", true,
@@ -106,5 +105,5 @@ int main()
             "content_type", req.header("content-type")
         }); });
 
-    app.run(8080);
+  app.run(8080);
 }
