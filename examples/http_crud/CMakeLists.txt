@@ -10,7 +10,6 @@ set(_HTTP_CRUD_EXAMPLES
   users_crud_internal.cpp
   users_crud.cpp
   repository_crud_full.cpp
-  validation_user_create.cpp
 )
 
 foreach(EXAMPLE_SRC IN LISTS _HTTP_CRUD_EXAMPLES)

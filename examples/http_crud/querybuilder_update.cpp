@@ -1,6 +1,6 @@
 /**
  *
- *  @file examples/http_crud/users_crud.cpp
+ *  @file examples/http_crud/querybuilder_update.cpp
  *  @author Gaspard Kirira
  *
  *  Copyright 2025, Gaspard Kirira.  All rights reserved.
@@ -14,8 +14,9 @@
 #include <vix/orm/orm.hpp>
 #include <vix/orm/ConnectionPool.hpp>
 #include <vix/orm/MySQLDriver.hpp>
+
 #include <iostream>
-#include <vector>
+#include <string>
 
 using namespace vix::orm;
 
@@ -37,34 +38,20 @@ int main(int argc, char **argv)
     ConnectionPool pool{factory, cfg};
     pool.warmup();
 
-    Transaction tx(pool);
-    auto &c = tx.conn();
+    QueryBuilder qb;
+    qb.raw("UPDATE users SET age=? WHERE email=?")
+        .param(29)
+        .param(std::string("gaspardkirira@example.com"));
 
-    auto st = c.prepare("INSERT INTO users(name,email,age) VALUES(?,?,?)");
+    PooledConn pc(pool);
+    auto st = pc.get().prepare(qb.sql());
 
-    struct Row
-    {
-      const char *name;
-      const char *email;
-      int age;
-    };
-    std::vector<Row> rows = {
-        {"Zoe", "zoe@example.com", 23},
-        {"Mina", "mina@example.com", 31},
-        {"Omar", "omar@example.com", 35},
-    };
+    const auto &ps = qb.params();
+    for (std::size_t i = 0; i < ps.size(); ++i)
+      st->bind(i + 1, ps[i]);
 
-    std::uint64_t total = 0;
-    for (const auto &r : rows)
-    {
-      st->bind(1, r.name);
-      st->bind(2, r.email);
-      st->bind(3, r.age);
-      total += st->exec();
-    }
-
-    tx.commit();
-    std::cout << "[OK] inserted rows = " << total << "\n";
+    auto affected = st->exec();
+    std::cout << "[OK] affected rows = " << affected << "\n";
     return 0;
   }
   catch (const std::exception &e)

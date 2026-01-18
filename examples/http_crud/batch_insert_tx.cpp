@@ -1,6 +1,6 @@
 /**
  *
- *  @file examples/http_crud/users_crud.cpp
+ *  @file examples/http_crud/batch_insert_tx.cpp
  *  @author Gaspard Kirira
  *
  *  Copyright 2025, Gaspard Kirira.  All rights reserved.
@@ -11,11 +11,14 @@
  *  Vix.cpp
  *
  */
+
 #include <vix/orm/orm.hpp>
 #include <vix/orm/ConnectionPool.hpp>
 #include <vix/orm/MySQLDriver.hpp>
+
 #include <iostream>
 #include <vector>
+#include <string>
 
 using namespace vix::orm;
 
@@ -48,6 +51,7 @@ int main(int argc, char **argv)
       const char *email;
       int age;
     };
+
     std::vector<Row> rows = {
         {"Zoe", "zoe@example.com", 23},
         {"Mina", "mina@example.com", 31},

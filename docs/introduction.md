@@ -1,6 +1,6 @@
 # Introduction to Vix.cpp
 
-Vix.cpp is a next‑generation **C++20** web backend framework focused on **speed**, **modularity**, and **developer ergonomics**.  
+Vix.cpp is a next‑generation **C++20** web backend framework focused on **speed**, **modularity**, and **developer ergonomics**.
 Inspired by ideas from **FastAPI**, **Vue.js**, and **React**, it brings a clean, expressive style to native C++ while retaining zero‑overhead abstractions and low‑level control.
 
 ---
@@ -19,19 +19,19 @@ Inspired by ideas from **FastAPI**, **Vue.js**, and **React**, it brings a clean
 
 ## Core Ideas
 
-1. **Small, sharp core**  
+1. **Small, sharp core**
    The core (`App`, router, request/response, HTTP server) stays tiny and predictable. Everything else is opt‑in.
 
-2. **Simple routing**  
+2. **Simple routing**
    Declarative routes with path parameters: `app.get("/users/{id}", handler);`
 
-3. **JSON‑first**  
+3. **JSON‑first**
    Seamless helpers around _nlohmann/json_ via `Vix::json` (builders, small utilities, safe conversions).
 
-4. **Composability**  
+4. **Composability**
    Middleware, utilities (Logger, UUID, Time, Env), and an optional ORM layer (MySQL / SQLite) integrate without tight coupling.
 
-5. **Pragmatism**  
+5. **Pragmatism**
    Clean, incremental APIs; clear error messages; predictable defaults; portable builds (CMake).
 
 ---
@@ -44,8 +44,8 @@ using namespace Vix;
 
 int main() {
     App app;
-    app.get("/", [](auto&, auto& res) {
-        res.json({ "message", "Hello world" });
+    app.get("/", [](Request&, Response& res) {
+        res.send("message", "Hello world");
     });
     app.run(8080);
 }
@@ -107,7 +107,7 @@ cmake --build build-rel -j
 ./build-rel/hello_routes
 ```
 
-For platform‑specific setup (Linux/macOS/Windows), see **[Installation](./installation.md)**.  
+For platform‑specific setup (Linux/macOS/Windows), see **[Installation](./installation.md)**.
 For packaging, sanitizers, and compile_commands.json, see **[Build & Packaging](./build.md)**.
 
 ---
@@ -149,5 +149,5 @@ For details and status, see **[Architecture](./architecture.md)** and module pag
 
 ## Contributing & License
 
-Contributions are welcome! Please read **CONTRIBUTING.md**.  
+Contributions are welcome! Please read **CONTRIBUTING.md**.
 Licensed under **MIT** — see **LICENSE**.

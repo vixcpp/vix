@@ -1,21 +1,16 @@
-//
-// examples/http_ws/main_basic.cpp
-//
-// Basic example demonstrating how to run HTTP + WebSocket
-// together using Vix.cpp's high-level helpers.
-//
-// This example uses:
-//   - make_http_and_ws()      → constructs App + WebSocket server
-//   - run_http_and_ws()       → automatically runs both runtimes
-//
-// HTTP:
-//   GET /
-//   GET /hello/{name}
-//
-// WebSocket:
-//   Broadcasts a welcome message on connection
-//   Echoes typed chat messages to all clients
-//
+/**
+ *
+ *  @file examples/http_ws/main_basic.cpp
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 
 #include <vix.hpp>
 #include <vix/websocket/AttachedRuntime.hpp>
@@ -24,36 +19,26 @@ using namespace vix;
 
 int main()
 {
-    // ------------------------------------------------------------
-    // 1) Construct the HTTP App + WebSocket Server together
-    // ------------------------------------------------------------
-    // The config file path can be omitted; if omitted,
-    // Vix will automatically look for config/config.json.
-    //
-    auto bundle = vix::make_http_and_ws("config/config.json");
-    auto &[app, ws] = bundle;
+  // Construct the HTTP App + WebSocket Server together
+  // The config file path can be omitted; if omitted,
+  // Vix will automatically look for config/config.json.
+  //
+  auto bundle = vix::make_http_and_ws("config/config.json");
+  auto &[app, ws] = bundle;
 
-    // ------------------------------------------------------------
-    // 2) Register HTTP routes
-    // ------------------------------------------------------------
+  // GET /
+  app.get("/", [](Request &, Response &res)
+          { res.json({"framework", "Vix.cpp",
+                      "message", "HTTP + WebSocket example (basic) 🚀"}); });
 
-    // GET /
-    app.get("/", [](auto &, auto &res)
-            { res.json({"framework", "Vix.cpp",
-                        "message", "HTTP + WebSocket example (basic) 🚀"}); });
+  // GET /hello/{name}
+  app.get("/hello/{name}", [](Request &req, Response &res)
+          { res.json({"greeting", "Hello " + req.param("name") + " 👋",
+                      "powered_by", "Vix.cpp"}); });
 
-    // GET /hello/{name}
-    app.get("/hello/{name}", [](auto &, auto &res, auto &params)
-            { res.json({"greeting", "Hello " + params["name"] + " 👋",
-                        "powered_by", "Vix.cpp"}); });
-
-    // ------------------------------------------------------------
-    // 3) Register WebSocket event handlers
-    // ------------------------------------------------------------
-
-    // When a new WebSocket connection opens:
-    ws.on_open([&ws](auto &session)
-               {
+  // Register WebSocket event handlers
+  ws.on_open([&ws](auto &session)
+             {
         (void)session;
 
         ws.broadcast_json("chat.system", {
@@ -61,11 +46,12 @@ int main()
             "text", "Welcome to Vix WebSocket! 👋"
         }); });
 
-    // When a typed message is received:
-    ws.on_typed_message([&ws](auto &session,
-                              const std::string &type,
-                              const vix::json::kvs &payload)
-                        {
+  // When a typed message is received:
+  ws.on_typed_message(
+      [&ws](auto &session,
+            const std::string &type,
+            const vix::json::kvs &payload)
+      {
         (void)session;
 
         // Basic chat echo example
@@ -73,15 +59,13 @@ int main()
             ws.broadcast_json("chat.message", payload);
         } });
 
-    // ------------------------------------------------------------
-    // 4) Start HTTP + WebSocket together
-    // ------------------------------------------------------------
-    // This function:
-    //   - runs the WebSocket server in a background thread
-    //   - installs a shutdown callback on the HTTP server
-    //   - blocks on app.run(port)
-    //
-    vix::run_http_and_ws(app, ws, 8080);
+  // 4) Start HTTP + WebSocket together
+  // This function:
+  //   - runs the WebSocket server in a background thread
+  //   - installs a shutdown callback on the HTTP server
+  //   - blocks on app.run(port)
+  //
+  vix::run_http_and_ws(app, ws, 8080);
 
-    return 0;
+  return 0;
 }

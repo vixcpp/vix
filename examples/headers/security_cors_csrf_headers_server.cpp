@@ -1,5 +1,16 @@
-// ============================================================================
-// security_cors_csrf_headers_server.cpp — CORS + CSRF + Security Headers (Vix.cpp)
+/**
+ *
+ *  @file  security_cors_csrf_headers_server.cpp — CORS + CSRF + Security Headers (Vix.cpp)
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 // ----------------------------------------------------------------------------
 // Goal (realistic app):
 //   - OPTIONS handled by CORS middleware (preflight)
@@ -54,41 +65,41 @@ using namespace vix;
 
 int main()
 {
-    App app;
+  App app;
 
-    // Apply on ALL /api/*
-    // Order matters: headers first, then CORS, then CSRF.
-    app.use("/api", middleware::app::security_headers_dev()); // HSTS off by default
-    app.use("/api", middleware::app::cors_dev({
-                        "http://localhost:5173",
-                        "http://0.0.0.0:5173",
-                        "https://example.com" // for your curl tests
-                    }));
-    app.use("/api", middleware::app::csrf_dev("csrf_token", "x-csrf-token", false));
+  // Apply on ALL /api/*
+  // Order matters: headers first, then CORS, then CSRF.
+  app.use("/api", middleware::app::security_headers_dev()); // HSTS off by default
+  app.use("/api", middleware::app::cors_dev({
+                      "http://localhost:5173",
+                      "http://0.0.0.0:5173",
+                      "https://example.com" // for your curl tests
+                  }));
+  app.use("/api", middleware::app::csrf_dev("csrf_token", "x-csrf-token", false));
 
-    // Explicit OPTIONS routes (lets CORS middleware answer preflight)
-    app.options("/api/update", [](Request &, Response &res)
-                { res.status(204).send(); });
+  // Explicit OPTIONS routes (lets CORS middleware answer preflight)
+  app.options("/api/update", [](Request &, Response &res)
+              { res.status(204).send(); });
 
-    app.options("/api/csrf", [](Request &, Response &res)
-                { res.status(204).send(); });
+  app.options("/api/csrf", [](Request &, Response &res)
+              { res.status(204).send(); });
 
-    // Routes
-    app.get("/api/csrf", [](Request &, Response &res)
-            {
+  // Routes
+  app.get("/api/csrf", [](Request &, Response &res)
+          {
         // For cross-origin cookie in browsers: HTTPS + SameSite=None; Secure
         // For local dev HTTP: SameSite=Lax is fine but cookie might not be sent cross-site.
         res.header("Set-Cookie", "csrf_token=abc; Path=/; SameSite=Lax");
         res.header("X-Request-Id", "req_csrf_1");
         res.json({"csrf_token", "abc"}); });
 
-    app.post("/api/update", [](Request &, Response &res)
-             {
+  app.post("/api/update", [](Request &, Response &res)
+           {
         res.header("X-Request-Id", "req_update_1");
         res.json({"ok", true, "message", "CORS ✅ + CSRF ✅ + HEADERS ✅"}); });
 
-    app.get("/", [](Request &, Response &res)
-            { res.send("public route"); });
+  app.get("/", [](Request &, Response &res)
+          { res.send("public route"); });
 
-    app.run(8080);
+  app.run(8080);
 }

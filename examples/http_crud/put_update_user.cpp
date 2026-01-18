@@ -1,7 +1,16 @@
-// ============================================================================
-// put_update_user.cpp — PUT example (new Vix.cpp API)
-// PUT /users/{id} -> {"action":"update","status":"updated","user":{...}}
-// ============================================================================
+/**
+ *
+ *  @file examples/http_crud/put_update_user.cpp
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 
 #include <vix.hpp>
 #include <vix/json/Simple.hpp>
@@ -12,16 +21,16 @@ namespace J = vix::json;
 
 int main()
 {
-    App app;
+  App app;
 
-    // PUT /users/{id}
-    app.put("/users/{id}", [](auto &req, auto &res, auto &params)
-            {
-        const std::string id = params["id"];
+  // PUT /users/{id}
+  app.put("/users/{id}", [](Request &req, Response &res)
+          {
+        const std::string id = req.param("id");
 
         try {
             // Parsing with nlohmann::json for input is fine (Vix supports it internally)
-            auto body = nlohmann::json::parse(req.body());
+            auto body = json::Json::parse(req.body());
 
             const std::string name  = body.value("name",  "");
             const std::string email = body.value("email", "");
@@ -44,6 +53,5 @@ int main()
             });
         } });
 
-    app.run(8080);
-    return 0;
+  app.run(8080);
 }

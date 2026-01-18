@@ -1,6 +1,6 @@
 /**
  *
- *  @file examples/http_crud/users_crud.cpp
+ *  @file examples/http_crud/tx_unit_of_work.cpp
  *  @author Gaspard Kirira
  *
  *  Copyright 2025, Gaspard Kirira.  All rights reserved.
@@ -11,11 +11,13 @@
  *  Vix.cpp
  *
  */
+
 #include <vix/orm/orm.hpp>
 #include <vix/orm/ConnectionPool.hpp>
 #include <vix/orm/MySQLDriver.hpp>
+
 #include <iostream>
-#include <vector>
+#include <string>
 
 using namespace vix::orm;
 
@@ -37,34 +39,28 @@ int main(int argc, char **argv)
     ConnectionPool pool{factory, cfg};
     pool.warmup();
 
-    Transaction tx(pool);
-    auto &c = tx.conn();
+    UnitOfWork uow{pool};
+    auto &c = uow.conn();
 
-    auto st = c.prepare("INSERT INTO users(name,email,age) VALUES(?,?,?)");
-
-    struct Row
     {
-      const char *name;
-      const char *email;
-      int age;
-    };
-    std::vector<Row> rows = {
-        {"Zoe", "zoe@example.com", 23},
-        {"Mina", "mina@example.com", 31},
-        {"Omar", "omar@example.com", 35},
-    };
-
-    std::uint64_t total = 0;
-    for (const auto &r : rows)
-    {
-      st->bind(1, r.name);
-      st->bind(2, r.email);
-      st->bind(3, r.age);
-      total += st->exec();
+      auto st = c.prepare("INSERT INTO users(name,email,age) VALUES(?,?,?)");
+      st->bind(1, std::string("Alice"));
+      st->bind(2, std::string("alice@example.com"));
+      st->bind(3, 27);
+      st->exec();
     }
 
-    tx.commit();
-    std::cout << "[OK] inserted rows = " << total << "\n";
+    const auto userId = c.lastInsertId();
+
+    {
+      auto st = c.prepare("INSERT INTO orders(user_id,total) VALUES(?,?)");
+      st->bind(1, static_cast<std::int64_t>(userId));
+      st->bind(2, 199.99);
+      st->exec();
+    }
+
+    uow.commit();
+    std::cout << "[OK] user+order committed. user_id=" << userId << "\n";
     return 0;
   }
   catch (const std::exception &e)

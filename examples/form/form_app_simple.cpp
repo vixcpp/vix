@@ -1,5 +1,16 @@
-// ============================================================================
-// form_app_simple.cpp — Form parser (App) simple example (Vix.cpp)
+/**
+ *
+ *  @file form_app_simple.cpp — Form parser (App) simple example (Vix.cpp)
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 // ----------------------------------------------------------------------------
 // Run:
 //   vix run form_app_simple.cpp
@@ -28,20 +39,20 @@ using namespace vix;
 
 int main()
 {
-    App app;
+  App app;
 
-    app.use("/form", middleware::app::form_dev(128));
+  app.use("/form", middleware::app::form_dev(128));
 
-    app.get("/", [](Request &, Response &res)
-            { res.send("POST /form (application/x-www-form-urlencoded)"); });
+  app.get("/", [](Request &, Response &res)
+          { res.send("POST /form (application/x-www-form-urlencoded)"); });
 
-    app.post("/form", [](Request &req, Response &res)
-             {
+  app.post("/form", [](Request &req, Response &res)
+           {
         auto& fb = req.state<middleware::parsers::FormBody>();
 
         auto it = fb.fields.find("b");
         res.send(it == fb.fields.end() ? "" : it->second); });
 
-    app.run(8080);
-    return 0;
+  app.run(8080);
+  return 0;
 }

@@ -1,6 +1,16 @@
-// ============================================================================
-// body_limit_should_apply.cpp — CORS + conditional body limit via should_apply()
-//
+/**
+ *
+ *  @file  body_limit_should_apply.cpp — CORS + conditional body limit via should_apply()
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 // Run:
 //   vix run vix/examples/body_limit_should_apply.cpp
 //
@@ -31,19 +41,19 @@ using namespace vix;
 // ------------------------------------------------------------
 static void install_cors(App &app)
 {
-    app.use("/", middleware::app::cors_ip_demo({"http://localhost:5173",
-                                                "http://127.0.0.1:5173",
-                                                "http://0.0.0.0:5173"}));
+  app.use("/", middleware::app::cors_ip_demo({"http://localhost:5173",
+                                              "http://127.0.0.1:5173",
+                                              "http://0.0.0.0:5173"}));
 
-    auto options_noop = [](Request &, Response &res)
-    {
-        res.status(204).send();
-    };
+  auto options_noop = [](Request &, Response &res)
+  {
+    res.status(204).send();
+  };
 
-    app.options("/api/ping", options_noop);
-    app.options("/api/echo", options_noop);
-    app.options("/api/strict", options_noop);
-    app.options("/upload", options_noop);
+  app.options("/api/ping", options_noop);
+  app.options("/api/echo", options_noop);
+  app.options("/api/strict", options_noop);
+  app.options("/upload", options_noop);
 }
 
 // ------------------------------------------------------------
@@ -51,8 +61,8 @@ static void install_cors(App &app)
 // ------------------------------------------------------------
 static void install_body_limit(App &app)
 {
-    // Applies only to POST/PUT/PATCH (alias)
-    app.use("/", middleware::app::body_limit_write_dev(16));
+  // Applies only to POST/PUT/PATCH (alias)
+  app.use("/", middleware::app::body_limit_write_dev(16));
 }
 
 // ------------------------------------------------------------
@@ -60,16 +70,16 @@ static void install_body_limit(App &app)
 // ------------------------------------------------------------
 static void install_routes(App &app)
 {
-    app.get("/health", [](Request &, Response &res)
-            { res.json({"ok", true}); });
+  app.get("/health", [](Request &, Response &res)
+          { res.json({"ok", true}); });
 
-    app.get("/api/ping", [](Request &, Response &res)
-            {
+  app.get("/api/ping", [](Request &, Response &res)
+          {
         res.header("X-Request-Id", "req_ping_1");
         res.json({"ok", true, "msg", "pong"}); });
 
-    app.post("/api/echo", [](Request &req, Response &res)
-             {
+  app.post("/api/echo", [](Request &req, Response &res)
+           {
         res.header("X-Request-Id", "req_echo_1");
         res.json({
             "ok", true,
@@ -78,26 +88,26 @@ static void install_routes(App &app)
             "body", req.body()
         }); });
 
-    app.post("/api/strict", [](Request &req, Response &res)
-             { res.json({"ok", true, "bytes", static_cast<long long>(req.body().size())}); });
+  app.post("/api/strict", [](Request &req, Response &res)
+           { res.json({"ok", true, "bytes", static_cast<long long>(req.body().size())}); });
 
-    app.post("/upload", [](Request &req, Response &res)
-             { res.json({"ok", true, "bytes", static_cast<long long>(req.body().size())}); });
+  app.post("/upload", [](Request &req, Response &res)
+           { res.json({"ok", true, "bytes", static_cast<long long>(req.body().size())}); });
 }
 
 static void run_app()
 {
-    App app;
+  App app;
 
-    install_cors(app);
-    install_body_limit(app);
-    install_routes(app);
+  install_cors(app);
+  install_body_limit(app);
+  install_routes(app);
 
-    app.run(8080);
+  app.run(8080);
 }
 
 int main()
 {
-    run_app();
-    return 0;
+  run_app();
+  return 0;
 }

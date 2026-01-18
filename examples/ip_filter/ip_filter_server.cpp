@@ -1,5 +1,16 @@
-// ============================================================================
-// ip_filter_server.cpp — IP filter middleware example (Vix.cpp)
+/**
+ *
+ *  @file ip_filter_server.cpp — IP filter middleware example (Vix.cpp)
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 // ----------------------------------------------------------------------------
 // Goal:
 //   - Protect /api/* using ip_filter()
@@ -25,10 +36,6 @@
 //
 //   # X-Forwarded-For with chain: "client, proxy1, proxy2"
 //   curl -i http://localhost:8080/api/hello -H "X-Forwarded-For: 10.0.0.1, 127.0.0.1"
-// ============================================================================
-
-// ============================================================================
-// ip_filter_server.cpp — IP filter middleware example (Vix.cpp)
 // ----------------------------------------------------------------------------
 // Run:
 //   vix run ip_filter_server.cpp
@@ -40,25 +47,25 @@ using namespace vix;
 
 int main()
 {
-        App app;
+  App app;
 
-        // Apply on /api/*
-        app.use("/api", middleware::app::ip_filter_allow_deny_dev(
-                            "x-forwarded-for",
-                            {"10.0.0.1", "127.0.0.1"}, // allow
-                            {"9.9.9.9"},               // deny (priority)
-                            true                       // fallback to x-real-ip, etc.
-                            ));
+  // Apply on /api/*
+  app.use("/api", middleware::app::ip_filter_allow_deny_dev(
+                      "x-forwarded-for",
+                      {"10.0.0.1", "127.0.0.1"}, // allow
+                      {"9.9.9.9"},               // deny (priority)
+                      true                       // fallback to x-real-ip, etc.
+                      ));
 
-        // Routes
-        app.get("/", [](Request &, Response &res)
-                { res.send("public route"); });
+  // Routes
+  app.get("/", [](Request &, Response &res)
+          { res.send("public route"); });
 
-        app.get("/api/hello", [](Request &req, Response &res)
-                { res.json({"ok", true,
-                            "message", "Hello from /api/hello",
-                            "x_forwarded_for", req.header("x-forwarded-for"),
-                            "x_real_ip", req.header("x-real-ip")}); });
+  app.get("/api/hello", [](Request &req, Response &res)
+          { res.json({"ok", true,
+                      "message", "Hello from /api/hello",
+                      "x_forwarded_for", req.header("x-forwarded-for"),
+                      "x_real_ip", req.header("x-real-ip")}); });
 
-        app.run(8080);
+  app.run(8080);
 }

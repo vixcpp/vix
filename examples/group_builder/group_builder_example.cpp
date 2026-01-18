@@ -1,5 +1,16 @@
-// ============================================================================
-// group_builder_example.cpp — group() builder style (Vix.cpp)
+/**
+ *
+ *  @file group_builder_example.cpp — group() builder style (Vix.cpp)
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
 // ----------------------------------------------------------------------------
 // Run:
 //   vix run group_builder_example.cpp
@@ -18,32 +29,32 @@ using namespace vix;
 
 int main()
 {
-    App app;
+  App app;
 
-    // Create /api group
-    auto api = app.group("/api");
+  // Create /api group
+  auto api = app.group("/api");
 
-    // Public endpoint
-    api.get("/public", [](Request &, Response &res)
-            { res.send("Public endpoint"); });
+  // Public endpoint
+  api.get("/public", [](Request &, Response &res)
+          { res.send("Public endpoint"); });
 
-    // 🔐 Protect all following /api routes with API key (DEV preset)
-    api.use(middleware::app::api_key_dev("secret"));
+  // 🔐 Protect all following /api routes with API key (DEV preset)
+  api.use(middleware::app::api_key_dev("secret"));
 
-    // Secure endpoint
-    api.get("/secure", [](Request &req, Response &res)
-            {
+  // Secure endpoint
+  api.get("/secure", [](Request &req, Response &res)
+          {
         auto &k = req.state<vix::middleware::auth::ApiKey>();
         res.json({
             "ok", true,
             "api_key", k.value
         }); });
 
-    std::cout
-        << "Running:\n"
-        << "  http://localhost:8080/api/public\n"
-        << "  http://localhost:8080/api/secure\n";
+  std::cout
+      << "Running:\n"
+      << "  http://localhost:8080/api/public\n"
+      << "  http://localhost:8080/api/secure\n";
 
-    app.run(8080);
-    return 0;
+  app.run(8080);
+  return 0;
 }

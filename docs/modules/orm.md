@@ -109,35 +109,91 @@ Example: Simple CRUD (examples/users_crud.cpp)
 
 ```cpp
 #include <vix/orm/orm.hpp>
-#include <iostream>
+#include <vix/orm/ConnectionPool.hpp>
+#include <vix/orm/MySQLDriver.hpp>
 
-struct User {
+#include <iostream>
+#include <cstdint>
+#include <string>
+
+struct User
+{
     std::int64_t id{};
     std::string name;
     std::string email;
     int age{};
 };
 
-namespace Vix::orm {
-template<> struct Mapper<User> {
-    static std::vector<std::pair<std::string, std::any>> toInsertParams(const User& u) {
-        return {{"name", u.name}, {"email", u.email}, {"age", u.age}};
-    }
-    static std::vector<std::pair<std::string, std::any>> toUpdateParams(const User& u) {
-        return {{"name", u.name}, {"email", u.email}, {"age", u.age}};
-    }
-};
-}
+namespace vix::orm
+{
+    template <>
+    struct Mapper<User>
+    {
+        static User fromRow(const ResultRow &) { return {}; } // pending
 
-int main() {
-    using namespace Vix::orm;
-    try {
-        ConnectionPool pool{"tcp://127.0.0.1:3306", "root", "", "vixdb"};
-        BaseRepository<User> users{pool, "users"};
-        auto id = users.create(User{0, "Alice", "alice@example.com", 28});
-        std::cout << "[OK] Insert user → id=" << id << std::endl;
-    } catch (const std::exception& e) {
-        std::cerr << "[ERR] " << e.what() << std::endl;
+        static std::vector<std::pair<std::string, std::any>>
+        toInsertParams(const User &u)
+        {
+            return {
+                {"name", u.name},
+                {"email", u.email},
+                {"age", u.age},
+            };
+        }
+
+        static std::vector<std::pair<std::string, std::any>>
+        toUpdateParams(const User &u)
+        {
+            return {
+                {"name", u.name},
+                {"email", u.email},
+                {"age", u.age},
+            };
+        }
+    };
+} // namespace vix::orm
+
+int main(int argc, char **argv)
+{
+    using namespace vix::orm;
+
+    std::string host = (argc > 1 ? argv[1] : "tcp://127.0.0.1:3306");
+    std::string user = (argc > 2 ? argv[2] : "root");
+    std::string pass = (argc > 3 ? argv[3] : "");
+    std::string db = (argc > 4 ? argv[4] : "vixdb");
+
+    try
+    {
+        auto factory = make_mysql_factory(host, user, pass, db);
+
+        PoolConfig cfg;
+        cfg.min = 1;
+        cfg.max = 8;
+
+        ConnectionPool pool{factory, cfg};
+        pool.warmup();
+
+        BaseRepository<User> repo{pool, "users"};
+
+        // Create
+        std::int64_t id = static_cast<std::int64_t>(
+            repo.create(User{0, "Bob", "gaspardkirira@example.com", 30}));
+        std::cout << "[OK] create → id=" << id << "\n";
+
+        // Update
+        repo.updateById(id, User{id, "Adastra", "adastra@example.com", 31});
+        std::cout << "[OK] update → id=" << id << "\n";
+
+        // Delete
+        repo.removeById(id);
+        std::cout << "[OK] delete → id=" << id << "\n";
+
+        return 0;
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "[ERR] " << e.what() << "\n";
+        return 1;
     }
 }
 ```
@@ -209,23 +265,11 @@ CREATE TABLE IF NOT EXISTS users (
 
 # 🧩 Example Migration
 
-```cpp
-#include <vix/orm/Migration.hpp>
-
-class CreateProductsTable : public Vix::orm::Migration {
-public:
-  std::string id() const override { return "2025_10_01_create_products"; }
-
-  void up(Vix::orm::Connection& c) override {
-      auto st = c.prepare("CREATE TABLE products (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255))");
-      st->exec();
-  }
-
-  void down(Vix::orm::Connection& c) override {
-      auto st = c.prepare("DROP TABLE IF EXISTS products");
-      st->exec();
-  }
-};
+```bash
+vix orm migrate --db blog_db --dir ./migrations
+vix orm rollback --steps 1 --db blog_db --dir ./migrations
+vix orm status --db blog_db
+VIX_ORM_DB=blog_db vix orm migrate --dir ./migrations
 ```
 
 # 🧰 Installation & Integration (for Vix.cpp)

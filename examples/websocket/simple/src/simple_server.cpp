@@ -1,6 +1,14 @@
 /**
  * @file simple_server.cpp
  * @brief Minimal WebSocket server example for Vix.cpp
+ * @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
  *
  * This file provides a compact, beginner-friendly demonstration of how to
  * start a WebSocket server using the Vix.cpp runtime. It serves as the
@@ -64,49 +72,49 @@
 
 int main()
 {
-    using vix::websocket::Server;
+  using vix::websocket::Server;
 
-    // Load configuration from config/config.json
-    vix::config::Config cfg{"config/config.json"};
+  // Load configuration from config/config.json
+  vix::config::Config cfg{"config/config.json"};
 
-    // Thread pool for async work
-    auto exec = vix::experimental::make_threadpool_executor(
-        4, // min threads
-        8, // max threads
-        0  // default priority
-    );
+  // Thread pool for async work
+  auto exec = vix::experimental::make_threadpool_executor(
+      4, // min threads
+      8, // max threads
+      0  // default priority
+  );
 
-    Server ws(cfg, std::move(exec));
+  Server ws(cfg, std::move(exec));
 
-    // On new connection: broadcast a welcome system message
-    ws.on_open(
-        [&ws](auto &session)
-        {
-            (void)session;
+  // On new connection: broadcast a welcome system message
+  ws.on_open(
+      [&ws](auto &session)
+      {
+        (void)session;
 
-            ws.broadcast_json(
-                "chat.system",
-                {
-                    "user",
-                    "server",
-                    "text",
-                    "welcome to Softadastra Chat 👋",
-                });
-        });
-
-    // On typed message: echo chat messages to everyone
-    ws.on_typed_message(
-        [&ws](auto &session,
-              const std::string &type,
-              const vix::json::kvs &payload)
-        {
-            (void)session;
-
-            if (type == "chat.message")
+        ws.broadcast_json(
+            "chat.system",
             {
-                ws.broadcast_json("chat.message", payload);
-            }
-        });
+                "user",
+                "server",
+                "text",
+                "welcome to Softadastra Chat 👋",
+            });
+      });
 
-    ws.listen_blocking();
+  // On typed message: echo chat messages to everyone
+  ws.on_typed_message(
+      [&ws](auto &session,
+            const std::string &type,
+            const vix::json::kvs &payload)
+      {
+        (void)session;
+
+        if (type == "chat.message")
+        {
+          ws.broadcast_json("chat.message", payload);
+        }
+      });
+
+  ws.listen_blocking();
 }
