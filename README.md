@@ -104,7 +104,7 @@ Vix.cpp is designed to remove overhead, unpredictability, and GC pauses.
 #include <vix.hpp>
 
 int main() {
-    Vix::App app;
+    vix::App app;
 
     app.get("/", [](Request&, Response& res){
         res.send("Hello from Vix.cpp 🚀");
