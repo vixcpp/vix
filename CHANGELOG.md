@@ -2,12 +2,116 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)  
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
 ## [Unreleased]
+## v1.20.0 — Modules, Registry & Dependency Workflow (Latest)
+
+### ✨ Nouveautés majeures
+
+#### CLI modules overhaul
+Introduction d’un **layout app-first** pour les modules Vix :
+
+- Includes explicites et sûrs
+- Règles de linkage claires et déterministes
+- Préparation à un écosystème modulaire stable et scalable
+
+#### Workflow Registry & Dépendances amélioré
+
+- Nouveau `vix deps` command pour inspecter et gérer les dépendances
+- Correction du flux registry pour les dépendances transitives
+- Meilleure cohérence entre registry local, store projet et modules
+
+### 🧰 CLI
+
+- Registry plus robuste pour les projets multi-modules
+- Amélioration UX des commandes liées aux dépendances
+- Base solide pour le futur workflow **registry publish / consume**
+
+### 🧱 Architecture
+
+Clarification nette entre :
+
+- Modules applicatifs
+- Modules système
+- Dépendances registry
+
+- Réduction des comportements implicites (includes / link automatiques)
+
+---
+
+## v1.19.2
+
+### ✨ Nouveautés
+
+- CLI : `deps` command
+- Inspection claire des dépendances projet
+- Support du registry dans le graphe de dépendances
+
+### 🐛 Correctifs
+
+- Correction du workflow de résolution des dépendances registry
+- Stabilisation du store projet lors des ajouts / suppressions de deps
+
+---
+
+## v1.19.1
+
+### ✨ Nouveautés
+
+- **Registry publish workflow**
+- Commande CLI dédiée pour publier vers le registry Vix
+- Préparation du pipeline : développeur → registry → consommateurs
+
+### 🔧 Maintenance
+
+- Bump CLI pour intégrer le workflow registry publish
+- Nettoyage interne du flux release
+
+---
+
+## v1.19.0
+
+### ✨ Nouveautés majeures
+
+#### Registry Git-based (V1)
+
+- `sync`, `search`, `add`
+- Fonctionnement **100 % offline-first** après synchronisation
+
+#### Project-scoped store
+
+- Dépendances isolées par projet
+- Nettoyage et GC du store
+
+#### Améliorations UI CLI
+
+- Couleurs unifiées
+- Helpers UI partagés
+- Sorties plus lisibles et cohérentes
+
+---
+
+## v1.18.2
+
+### 🐛 Correctifs
+
+- Ajustements release et tooling
+- Stabilisation du pipeline de versioning
+
+---
+
+## v1.18.1
+
+### 🛠 Correctifs critiques
+
+- Suivi correct des vendored CMake deps
+- Correction des erreurs d’installation chez les développeurs
+- Bump CLI associé
+
 
 ## v1.18.0 — Modular networking & secure P2P foundation
 
@@ -22,16 +126,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🧩 New Modules
 
-- **net**  
-  Low-level networking primitives and reachability utilities  
+- **net**
+  Low-level networking primitives and reachability utilities
   (connectivity probing, network helpers).
 
-- **cache**  
-  Standalone HTTP cache engine with pluggable stores  
+- **cache**
+  Standalone HTTP cache engine with pluggable stores
   (memory, LRU, file-based).
 
-- **sync**  
-  Offline-first synchronization engine  
+- **sync**
+  Offline-first synchronization engine
   (WAL, outbox, retries, sync workers).
 
 ---
@@ -302,11 +406,11 @@ This release focuses on **runtime performance**, **log scalability**, and **CLI 
 
 ### 🚀 Highlights
 
-- **REPL is now the default mode**  
-  Running `vix` starts the interactive shell automatically  
+- **REPL is now the default mode**
+  Running `vix` starts the interactive shell automatically
   (no more `vix repl`).
 
-- **Modern runtime experience**  
+- **Modern runtime experience**
   Behavior aligned with Python, Node.js, and Deno.
 
 ---
