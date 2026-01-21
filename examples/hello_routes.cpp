@@ -37,7 +37,7 @@ int main()
 
   // Example with path param
   app.get("/users/{id}", [](Request &, Response &res)
-          { res.status(4040).json({"error", "User not found"}); });
+          { res.status(404).json({"error", "User not found"}); });
 
   app.get("/hello", [](const Request &, Response &res)
           {
