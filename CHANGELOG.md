@@ -8,6 +8,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## v1.20.1 — Improved CLI Error UX & Build Feedback
+
+### ✨ CLI — Error reporting & diagnostics
+- Introduce **Python-like compiler error rendering** with code frames
+  `(file:line:column + surrounding context)`
+- Highlight **only the faulty line** with a red caret (`^`) for instant readability
+- Safely truncate very long lines with **UTF-8–aware ellipsis**
+- Add **precise, Vix-style hints** for common mistakes
+  (e.g. `Response::json()` misuse)
+- Hide verbose alternative diagnostics unless log level is `debug` or `trace`
+- Improve `run` / script error reporting for clearer, actionable diagnostics
+
+### 🔨 CLI — Build output & Ninja integration
+- Restore **live Ninja progress output** (`[x/y %]`) during builds
+- Filter noisy compiler command output in live mode
+- Keep **full raw build logs** in `build.log` for post-mortem diagnostics
+- Let `ErrorHandler` display **structured, human-readable errors** on failure
+- Introduce **progress-only build output mode**
+- Fix unused variables and header warnings in build pipeline
+
+### 🧩 Internal
+- Minor internal cleanups to support improved error UX
+- No breaking changes
+
+
 ## v1.20.0 — Modules, Registry & Dependency Workflow (Latest)
 
 ### ✨ Nouveautés majeures
