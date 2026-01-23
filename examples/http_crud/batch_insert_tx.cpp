@@ -1,6 +1,6 @@
 /**
  *
- *  @file examples/http_crud/batch_insert_tx.cpp
+ *  @file batch_insert_tx.hpp
  *  @author Gaspard Kirira
  *
  *  Copyright 2025, Gaspard Kirira.  All rights reserved.
@@ -9,28 +9,26 @@
  *  that can be found in the License file.
  *
  *  Vix.cpp
- *
  */
-
 #include <vix/orm/orm.hpp>
-#include <vix/orm/ConnectionPool.hpp>
-#include <vix/orm/MySQLDriver.hpp>
 
+#include <cstdint>
 #include <iostream>
-#include <vector>
 #include <string>
+#include <vector>
 
 using namespace vix::orm;
 
 int main(int argc, char **argv)
 {
-  std::string host = (argc > 1 ? argv[1] : "tcp://127.0.0.1:3306");
-  std::string user = (argc > 2 ? argv[2] : "root");
-  std::string pass = (argc > 3 ? argv[3] : "");
-  std::string db = (argc > 4 ? argv[4] : "vixdb");
+  const std::string host = (argc > 1 ? argv[1] : "tcp://127.0.0.1:3306");
+  const std::string user = (argc > 2 ? argv[2] : "root");
+  const std::string pass = (argc > 3 ? argv[3] : "");
+  const std::string db = (argc > 4 ? argv[4] : "vixdb");
 
   try
   {
+    // DB factory (MySQL driver)
     auto factory = make_mysql_factory(host, user, pass, db);
 
     PoolConfig cfg;
@@ -40,6 +38,7 @@ int main(int argc, char **argv)
     ConnectionPool pool{factory, cfg};
     pool.warmup();
 
+    // Transaction (RAII rollback if not committed)
     Transaction tx(pool);
     auto &c = tx.conn();
 
@@ -52,7 +51,7 @@ int main(int argc, char **argv)
       int age;
     };
 
-    std::vector<Row> rows = {
+    const std::vector<Row> rows = {
         {"Zoe", "zoe@example.com", 23},
         {"Mina", "mina@example.com", 31},
         {"Omar", "omar@example.com", 35},
@@ -70,6 +69,11 @@ int main(int argc, char **argv)
     tx.commit();
     std::cout << "[OK] inserted rows = " << total << "\n";
     return 0;
+  }
+  catch (const DBError &e)
+  {
+    std::cerr << "[DBError] " << e.what() << "\n";
+    return 1;
   }
   catch (const std::exception &e)
   {

@@ -1,6 +1,6 @@
 /**
  *
- *  @file examples/http_crud/tx_unit_of_work.cpp
+ *  @file tx_unit_of_work.hpp
  *  @author Gaspard Kirira
  *
  *  Copyright 2025, Gaspard Kirira.  All rights reserved.
@@ -9,13 +9,11 @@
  *  that can be found in the License file.
  *
  *  Vix.cpp
- *
  */
 
 #include <vix/orm/orm.hpp>
-#include <vix/orm/ConnectionPool.hpp>
-#include <vix/orm/MySQLDriver.hpp>
 
+#include <cstdint>
 #include <iostream>
 #include <string>
 
@@ -23,10 +21,10 @@ using namespace vix::orm;
 
 int main(int argc, char **argv)
 {
-  std::string host = (argc > 1 ? argv[1] : "tcp://127.0.0.1:3306");
-  std::string user = (argc > 2 ? argv[2] : "root");
-  std::string pass = (argc > 3 ? argv[3] : "");
-  std::string db = (argc > 4 ? argv[4] : "vixdb");
+  const std::string host = (argc > 1 ? argv[1] : "tcp://127.0.0.1:3306");
+  const std::string user = (argc > 2 ? argv[2] : "root");
+  const std::string pass = (argc > 3 ? argv[3] : "");
+  const std::string db = (argc > 4 ? argv[4] : "vixdb");
 
   try
   {
@@ -44,17 +42,17 @@ int main(int argc, char **argv)
 
     {
       auto st = c.prepare("INSERT INTO users(name,email,age) VALUES(?,?,?)");
-      st->bind(1, std::string("Alice"));
-      st->bind(2, std::string("alice@example.com"));
+      st->bind(1, "Alice");
+      st->bind(2, "alice@example.com");
       st->bind(3, 27);
       st->exec();
     }
 
-    const auto userId = c.lastInsertId();
+    const std::uint64_t userId = c.lastInsertId();
 
     {
       auto st = c.prepare("INSERT INTO orders(user_id,total) VALUES(?,?)");
-      st->bind(1, static_cast<std::int64_t>(userId));
+      st->bind(1, userId);
       st->bind(2, 199.99);
       st->exec();
     }

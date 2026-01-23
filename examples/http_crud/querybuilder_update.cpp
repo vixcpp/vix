@@ -1,6 +1,6 @@
 /**
  *
- *  @file examples/http_crud/querybuilder_update.cpp
+ *  @file querybuilder_update.hpp
  *  @author Gaspard Kirira
  *
  *  Copyright 2025, Gaspard Kirira.  All rights reserved.
@@ -9,12 +9,10 @@
  *  that can be found in the License file.
  *
  *  Vix.cpp
- *
  */
 #include <vix/orm/orm.hpp>
-#include <vix/orm/ConnectionPool.hpp>
-#include <vix/orm/MySQLDriver.hpp>
 
+#include <cstddef>
 #include <iostream>
 #include <string>
 
@@ -22,10 +20,10 @@ using namespace vix::orm;
 
 int main(int argc, char **argv)
 {
-  std::string host = (argc > 1 ? argv[1] : "tcp://127.0.0.1:3306");
-  std::string user = (argc > 2 ? argv[2] : "root");
-  std::string pass = (argc > 3 ? argv[3] : "");
-  std::string db = (argc > 4 ? argv[4] : "vixdb");
+  const std::string host = (argc > 1 ? argv[1] : "tcp://127.0.0.1:3306");
+  const std::string user = (argc > 2 ? argv[2] : "root");
+  const std::string pass = (argc > 3 ? argv[3] : "");
+  const std::string db = (argc > 4 ? argv[4] : "vixdb");
 
   try
   {
@@ -48,11 +46,16 @@ int main(int argc, char **argv)
 
     const auto &ps = qb.params();
     for (std::size_t i = 0; i < ps.size(); ++i)
-      st->bind(i + 1, ps[i]);
+      st->bind(i + 1, any_to_dbvalue_or_throw(ps[i]));
 
-    auto affected = st->exec();
+    const auto affected = st->exec();
     std::cout << "[OK] affected rows = " << affected << "\n";
     return 0;
+  }
+  catch (const DBError &e)
+  {
+    std::cerr << "[DBError] " << e.what() << "\n";
+    return 1;
   }
   catch (const std::exception &e)
   {

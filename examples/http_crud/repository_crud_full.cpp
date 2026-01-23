@@ -1,6 +1,6 @@
 /**
  *
- *  @file examples/http_crud/repository_crud_full.cpp
+ *  @file repository_crud_full.hpp
  *  @author Gaspard Kirira
  *
  *  Copyright 2025, Gaspard Kirira.  All rights reserved.
@@ -9,15 +9,16 @@
  *  that can be found in the License file.
  *
  *  Vix.cpp
- *
  */
-#include <vix/orm/orm.hpp>
-#include <vix/orm/ConnectionPool.hpp>
-#include <vix/orm/MySQLDriver.hpp>
 
-#include <iostream>
+#include <vix/orm/orm.hpp>
+
+#include <any>
 #include <cstdint>
+#include <iostream>
 #include <string>
+#include <utility>
+#include <vector>
 
 struct User
 {
@@ -32,7 +33,15 @@ namespace vix::orm
   template <>
   struct Mapper<User>
   {
-    static User fromRow(const ResultRow &) { return {}; } // pending
+    static User fromRow(const ResultRow &row)
+    {
+      User u{};
+      u.id = row.getInt64Or(0, 0);
+      u.name = row.getStringOr(1, "");
+      u.email = row.getStringOr(2, "");
+      u.age = static_cast<int>(row.getInt64Or(3, 0));
+      return u;
+    }
 
     static std::vector<std::pair<std::string, std::any>>
     toInsertParams(const User &u)
@@ -60,10 +69,10 @@ int main(int argc, char **argv)
 {
   using namespace vix::orm;
 
-  std::string host = (argc > 1 ? argv[1] : "tcp://127.0.0.1:3306");
-  std::string user = (argc > 2 ? argv[2] : "root");
-  std::string pass = (argc > 3 ? argv[3] : "");
-  std::string db = (argc > 4 ? argv[4] : "vixdb");
+  const std::string host = (argc > 1 ? argv[1] : "tcp://127.0.0.1:3306");
+  const std::string user = (argc > 2 ? argv[2] : "root");
+  const std::string pass = (argc > 3 ? argv[3] : "");
+  const std::string db = (argc > 4 ? argv[4] : "vixdb");
 
   try
   {
@@ -79,19 +88,30 @@ int main(int argc, char **argv)
     BaseRepository<User> repo{pool, "users"};
 
     // Create
-    std::int64_t id = static_cast<std::int64_t>(
+    const std::int64_t id = static_cast<std::int64_t>(
         repo.create(User{0, "Bob", "gaspardkirira@example.com", 30}));
-    std::cout << "[OK] create → id=" << id << "\n";
+    std::cout << "[OK] create -> id=" << id << "\n";
 
     // Update
-    repo.updateById(id, User{id, "Adastra", "adastra@example.com", 31});
-    std::cout << "[OK] update → id=" << id << "\n";
+    (void)repo.updateById(id, User{id, "Adastra", "adastra@example.com", 31});
+    std::cout << "[OK] update -> id=" << id << "\n";
+
+    // (Optional) Read back
+    if (auto u = repo.findById(id))
+    {
+      std::cout << "[OK] findById -> name=" << u->name << " email=" << u->email << " age=" << u->age << "\n";
+    }
 
     // Delete
-    repo.removeById(id);
-    std::cout << "[OK] delete → id=" << id << "\n";
+    (void)repo.removeById(id);
+    std::cout << "[OK] delete -> id=" << id << "\n";
 
     return 0;
+  }
+  catch (const DBError &e)
+  {
+    std::cerr << "[DBError] " << e.what() << "\n";
+    return 1;
   }
   catch (const std::exception &e)
   {

@@ -13,7 +13,41 @@ cmake_minimum_required(VERSION 3.20)
 #   cmake --build build -j
 # ====================================================================
 
-project(vix VERSION 1.17.1 LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.20)
+
+# Resolve umbrella version from git (preferred)
+set(_VIX_VERSION_FALLBACK "0.0.0")
+
+find_package(Git QUIET)
+set(_VIX_GIT_DESCRIBE "")
+if(Git_FOUND)
+  execute_process(
+    COMMAND "${GIT_EXECUTABLE}" describe --tags --always --dirty
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    OUTPUT_VARIABLE _VIX_GIT_DESCRIBE
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+  )
+endif()
+
+# Compute PROJECT_VERSION (must be numeric for CMake packaging)
+# If describe returns: v1.20.1-4-gXXXX -> numeric is 1.20.1
+set(_VIX_PROJECT_VERSION "${_VIX_VERSION_FALLBACK}")
+if(_VIX_GIT_DESCRIBE MATCHES "^v([0-9]+\\.[0-9]+\\.[0-9]+)")
+  set(_VIX_PROJECT_VERSION "${CMAKE_MATCH_1}")
+endif()
+
+project(vix VERSION ${_VIX_PROJECT_VERSION} LANGUAGES CXX)
+
+# Human-friendly version string (can include -N-gHASH[-dirty])
+if(_VIX_GIT_DESCRIBE STREQUAL "")
+  set(VIX_UMBRELLA_VERSION "v${PROJECT_VERSION}")
+else()
+  set(VIX_UMBRELLA_VERSION "${_VIX_GIT_DESCRIBE}")
+endif()
+set(VIX_UMBRELLA_VERSION "${VIX_UMBRELLA_VERSION}" CACHE STRING "Umbrella version" FORCE)
+
+set(VIX_UMBRELLA_BUILD ON CACHE BOOL "Building Vix from umbrella" FORCE)
 
 # Make find_package honor *_ROOT hints (e.g. MYSQLCPPCONN_ROOT)
 if (POLICY CMP0144)
@@ -384,14 +418,13 @@ endif()
 # --- CLI (optional) ---
 if (VIX_ENABLE_CLI AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/cli/CMakeLists.txt")
   message(STATUS "Adding 'modules/cli'...")
+  set(VIX_UMBRELLA_VERSION "${PROJECT_VERSION}" CACHE STRING "Umbrella version" FORCE)
   add_subdirectory(modules/cli cli_build)
 else()
   message(STATUS "CLI: disabled or not present.")
 endif()
 
 # --- ORM (optional) ---
-set(VIX_UMBRELLA_BUILD ON CACHE BOOL "Building Vix from umbrella" FORCE)
-
 set(VIX_HAS_ORM OFF)
 if (VIX_ENABLE_ORM AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/orm/CMakeLists.txt")
 
