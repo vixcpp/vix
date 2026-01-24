@@ -47,3 +47,7 @@
 	path = modules/cache
 	url = https://github.com/vixcpp/cache.git
 	branch = dev
+[submodule "modules/db"]
+	path = modules/db
+	url = git@github.com:vixcpp/db.git
+	branch = dev

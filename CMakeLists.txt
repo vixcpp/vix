@@ -13,7 +13,41 @@ cmake_minimum_required(VERSION 3.20)
 #   cmake --build build -j
 # ====================================================================
 
-project(vix VERSION 1.17.1 LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.20)
+
+# Resolve umbrella version from git (preferred)
+set(_VIX_VERSION_FALLBACK "0.0.0")
+
+find_package(Git QUIET)
+set(_VIX_GIT_DESCRIBE "")
+if(Git_FOUND)
+  execute_process(
+    COMMAND "${GIT_EXECUTABLE}" describe --tags --always --dirty
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    OUTPUT_VARIABLE _VIX_GIT_DESCRIBE
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+  )
+endif()
+
+# Compute PROJECT_VERSION (must be numeric for CMake packaging)
+# If describe returns: v1.20.1-4-gXXXX -> numeric is 1.20.1
+set(_VIX_PROJECT_VERSION "${_VIX_VERSION_FALLBACK}")
+if(_VIX_GIT_DESCRIBE MATCHES "^v([0-9]+\\.[0-9]+\\.[0-9]+)")
+  set(_VIX_PROJECT_VERSION "${CMAKE_MATCH_1}")
+endif()
+
+project(vix VERSION ${_VIX_PROJECT_VERSION} LANGUAGES CXX)
+
+# Human-friendly version string (can include -N-gHASH[-dirty])
+if(_VIX_GIT_DESCRIBE STREQUAL "")
+  set(VIX_UMBRELLA_VERSION "v${PROJECT_VERSION}")
+else()
+  set(VIX_UMBRELLA_VERSION "${_VIX_GIT_DESCRIBE}")
+endif()
+set(VIX_UMBRELLA_VERSION "${VIX_UMBRELLA_VERSION}" CACHE STRING "Umbrella version" FORCE)
+
+set(VIX_UMBRELLA_BUILD ON CACHE BOOL "Building Vix from umbrella" FORCE)
 
 # Make find_package honor *_ROOT hints (e.g. MYSQLCPPCONN_ROOT)
 if (POLICY CMP0144)
@@ -71,6 +105,15 @@ option(VIX_FORCE_FETCH_JSON    "Fetch JSON backend if modules/json missing" ON)
 option(VIX_BENCH_MODE "Disable heavy security/logging checks for benchmarks" OFF)
 option(VIX_ENABLE_MIDDLEWARE   "Build Vix middleware module"              ON)
 option(VIX_ENABLE_HTTP_COMPRESSION "Enable HTTP compression middleware deps (zlib/brotli)" ON)
+
+option(VIX_ENABLE_DB          "Build Vix DB module (core anti-ORM)"         ON)
+
+# DB backends (forwarded to modules/db)
+option(VIX_DB_USE_MYSQL       "Enable MySQL backend in vix_db"              ON)
+option(VIX_DB_USE_SQLITE      "Enable SQLite backend in vix_db"             OFF)
+option(VIX_DB_USE_POSTGRES    "Enable PostgreSQL backend in vix_db"         OFF)
+option(VIX_DB_USE_REDIS       "Enable Redis backend in vix_db"              OFF)
+
 
 # ----------------------------------------------------
 # Tooling / Static analysis
@@ -341,6 +384,23 @@ if (VIX_BENCH_MODE)
   endif()
 endif()
 
+# --- DB (optional, required by ORM) ---
+set(VIX_HAS_DB OFF)
+if (VIX_ENABLE_DB AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/db/CMakeLists.txt")
+  message(STATUS "Adding 'modules/db'...")
+  add_subdirectory(modules/db db_build)
+
+  if (TARGET vix::db OR TARGET vix_db)
+    if (TARGET vix_db AND NOT TARGET vix::db)
+      add_library(vix::db ALIAS vix_db)
+    endif()
+    set(VIX_HAS_DB ON)
+  else()
+    message(WARNING "DB module added but no vix::db target was exported.")
+  endif()
+else()
+  message(STATUS "DB: disabled or not present.")
+endif()
 
 # --- WebSocket (optional) ---
 set(VIX_HAS_WEBSOCKET OFF)
@@ -358,21 +418,24 @@ endif()
 # --- CLI (optional) ---
 if (VIX_ENABLE_CLI AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/cli/CMakeLists.txt")
   message(STATUS "Adding 'modules/cli'...")
+  set(VIX_UMBRELLA_VERSION "${PROJECT_VERSION}" CACHE STRING "Umbrella version" FORCE)
   add_subdirectory(modules/cli cli_build)
 else()
   message(STATUS "CLI: disabled or not present.")
 endif()
 
 # --- ORM (optional) ---
-# Forwarded to modules/orm (users can override via -D flags)
-option(VIX_ORM_USE_MYSQL "Enable MySQL backend in vix_orm" ON)
-set(VIX_ORM_BUILD_EXAMPLES OFF CACHE BOOL "Build vix_orm examples")
-set(VIX_ORM_BUILD_TESTS    OFF CACHE BOOL "Build vix_orm tests")
-
-set(VIX_UMBRELLA_BUILD ON CACHE BOOL "Building Vix from umbrella" FORCE)
 set(VIX_HAS_ORM OFF)
 if (VIX_ENABLE_ORM AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/orm/CMakeLists.txt")
+
+  if (NOT VIX_HAS_DB)
+    message(FATAL_ERROR "ORM requires DB module. Enable it with -DVIX_ENABLE_DB=ON and ensure modules/db exists.")
+  endif()
+
   message(STATUS "Adding 'modules/orm'...")
+  set(VIX_ORM_BUILD_EXAMPLES OFF CACHE BOOL "Build vix_orm examples")
+  set(VIX_ORM_BUILD_TESTS    OFF CACHE BOOL "Build vix_orm tests")
+
   add_subdirectory(modules/orm orm_build)
 
   if (TARGET vix::orm OR TARGET vix_orm)
@@ -395,6 +458,10 @@ target_link_libraries(vix INTERFACE
   vix::utils
   ${JSON_TARGET}
 )
+
+if (TARGET vix::db)
+  target_link_libraries(vix INTERFACE vix::db)
+endif()
 
 # Link websocket only if it exists
 if (TARGET vix::websocket)
@@ -463,7 +530,7 @@ if (VIX_BUILD_EXAMPLES)
   endif()
 
   # 2) If ORM is ON but MySQL backend is OFF → remove MySQL-based ORM examples
-  if (VIX_HAS_ORM AND NOT VIX_ORM_USE_MYSQL)
+ if (VIX_HAS_ORM AND NOT VIX_DB_USE_MYSQL)
     foreach(_ex IN LISTS _ORM_MYSQL_EXAMPLES)
       list(FILTER VIX_UMBRELLA_EXAMPLES EXCLUDE REGEX ".*/${_ex}\\.cpp$")
       list(FILTER VIX_UMBRELLA_EXAMPLES EXCLUDE REGEX ".*\\\\${_ex}\\.cpp$")
@@ -629,6 +696,11 @@ if (VIX_ENABLE_INSTALL)
             FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
   endif()
 
+  if (VIX_HAS_DB AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/db/include")
+    install(DIRECTORY modules/db/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+  endif()
+
   if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/middleware/include")
     install(DIRECTORY modules/middleware/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
             FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
@@ -654,10 +726,10 @@ if (VIX_ENABLE_INSTALL)
     COMPATIBILITY SameMajorVersion
   )
 
-  set(VIX_HAS_ORM ${VIX_HAS_ORM})                
-  set(VIX_ORM_WITH_MYSQL OFF)
-  if (VIX_HAS_ORM AND VIX_ORM_USE_MYSQL)
-    set(VIX_ORM_WITH_MYSQL ON)
+  set(VIX_HAS_ORM ${VIX_HAS_ORM})
+  set(VIX_DB_WITH_MYSQL OFF)
+  if (VIX_HAS_DB AND VIX_DB_USE_MYSQL)
+    set(VIX_DB_WITH_MYSQL ON)
   endif()
 
   configure_package_config_file(
@@ -696,6 +768,7 @@ message(STATUS "Project version   : ${PROJECT_VERSION}")
 message(STATUS "JSON backend      : ${_VIX_JSON_BACKEND}")
 message(STATUS "WebSocket built   : ${VIX_HAS_WEBSOCKET}")
 message(STATUS "ORM packaged      : ${VIX_HAS_ORM}")
+message(STATUS "DB built         : ${VIX_HAS_DB}")
 message(STATUS "Middleware built : ${VIX_HAS_MIDDLEWARE}")
 message(STATUS "Examples          : ${VIX_BUILD_EXAMPLES}")
 message(STATUS "Tests             : ${VIX_BUILD_TESTS}")

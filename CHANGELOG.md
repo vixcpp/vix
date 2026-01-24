@@ -8,6 +8,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+# Vix.cpp v1.21.0
+
+This release stabilizes the new DB core module, improves CLI runtime output, and fixes several build/link issues across modules.
+
+## Highlights
+- DB/ORM separation is now fully aligned: `vix::db` is the low-level core layer, `vix::orm` remains optional sugar on top.
+- CLI runtime output and error UX were refined to be clearer and less noisy.
+- Improved reliability for MySQL detection/linking in diverse environments.
+
+## CLI (modules/cli)
+- Fix: prevent duplicate runtime logs in some failure paths.
+- Improve: runtime error detectors and diagnostics formatting.
+- Improve: UX cleanup for run/dev flows (clearer output, less noise).
+
+## DB Core (modules/db)
+- Fix: CMake/source/linkage issues across DB drivers.
+- Fix: MySQL Connector/C++ discovery via fallback alias target (more robust CI/local setups).
+- Improve: driver linkage consistency and feature flag reporting.
+
+## Umbrella / Modules
+- Introduced `vix::db` as a core module and decoupled ORM tooling/drivers accordingly.
+- Synced submodules after DB/ORM compatibility fixes.
+
+## Upgrade notes
+- If you enable `ORM`, it automatically implies `DB`.
+- If MySQL is enabled, ensure Connector/C++ is available (the fallback alias helps when CMake configs are missing).
+
 ## v1.20.1 — Improved CLI Error UX & Build Feedback
 
 ### ✨ CLI — Error reporting & diagnostics
