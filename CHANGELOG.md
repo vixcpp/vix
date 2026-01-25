@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## v1.21.1
+- chore(cli): bump CLI submodule to v1.19.12 (cleaner sanitizer output, unified timeout logic, refined code frames)
+- docs/examples: add `examples/vix_routes_showcase.cpp` (HTTP routes + query params showcase)
+
 # Vix.cpp v1.21.0
 
 This release stabilizes the new DB core module, improves CLI runtime output, and fixes several build/link issues across modules.
