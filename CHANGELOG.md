@@ -8,6 +8,113 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## v1.22.0 — Runtime Console & DX Stabilization
+
+**Release focus:** developer experience, runtime safety, and clear separation between dev console and production logging.
+
+---
+
+## ✨ New
+
+## Vix Console (core)
+
+Introduces a Node.js–inspired, **zero-config runtime console** available directly via:
+
+```cpp
+#include <vix/console.hpp>
+
+vix::console.log("Hello");
+```
+
+Designed for **developer-facing output** with **strict runtime guarantees**.
+
+---
+
+## 🧠 Design & Runtime Guarantees
+
+## Zero configuration by default
+
+- Console works immediately after `#include`
+- No init calls
+- No setup required
+
+## Safe defaults
+
+- Default level: `info`
+- `debug` **OFF** by default
+- `log == info`
+- `warn` / `error` → `stderr`
+- `log` / `info` / `debug` → `stdout`
+
+## Performance contract
+
+- If a level is filtered, the call is **near-zero cost**
+  - No message construction
+  - No allocation
+  - No lock
+  - No I/O
+
+## Thread-safe, atomic output
+
+- Each console call emits a **single atomic line**
+
+## Stable environment configuration
+
+- Supports:
+  - `VIX_CONSOLE_LEVEL`
+  - `NO_COLOR`
+  - `VIX_COLOR`
+- Environment is read **once** (startup / first use)
+- Behavior is fixed afterward
+
+## Minimal anti-spam protection
+
+- Prevents accidental performance collapse from excessive `log` / `info` usage
+- `warn` and `error` are **never suppressed**
+
+---
+
+## 📖 Documentation
+
+## New documentation: Vix Console
+
+- Clearly defines:
+  - Scope
+  - Guarantees
+  - Constraints
+  - Non-goals
+
+## Explicit separation
+
+- `vix::console` → runtime / developer output
+- `vix::utils::Logger` → production logging, structured output
+
+## Clarified non-goals
+
+- No `console.table`
+- No `console.group`
+- No `console.time`
+- No `console.count`
+
+Advanced debugging and observability belong to `vix::utils::Logger`.
+
+---
+
+## 🔒 Philosophy Clarification
+
+- Vix Console is **intentionally not a production logger**
+- Borrows **Node.js developer trust**
+- Enforces **C++ runtime discipline**
+- Designed to be safe **even if developers do not read documentation**
+
+---
+
+## 🔗 Commits
+
+- `docs(core): document Vix Console contract and integrate core console module`
+- `docs(console): clarify scope, non-goals, and logger separation`
+
+
 ## v1.21.1
 - chore(cli): bump CLI submodule to v1.19.12 (cleaner sanitizer output, unified timeout logic, refined code frames)
 - docs/examples: add `examples/vix_routes_showcase.cpp` (HTTP routes + query params showcase)
