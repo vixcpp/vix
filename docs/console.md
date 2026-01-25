@@ -40,6 +40,17 @@ Vix Console does **not** aim to:
 - guarantee non-blocking I/O under all environments
 - replace or compete with `vix::utils::Logger`
 
+## What Vix Console is NOT (by design)
+
+Vix Console intentionally does **not** replicate the full JavaScript `console.*` API
+such as `console.table`, `console.group`, `console.time`, or `console.count`.
+
+Those features require shared mutable state, heavy formatting, or implicit timing,
+which are unsafe or unpredictable in a multi-threaded C++ runtime.
+
+For advanced debugging, structured output, performance analysis, or production-grade
+instrumentation, use **`vix::utils::Logger`** instead.
+
 ---
 
 ## Quick start
@@ -98,6 +109,9 @@ Vix Console supports environment-driven configuration without code changes.
 ### `VIX_CONSOLE_LEVEL`
 
 Controls the initial minimum level.
+> **Note (default behavior):** `VIX_CONSOLE_LEVEL` is an advanced, manual override.
+> When unset, `vix::console` follows `VIX_LOG_LEVEL`, which is typically set by the Vix CLI.
+This keeps a single “verbosity control” for most users (`--log-level`), while still allowing expert overrides.
 
 Supported values:
 
@@ -275,6 +289,8 @@ This preserves performance and signals misuse without turning console into a ful
 - using console for production observability pipelines
 
 If your needs include retention, filtering, sampling, structured fields, or ingestion, switch to `vix::utils::Logger`.
+If you find yourself wanting tables, counters, timers, or grouped output,
+this is a signal to switch from `vix::console` to `vix::utils::Logger`.
 
 ---
 
