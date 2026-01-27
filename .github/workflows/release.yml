@@ -23,7 +23,7 @@ jobs:
             vixos: linux
             arch: aarch64
 
-          - os: macos-15
+          - os: macos-13
             vixos: macos
             arch: x86_64
 
@@ -47,7 +47,7 @@ jobs:
         uses: lukka/get-cmake@latest
 
       # -------------------------
-      # Linux deps (native + cross helpers)
+      # Linux deps (native)
       # -------------------------
       - name: Install deps (Linux)
         if: runner.os == 'Linux'
@@ -55,10 +55,55 @@ jobs:
         run: |
           set -euxo pipefail
           sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get install -y --no-install-recommends \
             pkg-config ninja-build \
-            libssl-dev zlib1g-dev libsqlite3-dev \
-            ca-certificates
+            ca-certificates \
+            libssl-dev zlib1g-dev libsqlite3-dev libbrotli-dev
+
+      # -------------------------
+      # Linux aarch64 toolchain + arm64 dev libs (cross)
+      # -------------------------
+      - name: Setup Linux aarch64 toolchain
+        if: runner.os == 'Linux' && matrix.arch == 'aarch64'
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          sudo apt-get update
+
+          # Cross compilers
+          sudo apt-get install -y --no-install-recommends \
+            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu || \
+            (sleep 5 && sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu)
+
+          # Enable multiarch and install ARM64 dev libs (needed for find_package/OpenSSL/zlib/brotli)
+          sudo dpkg --add-architecture arm64
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libssl-dev:arm64 \
+            zlib1g-dev:arm64 \
+            libsqlite3-dev:arm64 \
+            libbrotli-dev:arm64
+
+          cat > toolchain-aarch64.cmake <<'EOF'
+          set(CMAKE_SYSTEM_NAME Linux)
+          set(CMAKE_SYSTEM_PROCESSOR aarch64)
+
+          set(CMAKE_C_COMPILER   aarch64-linux-gnu-gcc)
+          set(CMAKE_CXX_COMPILER aarch64-linux-gnu-g++)
+
+          # Help CMake find the right (arm64) headers/libs during cross builds
+          set(CMAKE_FIND_ROOT_PATH
+            /usr/aarch64-linux-gnu
+            /usr/lib/aarch64-linux-gnu
+            /usr
+          )
+
+          set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+          set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+          set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+          set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+          EOF
 
       # -------------------------
       # Windows deps
@@ -68,36 +113,6 @@ jobs:
         shell: pwsh
         run: |
           choco install openssl -y
-          # Optional: if you ever need sqlite headers on Windows builds:
-          # choco install sqlite -y
-
-      # -------------------------
-      # Linux aarch64 toolchain (cross)
-      # -------------------------
-      - name: Setup Linux aarch64 toolchain
-        if: runner.os == 'Linux' && matrix.arch == 'aarch64'
-        shell: bash
-        run: |
-          set -euxo pipefail
-
-          # Retry apt (exit 100 is often transient)
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu || \
-            (sleep 5 && sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu)
-
-          cat > toolchain-aarch64.cmake <<'EOF'
-          set(CMAKE_SYSTEM_NAME Linux)
-          set(CMAKE_SYSTEM_PROCESSOR aarch64)
-
-          set(CMAKE_C_COMPILER   aarch64-linux-gnu-gcc)
-          set(CMAKE_CXX_COMPILER aarch64-linux-gnu-g++)
-
-          set(CMAKE_FIND_ROOT_PATH /usr/aarch64-linux-gnu)
-          set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-          set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-          set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-          set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
-          EOF
 
       # -------------------------
       # Configure (Unix)
@@ -140,7 +155,7 @@ jobs:
           test -f build/CMakeFiles/CMakeOutput.log && tail -n 250 build/CMakeFiles/CMakeOutput.log || echo "missing"
           echo
           echo "=== CMakeCache.txt (grep key vars) ==="
-          test -f build/CMakeCache.txt && (grep -E "VIX_|CMAKE_TOOLCHAIN_FILE|CMAKE_CXX_COMPILER|OpenSSL|ZLIB|BROTLI|SPDLOG|ASIO" build/CMakeCache.txt || true) || echo "missing"
+          test -f build/CMakeCache.txt && (grep -E "VIX_|CMAKE_TOOLCHAIN_FILE|CMAKE_CXX_COMPILER|OpenSSL|ZLIB|BROTLI|SPDLOG|ASIO|NOTFOUND" build/CMakeCache.txt || true) || echo "missing"
 
       - name: Upload configure logs
         if: always()
@@ -148,8 +163,7 @@ jobs:
         with:
           name: cmake-logs-${{ matrix.vixos }}-${{ matrix.arch }}
           path: |
-            build/CMakeFiles/CMakeError.log
-            build/CMakeFiles/CMakeOutput.log
+            build/CMakeFiles/*
             build/CMakeCache.txt
           if-no-files-found: ignore
 
@@ -167,7 +181,8 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          cmake -S . -B build -A x64 -DVIX_ENABLE_INSTALL=OFF
+          $openssl = "C:\Program Files\OpenSSL-Win64"
+          cmake -S . -B build -A x64 -DVIX_ENABLE_INSTALL=OFF -DOPENSSL_ROOT_DIR="$openssl"
 
       - name: Build (Windows)
         if: runner.os == 'Windows'
@@ -332,7 +347,6 @@ jobs:
         run: |
           set -euxo pipefail
           mkdir -p dist
-          # copy everything found (don't fail if some builds didn't upload)
           find dist-all -type f -maxdepth 3 -print0 | while IFS= read -r -d '' f; do
             base="$(basename "$f")"
             if [ -f "dist/$base" ]; then
