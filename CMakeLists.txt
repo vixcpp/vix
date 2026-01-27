@@ -13,8 +13,6 @@ cmake_minimum_required(VERSION 3.20)
 #   cmake --build build -j
 # ====================================================================
 
-cmake_minimum_required(VERSION 3.20)
-
 # Resolve umbrella version from git (preferred)
 set(_VIX_VERSION_FALLBACK "0.0.0")
 
@@ -75,9 +73,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Copy compile_commands.json to repo root (tooling QoL)
 add_custom_target(copy-compile-commands ALL
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
-          ${CMAKE_BINARY_DIR}/compile_commands.json
-          ${CMAKE_SOURCE_DIR}/compile_commands.json
-  BYPRODUCTS ${CMAKE_SOURCE_DIR}/compile_commands.json
+          "${CMAKE_BINARY_DIR}/compile_commands.json"
+          "${CMAKE_SOURCE_DIR}/compile_commands.json"
   COMMENT "Copy compile_commands.json to project root"
 )
 
@@ -113,7 +110,8 @@ option(VIX_DB_USE_MYSQL       "Enable MySQL backend in vix_db"              ON)
 option(VIX_DB_USE_SQLITE      "Enable SQLite backend in vix_db"             OFF)
 option(VIX_DB_USE_POSTGRES    "Enable PostgreSQL backend in vix_db"         OFF)
 option(VIX_DB_USE_REDIS       "Enable Redis backend in vix_db"              OFF)
-
+option(VIX_ENABLE_P2P         "Build Vix P2P module"                        ON)
+option(VIX_ENABLE_CACHE       "Build Vix Cache module"                      ON)
 
 # ----------------------------------------------------
 # Tooling / Static analysis
@@ -343,6 +341,83 @@ else()
   message(FATAL_ERROR "Missing 'modules/core'. Run: git submodule update --init --recursive")
 endif()
 
+# --- Net (required by P2P) ---
+set(VIX_HAS_NET OFF)
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/net/CMakeLists.txt")
+  message(STATUS "Adding 'modules/net'...")
+  add_subdirectory(modules/net net_build)
+
+  if (TARGET vix::net OR TARGET vix_net)
+    set(VIX_HAS_NET ON)
+    if (TARGET vix_net AND NOT TARGET vix::net)
+      add_library(vix::net ALIAS vix_net)
+    endif()
+  else()
+    message(WARNING "Net module added but no vix::net target was exported.")
+  endif()
+else()
+  message(STATUS "Net: not present (P2P will be disabled or will fetch standalone).")
+endif()
+
+# --- Cache (optional, used by P2P) ---
+set(VIX_HAS_CACHE OFF)
+if (VIX_ENABLE_CACHE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/cache/CMakeLists.txt")
+  message(STATUS "Adding 'modules/cache'...")
+  add_subdirectory(modules/cache cache_build)
+
+  if (TARGET vix::cache OR TARGET vix_cache)
+    set(VIX_HAS_CACHE ON)
+    if (TARGET vix_cache AND NOT TARGET vix::cache)
+      add_library(vix::cache ALIAS vix_cache)
+    endif()
+  else()
+    message(WARNING "Cache module added but no vix::cache target was exported.")
+  endif()
+else()
+  message(STATUS "Cache: disabled or not present.")
+endif()
+
+# --- Sync (optional, used by P2P) ---
+set(VIX_HAS_SYNC OFF)
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/sync/CMakeLists.txt")
+  message(STATUS "Adding 'modules/sync'...")
+  add_subdirectory(modules/sync sync_build)
+
+  if (TARGET vix::sync OR TARGET vix_sync)
+    set(VIX_HAS_SYNC ON)
+    if (TARGET vix_sync AND NOT TARGET vix::sync)
+      add_library(vix::sync ALIAS vix_sync)
+    endif()
+  endif()
+else()
+  message(STATUS "Sync: not present.")
+endif()
+
+# If net is missing, P2P must be disabled in umbrella (no auto-fetch here)
+if (VIX_ENABLE_P2P AND NOT VIX_HAS_NET)
+  message(WARNING "P2P requested but Net module is missing -> disabling P2P in umbrella")
+  set(VIX_ENABLE_P2P OFF CACHE BOOL "Build Vix P2P module" FORCE)
+endif()
+
+# --- P2P (optional) ---
+set(VIX_HAS_P2P OFF)
+if (VIX_ENABLE_P2P AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/p2p/CMakeLists.txt")
+  message(STATUS "Adding 'modules/p2p'...")
+  add_subdirectory(modules/p2p p2p_build)
+
+  # Normalise: expose vix::p2p
+  if (TARGET vix::p2p OR TARGET vix_p2p)
+    set(VIX_HAS_P2P ON)
+    if (TARGET vix_p2p AND NOT TARGET vix::p2p)
+      add_library(vix::p2p ALIAS vix_p2p)
+    endif()
+  else()
+    message(WARNING "P2P module added but no vix::p2p target was exported.")
+  endif()
+else()
+  message(STATUS "P2P: disabled or not present.")
+endif()
+
 # --- Middleware (optional) ---
 set(VIX_HAS_MIDDLEWARE OFF)
 if (VIX_ENABLE_MIDDLEWARE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/middleware/CMakeLists.txt")
@@ -418,7 +493,6 @@ endif()
 # --- CLI (optional) ---
 if (VIX_ENABLE_CLI AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/cli/CMakeLists.txt")
   message(STATUS "Adding 'modules/cli'...")
-  set(VIX_UMBRELLA_VERSION "${PROJECT_VERSION}" CACHE STRING "Umbrella version" FORCE)
   add_subdirectory(modules/cli cli_build)
 else()
   message(STATUS "CLI: disabled or not present.")
@@ -458,6 +532,22 @@ target_link_libraries(vix INTERFACE
   vix::utils
   ${JSON_TARGET}
 )
+
+if (TARGET vix::net)
+  target_link_libraries(vix INTERFACE vix::net)
+endif()
+
+if (TARGET vix::cache)
+  target_link_libraries(vix INTERFACE vix::cache)
+endif()
+
+if (TARGET vix::sync)
+  target_link_libraries(vix INTERFACE vix::sync)
+endif()
+
+if (TARGET vix::p2p)
+  target_link_libraries(vix INTERFACE vix::p2p)
+endif()
 
 if (TARGET vix::db)
   target_link_libraries(vix INTERFACE vix::db)
@@ -665,6 +755,21 @@ if (VIX_ENABLE_HTTP_COMPRESSION AND ZLIB_FOUND)
   set(VIX_WITH_ZLIB ON)
 endif()
 
+set(VIX_WITH_MYSQL OFF)
+if (VIX_HAS_DB AND VIX_DB_USE_MYSQL)
+  set(VIX_WITH_MYSQL ON)
+endif()
+
+set(VIX_WITH_CACHE OFF)
+if (VIX_HAS_CACHE)
+  set(VIX_WITH_CACHE ON)
+endif()
+
+set(VIX_WITH_P2P OFF)
+if (VIX_HAS_P2P)
+  set(VIX_WITH_P2P ON)
+endif()
+
 if (TARGET vix::websocket OR TARGET vix_websocket)
   set(VIX_WITH_SQLITE ON)
 endif()
@@ -701,6 +806,26 @@ if (VIX_ENABLE_INSTALL)
             FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
   endif()
 
+  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/net/include")
+    install(DIRECTORY modules/net/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+  endif()
+
+  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/cache/include")
+    install(DIRECTORY modules/cache/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+  endif()
+
+  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/sync/include")
+    install(DIRECTORY modules/sync/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+  endif()
+
+  if (VIX_HAS_P2P AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/p2p/include")
+    install(DIRECTORY modules/p2p/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+  endif()
+
   if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/middleware/include")
     install(DIRECTORY modules/middleware/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
             FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
@@ -727,10 +852,16 @@ if (VIX_ENABLE_INSTALL)
   )
 
   set(VIX_HAS_ORM ${VIX_HAS_ORM})
+
   set(VIX_DB_WITH_MYSQL OFF)
   if (VIX_HAS_DB AND VIX_DB_USE_MYSQL)
     set(VIX_DB_WITH_MYSQL ON)
   endif()
+
+  set(VIX_HAS_CACHE  ${VIX_HAS_CACHE})
+  set(VIX_HAS_P2P    ${VIX_HAS_P2P})
+  set(VIX_WITH_CACHE ${VIX_WITH_CACHE})
+  set(VIX_WITH_P2P   ${VIX_WITH_P2P})
 
   configure_package_config_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/VixConfig.cmake.in"
@@ -751,8 +882,8 @@ if (VIX_ENABLE_INSTALL)
   # Install CLI executable (not exported)
   if (TARGET vix_cli)
     install(TARGETS vix_cli
-            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-            RENAME vix)
+      RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
     message(STATUS "CLI install: installing target 'vix_cli' as 'vix'")
   else()
     message(STATUS "CLI install: no 'vix_cli' target detected — CLI not installed")
@@ -769,6 +900,7 @@ message(STATUS "JSON backend      : ${_VIX_JSON_BACKEND}")
 message(STATUS "WebSocket built   : ${VIX_HAS_WEBSOCKET}")
 message(STATUS "ORM packaged      : ${VIX_HAS_ORM}")
 message(STATUS "DB built         : ${VIX_HAS_DB}")
+message(STATUS "P2P built         : ${VIX_HAS_P2P}")
 message(STATUS "Middleware built : ${VIX_HAS_MIDDLEWARE}")
 message(STATUS "Examples          : ${VIX_BUILD_EXAMPLES}")
 message(STATUS "Tests             : ${VIX_BUILD_TESTS}")
@@ -776,6 +908,6 @@ message(STATUS "Sanitizers        : ${VIX_ENABLE_SANITIZERS}")
 message(STATUS "Coverage          : ${VIX_ENABLE_COVERAGE}")
 message(STATUS "LTO               : ${VIX_ENABLE_LTO}")
 message(STATUS "Install/Export    : ${VIX_ENABLE_INSTALL}")
-message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM}")
+message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P}")
 message(STATUS "------------------------------------------------------")
 

@@ -73,3 +73,7 @@ db.sql
 revoir.md
 main.cpp
 .vix-scripts
+create-labels.sh
+*.key
+*.minisig
+*.sha256

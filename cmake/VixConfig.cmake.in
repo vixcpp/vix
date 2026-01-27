@@ -30,12 +30,6 @@ if (@VIX_WITH_SQLITE@)
   endif()
 endif()
 
-# Optional (only if referenced by exported targets)
-find_package(MySQLCppConn QUIET CONFIG)
-if (NOT TARGET MySQLCppConn::MySQLCppConn)
-  add_library(MySQLCppConn::MySQLCppConn INTERFACE IMPORTED)
-endif()
-
 if (@VIX_WITH_ZLIB@)
   find_dependency(ZLIB QUIET)
   if (ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
@@ -48,6 +42,15 @@ if (@VIX_WITH_ZLIB@)
   endif()
 endif()
 
+# ---- MySQL (MUST be resolved BEFORE loading exported targets, if required) ----
+set(VIX_DB_WITH_MYSQL @VIX_DB_WITH_MYSQL@)
+if (VIX_DB_WITH_MYSQL)
+  find_package(MySQLCppConn CONFIG REQUIRED)
+  if (NOT TARGET MySQLCppConn::MySQLCppConn)
+    message(FATAL_ERROR "Vix was built with MySQL support but MySQLCppConn::MySQLCppConn was not found.")
+  endif()
+endif()
+
 # ---- load exported targets ----
 include("${CMAKE_CURRENT_LIST_DIR}/VixTargets.cmake")
 
@@ -56,3 +59,17 @@ set(VIX_HAS_ORM @VIX_HAS_ORM@)
 if (VIX_HAS_ORM AND NOT TARGET vix::orm)
   set(VIX_HAS_ORM OFF)
 endif()
+
+set(VIX_HAS_CACHE @VIX_HAS_CACHE@)
+if (VIX_HAS_CACHE AND NOT TARGET vix::cache)
+  set(VIX_HAS_CACHE OFF)
+endif()
+
+set(VIX_WITH_CACHE @VIX_WITH_CACHE@)
+
+set(VIX_HAS_P2P @VIX_HAS_P2P@)
+if (VIX_HAS_P2P AND NOT TARGET vix::p2p)
+  set(VIX_HAS_P2P OFF)
+endif()
+
+set(VIX_WITH_P2P @VIX_WITH_P2P@)
