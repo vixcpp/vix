@@ -1,0 +1,290 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: build (${{ matrix.vixos }} / ${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            vixos: linux
+            arch: x86_64
+
+          # ✅ Linux aarch64 via cross-compile on ubuntu-22.04
+          - os: ubuntu-22.04
+            vixos: linux
+            arch: aarch64
+
+          - os: macos-13
+            vixos: macos
+            arch: x86_64
+          - os: macos-14
+            vixos: macos
+            arch: aarch64
+
+          - os: windows-2022
+            vixos: windows
+            arch: x86_64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup CMake
+        uses: lukka/get-cmake@latest
+
+      # -------------------------
+      # Linux aarch64 toolchain (cross)
+      # -------------------------
+      - name: Setup Linux aarch64 toolchain
+        if: runner.os == 'Linux' && matrix.arch == 'aarch64'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y \
+            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+            pkg-config cmake ninja-build
+
+          # Optional: if you link system libs, uncomment:
+          # sudo dpkg --add-architecture arm64
+          # sudo apt-get update
+          # sudo apt-get install -y libssl-dev:arm64 zlib1g-dev:arm64 libsqlite3-dev:arm64
+
+          cat > toolchain-aarch64.cmake <<'EOF'
+          set(CMAKE_SYSTEM_NAME Linux)
+          set(CMAKE_SYSTEM_PROCESSOR aarch64)
+
+          set(CMAKE_C_COMPILER   aarch64-linux-gnu-gcc)
+          set(CMAKE_CXX_COMPILER aarch64-linux-gnu-g++)
+
+          # Where cross libs/headers live
+          set(CMAKE_FIND_ROOT_PATH /usr/aarch64-linux-gnu)
+
+          set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+          set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+          set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+          set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+          EOF
+
+      # -------------------------
+      # Configure
+      # -------------------------
+      - name: Configure (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          if [ "${{ runner.os }}" = "Linux" ] && [ "${{ matrix.arch }}" = "aarch64" ]; then
+            cmake -S . -B build \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DVIX_ENABLE_INSTALL=OFF \
+              -DCMAKE_TOOLCHAIN_FILE="${GITHUB_WORKSPACE}/toolchain-aarch64.cmake"
+          else
+            cmake -S . -B build \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DVIX_ENABLE_INSTALL=OFF
+          fi
+
+      - name: Build (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cmake --build build -j
+
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cmake -S . -B build -DVIX_ENABLE_INSTALL=OFF
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cmake --build build --config Release
+
+      # -------------------------
+      # Package artifact
+      # -------------------------
+      - name: Package (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          BIN=""
+          for p in "build/vix" "build/bin/vix" "build/Release/vix"; do
+            if [ -f "$p" ]; then BIN="$p"; break; fi
+          done
+
+          if [ -z "$BIN" ]; then
+            echo "Expected vix binary not found. Listing build/ ..." >&2
+            ls -la build || true
+            find build -maxdepth 4 -type f -name vix -print || true
+            exit 1
+          fi
+
+          ASSET="vix-${{ matrix.vixos }}-${{ matrix.arch }}.tar.gz"
+          mkdir -p dist
+          cp "$BIN" dist/vix
+          chmod +x dist/vix
+          tar -C dist -czf "dist/$ASSET" vix
+          rm -f dist/vix
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $candidates = @(
+            "build\vix.exe",
+            "build\Release\vix.exe",
+            "build\bin\vix.exe"
+          )
+
+          $bin = $null
+          foreach ($p in $candidates) {
+            if (Test-Path $p) { $bin = $p; break }
+          }
+
+          if (!$bin) {
+            Write-Host "Expected vix.exe not found in build outputs"
+            if (Test-Path "build") { Get-ChildItem -Recurse build | Select-Object FullName }
+            exit 1
+          }
+
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item $bin dist\vix.exe
+          $asset = "vix-windows-${{ matrix.arch }}.zip"
+          Compress-Archive -Path dist\vix.exe -DestinationPath "dist\$asset" -Force
+          Remove-Item dist\vix.exe -Force
+
+      # -------------------------
+      # minisign + sha256
+      # -------------------------
+      - name: Install minisign (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if command -v minisign >/dev/null 2>&1; then exit 0; fi
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            brew update
+            brew install minisign
+          else
+            sudo apt-get update
+            sudo apt-get install -y minisign
+          fi
+
+      - name: Install minisign (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install minisign -y
+          refreshenv
+          if (-not (Get-Command minisign -ErrorAction SilentlyContinue)) {
+            throw "minisign not found in PATH after installation"
+          }
+
+      - name: Sign + SHA256 (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          MINISIGN_PRIVATE_KEY: ${{ secrets.MINISIGN_PRIVATE_KEY }}
+          MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
+        run: |
+          set -euxo pipefail
+
+          ASSET_PATH="$(ls dist/vix-${{ matrix.vixos }}-${{ matrix.arch }}.* | head -n1)"
+          ASSET_NAME="$(basename "$ASSET_PATH")"
+
+          cd dist
+
+          printf "%s" "$MINISIGN_PRIVATE_KEY" > minisign.key
+
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "$ASSET_NAME" > "${ASSET_NAME}.sha256"
+          elif command -v shasum >/dev/null 2>&1; then
+            shasum -a 256 "$ASSET_NAME" > "${ASSET_NAME}.sha256"
+          else
+            echo "No sha256 tool found (sha256sum/shasum)" >&2
+            exit 1
+          fi
+
+          echo "$MINISIGN_PASSWORD" | minisign -S -s minisign.key -m "$ASSET_NAME" -x "${ASSET_NAME}.minisig"
+          rm -f minisign.key
+
+      - name: Sign + SHA256 (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          MINISIGN_PRIVATE_KEY: ${{ secrets.MINISIGN_PRIVATE_KEY }}
+          MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
+        run: |
+          $asset = Get-ChildItem dist\* | Where-Object { $_.Name -eq "vix-windows-${{ matrix.arch }}.zip" } | Select-Object -First 1
+          if (!$asset) { throw "asset not found" }
+
+          $hash = (Get-FileHash -Algorithm SHA256 $asset.FullName).Hash.ToLower()
+          "$hash  $($asset.Name)" | Out-File -Encoding ASCII "dist\$($asset.Name).sha256"
+
+          $keyPath = "dist\minisign.key"
+          Set-Content -NoNewline -Encoding ASCII $keyPath $env:MINISIGN_PRIVATE_KEY
+
+          $pwd = $env:MINISIGN_PASSWORD
+          $pwd | minisign -S -s $keyPath -m $asset.FullName -x "dist\$($asset.Name).minisig"
+
+          Remove-Item $keyPath -Force
+
+      # -------------------------
+      # Upload artifacts for publish job
+      # -------------------------
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.vixos }}-${{ matrix.arch }}
+          path: dist/*
+
+  publish:
+    name: publish (github release)
+    needs: build-release
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-all
+
+      - name: Flatten (no collisions)
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p dist
+          find dist-all -maxdepth 2 -type f -print0 | while IFS= read -r -d '' f; do
+            base="$(basename "$f")"
+            if [ -f "dist/$base" ]; then
+              echo "Collision while flattening: $base" >&2
+              exit 1
+            fi
+            cp -f "$f" "dist/$base"
+          done
+          ls -la dist
+
+      - name: Create GitHub Release + upload
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
