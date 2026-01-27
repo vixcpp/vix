@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+# Changelog
+
+## v1.22.4
+
+### Fixed
+- Fixed release and CI failures caused by missing `spdlog::spdlog_header_only` on clean environments.
+- Added a robust FetchContent fallback for header-only spdlog to ensure reproducible builds.
+- Stabilized cross-compilation and GitHub Actions release workflows.
+
+### Build
+- Utils module now auto-fetches spdlog in header-only mode when not provided by the system.
+- Preserved ABI safety by enforcing header-only logging dependencies.
+
+### Notes
+- No runtime behavior changes.
+- No API breakage.
+- This release only improves build reliability and release stability.
+
 ## v1.22.3 — 2026-01-27
 
 ### Fixed
