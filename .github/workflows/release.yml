@@ -23,7 +23,6 @@ jobs:
             vixos: linux
             arch: aarch64
 
-          # macOS Intel runner (macos-13 retired)
           - os: macos-15-intel
             vixos: macos
             arch: x86_64
@@ -48,10 +47,10 @@ jobs:
         uses: lukka/get-cmake@latest
 
       # -------------------------
-      # Linux deps (native)
+      # Linux deps (native only)
       # -------------------------
       - name: Install deps (Linux)
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && matrix.arch != 'aarch64'
         shell: bash
         run: |
           set -euxo pipefail
@@ -69,25 +68,20 @@ jobs:
         run: |
           set -euxo pipefail
 
-          retry() { n=0; until [ $n -ge 3 ]; do "$@" && break; n=$((n+1)); sleep 5; done; [ $n -lt 3 ]; }
-
-          retry sudo apt-get update
-
-          # Cross compilers + binutils
-          retry sudo apt-get install -y --no-install-recommends \
-            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu binutils-aarch64-linux-gnu
-
-          # Enable multiarch and install ARM64 runtime + dev libs
           sudo dpkg --add-architecture arm64
-          retry sudo apt-get update
+          sudo apt-get update
 
-          # Runtime libs often required to resolve dependencies cleanly
-          retry sudo apt-get install -y --no-install-recommends \
-            libc6:arm64 libstdc++6:arm64 libgcc-s1:arm64
+          # Cross compilers
+          sudo apt-get install -y --no-install-recommends \
+            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
-          # Dev libs for find_package() during cross configure
-          retry sudo apt-get install -y --no-install-recommends \
-            libssl-dev:arm64 zlib1g-dev:arm64 libsqlite3-dev:arm64 libbrotli-dev:arm64
+          # ARM64 dev libs (for find_package on cross builds)
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config ninja-build ca-certificates \
+            libssl-dev:arm64 \
+            zlib1g-dev:arm64 \
+            libsqlite3-dev:arm64 \
+            libbrotli-dev:arm64
 
           cat > toolchain-aarch64.cmake <<'EOF'
           set(CMAKE_SYSTEM_NAME Linux)
@@ -96,7 +90,7 @@ jobs:
           set(CMAKE_C_COMPILER   aarch64-linux-gnu-gcc)
           set(CMAKE_CXX_COMPILER aarch64-linux-gnu-g++)
 
-          # Prefer arm64 sysroot paths when cross compiling
+          # Make CMake search target libs/includes first
           set(CMAKE_FIND_ROOT_PATH
             /usr/aarch64-linux-gnu
             /usr/lib/aarch64-linux-gnu
@@ -109,6 +103,17 @@ jobs:
           set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
           set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
           EOF
+
+      # -------------------------
+      # macOS deps (help pkg-config + openssl path)
+      # -------------------------
+      - name: Install deps (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          brew update
+          brew install pkg-config openssl@3 || true
 
       # -------------------------
       # Windows deps
@@ -125,28 +130,40 @@ jobs:
       - name: Configure (Unix)
         if: runner.os != 'Windows'
         shell: bash
+        env:
+          GH_PAGER: cat
+          PAGER: cat
         run: |
           set -euxo pipefail
 
-          COMMON_ARGS=(
-            -G Ninja
+          CMAKE_ARGS=(
+            -S . -B build -G Ninja
             -DCMAKE_BUILD_TYPE=Release
             -DVIX_ENABLE_INSTALL=OFF
-            # Keep release CI portable across platforms:
+
+            # Stabilize release CI: disable deps that are not guaranteed everywhere
             -DVIX_DB_USE_MYSQL=OFF
             -DVIX_CORE_WITH_MYSQL=OFF
             -DVIX_ENABLE_HTTP_COMPRESSION=OFF
+
             -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE
             --log-level=VERBOSE
           )
 
           if [ "${{ runner.os }}" = "Linux" ] && [ "${{ matrix.arch }}" = "aarch64" ]; then
-            cmake -S . -B build "${COMMON_ARGS[@]}" \
-              -DCMAKE_TOOLCHAIN_FILE="${GITHUB_WORKSPACE}/toolchain-aarch64.cmake" \
-              --debug-find
-          else
-            cmake -S . -B build "${COMMON_ARGS[@]}" --debug-find
+            CMAKE_ARGS+=(-DCMAKE_TOOLCHAIN_FILE="${GITHUB_WORKSPACE}/toolchain-aarch64.cmake" --debug-find)
           fi
+
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            # Help OpenSSL discovery on macOS runners (Homebrew)
+            if [ -d "/opt/homebrew/opt/openssl@3" ]; then
+              CMAKE_ARGS+=(-DOPENSSL_ROOT_DIR=/opt/homebrew/opt/openssl@3)
+            elif [ -d "/usr/local/opt/openssl@3" ]; then
+              CMAKE_ARGS+=(-DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@3)
+            fi
+          fi
+
+          cmake "${CMAKE_ARGS[@]}"
 
       - name: Dump CMake logs (Unix)
         if: failure() && runner.os != 'Windows'
@@ -178,7 +195,6 @@ jobs:
             build/CMakeFiles/CMakeError.log
             build/CMakeFiles/CMakeOutput.log
             build/CMakeFiles/CMakeConfigureLog.yaml
-            build/CMakeFiles/*.log
           if-no-files-found: warn
 
       - name: Build (Unix)
@@ -195,7 +211,11 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $openssl = "C:\Program Files\OpenSSL-Win64"
+          $openssl = (Get-ChildItem "C:\Program Files" -Directory -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -like "OpenSSL-*" } | Select-Object -First 1).FullName
+          if (-not $openssl) { $openssl = "C:\Program Files\OpenSSL-Win64" }
+          Write-Host "OPENSSL_ROOT_DIR=$openssl"
+
           cmake -S . -B build -A x64 `
             -DVIX_ENABLE_INSTALL=OFF `
             -DVIX_DB_USE_MYSQL=OFF `
@@ -226,7 +246,7 @@ jobs:
           if [ -z "$BIN" ]; then
             echo "Expected vix binary not found. Listing build/ ..." >&2
             ls -la build || true
-            find build -maxdepth 6 -type f -name vix -print || true
+            find build -maxdepth 5 -type f -name vix -print || true
             exit 1
           fi
 
@@ -267,9 +287,6 @@ jobs:
           Compress-Archive -Path dist\vix.exe -DestinationPath "dist\$asset" -Force
           Remove-Item dist\vix.exe -Force
 
-      # -------------------------
-      # Upload dist
-      # -------------------------
       - name: Upload dist
         uses: actions/upload-artifact@v4
         with:
@@ -286,7 +303,7 @@ jobs:
         with:
           path: dist-all
 
-      - name: Flatten (best effort)
+      - name: Flatten
         shell: bash
         run: |
           set -euxo pipefail
