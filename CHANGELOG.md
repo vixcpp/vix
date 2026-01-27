@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## v1.22.3 — 2026-01-27
+
+### Fixed
+
+- **cmake(umbrella):** fix Asio detection and fallback handling
+  - Ensure standalone Asio is correctly detected from `third_party/asio`
+  - Prevent hard failure when Asio is missing on CI runners
+  - Centralize Asio include path via `vix::thirdparty_asio` interface target
+  - Stabilize P2P build by fixing Asio integration at umbrella level
+
 ## v1.22.2 — 2026-01-27
 
 ### Fixed
