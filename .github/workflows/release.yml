@@ -19,7 +19,6 @@ jobs:
             vixos: linux
             arch: x86_64
 
-          # ✅ Linux aarch64 via cross-compile on ubuntu-22.04
           - os: ubuntu-22.04
             vixos: linux
             arch: aarch64
@@ -27,6 +26,7 @@ jobs:
           - os: macos-15
             vixos: macos
             arch: x86_64
+
           - os: macos-14
             vixos: macos
             arch: aarch64
@@ -47,6 +47,31 @@ jobs:
         uses: lukka/get-cmake@latest
 
       # -------------------------
+      # Linux deps (native + cross helpers)
+      # -------------------------
+      - name: Install deps (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y \
+            pkg-config ninja-build \
+            libssl-dev zlib1g-dev libsqlite3-dev \
+            ca-certificates
+
+      # -------------------------
+      # Windows deps
+      # -------------------------
+      - name: Install deps (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install openssl -y
+          # Optional: if you ever need sqlite headers on Windows builds:
+          # choco install sqlite -y
+
+      # -------------------------
       # Linux aarch64 toolchain (cross)
       # -------------------------
       - name: Setup Linux aarch64 toolchain
@@ -59,10 +84,11 @@ jobs:
             gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
             pkg-config cmake ninja-build
 
-          # Optional: if you link system libs, uncomment:
-          # sudo dpkg --add-architecture arm64
-          # sudo apt-get update
-          # sudo apt-get install -y libssl-dev:arm64 zlib1g-dev:arm64 libsqlite3-dev:arm64
+          # Cross sysroot libs (only needed if your build links system libs)
+          sudo dpkg --add-architecture arm64
+          sudo apt-get update
+          sudo apt-get install -y \
+            libssl-dev:arm64 zlib1g-dev:arm64 libsqlite3-dev:arm64
 
           cat > toolchain-aarch64.cmake <<'EOF'
           set(CMAKE_SYSTEM_NAME Linux)
@@ -71,17 +97,22 @@ jobs:
           set(CMAKE_C_COMPILER   aarch64-linux-gnu-gcc)
           set(CMAKE_CXX_COMPILER aarch64-linux-gnu-g++)
 
-          # Where cross libs/headers live
           set(CMAKE_FIND_ROOT_PATH /usr/aarch64-linux-gnu)
 
           set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
           set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
           set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
           set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+
+          # Help pkg-config during cross configure
+          set(ENV{PKG_CONFIG_ALLOW_SYSTEM_CFLAGS} "1")
+          set(ENV{PKG_CONFIG_ALLOW_SYSTEM_LIBS} "1")
+          set(ENV{PKG_CONFIG_LIBDIR} "/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig")
+          set(ENV{PKG_CONFIG_PATH}   "/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig")
           EOF
 
       # -------------------------
-      # Configure
+      # Configure (Unix)
       # -------------------------
       - name: Configure (Unix)
         if: runner.os != 'Windows'
@@ -90,14 +121,16 @@ jobs:
           set -euxo pipefail
 
           if [ "${{ runner.os }}" = "Linux" ] && [ "${{ matrix.arch }}" = "aarch64" ]; then
-            cmake -S . -B build \
+            cmake -S . -B build -G Ninja \
               -DCMAKE_BUILD_TYPE=Release \
               -DVIX_ENABLE_INSTALL=OFF \
-              -DCMAKE_TOOLCHAIN_FILE="${GITHUB_WORKSPACE}/toolchain-aarch64.cmake"
+              -DCMAKE_TOOLCHAIN_FILE="${GITHUB_WORKSPACE}/toolchain-aarch64.cmake" \
+              -DCMAKE_MESSAGE_LOG_LEVEL=STATUS
           else
-            cmake -S . -B build \
+            cmake -S . -B build -G Ninja \
               -DCMAKE_BUILD_TYPE=Release \
-              -DVIX_ENABLE_INSTALL=OFF
+              -DVIX_ENABLE_INSTALL=OFF \
+              -DCMAKE_MESSAGE_LOG_LEVEL=STATUS
           fi
 
       - name: Build (Unix)
@@ -107,11 +140,14 @@ jobs:
           set -euxo pipefail
           cmake --build build -j
 
+      # -------------------------
+      # Configure + Build (Windows)
+      # -------------------------
       - name: Configure (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          cmake -S . -B build -DVIX_ENABLE_INSTALL=OFF
+          cmake -S . -B build -A x64 -DVIX_ENABLE_INSTALL=OFF
 
       - name: Build (Windows)
         if: runner.os == 'Windows'
@@ -136,14 +172,15 @@ jobs:
           if [ -z "$BIN" ]; then
             echo "Expected vix binary not found. Listing build/ ..." >&2
             ls -la build || true
-            find build -maxdepth 4 -type f -name vix -print || true
+            find build -maxdepth 5 -type f -name vix -print || true
             exit 1
           fi
 
-          ASSET="vix-${{ matrix.vixos }}-${{ matrix.arch }}.tar.gz"
           mkdir -p dist
           cp "$BIN" dist/vix
           chmod +x dist/vix
+
+          ASSET="vix-${{ matrix.vixos }}-${{ matrix.arch }}.tar.gz"
           tar -C dist -czf "dist/$ASSET" vix
           rm -f dist/vix
 
@@ -154,7 +191,8 @@ jobs:
           $candidates = @(
             "build\vix.exe",
             "build\Release\vix.exe",
-            "build\bin\vix.exe"
+            "build\bin\vix.exe",
+            "build\Release\bin\vix.exe"
           )
 
           $bin = $null
@@ -170,16 +208,19 @@ jobs:
 
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           Copy-Item $bin dist\vix.exe
+
           $asset = "vix-windows-${{ matrix.arch }}.zip"
           Compress-Archive -Path dist\vix.exe -DestinationPath "dist\$asset" -Force
           Remove-Item dist\vix.exe -Force
 
       # -------------------------
-      # minisign + sha256
+      # minisign + sha256 (optional)
       # -------------------------
       - name: Install minisign (Unix)
-        if: runner.os != 'Windows'
+        if: runner.os != 'Windows' && env.MINISIGN_PRIVATE_KEY != ''
         shell: bash
+        env:
+          MINISIGN_PRIVATE_KEY: ${{ secrets.MINISIGN_PRIVATE_KEY }}
         run: |
           set -euxo pipefail
           if command -v minisign >/dev/null 2>&1; then exit 0; fi
@@ -192,8 +233,10 @@ jobs:
           fi
 
       - name: Install minisign (Windows)
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && env.MINISIGN_PRIVATE_KEY != ''
         shell: pwsh
+        env:
+          MINISIGN_PRIVATE_KEY: ${{ secrets.MINISIGN_PRIVATE_KEY }}
         run: |
           choco install minisign -y
           refreshenv
@@ -202,35 +245,30 @@ jobs:
           }
 
       - name: Sign + SHA256 (Unix)
-        if: runner.os != 'Windows'
+        if: runner.os != 'Windows' && env.MINISIGN_PRIVATE_KEY != ''
         shell: bash
         env:
           MINISIGN_PRIVATE_KEY: ${{ secrets.MINISIGN_PRIVATE_KEY }}
           MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
         run: |
           set -euxo pipefail
-
-          ASSET_PATH="$(ls dist/vix-${{ matrix.vixos }}-${{ matrix.arch }}.* | head -n1)"
-          ASSET_NAME="$(basename "$ASSET_PATH")"
-
           cd dist
+
+          ASSET="$(ls vix-${{ matrix.vixos }}-${{ matrix.arch }}.* | head -n1)"
 
           printf "%s" "$MINISIGN_PRIVATE_KEY" > minisign.key
 
           if command -v sha256sum >/dev/null 2>&1; then
-            sha256sum "$ASSET_NAME" > "${ASSET_NAME}.sha256"
-          elif command -v shasum >/dev/null 2>&1; then
-            shasum -a 256 "$ASSET_NAME" > "${ASSET_NAME}.sha256"
+            sha256sum "$ASSET" > "${ASSET}.sha256"
           else
-            echo "No sha256 tool found (sha256sum/shasum)" >&2
-            exit 1
+            shasum -a 256 "$ASSET" > "${ASSET}.sha256"
           fi
 
-          echo "$MINISIGN_PASSWORD" | minisign -S -s minisign.key -m "$ASSET_NAME" -x "${ASSET_NAME}.minisig"
+          echo "$MINISIGN_PASSWORD" | minisign -S -s minisign.key -m "$ASSET" -x "${ASSET}.minisig"
           rm -f minisign.key
 
       - name: Sign + SHA256 (Windows)
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && env.MINISIGN_PRIVATE_KEY != ''
         shell: pwsh
         env:
           MINISIGN_PRIVATE_KEY: ${{ secrets.MINISIGN_PRIVATE_KEY }}
@@ -269,12 +307,13 @@ jobs:
         with:
           path: dist-all
 
-      - name: Flatten (no collisions)
+      - name: Flatten (best effort)
         shell: bash
         run: |
           set -euxo pipefail
           mkdir -p dist
-          find dist-all -maxdepth 2 -type f -print0 | while IFS= read -r -d '' f; do
+          # copy everything found (don't fail if some builds didn't upload)
+          find dist-all -type f -maxdepth 3 -print0 | while IFS= read -r -d '' f; do
             base="$(basename "$f")"
             if [ -f "dist/$base" ]; then
               echo "Collision while flattening: $base" >&2
