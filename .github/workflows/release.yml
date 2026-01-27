@@ -71,12 +71,8 @@ jobs:
           sudo dpkg --add-architecture arm64
           sudo apt-get update
 
-          # Cross compilers
           sudo apt-get install -y --no-install-recommends \
-            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-
-          # ARM64 dev libs (for find_package on cross builds)
-          sudo apt-get install -y --no-install-recommends \
+            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
             pkg-config ninja-build ca-certificates \
             libssl-dev:arm64 \
             zlib1g-dev:arm64 \
@@ -90,7 +86,6 @@ jobs:
           set(CMAKE_C_COMPILER   aarch64-linux-gnu-gcc)
           set(CMAKE_CXX_COMPILER aarch64-linux-gnu-g++)
 
-          # Make CMake search target libs/includes first
           set(CMAKE_FIND_ROOT_PATH
             /usr/aarch64-linux-gnu
             /usr/lib/aarch64-linux-gnu
@@ -105,7 +100,7 @@ jobs:
           EOF
 
       # -------------------------
-      # macOS deps (help pkg-config + openssl path)
+      # macOS deps
       # -------------------------
       - name: Install deps (macOS)
         if: runner.os == 'macOS'
@@ -130,9 +125,6 @@ jobs:
       - name: Configure (Unix)
         if: runner.os != 'Windows'
         shell: bash
-        env:
-          GH_PAGER: cat
-          PAGER: cat
         run: |
           set -euxo pipefail
 
@@ -140,30 +132,30 @@ jobs:
             -S . -B build -G Ninja
             -DCMAKE_BUILD_TYPE=Release
             -DVIX_ENABLE_INSTALL=OFF
-
-            # Stabilize release CI: disable deps that are not guaranteed everywhere
             -DVIX_DB_USE_MYSQL=OFF
             -DVIX_CORE_WITH_MYSQL=OFF
             -DVIX_ENABLE_HTTP_COMPRESSION=OFF
-
             -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE
             --log-level=VERBOSE
           )
 
           if [ "${{ runner.os }}" = "Linux" ] && [ "${{ matrix.arch }}" = "aarch64" ]; then
-            CMAKE_ARGS+=(-DCMAKE_TOOLCHAIN_FILE="${GITHUB_WORKSPACE}/toolchain-aarch64.cmake" --debug-find)
+            CMAKE_ARGS+=(
+              -DCMAKE_TOOLCHAIN_FILE="${GITHUB_WORKSPACE}/toolchain-aarch64.cmake"
+              --debug-find
+            )
           fi
 
           if [ "${{ runner.os }}" = "macOS" ]; then
-            # Help OpenSSL discovery on macOS runners (Homebrew)
-            if [ -d "/opt/homebrew/opt/openssl@3" ]; then
-              CMAKE_ARGS+=(-DOPENSSL_ROOT_DIR=/opt/homebrew/opt/openssl@3)
-            elif [ -d "/usr/local/opt/openssl@3" ]; then
-              CMAKE_ARGS+=(-DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@3)
+            if command -v brew >/dev/null 2>&1; then
+              BREW_SSL="$(brew --prefix openssl@3 2>/dev/null || true)"
+              if [ -n "$BREW_SSL" ] && [ -d "$BREW_SSL" ]; then
+                CMAKE_ARGS+=(-DOPENSSL_ROOT_DIR="$BREW_SSL")
+              fi
             fi
           fi
 
-          cmake "${CMAKE_ARGS[@]}"
+          cmake "${CMAKE_ARGS[@]}" 2>&1 | tee cmake_output.log
 
       - name: Dump CMake logs (Unix)
         if: failure() && runner.os != 'Windows'
@@ -182,19 +174,30 @@ jobs:
           echo "=== CMakeConfigureLog.yaml (tail) ==="
           test -f build/CMakeFiles/CMakeConfigureLog.yaml && tail -n 250 build/CMakeFiles/CMakeConfigureLog.yaml || echo "missing"
           echo
-          echo "=== CMakeCache.txt (grep key vars) ==="
-          test -f build/CMakeCache.txt && (grep -E "VIX_|CMAKE_TOOLCHAIN_FILE|CMAKE_CXX_COMPILER|OpenSSL|ZLIB|BROTLI|SPDLOG|ASIO|NOTFOUND" build/CMakeCache.txt || true) || echo "missing"
+          echo "=== cmake_output.log (tail) ==="
+          test -f cmake_output.log && tail -n 200 cmake_output.log || echo "missing"
+
+      # Upload logs into a UNIQUE folder to avoid extraction collisions
+      - name: Collect logs
+        if: always()
+        shell: bash
+        run: |
+          set -euxo pipefail
+          OUT="logs/${{ matrix.vixos }}-${{ matrix.arch }}"
+          mkdir -p "$OUT"
+          test -f cmake_output.log && cp -f cmake_output.log "$OUT/" || true
+          test -f build/CMakeCache.txt && cp -f build/CMakeCache.txt "$OUT/" || true
+          test -f build/CMakeFiles/CMakeError.log && cp -f build/CMakeFiles/CMakeError.log "$OUT/" || true
+          test -f build/CMakeFiles/CMakeOutput.log && cp -f build/CMakeFiles/CMakeOutput.log "$OUT/" || true
+          test -f build/CMakeFiles/CMakeConfigureLog.yaml && cp -f build/CMakeFiles/CMakeConfigureLog.yaml "$OUT/" || true
+          find logs -type f -maxdepth 3 -print || true
 
       - name: Upload configure logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: cmake-logs-${{ matrix.vixos }}-${{ matrix.arch }}
-          path: |
-            build/CMakeCache.txt
-            build/CMakeFiles/CMakeError.log
-            build/CMakeFiles/CMakeOutput.log
-            build/CMakeFiles/CMakeConfigureLog.yaml
+          path: logs/${{ matrix.vixos }}-${{ matrix.arch }}/*
           if-no-files-found: warn
 
       - name: Build (Unix)
@@ -308,7 +311,7 @@ jobs:
         run: |
           set -euxo pipefail
           mkdir -p dist
-          find dist-all -type f -maxdepth 3 -print0 | while IFS= read -r -d '' f; do
+          find dist-all -type f -maxdepth 4 -print0 | while IFS= read -r -d '' f; do
             base="$(basename "$f")"
             if [ -f "dist/$base" ]; then
               echo "Collision while flattening: $base" >&2
