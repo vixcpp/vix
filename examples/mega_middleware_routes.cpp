@@ -73,14 +73,6 @@ namespace J = vix::json;
 
 // ----------------------------- tiny helpers ----------------------------------
 
-static std::string env_or(std::string_view key, std::string fallback)
-{
-  const char *v = std::getenv(std::string(key).c_str());
-  if (!v || !*v)
-    return fallback;
-  return std::string(v);
-}
-
 static long long now_ms_wall()
 {
   using namespace std::chrono;
@@ -410,7 +402,7 @@ static void register_api_routes(vix::App &app)
             })); });
 
   // GET /api/cache/heavy
-  app.get("/api/cache/heavy", [](Request &, Response &res)
+  app.get("/api/cache/heavy", [](Request &, Response &)
           {
             // Fake heavy payload
             std::vector<J::token> items;

@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+v1.22.13: sync cli/middleware/p2p and extend middleware example
+
+- update submodules: cli, middleware, p2p
+- tweak umbrella CMakeLists for module sync/build stability
+- update examples/mega_middleware_routes.cpp
+
 # Changelog
 
 ## v1.22.4
