@@ -79,16 +79,11 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          sudo apt-get update
-          sudo apt-get install -y \
-            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
-            pkg-config cmake ninja-build
 
-          # Cross sysroot libs (only needed if your build links system libs)
-          sudo dpkg --add-architecture arm64
+          # Retry apt (exit 100 is often transient)
           sudo apt-get update
-          sudo apt-get install -y \
-            libssl-dev:arm64 zlib1g-dev:arm64 libsqlite3-dev:arm64
+          sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu || \
+            (sleep 5 && sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu)
 
           cat > toolchain-aarch64.cmake <<'EOF'
           set(CMAKE_SYSTEM_NAME Linux)
@@ -98,17 +93,10 @@ jobs:
           set(CMAKE_CXX_COMPILER aarch64-linux-gnu-g++)
 
           set(CMAKE_FIND_ROOT_PATH /usr/aarch64-linux-gnu)
-
           set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
           set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
           set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
           set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
-
-          # Help pkg-config during cross configure
-          set(ENV{PKG_CONFIG_ALLOW_SYSTEM_CFLAGS} "1")
-          set(ENV{PKG_CONFIG_ALLOW_SYSTEM_LIBS} "1")
-          set(ENV{PKG_CONFIG_LIBDIR} "/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig")
-          set(ENV{PKG_CONFIG_PATH}   "/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig")
           EOF
 
       # -------------------------
