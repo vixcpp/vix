@@ -113,13 +113,45 @@ jobs:
               -DCMAKE_BUILD_TYPE=Release \
               -DVIX_ENABLE_INSTALL=OFF \
               -DCMAKE_TOOLCHAIN_FILE="${GITHUB_WORKSPACE}/toolchain-aarch64.cmake" \
-              -DCMAKE_MESSAGE_LOG_LEVEL=STATUS
+              -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE \
+              --log-level=VERBOSE \
+              --debug-find
           else
             cmake -S . -B build -G Ninja \
               -DCMAKE_BUILD_TYPE=Release \
               -DVIX_ENABLE_INSTALL=OFF \
-              -DCMAKE_MESSAGE_LOG_LEVEL=STATUS
+              -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE \
+              --log-level=VERBOSE \
+              --debug-find
           fi
+
+      - name: Dump CMake logs (Unix)
+        if: failure() && runner.os != 'Windows'
+        shell: bash
+        run: |
+          set +e
+          echo "=== build/ dir ==="
+          ls -la build || true
+          echo
+          echo "=== CMakeError.log (tail) ==="
+          test -f build/CMakeFiles/CMakeError.log && tail -n 250 build/CMakeFiles/CMakeError.log || echo "missing"
+          echo
+          echo "=== CMakeOutput.log (tail) ==="
+          test -f build/CMakeFiles/CMakeOutput.log && tail -n 250 build/CMakeFiles/CMakeOutput.log || echo "missing"
+          echo
+          echo "=== CMakeCache.txt (grep key vars) ==="
+          test -f build/CMakeCache.txt && (grep -E "VIX_|CMAKE_TOOLCHAIN_FILE|CMAKE_CXX_COMPILER|OpenSSL|ZLIB|BROTLI|SPDLOG|ASIO" build/CMakeCache.txt || true) || echo "missing"
+
+      - name: Upload configure logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cmake-logs-${{ matrix.vixos }}-${{ matrix.arch }}
+          path: |
+            build/CMakeFiles/CMakeError.log
+            build/CMakeFiles/CMakeOutput.log
+            build/CMakeCache.txt
+          if-no-files-found: ignore
 
       - name: Build (Unix)
         if: runner.os != 'Windows'
