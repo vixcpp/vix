@@ -8,6 +8,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## v1.22.2 — 2026-01-27
+
+### Fixed
+
+- **p2p:** fix Asio integration
+  - Asio is now strictly provided by the umbrella build
+  - Remove implicit `<asio.hpp>` includes and non-deterministic paths
+  - Reliable builds in local, CI, and downstream projects
+
+- **core:** fix header guard in `Request.hpp`
+  - Prevent collisions and undefined behavior in modular builds
+
+### Build
+
+- Clarify umbrella vs standalone responsibilities
+- Deterministic and reproducible CMake configuration
+
+---
+
+## v1.22.1 — 2026-01-25
+
+### Changed
+
+- **core:** unify core modules and clarify responsibilities
+- **build:** harmonize CMake and package configuration
+- **modules:** sync cache, cli, db, net, p2p, and sync
+
+### Added
+
+- GitHub release workflow
+- Security layout structure
+- Advanced middleware routing example
+
+### Docs
+
+- Clarify scope and non-goals
+- Document Vix Console contract and logging separation
+
 ## v1.22.0 — Runtime Console & DX Stabilization
 
 **Release focus:** developer experience, runtime safety, and clear separation between dev console and production logging.

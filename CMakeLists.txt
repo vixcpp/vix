@@ -226,6 +226,26 @@ endif()
 # Umbrella INTERFACE target (created early)
 # ----------------------------------------------------
 add_library(vix INTERFACE)
+# ----------------------------------------------------
+# Third-party: Asio (standalone, header-only)
+# Used by: vix::p2p
+# ----------------------------------------------------
+set(VIX_THIRDPARTY_ASIO_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/asio/include")
+
+if (EXISTS "${VIX_THIRDPARTY_ASIO_DIR}/asio.hpp")
+  add_library(vix_thirdparty_asio INTERFACE)
+  add_library(vix::thirdparty_asio ALIAS vix_thirdparty_asio)
+
+  target_include_directories(vix_thirdparty_asio INTERFACE
+    $<BUILD_INTERFACE:${VIX_THIRDPARTY_ASIO_DIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/vix/third_party/asio>
+  )
+
+  message(STATUS "Asio: using vendored standalone Asio at ${VIX_THIRDPARTY_ASIO_DIR}")
+else()
+  message(FATAL_ERROR "Asio missing: expected ${VIX_THIRDPARTY_ASIO_DIR}/asio.hpp")
+endif()
+
 add_library(vix::vix ALIAS vix)
 
 # ----------------------------------------------------
@@ -828,6 +848,12 @@ if (VIX_ENABLE_INSTALL)
 
   if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/middleware/include")
     install(DIRECTORY modules/middleware/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+  endif()
+
+  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/asio/include")
+    install(DIRECTORY third_party/asio/include/
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vix/third_party/asio
             FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
   endif()
 
