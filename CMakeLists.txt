@@ -239,10 +239,11 @@ set(VIX_THIRDPARTY_ASIO_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/asio/includ
 
 if (EXISTS "${VIX_THIRDPARTY_ASIO_DIR}/asio.hpp")
   message(STATUS "Asio: using vendored Asio at ${VIX_THIRDPARTY_ASIO_DIR}")
-  target_include_directories(vix_thirdparty_asio INTERFACE
-    $<BUILD_INTERFACE:${VIX_THIRDPARTY_ASIO_DIR}>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/vix/third_party/asio>
-  )
+  target_include_directories(vix_thirdparty_asio SYSTEM INTERFACE
+  $<BUILD_INTERFACE:${VIX_THIRDPARTY_ASIO_DIR}>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/vix/third_party/asio>
+)
+
 else()
   message(WARNING "Asio vendored copy missing -> fetching via FetchContent")
   include(FetchContent)
@@ -252,10 +253,10 @@ else()
   )
   FetchContent_MakeAvailable(asio)
 
-  target_include_directories(vix_thirdparty_asio INTERFACE
-    $<BUILD_INTERFACE:${asio_SOURCE_DIR}/asio/include>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/vix/third_party/asio>
-  )
+  target_include_directories(vix_thirdparty_asio SYSTEM INTERFACE
+  $<BUILD_INTERFACE:${asio_SOURCE_DIR}/asio/include>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/vix/third_party/asio>
+)
 endif()
 
 add_library(vix::vix ALIAS vix)
@@ -351,18 +352,33 @@ else()
   message(FATAL_ERROR "Missing 'modules/utils'. Run: git submodule update --init --recursive")
 endif()
 
-if (TARGET spdlog::spdlog)
-  get_target_property(_spdlog_inc spdlog::spdlog INTERFACE_INCLUDE_DIRECTORIES)
-  if (_spdlog_inc)
-    target_include_directories(vix::utils SYSTEM PRIVATE ${_spdlog_inc})
-  endif()
+# Resolve real utils target (can't mutate ALIAS targets)
+set(_VIX_UTILS_REAL "")
+if (TARGET vix_utils)
+  set(_VIX_UTILS_REAL vix_utils)
+elseif (TARGET vix-utils)
+  set(_VIX_UTILS_REAL vix-utils)
+elseif (TARGET utils)
+  set(_VIX_UTILS_REAL utils)
 endif()
 
-if (TARGET fmt::fmt)
-  get_target_property(_fmt_inc fmt::fmt INTERFACE_INCLUDE_DIRECTORIES)
-  if (_fmt_inc)
-    target_include_directories(vix::utils SYSTEM PRIVATE ${_fmt_inc})
+# Propagate transitive include dirs from deps (avoid warnings from 3rd-party headers)
+if (_VIX_UTILS_REAL)
+  if (TARGET spdlog::spdlog)
+    get_target_property(_spdlog_inc spdlog::spdlog INTERFACE_INCLUDE_DIRECTORIES)
+    if (_spdlog_inc)
+      target_include_directories(${_VIX_UTILS_REAL} SYSTEM INTERFACE ${_spdlog_inc})
+    endif()
   endif()
+
+  if (TARGET fmt::fmt)
+    get_target_property(_fmt_inc fmt::fmt INTERFACE_INCLUDE_DIRECTORIES)
+    if (_fmt_inc)
+      target_include_directories(${_VIX_UTILS_REAL} SYSTEM INTERFACE ${_fmt_inc})
+    endif()
+  endif()
+else()
+  message(WARNING "Could not resolve real utils target (tried: vix_utils, vix-utils, utils).")
 endif()
 
 # --- Core ---
@@ -871,6 +887,11 @@ if (VIX_ENABLE_INSTALL)
 
   # Export umbrella target (modules must also export their targets into VixTargets)
   install(TARGETS vix EXPORT VixTargets)
+
+# Export third-party interface targets needed by exported modules (e.g. vix_p2p)
+if (TARGET vix_thirdparty_asio)
+  install(TARGETS vix_thirdparty_asio EXPORT VixTargets)
+endif()
 
   if (TARGET vix_warnings)
     install(TARGETS vix_warnings EXPORT VixTargets)
