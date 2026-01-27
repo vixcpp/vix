@@ -23,7 +23,8 @@ jobs:
             vixos: linux
             arch: aarch64
 
-          - os: macos-13
+          # macOS Intel runner (macos-13 retired)
+          - os: macos-15-intel
             vixos: macos
             arch: x86_64
 
@@ -56,8 +57,7 @@ jobs:
           set -euxo pipefail
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            pkg-config ninja-build \
-            ca-certificates \
+            pkg-config ninja-build ca-certificates \
             libssl-dev zlib1g-dev libsqlite3-dev libbrotli-dev
 
       # -------------------------
@@ -69,21 +69,25 @@ jobs:
         run: |
           set -euxo pipefail
 
-          sudo apt-get update
+          retry() { n=0; until [ $n -ge 3 ]; do "$@" && break; n=$((n+1)); sleep 5; done; [ $n -lt 3 ]; }
 
-          # Cross compilers
-          sudo apt-get install -y --no-install-recommends \
-            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu || \
-            (sleep 5 && sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu)
+          retry sudo apt-get update
 
-          # Enable multiarch and install ARM64 dev libs (needed for find_package/OpenSSL/zlib/brotli)
+          # Cross compilers + binutils
+          retry sudo apt-get install -y --no-install-recommends \
+            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu binutils-aarch64-linux-gnu
+
+          # Enable multiarch and install ARM64 runtime + dev libs
           sudo dpkg --add-architecture arm64
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            libssl-dev:arm64 \
-            zlib1g-dev:arm64 \
-            libsqlite3-dev:arm64 \
-            libbrotli-dev:arm64
+          retry sudo apt-get update
+
+          # Runtime libs often required to resolve dependencies cleanly
+          retry sudo apt-get install -y --no-install-recommends \
+            libc6:arm64 libstdc++6:arm64 libgcc-s1:arm64
+
+          # Dev libs for find_package() during cross configure
+          retry sudo apt-get install -y --no-install-recommends \
+            libssl-dev:arm64 zlib1g-dev:arm64 libsqlite3-dev:arm64 libbrotli-dev:arm64
 
           cat > toolchain-aarch64.cmake <<'EOF'
           set(CMAKE_SYSTEM_NAME Linux)
@@ -92,10 +96,11 @@ jobs:
           set(CMAKE_C_COMPILER   aarch64-linux-gnu-gcc)
           set(CMAKE_CXX_COMPILER aarch64-linux-gnu-g++)
 
-          # Help CMake find the right (arm64) headers/libs during cross builds
+          # Prefer arm64 sysroot paths when cross compiling
           set(CMAKE_FIND_ROOT_PATH
             /usr/aarch64-linux-gnu
             /usr/lib/aarch64-linux-gnu
+            /usr/include/aarch64-linux-gnu
             /usr
           )
 
@@ -123,21 +128,24 @@ jobs:
         run: |
           set -euxo pipefail
 
+          COMMON_ARGS=(
+            -G Ninja
+            -DCMAKE_BUILD_TYPE=Release
+            -DVIX_ENABLE_INSTALL=OFF
+            # Keep release CI portable across platforms:
+            -DVIX_DB_USE_MYSQL=OFF
+            -DVIX_CORE_WITH_MYSQL=OFF
+            -DVIX_ENABLE_HTTP_COMPRESSION=OFF
+            -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE
+            --log-level=VERBOSE
+          )
+
           if [ "${{ runner.os }}" = "Linux" ] && [ "${{ matrix.arch }}" = "aarch64" ]; then
-            cmake -S . -B build -G Ninja \
-              -DCMAKE_BUILD_TYPE=Release \
-              -DVIX_ENABLE_INSTALL=OFF \
+            cmake -S . -B build "${COMMON_ARGS[@]}" \
               -DCMAKE_TOOLCHAIN_FILE="${GITHUB_WORKSPACE}/toolchain-aarch64.cmake" \
-              -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE \
-              --log-level=VERBOSE \
               --debug-find
           else
-            cmake -S . -B build -G Ninja \
-              -DCMAKE_BUILD_TYPE=Release \
-              -DVIX_ENABLE_INSTALL=OFF \
-              -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE \
-              --log-level=VERBOSE \
-              --debug-find
+            cmake -S . -B build "${COMMON_ARGS[@]}" --debug-find
           fi
 
       - name: Dump CMake logs (Unix)
@@ -154,6 +162,9 @@ jobs:
           echo "=== CMakeOutput.log (tail) ==="
           test -f build/CMakeFiles/CMakeOutput.log && tail -n 250 build/CMakeFiles/CMakeOutput.log || echo "missing"
           echo
+          echo "=== CMakeConfigureLog.yaml (tail) ==="
+          test -f build/CMakeFiles/CMakeConfigureLog.yaml && tail -n 250 build/CMakeFiles/CMakeConfigureLog.yaml || echo "missing"
+          echo
           echo "=== CMakeCache.txt (grep key vars) ==="
           test -f build/CMakeCache.txt && (grep -E "VIX_|CMAKE_TOOLCHAIN_FILE|CMAKE_CXX_COMPILER|OpenSSL|ZLIB|BROTLI|SPDLOG|ASIO|NOTFOUND" build/CMakeCache.txt || true) || echo "missing"
 
@@ -163,9 +174,12 @@ jobs:
         with:
           name: cmake-logs-${{ matrix.vixos }}-${{ matrix.arch }}
           path: |
-            build/CMakeFiles/*
             build/CMakeCache.txt
-          if-no-files-found: ignore
+            build/CMakeFiles/CMakeError.log
+            build/CMakeFiles/CMakeOutput.log
+            build/CMakeFiles/CMakeConfigureLog.yaml
+            build/CMakeFiles/*.log
+          if-no-files-found: warn
 
       - name: Build (Unix)
         if: runner.os != 'Windows'
@@ -182,7 +196,12 @@ jobs:
         shell: pwsh
         run: |
           $openssl = "C:\Program Files\OpenSSL-Win64"
-          cmake -S . -B build -A x64 -DVIX_ENABLE_INSTALL=OFF -DOPENSSL_ROOT_DIR="$openssl"
+          cmake -S . -B build -A x64 `
+            -DVIX_ENABLE_INSTALL=OFF `
+            -DVIX_DB_USE_MYSQL=OFF `
+            -DVIX_CORE_WITH_MYSQL=OFF `
+            -DVIX_ENABLE_HTTP_COMPRESSION=OFF `
+            -DOPENSSL_ROOT_DIR="$openssl"
 
       - name: Build (Windows)
         if: runner.os == 'Windows'
@@ -207,7 +226,7 @@ jobs:
           if [ -z "$BIN" ]; then
             echo "Expected vix binary not found. Listing build/ ..." >&2
             ls -la build || true
-            find build -maxdepth 5 -type f -name vix -print || true
+            find build -maxdepth 6 -type f -name vix -print || true
             exit 1
           fi
 
@@ -249,82 +268,7 @@ jobs:
           Remove-Item dist\vix.exe -Force
 
       # -------------------------
-      # minisign + sha256 (optional)
-      # -------------------------
-      - name: Install minisign (Unix)
-        if: runner.os != 'Windows' && env.MINISIGN_PRIVATE_KEY != ''
-        shell: bash
-        env:
-          MINISIGN_PRIVATE_KEY: ${{ secrets.MINISIGN_PRIVATE_KEY }}
-        run: |
-          set -euxo pipefail
-          if command -v minisign >/dev/null 2>&1; then exit 0; fi
-          if [ "${{ runner.os }}" = "macOS" ]; then
-            brew update
-            brew install minisign
-          else
-            sudo apt-get update
-            sudo apt-get install -y minisign
-          fi
-
-      - name: Install minisign (Windows)
-        if: runner.os == 'Windows' && env.MINISIGN_PRIVATE_KEY != ''
-        shell: pwsh
-        env:
-          MINISIGN_PRIVATE_KEY: ${{ secrets.MINISIGN_PRIVATE_KEY }}
-        run: |
-          choco install minisign -y
-          refreshenv
-          if (-not (Get-Command minisign -ErrorAction SilentlyContinue)) {
-            throw "minisign not found in PATH after installation"
-          }
-
-      - name: Sign + SHA256 (Unix)
-        if: runner.os != 'Windows' && env.MINISIGN_PRIVATE_KEY != ''
-        shell: bash
-        env:
-          MINISIGN_PRIVATE_KEY: ${{ secrets.MINISIGN_PRIVATE_KEY }}
-          MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
-        run: |
-          set -euxo pipefail
-          cd dist
-
-          ASSET="$(ls vix-${{ matrix.vixos }}-${{ matrix.arch }}.* | head -n1)"
-
-          printf "%s" "$MINISIGN_PRIVATE_KEY" > minisign.key
-
-          if command -v sha256sum >/dev/null 2>&1; then
-            sha256sum "$ASSET" > "${ASSET}.sha256"
-          else
-            shasum -a 256 "$ASSET" > "${ASSET}.sha256"
-          fi
-
-          echo "$MINISIGN_PASSWORD" | minisign -S -s minisign.key -m "$ASSET" -x "${ASSET}.minisig"
-          rm -f minisign.key
-
-      - name: Sign + SHA256 (Windows)
-        if: runner.os == 'Windows' && env.MINISIGN_PRIVATE_KEY != ''
-        shell: pwsh
-        env:
-          MINISIGN_PRIVATE_KEY: ${{ secrets.MINISIGN_PRIVATE_KEY }}
-          MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
-        run: |
-          $asset = Get-ChildItem dist\* | Where-Object { $_.Name -eq "vix-windows-${{ matrix.arch }}.zip" } | Select-Object -First 1
-          if (!$asset) { throw "asset not found" }
-
-          $hash = (Get-FileHash -Algorithm SHA256 $asset.FullName).Hash.ToLower()
-          "$hash  $($asset.Name)" | Out-File -Encoding ASCII "dist\$($asset.Name).sha256"
-
-          $keyPath = "dist\minisign.key"
-          Set-Content -NoNewline -Encoding ASCII $keyPath $env:MINISIGN_PRIVATE_KEY
-
-          $pwd = $env:MINISIGN_PASSWORD
-          $pwd | minisign -S -s $keyPath -m $asset.FullName -x "dist\$($asset.Name).minisig"
-
-          Remove-Item $keyPath -Force
-
-      # -------------------------
-      # Upload artifacts for publish job
+      # Upload dist
       # -------------------------
       - name: Upload dist
         uses: actions/upload-artifact@v4
