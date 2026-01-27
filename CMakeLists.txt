@@ -228,22 +228,34 @@ endif()
 add_library(vix INTERFACE)
 # ----------------------------------------------------
 # Third-party: Asio (standalone, header-only)
+# Exposes: vix::thirdparty_asio
 # Used by: vix::p2p
 # ----------------------------------------------------
+add_library(vix_thirdparty_asio INTERFACE)
+add_library(vix::thirdparty_asio ALIAS vix_thirdparty_asio)
+target_compile_definitions(vix_thirdparty_asio INTERFACE ASIO_STANDALONE=1)
+
 set(VIX_THIRDPARTY_ASIO_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/asio/include")
 
 if (EXISTS "${VIX_THIRDPARTY_ASIO_DIR}/asio.hpp")
-  add_library(vix_thirdparty_asio INTERFACE)
-  add_library(vix::thirdparty_asio ALIAS vix_thirdparty_asio)
-
+  message(STATUS "Asio: using vendored Asio at ${VIX_THIRDPARTY_ASIO_DIR}")
   target_include_directories(vix_thirdparty_asio INTERFACE
     $<BUILD_INTERFACE:${VIX_THIRDPARTY_ASIO_DIR}>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/vix/third_party/asio>
   )
-
-  message(STATUS "Asio: using vendored standalone Asio at ${VIX_THIRDPARTY_ASIO_DIR}")
 else()
-  message(FATAL_ERROR "Asio missing: expected ${VIX_THIRDPARTY_ASIO_DIR}/asio.hpp")
+  message(WARNING "Asio vendored copy missing -> fetching via FetchContent")
+  include(FetchContent)
+  FetchContent_Declare(asio
+    GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
+    GIT_TAG        asio-1-30-2
+  )
+  FetchContent_MakeAvailable(asio)
+
+  target_include_directories(vix_thirdparty_asio INTERFACE
+    $<BUILD_INTERFACE:${asio_SOURCE_DIR}/asio/include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/vix/third_party/asio>
+  )
 endif()
 
 add_library(vix::vix ALIAS vix)
