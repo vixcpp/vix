@@ -879,11 +879,26 @@ if (VIX_ENABLE_INSTALL)
             FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
   endif()
 
-  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/asio/include")
-    install(DIRECTORY third_party/asio/include/
-            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vix/third_party/asio
-            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
-  endif()
+# ---- Install Asio headers exactly from the selected source ----
+set(_VIX_ASIO_INSTALL_SRC "")
+
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/asio/include/asio.hpp")
+  # vendored copy
+  set(_VIX_ASIO_INSTALL_SRC "${CMAKE_CURRENT_SOURCE_DIR}/third_party/asio/include")
+elseif (DEFINED asio_SOURCE_DIR AND EXISTS "${asio_SOURCE_DIR}/asio/include/asio.hpp")
+  # FetchContent
+  set(_VIX_ASIO_INSTALL_SRC "${asio_SOURCE_DIR}/asio/include")
+endif()
+
+if (_VIX_ASIO_INSTALL_SRC STREQUAL "")
+  message(FATAL_ERROR "Asio is required but no installable Asio headers were found.")
+endif()
+
+install(DIRECTORY "${_VIX_ASIO_INSTALL_SRC}/"
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vix/third_party/asio
+  FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h"
+)
+
 
   # Export umbrella target (modules must also export their targets into VixTargets)
   install(TARGETS vix EXPORT VixTargets)
