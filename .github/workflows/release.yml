@@ -24,7 +24,7 @@ jobs:
             vixos: linux
             arch: aarch64
 
-          - os: macos-13
+          - os: macos-15
             vixos: macos
             arch: x86_64
           - os: macos-14
