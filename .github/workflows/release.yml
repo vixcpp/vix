@@ -19,7 +19,7 @@ jobs:
             vixos: linux
             arch: x86_64
 
-          - os: ubuntu-22.04
+          - os: ubuntu-22.04-arm
             vixos: linux
             arch: aarch64
 
@@ -50,7 +50,7 @@ jobs:
       # Linux deps (native only)
       # -------------------------
       - name: Install deps (Linux)
-        if: runner.os == 'Linux' && matrix.arch != 'aarch64'
+        if: runner.os == 'Linux'
         shell: bash
         run: |
           set -euxo pipefail
@@ -185,6 +185,7 @@ jobs:
           set -euxo pipefail
           OUT="logs/${{ matrix.vixos }}-${{ matrix.arch }}"
           mkdir -p "$OUT"
+          echo "no logs captured (step failed before logs were generated)" > "$OUT/_no_logs.txt"
           test -f cmake_output.log && cp -f cmake_output.log "$OUT/" || true
           test -f build/CMakeCache.txt && cp -f build/CMakeCache.txt "$OUT/" || true
           test -f build/CMakeFiles/CMakeError.log && cp -f build/CMakeFiles/CMakeError.log "$OUT/" || true
@@ -217,6 +218,10 @@ jobs:
 
           if (Test-Path "build\CMakeFiles\CMakeConfigureLog.yaml") {
             Copy-Item "build\CMakeFiles\CMakeConfigureLog.yaml" $out -Force
+          }
+
+          if (-not (Get-ChildItem -File $out -ErrorAction SilentlyContinue)) {
+            "no logs captured (step failed before logs were generated)" | Out-File (Join-Path $out "_no_logs.txt") -Encoding utf8
           }
 
           if (Test-Path "build") {
