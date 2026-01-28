@@ -126,6 +126,7 @@ option(VIX_DB_USE_POSTGRES    "Enable PostgreSQL backend in vix_db"         OFF)
 option(VIX_DB_USE_REDIS       "Enable Redis backend in vix_db"              OFF)
 option(VIX_ENABLE_P2P         "Build Vix P2P module"                        ON)
 option(VIX_ENABLE_CACHE       "Build Vix Cache module"                      ON)
+option(VIX_FETCH_DEPS         "Allow fetching missing deps from the internet" OFF)
 
 # ----------------------------------------------------
 # Tooling / Static analysis
@@ -243,35 +244,23 @@ add_library(vix INTERFACE)
 # ----------------------------------------------------
 # Third-party: Asio (standalone, header-only)
 # Exposes: vix::thirdparty_asio
-# Used by: vix::p2p
 # ----------------------------------------------------
 add_library(vix_thirdparty_asio INTERFACE)
 add_library(vix::thirdparty_asio ALIAS vix_thirdparty_asio)
 target_compile_definitions(vix_thirdparty_asio INTERFACE ASIO_STANDALONE=1)
 
-set(VIX_THIRDPARTY_ASIO_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/asio/include")
+set(VIX_THIRDPARTY_ASIO_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/asio-src/asio/include")
 
 if (EXISTS "${VIX_THIRDPARTY_ASIO_DIR}/asio.hpp")
   message(STATUS "Asio: using vendored Asio at ${VIX_THIRDPARTY_ASIO_DIR}")
   target_include_directories(vix_thirdparty_asio SYSTEM INTERFACE
-  $<BUILD_INTERFACE:${VIX_THIRDPARTY_ASIO_DIR}>
-  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/vix/third_party/asio>
-)
-
-else()
-  message(WARNING "Asio vendored copy missing -> fetching via FetchContent")
-  include(FetchContent)
-  FetchContent_Declare(asio
-    GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
-    GIT_TAG        asio-1-30-2
+    $<BUILD_INTERFACE:${VIX_THIRDPARTY_ASIO_DIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/vix/third_party/asio>
   )
-  FetchContent_MakeAvailable(asio)
-
-  target_include_directories(vix_thirdparty_asio SYSTEM INTERFACE
-  $<BUILD_INTERFACE:${asio_SOURCE_DIR}/asio/include>
-  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/vix/third_party/asio>
-)
+else()
+  message(FATAL_ERROR "Asio submodule missing: third_party/asio-src. Run: git submodule update --init --recursive")
 endif()
+target_link_libraries(vix INTERFACE vix::thirdparty_asio)
 
 add_library(vix::vix ALIAS vix)
 
@@ -895,34 +884,28 @@ if (VIX_ENABLE_INSTALL)
             FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
   endif()
 
-# ---- Install Asio headers exactly from the selected source ----
-set(_VIX_ASIO_INSTALL_SRC "")
+    # ---- Install Asio (submodule) — robust (no symlink issues) ----
+  set(_VIX_ASIO_INSTALL_SRC "${CMAKE_CURRENT_SOURCE_DIR}/third_party/asio-src/asio/include")
 
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/asio/include/asio.hpp")
-  # vendored copy
-  set(_VIX_ASIO_INSTALL_SRC "${CMAKE_CURRENT_SOURCE_DIR}/third_party/asio/include")
-elseif (DEFINED asio_SOURCE_DIR AND EXISTS "${asio_SOURCE_DIR}/asio/include/asio.hpp")
-  # FetchContent
-  set(_VIX_ASIO_INSTALL_SRC "${asio_SOURCE_DIR}/asio/include")
-endif()
+  if (NOT EXISTS "${_VIX_ASIO_INSTALL_SRC}/asio.hpp")
+    message(FATAL_ERROR "Asio submodule missing: third_party/asio-src. Run: git submodule update --init --recursive")
+  endif()
 
-if (_VIX_ASIO_INSTALL_SRC STREQUAL "")
-  message(FATAL_ERROR "Asio is required but no installable Asio headers were found.")
-endif()
+  file(GLOB_RECURSE _VIX_ASIO_HEADERS
+    CONFIGURE_DEPENDS
+    "${_VIX_ASIO_INSTALL_SRC}/*.hpp"
+    "${_VIX_ASIO_INSTALL_SRC}/*.h"
+  )
 
-install(DIRECTORY "${_VIX_ASIO_INSTALL_SRC}/"
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vix/third_party/asio
-  FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h"
-)
+  install(FILES ${_VIX_ASIO_HEADERS}
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/vix/third_party/asio"
+  )
 
-
-  # Export umbrella target (modules must also export their targets into VixTargets)
   install(TARGETS vix EXPORT VixTargets)
 
-# Export third-party interface targets needed by exported modules (e.g. vix_p2p)
-if (TARGET vix_thirdparty_asio)
-  install(TARGETS vix_thirdparty_asio EXPORT VixTargets)
-endif()
+  if (TARGET vix_thirdparty_asio)
+    install(TARGETS vix_thirdparty_asio EXPORT VixTargets)
+  endif()
 
   if (TARGET vix_warnings)
     install(TARGETS vix_warnings EXPORT VixTargets)
