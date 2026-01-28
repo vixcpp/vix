@@ -135,8 +135,8 @@ jobs:
             -DVIX_DB_USE_MYSQL=OFF
             -DVIX_CORE_WITH_MYSQL=OFF
             -DVIX_ENABLE_HTTP_COMPRESSION=OFF
-            -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE
             --log-level=VERBOSE
+            --debug-output
           )
 
           if [ "${{ runner.os }}" = "Linux" ] && [ "${{ matrix.arch }}" = "aarch64" ]; then
@@ -178,8 +178,8 @@ jobs:
           test -f cmake_output.log && tail -n 200 cmake_output.log || echo "missing"
 
       # Upload logs into a UNIQUE folder to avoid extraction collisions
-      - name: Collect logs
-        if: always()
+      - name: Collect logs (Unix)
+        if: always() && runner.os != 'Windows'
         shell: bash
         run: |
           set -euxo pipefail
@@ -191,6 +191,21 @@ jobs:
           test -f build/CMakeFiles/CMakeOutput.log && cp -f build/CMakeFiles/CMakeOutput.log "$OUT/" || true
           test -f build/CMakeFiles/CMakeConfigureLog.yaml && cp -f build/CMakeFiles/CMakeConfigureLog.yaml "$OUT/" || true
           find logs -type f -maxdepth 3 -print || true
+
+      - name: Collect logs (Windows)
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $out = "logs/${{ matrix.vixos }}-${{ matrix.arch }}"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+
+          if (Test-Path "cmake_output.log") { Copy-Item "cmake_output.log" $out -Force }
+          if (Test-Path "build/CMakeCache.txt") { Copy-Item "build/CMakeCache.txt" $out -Force }
+          if (Test-Path "build/CMakeFiles/CMakeError.log") { Copy-Item "build/CMakeFiles/CMakeError.log" $out -Force }
+          if (Test-Path "build/CMakeFiles/CMakeOutput.log") { Copy-Item "build/CMakeFiles/CMakeOutput.log" $out -Force }
+          if (Test-Path "build/CMakeFiles/CMakeConfigureLog.yaml") { Copy-Item "build/CMakeFiles/CMakeConfigureLog.yaml" $out -Force }
+
+          Get-ChildItem -Recurse -Depth 3 logs | ForEach-Object { $_.FullName }
 
       - name: Upload configure logs
         if: always()
@@ -224,7 +239,7 @@ jobs:
             -DVIX_DB_USE_MYSQL=OFF `
             -DVIX_CORE_WITH_MYSQL=OFF `
             -DVIX_ENABLE_HTTP_COMPRESSION=OFF `
-            -DOPENSSL_ROOT_DIR="$openssl"
+            -DOPENSSL_ROOT_DIR="$openssl" 2>&1 | Tee-Object -FilePath cmake_output.log
 
       - name: Build (Windows)
         if: runner.os == 'Windows'
