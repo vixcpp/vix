@@ -187,6 +187,7 @@ jobs:
           mkdir -p "$OUT"
           echo "no logs captured (step failed before logs were generated)" > "$OUT/_no_logs.txt"
           test -f cmake_output.log && cp -f cmake_output.log "$OUT/" || true
+          test -f build_output.log && cp -f build_output.log "$OUT/" || true
           test -f build/CMakeCache.txt && cp -f build/CMakeCache.txt "$OUT/" || true
           test -f build/CMakeFiles/CMakeError.log && cp -f build/CMakeFiles/CMakeError.log "$OUT/" || true
           test -f build/CMakeFiles/CMakeOutput.log && cp -f build/CMakeFiles/CMakeOutput.log "$OUT/" || true
@@ -224,6 +225,8 @@ jobs:
             "no logs captured (step failed before logs were generated)" | Out-File (Join-Path $out "_no_logs.txt") -Encoding utf8
           }
 
+          if (Test-Path "build_output.log") { Copy-Item "build_output.log" $out -Force }
+
           if (Test-Path "build") {
             Compress-Archive -Path "build\*" -DestinationPath "$out\build.zip" -Force
           }
@@ -243,7 +246,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          cmake --build build -j
+          cmake --build build -j 2>&1 | tee build_output.log
 
       # -------------------------
       # Configure + Build (Windows)
@@ -268,7 +271,8 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          cmake --build build --config Release
+          cmake --build build --config Release 2>&1 | Tee-Object -FilePath build_output.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       # -------------------------
       # Package artifact
