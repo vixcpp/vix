@@ -199,11 +199,29 @@ jobs:
           $out = "logs/${{ matrix.vixos }}-${{ matrix.arch }}"
           New-Item -ItemType Directory -Force -Path $out | Out-Null
 
-          if (Test-Path "cmake_output.log") { Copy-Item "cmake_output.log" $out -Force }
-          if (Test-Path "build/CMakeCache.txt") { Copy-Item "build/CMakeCache.txt" $out -Force }
-          if (Test-Path "build/CMakeFiles/CMakeError.log") { Copy-Item "build/CMakeFiles/CMakeError.log" $out -Force }
-          if (Test-Path "build/CMakeFiles/CMakeOutput.log") { Copy-Item "build/CMakeFiles/CMakeOutput.log" $out -Force }
-          if (Test-Path "build/CMakeFiles/CMakeConfigureLog.yaml") { Copy-Item "build/CMakeFiles/CMakeConfigureLog.yaml" $out -Force }
+          if (Test-Path "cmake_output.log") {
+            Copy-Item "cmake_output.log" $out -Force
+          }
+
+          if (Test-Path "build\CMakeCache.txt") {
+            Copy-Item "build\CMakeCache.txt" $out -Force
+          }
+
+          if (Test-Path "build\CMakeFiles\CMakeError.log") {
+            Copy-Item "build\CMakeFiles\CMakeError.log" $out -Force
+          }
+
+          if (Test-Path "build\CMakeFiles\CMakeOutput.log") {
+            Copy-Item "build\CMakeFiles\CMakeOutput.log" $out -Force
+          }
+
+          if (Test-Path "build\CMakeFiles\CMakeConfigureLog.yaml") {
+            Copy-Item "build\CMakeFiles\CMakeConfigureLog.yaml" $out -Force
+          }
+
+          if (Test-Path "build") {
+            Compress-Archive -Path "build\*" -DestinationPath "$out\build.zip" -Force
+          }
 
           Get-ChildItem -Recurse -Depth 3 logs | ForEach-Object { $_.FullName }
 
