@@ -233,14 +233,6 @@ jobs:
 
           Get-ChildItem -Recurse -Depth 3 logs | ForEach-Object { $_.FullName }
 
-      - name: Upload configure logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cmake-logs-${{ matrix.vixos }}-${{ matrix.arch }}
-          path: logs/${{ matrix.vixos }}-${{ matrix.arch }}/*
-          if-no-files-found: warn
-
       - name: Build (Unix)
         if: runner.os != 'Windows'
         shell: bash
@@ -258,6 +250,14 @@ jobs:
           mkdir -p "$OUT"
           test -f build_output.log && cp -f build_output.log "$OUT/" || true
           find logs -type f -maxdepth 3 -print || true
+
+      - name: Upload logs (configure + build)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-${{ matrix.vixos }}-${{ matrix.arch }}
+          path: logs/${{ matrix.vixos }}-${{ matrix.arch }}/*
+          if-no-files-found: warn
 
       # -------------------------
       # Configure + Build (Windows)
@@ -298,6 +298,14 @@ jobs:
           New-Item -ItemType Directory -Force -Path $out | Out-Null
           if (Test-Path "cmake_output.log") { Copy-Item "cmake_output.log" $out -Force }
           if (Test-Path "build_output.log") { Copy-Item "build_output.log" $out -Force }
+
+      - name: Upload logs (configure + build)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-${{ matrix.vixos }}-${{ matrix.arch }}
+          path: logs/${{ matrix.vixos }}-${{ matrix.arch }}/*
+          if-no-files-found: warn
 
       # -------------------------
       # Package artifact
