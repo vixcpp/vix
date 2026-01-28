@@ -51,3 +51,6 @@
 	path = modules/db
 	url = git@github.com:vixcpp/db.git
 	branch = dev
+[submodule "third_party/asio-src"]
+	path = third_party/asio-src
+	url = https://github.com/chriskohlhoff/asio.git

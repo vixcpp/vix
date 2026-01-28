@@ -252,7 +252,7 @@ jobs:
           find logs -type f -maxdepth 3 -print || true
 
       - name: Upload logs (configure + build)
-        if: always()
+        if: always() && runner.os != 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: logs-${{ matrix.vixos }}-${{ matrix.arch }}
@@ -300,7 +300,7 @@ jobs:
           if (Test-Path "build_output.log") { Copy-Item "build_output.log" $out -Force }
 
       - name: Upload logs (configure + build)
-        if: always()
+        if: always() && runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: logs-${{ matrix.vixos }}-${{ matrix.arch }}
