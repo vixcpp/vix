@@ -246,7 +246,18 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          cmake --build build -j 2>&1 | tee build_output.log
+          : > build_output.log
+          cmake --build build -j 2>&1 | tee -a build_output.log
+
+      - name: Collect logs (post-build) (Unix)
+        if: always() && runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          OUT="logs/${{ matrix.vixos }}-${{ matrix.arch }}"
+          mkdir -p "$OUT"
+          test -f build_output.log && cp -f build_output.log "$OUT/" || true
+          find logs -type f -maxdepth 3 -print || true
 
       # -------------------------
       # Configure + Build (Windows)
@@ -255,6 +266,8 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
+          "" | Out-File -FilePath cmake_output.log -Encoding utf8
+
           $openssl = (Get-ChildItem "C:\Program Files" -Directory -ErrorAction SilentlyContinue |
             Where-Object { $_.Name -like "OpenSSL-*" } | Select-Object -First 1).FullName
           if (-not $openssl) { $openssl = "C:\Program Files\OpenSSL-Win64" }
@@ -265,14 +278,26 @@ jobs:
             -DVIX_DB_USE_MYSQL=OFF `
             -DVIX_CORE_WITH_MYSQL=OFF `
             -DVIX_ENABLE_HTTP_COMPRESSION=OFF `
-            -DOPENSSL_ROOT_DIR="$openssl" 2>&1 | Tee-Object -FilePath cmake_output.log
+            -DOPENSSL_ROOT_DIR="$openssl" 2>&1 | Tee-Object -FilePath cmake_output.log -Append
+
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          cmake --build build --config Release 2>&1 | Tee-Object -FilePath build_output.log
+          "" | Out-File -FilePath build_output.log -Encoding utf8
+          cmake --build build --config Release 2>&1 | Tee-Object -FilePath build_output.log -Append
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Collect logs (post-build) (Windows)
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $out = "logs/${{ matrix.vixos }}-${{ matrix.arch }}"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          if (Test-Path "cmake_output.log") { Copy-Item "cmake_output.log" $out -Force }
+          if (Test-Path "build_output.log") { Copy-Item "build_output.log" $out -Force }
 
       # -------------------------
       # Package artifact
