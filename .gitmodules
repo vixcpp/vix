@@ -54,3 +54,7 @@
 [submodule "third_party/asio-src"]
 	path = third_party/asio-src
 	url = https://github.com/chriskohlhoff/asio.git
+[submodule "modules/p2p_http"]
+	path = modules/p2p_http
+	url = https://github.com/vixcpp/p2p_http.git
+	branch = dev
