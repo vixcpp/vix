@@ -125,6 +125,7 @@ option(VIX_DB_USE_SQLITE      "Enable SQLite backend in vix_db"             OFF)
 option(VIX_DB_USE_POSTGRES    "Enable PostgreSQL backend in vix_db"         OFF)
 option(VIX_DB_USE_REDIS       "Enable Redis backend in vix_db"              OFF)
 option(VIX_ENABLE_P2P         "Build Vix P2P module"                        ON)
+option(VIX_ENABLE_P2P_HTTP    "Build Vix P2P HTTP adapter module"          ON)
 option(VIX_ENABLE_CACHE       "Build Vix Cache module"                      ON)
 option(VIX_FETCH_DEPS         "Allow fetching missing deps from the internet" OFF)
 
@@ -470,6 +471,26 @@ else()
   message(STATUS "P2P: disabled or not present.")
 endif()
 
+# --- P2P HTTP Adapter (optional) ---
+set(VIX_HAS_P2P_HTTP OFF)
+
+# Guard: p2p_http requires both core + p2p
+if (VIX_ENABLE_P2P_HTTP AND VIX_HAS_P2P AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/p2p_http/CMakeLists.txt")
+  message(STATUS "Adding 'modules/p2p_http'...")
+  add_subdirectory(modules/p2p_http p2p_http_build)
+
+  if (TARGET vix::p2p_http OR TARGET vix_p2p_http)
+    set(VIX_HAS_P2P_HTTP ON)
+    if (TARGET vix_p2p_http AND NOT TARGET vix::p2p_http)
+      add_library(vix::p2p_http ALIAS vix_p2p_http)
+    endif()
+  else()
+    message(WARNING "p2p_http module added but no vix::p2p_http target was exported.")
+  endif()
+else()
+  message(STATUS "P2P HTTP: disabled, missing, or P2P not built.")
+endif()
+
 # --- Middleware (optional) ---
 set(VIX_HAS_MIDDLEWARE OFF)
 if (VIX_ENABLE_MIDDLEWARE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/middleware/CMakeLists.txt")
@@ -602,6 +623,10 @@ if (TARGET vix::p2p)
   target_link_libraries(vix INTERFACE vix::p2p)
 endif()
 
+if (TARGET vix::p2p_http)
+  target_link_libraries(vix INTERFACE vix::p2p_http)
+endif()
+
 if (TARGET vix::db)
   target_link_libraries(vix INTERFACE vix::db)
 endif()
@@ -617,9 +642,11 @@ endif()
 # Link middleware only if it exists
 if (TARGET vix::middleware)
   target_link_libraries(vix INTERFACE vix::middleware)
+  target_compile_definitions(vix INTERFACE VIX_HAS_MIDDLEWARE=1)
 elseif (TARGET vix_middleware)
   add_library(vix::middleware ALIAS vix_middleware)
   target_link_libraries(vix INTERFACE vix::middleware)
+  target_compile_definitions(vix INTERFACE VIX_HAS_MIDDLEWARE=1)
 endif()
 
 # Propagate sanitizers to consumers (umbrella)
@@ -823,6 +850,11 @@ if (VIX_HAS_P2P)
   set(VIX_WITH_P2P ON)
 endif()
 
+set(VIX_WITH_P2P_HTTP OFF)
+if (VIX_HAS_P2P_HTTP)
+  set(VIX_WITH_P2P_HTTP ON)
+endif()
+
 if (TARGET vix::websocket OR TARGET vix_websocket)
   set(VIX_WITH_SQLITE ON)
 endif()
@@ -876,6 +908,11 @@ if (VIX_ENABLE_INSTALL)
 
   if (VIX_HAS_P2P AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/p2p/include")
     install(DIRECTORY modules/p2p/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+  endif()
+
+  if (VIX_HAS_P2P_HTTP AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/p2p_http/include")
+    install(DIRECTORY modules/p2p_http/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
             FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
   endif()
 
@@ -935,6 +972,8 @@ if (VIX_ENABLE_INSTALL)
   set(VIX_HAS_P2P    ${VIX_HAS_P2P})
   set(VIX_WITH_CACHE ${VIX_WITH_CACHE})
   set(VIX_WITH_P2P   ${VIX_WITH_P2P})
+  set(VIX_HAS_P2P_HTTP  ${VIX_HAS_P2P_HTTP})
+  set(VIX_WITH_P2P_HTTP ${VIX_WITH_P2P_HTTP})
 
   configure_package_config_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/VixConfig.cmake.in"
