@@ -1,0 +1,1010 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vix · P2P Dashboard</title>
+
+  <style>
+    :root {
+      --bg: #011e1c;
+      --bg-alt: #022724;
+      --bg-elevated: #03312d;
+
+      --accent: #1ee6a3;
+      --accent-dark: #0ca377;
+      --accent-soft: rgba(30, 230, 163, 0.16);
+
+      --text: #ffffff;
+      --muted: #cbd5e1;
+      --border: #09433f;
+
+      --good: #22c55e;
+      --bad: #ef4444;
+      --warn: #fbbf24;
+
+      --radius-lg: 20px;
+      --radius-md: 14px;
+      --shadow-soft: 0 22px 45px rgba(0, 0, 0, 0.6);
+
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --sans: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at 12% 10%, rgba(30,230,163,0.10), transparent 55%),
+        radial-gradient(1000px 600px at 80% 0%, rgba(12,163,119,0.10), transparent 55%),
+        linear-gradient(180deg, var(--bg), #011614);
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(8px);
+      background: rgba(1, 30, 28, 0.70);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 18px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 220px;
+    }
+
+    .logo {
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background:
+        radial-gradient(circle at 30% 30%, rgba(30,230,163,0.35), transparent 55%),
+        linear-gradient(180deg, rgba(3,49,45,0.9), rgba(2,39,36,0.9));
+      box-shadow: 0 10px 25px rgba(0,0,0,.45);
+      position: relative;
+      overflow: hidden;
+    }
+    .logo:after {
+      content: "";
+      position: absolute;
+      inset: -40%;
+      background: conic-gradient(from 190deg, transparent, rgba(30,230,163,0.35), transparent);
+      animation: spin 4.5s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: .25px;
+      line-height: 1.2;
+    }
+    .brand .sub {
+      margin: 2px 0 0 0;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: .2px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(3,49,45,0.65);
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--bad);
+      box-shadow: 0 0 0 0 rgba(239,68,68,0.0);
+      transition: all .2s ease;
+    }
+    .dot.on {
+      background: var(--good);
+      box-shadow: 0 0 0 6px rgba(34,197,94,0.10);
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .control {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      background: rgba(2,39,36,0.55);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .control input[type="text"],
+    .control select {
+      appearance: none;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text);
+      font-size: 12px;
+      min-width: 160px;
+      font-family: var(--mono);
+    }
+
+    .control select { min-width: 110px; }
+
+    .btn {
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: rgba(3,49,45,0.65);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: transform .05s ease, background .15s ease, border-color .15s ease;
+      user-select: none;
+    }
+    .btn:hover {
+      background: rgba(3,49,45,0.85);
+      border-color: rgba(30,230,163,0.35);
+    }
+    .btn:active { transform: translateY(1px); }
+
+    main {
+      padding: 18px;
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 16px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 980px) {
+      main { grid-template-columns: 1fr; }
+      .brand { min-width: unset; }
+    }
+
+    .card {
+      background: rgba(3,49,45,0.55);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+      padding: 14px;
+      overflow: hidden;
+    }
+
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .card h2 {
+      margin: 0;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      font-family: var(--mono);
+      opacity: .9;
+    }
+
+    /* KPI grid */
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    @media (max-width: 980px) {
+      .kpis { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 520px) {
+      .kpis { grid-template-columns: 1fr; }
+    }
+
+    .kpi {
+      border: 1px solid var(--border);
+      background: rgba(2,39,36,0.55);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi:before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(30,230,163,0.12), transparent 60%);
+      opacity: 0;
+      transition: opacity .2s ease;
+    }
+    .kpi:hover:before { opacity: 1; }
+
+    .kpi .label {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .kpi .value {
+      font-family: var(--mono);
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: .3px;
+    }
+    .kpi .sub {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+
+    /* layout right column */
+    .right {
+      display: grid;
+      grid-template-rows: auto auto;
+      gap: 16px;
+      min-height: 0;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 16px;
+      min-height: 0;
+    }
+    @media (max-width: 1100px) {
+      .split { grid-template-columns: 1fr; }
+    }
+
+    /* Peers table */
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background: rgba(2,39,36,0.35);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    thead th {
+      text-align: left;
+      font-size: 11px;
+      color: var(--muted);
+      padding: 10px 10px;
+      background: rgba(2,39,36,0.60);
+      border-bottom: 1px solid var(--border);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    tbody td {
+      padding: 9px 10px;
+      border-bottom: 1px solid rgba(9,67,63,0.55);
+      vertical-align: middle;
+    }
+
+    tbody tr {
+      cursor: pointer;
+      transition: background .15s ease;
+    }
+    tbody tr:hover {
+      background: rgba(30,230,163,0.06);
+    }
+    tbody tr.selected {
+      background: rgba(30,230,163,0.10);
+      outline: 1px solid rgba(30,230,163,0.25);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(1,30,28,0.40);
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .badge .mini-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+    .badge.good { color: rgba(34,197,94,0.95); border-color: rgba(34,197,94,0.25); }
+    .badge.good .mini-dot { background: var(--good); }
+    .badge.bad { color: rgba(239,68,68,0.95); border-color: rgba(239,68,68,0.25); }
+    .badge.bad .mini-dot { background: var(--bad); }
+    .badge.warn { color: rgba(251,191,36,0.95); border-color: rgba(251,191,36,0.25); }
+    .badge.warn .mini-dot { background: var(--warn); }
+
+    .muted { color: var(--muted); }
+    .right-mono { font-family: var(--mono); }
+    .nowrap { white-space: nowrap; }
+
+    /* details panel */
+    .details {
+      display: grid;
+      gap: 10px;
+    }
+
+    .details-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    @media (max-width: 520px) { .details-grid { grid-template-columns: 1fr; } }
+
+    .field {
+      border: 1px solid var(--border);
+      background: rgba(2,39,36,0.55);
+      border-radius: var(--radius-md);
+      padding: 10px;
+      min-width: 0;
+    }
+    .field .k {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 6px;
+    }
+    .field .v {
+      font-family: var(--mono);
+      font-size: 12px;
+      word-break: break-word;
+      line-height: 1.45;
+    }
+
+    /* logs */
+    pre {
+      margin: 0;
+      height: 360px;
+      overflow: auto;
+      background: rgba(1, 12, 11, 0.65);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.5;
+      border: 1px solid var(--border);
+      color: #dbfff2;
+    }
+
+    .foot {
+      padding: 12px 18px 18px;
+      max-width: 1400px;
+      margin: 0 auto;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .spark {
+      font-family: var(--mono);
+      opacity: .95;
+    }
+
+    .small {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+
+    .error-inline {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(239,68,68,0.30);
+      background: rgba(239,68,68,0.08);
+      color: rgba(255,255,255,0.95);
+      font-family: var(--mono);
+      font-size: 12px;
+      display: none;
+    }
+    .error-inline.show { display: block; }
+tbody tr.stale {
+  background: rgba(251,191,36,0.08);
+}
+tbody tr.stale:hover {
+  background: rgba(251,191,36,0.12);
+}
+tbody tr.stale td {
+  border-bottom-color: rgba(251,191,36,0.18);
+}
+
+  </style>
+</head>
+
+<body>
+<header>
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"></div>
+      <div>
+        <h1>Vix · P2P Dashboard</h1>
+        <div class="sub">Runtime status · multi-peer · CLI parity</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="status-pill" title="Health">
+        <span class="dot" id="dot"></span>
+        <span class="spark" id="stateText">offline</span>
+        <span class="small" id="latencyText">· — ms</span>
+      </div>
+
+      <div class="control" title="Refresh interval">
+        <span class="muted">refresh</span>
+        <select id="refreshSel">
+          <option value="250">250ms</option>
+          <option value="500" selected>500ms</option>
+          <option value="1000">1s</option>
+          <option value="2000">2s</option>
+        </select>
+      </div>
+
+      <div class="control" title="Filter peers (id/endpoint)">
+        <span class="muted">filter</span>
+        <input id="filterInput" type="text" placeholder="peer id / host:port" spellcheck="false" />
+      </div>
+
+      <button class="btn" id="btnRefresh" title="Refresh now">
+        <span class="spark">↻</span>
+        <span>refresh</span>
+      </button>
+
+      <a class="btn" href="/connect" title="Connect peers">
+        <span class="spark">+</span>
+        <span>connect</span>
+      </a>
+
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- LEFT KPIs -->
+  <section class="card">
+    <div class="card-head">
+      <h2>Runtime</h2>
+      <div class="hint" id="lastUpdate">last: —</div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi">
+        <div class="label">Peers total</div>
+        <div class="value" id="kPeersTotal">—</div>
+        <div class="sub">tracked</div>
+      </div>
+
+      <div class="kpi">
+        <div class="label">Peers connected</div>
+        <div class="value" id="kPeersConnected">—</div>
+        <div class="sub">active links</div>
+      </div>
+
+      <div class="kpi">
+        <div class="label">Handshakes</div>
+        <div class="value" id="kHandshakes">—</div>
+        <div class="sub">started · completed</div>
+      </div>
+
+      <div class="kpi">
+        <div class="label">Connect attempts</div>
+        <div class="value" id="kConnectAttempts">—</div>
+        <div class="sub">deduped · failures</div>
+      </div>
+
+      <div class="kpi">
+        <div class="label">Backoff skips</div>
+        <div class="value" id="kBackoff">—</div>
+        <div class="sub">guarded retries</div>
+      </div>
+
+      <div class="kpi">
+        <div class="label">Tracked endpoints</div>
+        <div class="value" id="kTracked">—</div>
+        <div class="sub">connect table</div>
+      </div>
+    </div>
+
+    <div class="error-inline" id="errBox"></div>
+  </section>
+
+  <!-- RIGHT -->
+  <section class="right">
+    <!-- peers + details -->
+    <section class="card split">
+      <div style="min-height:0; display:flex; flex-direction:column; gap:10px;">
+        <div class="card-head" style="margin-bottom:0;">
+          <h2>Peers</h2>
+          <div class="hint" id="peerCountHint">—</div>
+        </div>
+
+        <div class="table-wrap" style="flex:1; min-height:0;">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:38%;">Peer</th>
+                <th style="width:26%;">Endpoint</th>
+                <th style="width:18%;">State</th>
+                <th style="width:18%;">Secure</th>
+              </tr>
+            </thead>
+            <tbody id="peersTbody">
+              <tr><td colspan="4" class="muted">Waiting for peers…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="small">
+          Tip: click a peer row to see details.
+        </div>
+      </div>
+
+      <div class="details">
+        <div class="card-head">
+          <h2>Peer details</h2>
+          <div class="hint" id="peerSelectedHint">none</div>
+        </div>
+
+        <div class="details-grid">
+          <div class="field">
+            <div class="k">Peer id</div>
+            <div class="v" id="dPeerId">—</div>
+          </div>
+          <div class="field">
+            <div class="k">Endpoint</div>
+            <div class="v" id="dEndpoint">—</div>
+          </div>
+          <div class="field">
+            <div class="k">State</div>
+            <div class="v" id="dState">—</div>
+          </div>
+          <div class="field">
+            <div class="k">Secure</div>
+            <div class="v" id="dSecure">—</div>
+          </div>
+          <div class="field">
+            <div class="k">Last seen</div>
+            <div class="v" id="dLastSeen">—</div>
+          </div>
+          <div class="field">
+            <div class="k">Public key</div>
+            <div class="v" id="dPubKey">—</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="k">Notes</div>
+          <div class="v" id="dNotes">Select a peer to inspect metadata.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- logs -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Logs</h2>
+        <div class="hint">/api/p2p/logs</div>
+      </div>
+      <pre id="logs">Waiting for logs…</pre>
+    </section>
+  </section>
+</main>
+
+<div class="foot">
+  <span class="spark">Vix.cpp</span> · P2P HTTP · dashboard demo (no frameworks)
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const STALE_MS = 2500;      // stale si pas vu depuis 2.5s
+  const VERY_STALE_MS = 8000; // optionnel si tu veux un état plus dur
+
+  const dot = $("dot");
+  const stateText = $("stateText");
+  const latencyText = $("latencyText");
+  const logsEl = $("logs");
+
+  const errBox = $("errBox");
+
+  const lastUpdate = $("lastUpdate");
+
+  const kPeersTotal = $("kPeersTotal");
+  const kPeersConnected = $("kPeersConnected");
+  const kHandshakes = $("kHandshakes");
+  const kConnectAttempts = $("kConnectAttempts");
+  const kBackoff = $("kBackoff");
+  const kTracked = $("kTracked");
+
+  const peersTbody = $("peersTbody");
+  const peerCountHint = $("peerCountHint");
+  const peerSelectedHint = $("peerSelectedHint");
+
+  const dPeerId = $("dPeerId");
+  const dEndpoint = $("dEndpoint");
+  const dState = $("dState");
+  const dSecure = $("dSecure");
+  const dLastSeen = $("dLastSeen");
+  const dPubKey = $("dPubKey");
+  const dNotes = $("dNotes");
+
+  const refreshSel = $("refreshSel");
+  const filterInput = $("filterInput");
+  const btnRefresh = $("btnRefresh");
+
+  let timer = null;
+  let selectedPeerKey = null;
+  let lastPeers = [];
+
+  function nowIso() {
+    const d = new Date();
+    return d.toLocaleTimeString();
+  }
+
+  function setState(on) {
+    dot.classList.toggle("on", on);
+    stateText.textContent = on ? "running" : "offline";
+  }
+
+  function showError(msg) {
+    if (!msg) {
+      errBox.classList.remove("show");
+      errBox.textContent = "";
+      return;
+    }
+    errBox.textContent = msg;
+    errBox.classList.add("show");
+  }
+
+  function n(v) {
+    if (v === null || v === undefined) return "—";
+    if (typeof v === "number") return String(v);
+    return String(v);
+  }
+
+  function fmtBool(b) {
+    if (b === true) return "true";
+    if (b === false) return "false";
+    return "—";
+  }
+
+  function fmtLastSeen(msAgo) {
+    if (msAgo === null || msAgo === undefined) return "—";
+    if (msAgo < 0) return "—";
+    if (msAgo < 1000) return `${msAgo} ms ago`;
+    const s = Math.floor(msAgo / 1000);
+    if (s < 60) return `${s}s ago`;
+    const m = Math.floor(s / 60);
+    return `${m}m ago`;
+  }
+
+  function badgeState(state) {
+    const s = (state || "").toLowerCase();
+    if (s === "connected") return { cls: "good", label: "connected" };
+    if (s === "handshaking" || s === "connecting") return { cls: "warn", label: state };
+    if (s === "closed" || s === "error") return { cls: "bad", label: state };
+    return { cls: "", label: state || "unknown" };
+  }
+
+  function makeBadge(type, text, cls) {
+    const span = document.createElement("span");
+    span.className = `badge ${cls || ""}`.trim();
+    const dot = document.createElement("span");
+    dot.className = "mini-dot";
+    const t = document.createElement("span");
+    t.textContent = text;
+    span.appendChild(dot);
+    span.appendChild(t);
+    return span;
+  }
+
+  async function timedFetch(url) {
+    const t0 = performance.now();
+    const res = await fetch(url, { cache: "no-store" });
+    const t1 = performance.now();
+    return { res, ms: Math.round(t1 - t0) };
+  }
+
+  async function fetchStatus() {
+    const { res, ms } = await timedFetch("/api/p2p/status");
+    latencyText.textContent = `· ${ms} ms`;
+    if (!res.ok) throw new Error("status failed");
+    return res.json();
+  }
+
+  async function fetchPeers() {
+    // optional endpoint
+    const { res } = await timedFetch("/api/p2p/peers");
+    if (!res.ok) return null;
+    return res.json();
+  }
+
+  async function fetchLogs() {
+    const res = await fetch("/api/p2p/logs", { cache: "no-store" });
+    if (!res.ok) return null;
+    return res.text();
+  }
+
+  function setKpis(st) {
+    // status payload is expected to be CLI parity
+    kPeersTotal.textContent = n(st.peers_total);
+    kPeersConnected.textContent = n(st.peers_connected);
+
+    const hsS = (st.handshakes_started ?? st.handshakes?.started);
+    const hsC = (st.handshakes_completed ?? st.handshakes?.completed);
+    kHandshakes.textContent = `${n(hsS)} · ${n(hsC)}`;
+
+    kConnectAttempts.textContent = n(st.connect_attempts);
+    kConnectAttempts.nextElementSibling.textContent = `deduped ${n(st.connect_deduped)} · failures ${n(st.connect_failures)}`;
+
+    kBackoff.textContent = n(st.backoff_skips);
+    kTracked.textContent = n(st.tracked_endpoints);
+  }
+
+  function normalizePeersPayload(payload) {
+    // allow multiple shapes
+    // shape A: { ok:true, peers:[{...}] }
+    // shape B: { peers:[...] }
+    // shape C: array directly
+    if (!payload) return null;
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload.peers)) return payload.peers;
+    return null;
+  }
+
+  function peerKey(p) {
+    const id = p.id ?? p.peer_id ?? "";
+    const ep = p.endpoint ?? p.addr ?? p.remote ?? "";
+    return `${id}|${ep}`;
+  }
+
+  function applyFilter(peers) {
+    const q = (filterInput.value || "").trim().toLowerCase();
+    if (!q) return peers;
+    return peers.filter(p => {
+      const id = String(p.id ?? p.peer_id ?? "").toLowerCase();
+      const ep = String(p.endpoint ?? p.addr ?? p.remote ?? "").toLowerCase();
+      return id.includes(q) || ep.includes(q);
+    });
+  }
+
+  function renderPeers(peers) {
+    peersTbody.innerHTML = "";
+
+    if (!peers) {
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = 4;
+      td.className = "muted";
+      td.textContent = "No /api/p2p/peers endpoint. Add it to show multi-peer view.";
+      tr.appendChild(td);
+      peersTbody.appendChild(tr);
+      peerCountHint.textContent = "peers: —";
+      return;
+    }
+
+    const filtered = applyFilter(peers);
+    peerCountHint.textContent = `peers: ${filtered.length} (filtered from ${peers.length})`;
+
+    if (filtered.length === 0) {
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = 4;
+      td.className = "muted";
+      td.textContent = "No peers match the filter.";
+      tr.appendChild(td);
+      peersTbody.appendChild(tr);
+      return;
+    }
+
+    for (const p of filtered) {
+      const id = String(p.id ?? p.peer_id ?? "—");
+      const ep = String(p.endpoint ?? p.addr ?? p.remote ?? "—");
+      const state = String(p.state ?? "unknown");
+      const secure = (p.secure === true) ? "secure" : "plain";
+      const key = peerKey(p);
+
+      const tr = document.createElement("tr");
+      if (selectedPeerKey === key) tr.classList.add("selected");
+
+      tr.addEventListener("click", () => {
+        selectedPeerKey = key;
+        setDetails(p);
+        // re-render for selection highlight
+        renderPeers(lastPeers);
+      });
+
+      const lastAgo = (typeof p.last_seen_ms_ago === "number") ? p.last_seen_ms_ago : null;
+
+      if (lastAgo !== null && lastAgo >= STALE_MS) {
+        tr.classList.add("stale");
+      }
+
+      const td1 = document.createElement("td");
+      td1.className = "nowrap";
+      td1.textContent = id.length > 34 ? (id.slice(0, 34) + "…") : id;
+
+      const td2 = document.createElement("td");
+      td2.className = "nowrap muted";
+      td2.textContent = ep.length > 28 ? (ep.slice(0, 28) + "…") : ep;
+
+      const td3 = document.createElement("td");
+     let effectiveState = state;
+      if (lastAgo !== null && lastAgo >= STALE_MS && state === "connected") {
+        effectiveState = "stale";
+      }
+      const s = badgeState(effectiveState);
+      td3.appendChild(makeBadge("state", s.label, s.cls));
+
+      const td4 = document.createElement("td");
+      const secBadge = (p.secure === true)
+        ? makeBadge("sec", "secure", "good")
+        : makeBadge("sec", "plain", "warn");
+      td4.appendChild(secBadge);
+
+      tr.appendChild(td1);
+      tr.appendChild(td2);
+      tr.appendChild(td3);
+      tr.appendChild(td4);
+      peersTbody.appendChild(tr);
+    }
+  }
+
+  function setDetails(p) {
+    if (!p) {
+      peerSelectedHint.textContent = "none";
+      dPeerId.textContent = "—";
+      dEndpoint.textContent = "—";
+      dState.textContent = "—";
+      dSecure.textContent = "—";
+      dLastSeen.textContent = "—";
+      dPubKey.textContent = "—";
+      dNotes.textContent = "Select a peer to inspect metadata.";
+      return;
+    }
+
+    const id = String(p.id ?? p.peer_id ?? "—");
+    const ep = String(p.endpoint ?? p.addr ?? p.remote ?? "—");
+    const state = String(p.state ?? "unknown");
+
+    peerSelectedHint.textContent = id.length > 22 ? (id.slice(0,22) + "…") : id;
+
+    dPeerId.textContent = id;
+    dEndpoint.textContent = ep;
+    dState.textContent = state;
+    dSecure.textContent = fmtBool(p.secure);
+
+    // last_seen_ms_ago expected or last_seen_ms timestamp
+    if (typeof p.last_seen_ms_ago === "number") {
+      dLastSeen.textContent = fmtLastSeen(p.last_seen_ms_ago);
+    } else if (typeof p.last_seen_ms === "number") {
+      const ago = Date.now() - p.last_seen_ms;
+      dLastSeen.textContent = fmtLastSeen(ago);
+    } else {
+      dLastSeen.textContent = "—";
+    }
+
+    if (p.public_key_fp) {
+      dPubKey.textContent = String(p.public_key_fp);
+    } else if (p.public_key_len !== undefined) {
+      dPubKey.textContent = `len=${p.public_key_len}`;
+    } else {
+      dPubKey.textContent = "—";
+    }
+
+    const notes = [];
+    if (p.node_id) notes.push(`node_id=${p.node_id}`);
+    if (p.transport) notes.push(`transport=${p.transport}`);
+    if (p.rtt_ms !== undefined) notes.push(`rtt_ms=${p.rtt_ms}`);
+    dNotes.textContent = notes.length ? notes.join(" · ") : "—";
+  }
+
+  function keepSelectionAlive(peers) {
+    if (!selectedPeerKey) return;
+    const found = peers.find(p => peerKey(p) === selectedPeerKey);
+    if (found) setDetails(found);
+  }
+
+  async function refreshOnce() {
+    showError(null);
+
+    try {
+      const st = await fetchStatus();
+      setState(true);
+      setKpis(st);
+      lastUpdate.textContent = `last: ${nowIso()}`;
+    } catch (e) {
+      setState(false);
+      setKpis({});
+      lastUpdate.textContent = "last: —";
+      showError("status offline: /api/p2p/status not reachable");
+    }
+
+    try {
+      const peersPayload = await fetchPeers();
+      const peers = normalizePeersPayload(peersPayload);
+      lastPeers = peers || null;
+      renderPeers(lastPeers);
+      if (lastPeers) keepSelectionAlive(lastPeers);
+      if (!lastPeers) setDetails(null);
+    } catch {
+      // ignore
+    }
+
+    try {
+      const logs = await fetchLogs();
+      if (logs) logsEl.textContent = logs;
+    } catch {
+      // ignore
+    }
+  }
+
+  function startTimer() {
+    if (timer) clearInterval(timer);
+    const ms = Number(refreshSel.value) || 1000;
+    timer = setInterval(refreshOnce, ms);
+  }
+
+  refreshSel.addEventListener("change", startTimer);
+  filterInput.addEventListener("input", () => renderPeers(lastPeers));
+  btnRefresh.addEventListener("click", refreshOnce);
+
+  refreshOnce();
+  startTimer();
+</script>
+</body>
+</html>
