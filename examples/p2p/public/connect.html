@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Vix · Connect peers</title>
+  <style>
+    :root{--bg:#011e1c;--border:#09433f;--text:#fff;--muted:#cbd5e1;--accent:#1ee6a3;--card:rgba(3,49,45,.55);--mono:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;--sans:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
+    *{box-sizing:border-box} body{margin:0;font-family:var(--sans);color:var(--text);background:linear-gradient(180deg,var(--bg),#011614);}
+    header{padding:16px 18px;border-bottom:1px solid var(--border);background:rgba(1,30,28,.7);backdrop-filter:blur(8px);position:sticky;top:0}
+    .wrap{max-width:900px;margin:0 auto;padding:18px}
+    .card{border:1px solid var(--border);background:var(--card);border-radius:18px;padding:14px}
+    h1{margin:0 0 8px 0;font-size:16px}
+    .sub{color:var(--muted);font-size:12px;margin-bottom:12px}
+    .row{display:grid;grid-template-columns:1fr 140px 160px;gap:10px}
+    @media(max-width:720px){.row{grid-template-columns:1fr}}
+    input,select{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:rgba(2,39,36,.55);color:var(--text);font-family:var(--mono);font-size:13px;outline:none}
+    button{cursor:pointer;border:1px solid rgba(30,230,163,.25);background:rgba(30,230,163,.12);color:var(--text);padding:10px 12px;border-radius:12px;font-size:13px;font-weight:700}
+    button:hover{background:rgba(30,230,163,.18)}
+    .actions{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+    .log{margin-top:12px;border:1px solid var(--border);border-radius:12px;background:rgba(1,12,11,.65);padding:12px;font-family:var(--mono);font-size:12px;white-space:pre-wrap}
+    a{color:var(--accent);text-decoration:none}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap" style="padding:0 18px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <div>
+        <div style="font-weight:800">Vix · Connect peers</div>
+        <div class="sub" style="margin:0">POST /api/p2p/connect · then open dashboard</div>
+      </div>
+      <a href="/">← Dashboard</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <h1>Add a peer endpoint</h1>
+    <div class="sub">Example: host=127.0.0.1 port=9002 scheme=tcp</div>
+
+    <div class="row">
+      <div>
+        <label class="sub">host</label>
+        <input id="host" value="127.0.0.1" spellcheck="false"/>
+      </div>
+      <div>
+        <label class="sub">port</label>
+        <input id="port" value="9002" inputmode="numeric" />
+      </div>
+      <div>
+        <label class="sub">scheme</label>
+        <select id="scheme">
+          <option value="tcp" selected>tcp</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="btnConnect">Connect</button>
+      <button id="btnConnectAndOpen">Connect + Open dashboard</button>
+    </div>
+
+    <div class="log" id="out">ready</div>
+  </div>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const out = $("out");
+
+  function log(x){ out.textContent = (typeof x === "string") ? x : JSON.stringify(x, null, 2); }
+
+  async function connectPeer(){
+    const host = $("host").value.trim();
+    const port = Number($("port").value);
+    const scheme = $("scheme").value;
+
+    const res = await fetch("/api/p2p/connect", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ host, port, scheme })
+    });
+
+    let payload = null;
+    try { payload = await res.json(); } catch {}
+    if (!res.ok) throw payload || { ok:false, error:"http_error", status:res.status };
+    return payload;
+  }
+
+  $("btnConnect").addEventListener("click", async () => {
+    try { log(await connectPeer()); }
+    catch (e) { log(e); }
+  });
+
+  $("btnConnectAndOpen").addEventListener("click", async () => {
+    try {
+      log(await connectPeer());
+      setTimeout(() => location.href = "/", 250);
+    } catch (e) {
+      log(e);
+    }
+  });
+</script>
+</body>
+</html>
