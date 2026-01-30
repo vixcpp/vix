@@ -2,7 +2,7 @@
   <img
     src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1762524350/vixcpp_etndhz.png"
     alt="Vix.cpp Banner"
-    width="100%"
+    width="50%"
     style="max-width:900px;border-radius:8px;"
   />
 </p>
@@ -100,6 +100,7 @@ Vix.cpp is designed to remove overhead, unpredictability, and GC pauses.
 
 ```cpp
 #include <vix.hpp>
+using namespace vix;
 
 int main() {
     vix::App app;
@@ -112,6 +113,94 @@ int main() {
 }
 ```
 
+### Minimal WebSocket server
+
+```cpp
+#include <vix/websocket.hpp>
+
+using vix::websocket::Server;
+
+int main()
+{
+  Server ws;
+
+  ws.on_open([](auto& session) {
+    session.send_json("chat.system", {"text", "Welcome"});
+  });
+
+  ws.on_typed_message([](auto& session,
+                         const std::string& type,
+                         const vix::json::kvs& payload)
+  {
+    (void)session;
+
+    if (type == "chat.message") {
+      session.broadcast_json("chat.message", payload);
+    }
+  });
+
+  ws.listen_blocking();
+}
+```
+
+### HTTP + WebSocket together
+
+```cpp
+#include <vix.hpp>
+#include <vix/websocket/AttachedRuntime.hpp>
+
+using namespace vix;
+
+int main()
+{
+  vix::serve_http_and_ws([](auto& app, auto& ws) {
+    app.get("/", [](auto&, auto& res) {
+      res.json({
+        "message",   "Hello from Vix.cpp minimal example",
+        "framework", "Vix.cpp"
+      });
+    });
+
+    ws.on_typed_message([&ws](auto& session,
+                              const std::string& type,
+                              const vix::json::kvs& payload)
+    {
+      (void)session;
+
+      if (type == "chat.message") {
+        ws.broadcast_json("chat.message", payload);
+      }
+    });
+  });
+
+  return 0;
+}
+```
+
+### P2P control plane (p2p_http)
+
+```cpp
+#include <vix.hpp>
+#include <vix/console.hpp>
+#include <vix/p2p_http/P2PHttp.hpp>
+
+int main()
+{
+  vix::App app;
+
+  P2PHttpOptions opt;
+  opt.enable_peers = true;
+
+  install_p2p_http(app, opt);
+
+  app.listen(5178, [](const vix::utils::ServerReadyInfo& info) {
+    vix::console.info("UI API listening on", info.port);
+  });
+
+  app.wait();
+}
+```
+
 ---
 
 ## Script mode Run C++ like a script
@@ -120,6 +209,18 @@ int main() {
 vix run main.cpp
 vix dev main.cpp
 ```
+
+## Included Runtimes & Modules
+
+Vix.cpp ships as an **umbrella runtime** composed of multiple modules:
+
+* **HTTP Runtime** : REST APIs and control plane
+* **WebSocket Runtime** : real-time messaging and synchronization
+* **P2P Runtime** : peer-to-peer networking and transport
+* **p2p_http** : HTTP control plane for P2P introspection
+* **ORM** : native C++ ORM with prepared statements
+* **CLI** : Node-like developer experience
+* **Cache, Middleware, Utils** : core building blocks
 
 ---
 
@@ -134,17 +235,6 @@ vix dev main.cpp
 - [Build & Installation](docs/build.md)
 - [CLI Options](docs/options.md)
 - [CLI Reference](docs/vix-cli-help.md)
-
-## Module Documentation Index
-
-- **Core** : [docs/modules/core.md](docs/modules/core.md)
-- **WebSocket** : [docs/modules/websocket.md](docs/modules/websocket.md)
-- **ORM** : [docs/modules/orm.md](docs/modules/orm.md)
-- **JSON** : [docs/modules/json.md](docs/modules/json.md)
-- **Utils** : [docs/modules/utils.md](docs/modules/utils.md)
-- **CLI** : [docs/modules/cli.md](docs/modules/cli.md)
-
----
 
 ## ⭐ Support the project
 
