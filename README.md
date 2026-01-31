@@ -116,30 +116,69 @@ int main() {
 ### Minimal WebSocket server
 
 ```cpp
+#include <vix/config/Config.hpp>
+#include <vix/experimental/ThreadPoolExecutor.hpp>
 #include <vix/websocket.hpp>
-
-using vix::websocket::Server;
 
 int main()
 {
-  Server ws;
+  vix::config::Config cfg{"config/config.json"};
 
-  ws.on_open([](auto& session) {
-    session.send_json("chat.system", {"text", "Welcome"});
-  });
+  auto exec = vix::experimental::make_threadpool_executor(1, 1, 0);
+  vix::websocket::Server ws(cfg, std::move(exec));
 
-  ws.on_typed_message(
-    [](auto& session,
-    const std::string& type,
-    const vix::json::kvs& payload){
-    (void)session;
-
-    if (type == "chat.message") {
-      session.broadcast_json("chat.message", payload);
-    }
+  ws.on_typed_message([&ws](auto &, const std::string &type, const vix::json::kvs &payload){
+    if (type == "chat.message")
+      ws.broadcast_json("chat.message", payload);
   });
 
   ws.listen_blocking();
+}
+```
+
+### config/config.json
+```json
+{
+  "database": {
+    "default": {
+      "ENGINE": "mysql",
+      "NAME": "mydb",
+      "USER": "myuser",
+      "PASSWORD": "",
+      "HOST": "localhost",
+      "PORT": 3306
+    }
+  },
+  "server": {
+    "port": 8080,
+    "request_timeout": 5000
+  },
+  "websocket": {
+    "port": 9090,
+    "max_message_size": 65536,
+    "idle_timeout": 600,
+    "ping_interval": 30,
+    "enable_deflate": true,
+    "auto_ping_pong": true
+  }
+}
+```
+
+### Client.cpp
+```cpp
+#include <vix/websocket/Client.hpp>
+#include <thread>
+#include <chrono>
+
+int main()
+{
+  auto c = vix::websocket::Client::create("127.0.0.1", "9090", "/");
+  c->on_open([c](){
+    c->send("chat.message", {"text", "hello"});
+  });
+  c->connect();
+
+  std::this_thread::sleep_for(std::chrono::seconds(5));
 }
 ```
 
