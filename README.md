@@ -103,7 +103,7 @@ Vix.cpp is designed to remove overhead, unpredictability, and GC pauses.
 using namespace vix;
 
 int main() {
-    vix::App app;
+    App app;
 
     app.get("/", [](Request&, Response& res){
         res.send("Hello from Vix.cpp 🚀");
@@ -128,10 +128,10 @@ int main()
     session.send_json("chat.system", {"text", "Welcome"});
   });
 
-  ws.on_typed_message([](auto& session,
-                         const std::string& type,
-                         const vix::json::kvs& payload)
-  {
+  ws.on_typed_message(
+    [](auto& session,
+    const std::string& type,
+    const vix::json::kvs& payload){
     (void)session;
 
     if (type == "chat.message") {
@@ -161,10 +161,10 @@ int main()
       });
     });
 
-    ws.on_typed_message([&ws](auto& session,
-                              const std::string& type,
-                              const vix::json::kvs& payload)
-    {
+    ws.on_typed_message(
+      [&ws](auto& session,
+      const std::string& type,
+      const vix::json::kvs& payload){
       (void)session;
 
       if (type == "chat.message") {
