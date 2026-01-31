@@ -2,7 +2,8 @@
   "server": {
     "port": 8080,
     "request_timeout": 2000,
-    "io_threads": 0
+    "io_threads": 0,
+    "session_timeout_sec": 120
   },
   "logging": {
     "async": true,
@@ -13,5 +14,22 @@
     "mode": "basic",
     "max_target_len": 4096,
     "max_body_bytes": 1048576
+  },
+  "websocket": {
+    "port": 9090,
+    "max_message_size": 65536,
+    "idle_timeout": 60,
+    "ping_interval": 30,
+    "enable_deflate": true,
+    "auto_ping_pong": true
+  },
+  "database": {
+    "default": {
+      "host": "localhost",
+      "port": 3306,
+      "name": "mydb",
+      "user": "myuser",
+      "password": ""
+    }
   }
 }
