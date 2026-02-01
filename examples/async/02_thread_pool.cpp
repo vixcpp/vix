@@ -1,6 +1,7 @@
 #include <cassert>
-#include <iostream>
 #include <vector>
+
+#include <vix/console.hpp>
 
 #include <vix/async/core/io_context.hpp>
 #include <vix/async/core/task.hpp>
@@ -20,7 +21,7 @@ static int heavy_work(int n)
 
 static task<void> app(io_context &ctx)
 {
-  std::cout << "[async] thread_pool demo start\n";
+  vix::console.info("[async] thread_pool demo start");
 
   // Submit several CPU jobs in sequence (simple demo).
   // Later we can add when_all / gather for parallel awaits.
@@ -31,7 +32,7 @@ static task<void> app(io_context &ctx)
   int c = co_await ctx.cpu_pool().submit([]
                                          { return heavy_work(3); });
 
-  std::cout << "[async] results: " << a << ", " << b << ", " << c << "\n";
+  vix::console.info("[async] results:", a, b, c);
   assert(a != 0 || b != 0 || c != 0);
 
   // Fire-and-forget job
@@ -42,7 +43,7 @@ static task<void> app(io_context &ctx)
     for (int i = 0; i < 100000; ++i)
       x += i; });
 
-  std::cout << "[async] demo done\n";
+  vix::console.info("[async] demo done");
   ctx.stop();
   co_return;
 }

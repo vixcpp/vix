@@ -1,5 +1,8 @@
-#include <iostream>
+#include <csignal>
+#include <system_error>
 #include <vector>
+
+#include <vix/console.hpp>
 
 #include <vix/async/core/io_context.hpp>
 #include <vix/async/core/task.hpp>
@@ -13,7 +16,7 @@ using vix::async::core::task;
 
 static task<void> handle_client(std::unique_ptr<vix::async::net::tcp_stream> client)
 {
-  std::cout << "[async] client connected\n";
+  vix::console.info("[async] client connected");
 
   std::vector<std::byte> buf(4096);
 
@@ -23,12 +26,11 @@ static task<void> handle_client(std::unique_ptr<vix::async::net::tcp_stream> cli
 
     try
     {
-      n = co_await client->async_read(
-          std::span<std::byte>(buf.data(), buf.size()));
+      n = co_await client->async_read(std::span<std::byte>(buf.data(), buf.size()));
     }
     catch (const std::system_error &e)
     {
-      std::cout << "[async] read error: " << e.code().message() << "\n";
+      vix::console.error("[async] read error:", e.code().message());
       break;
     }
 
@@ -37,18 +39,17 @@ static task<void> handle_client(std::unique_ptr<vix::async::net::tcp_stream> cli
 
     try
     {
-      co_await client->async_write(
-          std::span<const std::byte>(buf.data(), n));
+      co_await client->async_write(std::span<const std::byte>(buf.data(), n));
     }
     catch (const std::system_error &e)
     {
-      std::cout << "[async] write error: " << e.code().message() << "\n";
+      vix::console.error("[async] write error:", e.code().message());
       break;
     }
   }
 
   client->close();
-  std::cout << "[async] client disconnected\n";
+  vix::console.info("[async] client disconnected");
   co_return;
 }
 
@@ -57,28 +58,27 @@ static task<void> server(io_context &ctx)
   auto &sig = ctx.signals();
   sig.add(SIGINT);
   sig.add(SIGTERM);
+
   sig.on_signal([&](int s)
                 {
-    std::cout << "[async] signal " << s << " received -> stopping\n";
+    vix::console.warn("[async] signal", s, "received -> stopping");
     ctx.stop(); });
 
   auto listener = vix::async::net::make_tcp_listener(ctx);
 
   co_await listener->async_listen({"0.0.0.0", 9090}, 128);
-  std::cout << "[async] echo server listening on 0.0.0.0:9090\n";
+  vix::console.info("[async] echo server listening on 0.0.0.0:9090");
 
   while (ctx.is_running())
   {
     try
     {
       auto client = co_await listener->async_accept();
-      vix::async::core::spawn_detached(
-          ctx,
-          handle_client(std::move(client)));
+      vix::async::core::spawn_detached(ctx, handle_client(std::move(client)));
     }
     catch (const std::system_error &e)
     {
-      std::cout << "[async] accept error: " << e.code().message() << "\n";
+      vix::console.error("[async] accept error:", e.code().message());
       break;
     }
   }
@@ -96,6 +96,6 @@ int main()
   ctx.post(t.handle());
 
   ctx.run();
-  std::cout << "[async] server stopped\n";
+  vix::console.info("[async] server stopped");
   return 0;
 }

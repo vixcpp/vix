@@ -1,4 +1,6 @@
-#include <iostream>
+#include <chrono>
+
+#include <vix/console.hpp>
 
 #include <vix/async/core/io_context.hpp>
 #include <vix/async/core/task.hpp>
@@ -9,22 +11,20 @@ using vix::async::core::task;
 
 static task<void> app(io_context &ctx)
 {
-  std::cout << "[async] timer demo start\n";
+  vix::console.info("[async] timer demo start");
 
   co_await ctx.timers().sleep_for(std::chrono::milliseconds(100));
-  std::cout << "[async] +100ms\n";
+  vix::console.info("[async] +100ms");
 
   co_await ctx.timers().sleep_for(std::chrono::milliseconds(200));
-  std::cout << "[async] +200ms\n";
+  vix::console.info("[async] +200ms");
 
-  // Fire-and-forget callback after 150ms
-  ctx.timers().after(std::chrono::milliseconds(150), [&]()
-                     { std::cout << "[async] after(150ms) callback\n"; });
+  ctx.timers().after(std::chrono::milliseconds(150), []()
+                     { vix::console.info("[async] after(150ms) callback"); });
 
-  // Wait a bit so the callback can happen before we stop
   co_await ctx.timers().sleep_for(std::chrono::milliseconds(250));
+  vix::console.info("[async] timer demo done");
 
-  std::cout << "[async] timer demo done\n";
   ctx.stop();
   co_return;
 }

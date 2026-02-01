@@ -1,4 +1,6 @@
-#include <iostream>
+#include <csignal>
+
+#include <vix/console.hpp>
 
 #include <vix/async/core/io_context.hpp>
 #include <vix/async/core/signal.hpp>
@@ -15,15 +17,15 @@ static task<void> app(io_context &ctx)
   sig.add(SIGINT);
   sig.add(SIGTERM);
 
-  std::cout << "[async] waiting for SIGINT/SIGTERM (Ctrl+C)\n";
+  vix::console.info("[async] waiting for SIGINT/SIGTERM (Ctrl+C)");
 
   sig.on_signal([&](int s)
                 {
-    std::cout << "[async] signal received: " << s << " -> stopping\n";
+    vix::console.warn("[async] signal received:", s, "-> stopping");
     ctx.stop(); });
 
   int s = co_await sig.async_wait();
-  std::cout << "[async] async_wait got signal: " << s << " -> stopping\n";
+  vix::console.warn("[async] async_wait got signal:", s, "-> stopping");
   ctx.stop();
 
   co_return;
@@ -38,6 +40,6 @@ int main()
 
   ctx.run();
 
-  std::cout << "[async] stopped\n";
+  vix::console.info("[async] stopped");
   return 0;
 }
