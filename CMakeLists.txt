@@ -128,6 +128,7 @@ option(VIX_ENABLE_P2P         "Build Vix P2P module"                        ON)
 option(VIX_ENABLE_P2P_HTTP    "Build Vix P2P HTTP adapter module"          ON)
 option(VIX_ENABLE_CACHE       "Build Vix Cache module"                      ON)
 option(VIX_FETCH_DEPS         "Allow fetching missing deps from the internet" OFF)
+option(VIX_ENABLE_ASYNC        "Build Vix Async module"                       ON)
 
 # ----------------------------------------------------
 # Tooling / Static analysis
@@ -394,6 +395,24 @@ else()
   message(FATAL_ERROR "Missing 'modules/core'. Run: git submodule update --init --recursive")
 endif()
 
+# --- Async (optional) ---
+set(VIX_HAS_ASYNC OFF)
+if (VIX_ENABLE_ASYNC AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/async/CMakeLists.txt")
+  message(STATUS "Adding 'modules/async'...")
+  add_subdirectory(modules/async async_build)
+
+  if (TARGET vix::async OR TARGET vix_async)
+    set(VIX_HAS_ASYNC ON)
+    if (TARGET vix_async AND NOT TARGET vix::async)
+      add_library(vix::async ALIAS vix_async)
+    endif()
+  else()
+    message(WARNING "Async module added but no vix::async target was exported.")
+  endif()
+else()
+  message(STATUS "Async: disabled or not present.")
+endif()
+
 # --- Net (required by P2P) ---
 set(VIX_HAS_NET OFF)
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/net/CMakeLists.txt")
@@ -617,6 +636,10 @@ endif()
 
 if (TARGET vix::sync)
   target_link_libraries(vix INTERFACE vix::sync)
+endif()
+
+if (TARGET vix::async)
+  target_link_libraries(vix INTERFACE vix::async)
 endif()
 
 if (TARGET vix::p2p)
@@ -888,6 +911,11 @@ if (VIX_ENABLE_INSTALL)
 
   if (VIX_HAS_DB AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/db/include")
     install(DIRECTORY modules/db/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+  endif()
+
+  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/async/include")
+    install(DIRECTORY modules/async/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
             FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
   endif()
 
