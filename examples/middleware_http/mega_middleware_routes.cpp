@@ -53,6 +53,8 @@
 #include <vix/middleware/app/adapter.hpp>
 #include <vix/middleware/app/presets.hpp>
 #include <vix/middleware/app/http_cache.hpp>
+#include <vix/middleware/http/cookies.hpp>
+#include <vix/middleware/auth/session.hpp>
 
 // Some projects place these in different paths; keep includes minimal.
 // ----------------------------------------------------------------------------
@@ -491,6 +493,113 @@ static void register_api_routes(vix::App &app)
                     "t2_after_api_mw_ms", t2,
                 }),
             })); });
+
+  // GET /api/cookie/set
+  // Sets a cookie "demo" = "hello"
+  app.get("/api/cookie/set", [](Request &, Response &res)
+          {
+            vix::middleware::cookies::Cookie c;
+            c.name = "demo";
+            c.value = "hello";
+            c.path = "/";
+            c.http_only = true;
+            c.secure = false;
+            c.same_site = "Lax";
+            c.max_age = 3600;
+
+            vix::middleware::cookies::set(res, c);
+
+            res.json(J::obj({
+                "ok", true,
+                "cookie_set", true,
+                "name", "demo",
+                "value", "hello",
+            })); });
+
+  // GET /api/cookie/get
+  // Reads cookie "demo" from request header "cookie"
+  app.get("/api/cookie/get", [](Request &req, Response &res)
+          {
+            auto v = vix::middleware::cookies::get(req, "demo");
+            res.json(J::obj({
+                "ok", true,
+                "cookie_demo", v ? *v : "",
+                "has_cookie", (bool)v,
+            })); });
+
+  // GET /api/session/whoami
+  // Uses Session stored in RequestState by session middleware
+  app.get("/api/session/whoami", [](Request &req, Response &res)
+          {
+            auto *s = req.try_state<vix::middleware::auth::Session>();
+            if (!s)
+            {
+              res.status(500).json(J::obj({
+                  "ok", false,
+                  "error", "session_missing",
+                  "hint", "Session middleware not installed on this route",
+              }));
+              return;
+            }
+
+            // read or init
+            auto name = s->get("name").value_or("guest");
+            long long visits = 0;
+
+            if (auto v = s->get("visits"))
+            {
+              try { visits = std::stoll(*v); } catch (...) { visits = 0; }
+            }
+
+            visits += 1;
+            s->set("name", name);
+            s->set("visits", std::to_string(visits));
+
+            res.json(J::obj({
+                "ok", true,
+                "session", true,
+                "sid", s->id,
+                "is_new", s->is_new,
+                "name", name,
+                "visits", visits,
+            })); });
+
+  // POST /api/session/setname/{name}
+  app.post("/api/session/setname/{name}", [](Request &req, Response &res)
+           {
+             auto *s = req.try_state<vix::middleware::auth::Session>();
+             if (!s)
+             {
+               res.status(500).json(J::obj({"ok", false, "error", "session_missing"}));
+               return;
+             }
+
+             const std::string name = req.param("name", "guest");
+             s->set("name", name);
+
+             res.json(J::obj({
+                 "ok", true,
+                 "updated", true,
+                 "name", name,
+             })); });
+
+  // POST /api/session/logout
+  // Destroys session and clears cookie
+  app.post("/api/session/logout", [](Request &req, Response &res)
+           {
+             auto *s = req.try_state<vix::middleware::auth::Session>();
+             if (!s)
+             {
+               res.status(500).json(J::obj({"ok", false, "error", "session_missing"}));
+               return;
+             }
+
+             s->destroy();
+
+             res.json(J::obj({
+                 "ok", true,
+                 "logout", true,
+             })); });
 }
 
 static void register_dev_routes(vix::App &app)
@@ -614,6 +723,20 @@ static void install_api_middlewares(vix::App &app)
   // 7) Example: legacy HttpMiddleware adaptation (header gate) on exact path
   //    Protect /api/ping with x-demo: 1
   install_exact(app, "/api/ping", adapt(mw_require_header("x-demo", "1")));
+  // 8) Session middleware for /api/session/
+  {
+    vix::middleware::auth::SessionOptions sopt{};
+    sopt.secret = "dev_session_secret"; // required
+    sopt.cookie_name = "sid";
+    sopt.cookie_path = "/";
+    sopt.secure = false; // set true behind https
+    sopt.http_only = true;
+    sopt.same_site = "Lax";
+    sopt.auto_create = true;
+    sopt.ttl = std::chrono::hours(24 * 7);
+
+    install(app, "/api/session/", adapt_ctx(vix::middleware::auth::session(std::move(sopt))));
+  }
 }
 
 static void install_dev_middlewares(vix::App &app)
@@ -681,6 +804,12 @@ int main()
 
             push("GET", "/dev/trace", "debug route; may be IP-filtered");
             push("GET", "/dev/boom", "throws to test dev error handling");
+            push("GET", "/api/cookie/set", "sets demo cookie");
+            push("GET", "/api/cookie/get", "reads demo cookie");
+
+            push("GET", "/api/session/whoami", "session counter demo (needs session middleware)");
+            push("POST", "/api/session/setname/{name}", "writes session key 'name'");
+            push("POST", "/api/session/logout", "destroy session + clear cookie");
 
             res.json(J::obj({
                 "ok", true,
@@ -692,6 +821,12 @@ int main()
                     "For /api/secure/whoami add: -H 'x-api-key: dev_key_123'",
                     "For /api/admin/stats add: -H 'x-user: gaspard' -H 'x-role: admin'",
                     "To bypass cache: -H 'x-vix-cache: bypass'",
+                    "Cookie demo: curl -i http://127.0.0.1:8080/api/cookie/set",
+                    "Then: curl -i --cookie 'demo=hello' http://127.0.0.1:8080/api/cookie/get",
+                    "Session: curl -i http://127.0.0.1:8080/api/session/whoami",
+                    "Reuse cookie: curl -i -c jar.txt http://127.0.0.1:8080/api/session/whoami && curl -i -b jar.txt http://127.0.0.1:8080/api/session/whoami",
+                    "Set name: curl -i -b jar.txt -X POST http://127.0.0.1:8080/api/session/setname/gaspard",
+                    "Logout: curl -i -b jar.txt -X POST http://127.0.0.1:8080/api/session/logout",
                 }),
             })); });
 
