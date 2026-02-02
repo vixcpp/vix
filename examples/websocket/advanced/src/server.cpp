@@ -1,7 +1,7 @@
 /**
- * @file server.cpp
- * @brief Advanced WebSocket server example for Vix.cpp
- * @author Gaspard Kirira
+ *
+ *  @file server.cpp
+ *  @author Gaspard Kirira
  *
  *  Copyright 2025, Gaspard Kirira.  All rights reserved.
  *  https://github.com/vixcpp/vix
@@ -94,7 +94,7 @@
 
 #include <nlohmann/json.hpp>
 
-#include <vix.hpp> // HTTP runtime (App, vhttp::ResponseWrapper, etc.)
+#include <vix.hpp>
 
 #include <vix/websocket.hpp>
 #include <vix/websocket/Metrics.hpp>
@@ -123,11 +123,12 @@ int main()
 
   WebSocketMetrics metrics;
 
-  std::thread metricsThread([&metrics]()
-                            { vix::websocket::run_metrics_http_exporter(
-                                  metrics,
-                                  "0.0.0.0",
-                                  9100); });
+  std::thread metricsThread(
+      [&metrics]()
+      { vix::websocket::run_metrics_http_exporter(
+            metrics,
+            "0.0.0.0",
+            9100); });
   metricsThread.detach();
 
   vix::websocket::SqliteMessageStore store{"chat_messages.db"};
@@ -309,12 +310,9 @@ int main()
         }
       });
 
-  // ─────────────────────────────────────────────
   // 7) HTTP App : /ws/poll + /ws/send (LongPolling)
-  // ─────────────────────────────────────────────
   vix::App httpApp;
 
-  // Helper local pour lire ?name=value dans la target Beast
   auto get_query_param = [](const http::request<http::string_body> &req,
                             std::string_view key) -> std::optional<std::string>
   {
@@ -351,7 +349,6 @@ int main()
     return std::nullopt;
   };
 
-  // GET /ws/poll → retourne un array JSON de JsonMessage
   httpApp.get(
       "/ws/poll",
       [lpBridge, &get_query_param](const http::request<http::string_body> &req,
@@ -378,7 +375,6 @@ int main()
           }
           catch (...)
           {
-            // on garde 50
           }
         }
 
@@ -388,7 +384,6 @@ int main()
         res.status(http::status::ok).json(body);
       });
 
-  // POST /ws/send → HTTP -> LP (et via httpToWs → WS + rooms)
   httpApp.post(
       "/ws/send",
       [lpBridge](const http::request<http::string_body> &req,
@@ -421,7 +416,6 @@ int main()
           return;
         }
 
-        // Si pas de session_id fourni :
         if (sessionId.empty())
         {
           if (!room.empty())
@@ -453,7 +447,6 @@ int main()
         });
       });
 
-  // (Optionnel) /health simple
   httpApp.get(
       "/health",
       [](auto &, vix::vhttp::ResponseWrapper &res)
@@ -464,16 +457,9 @@ int main()
         });
       });
 
-  // ─────────────────────────────────────────────
-  // 8) Lancement WS + HTTP
-  // ─────────────────────────────────────────────
-
-  // Thread dédié WebSocket
   std::thread wsThread{[&wsApp]()
                        { wsApp.run_blocking(); }};
 
-  // Hook shutdown : quand HTTP reçoit SIGINT/SIGTERM, il sort de run()
-  // et on coupe proprement le WS.
   httpApp.set_shutdown_callback([&wsApp, &wsThread]()
                                 {
         wsApp.stop();
@@ -482,7 +468,6 @@ int main()
             wsThread.join();
         } });
 
-  // HTTP bloquant sur 8080
   httpApp.run(8080);
 
   return 0;

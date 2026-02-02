@@ -1,7 +1,7 @@
 /**
- * @file client.cpp
- * @brief Advanced interactive WebSocket client example for Vix.cpp
- * @author Gaspard Kirira
+ *
+ *  @file server.cpp
+ *  @author Gaspard Kirira
  *
  *  Copyright 2025, Gaspard Kirira.  All rights reserved.
  *  https://github.com/vixcpp/vix
@@ -9,6 +9,7 @@
  *  that can be found in the License file.
  *
  *  Vix.cpp
+ * @brief Advanced interactive WebSocket client example for Vix.cpp
  *
  * This example demonstrates how to build a fully interactive, terminal-based
  * WebSocket client using the Vix.cpp WebSocket module. It is designed to show
@@ -87,113 +88,113 @@
 
 #include <boost/system/error_code.hpp>
 
-#include <vix/websocket.hpp> // expose Client + JsonMessage
+#include <vix/websocket.hpp>
 
 namespace ws = vix::websocket;
 
 using ClientPtr = std::shared_ptr<ws::Client>;
 using Clock = std::chrono::steady_clock;
 
-// Petit helper local : starts_with
 bool starts_with(const std::string &s, const std::string &prefix)
 {
   return s.size() >= prefix.size() &&
          s.compare(0, prefix.size(), prefix) == 0;
 }
 
-/**
- * @brief Configure le client WebSocket (handlers, auto-reconnect, heartbeat).
- */
-ClientPtr create_chat_client(std::string host,
-                             std::string port,
-                             std::string path,
-                             std::string user,
-                             std::string room)
+ClientPtr create_chat_client(
+    std::string host,
+    std::string port,
+    std::string path,
+    std::string user,
+    std::string room)
 {
   using ws::JsonMessage;
 
-  auto client = ws::Client::create(std::move(host),
-                                   std::move(port),
-                                   std::move(path));
+  auto client = ws::Client::create(
+      std::move(host),
+      std::move(port),
+      std::move(path));
 
-  // ───────────── Handlers ─────────────
+  client->on_open(
+      [client, user, room]
+      {
+        std::cout << "[client] Connected ✅" << std::endl;
 
-  client->on_open([client, user, room]
-                  {
-                        std::cout << "[client] Connected ✅" << std::endl;
+        client->send(
+            "chat.join",
+            {
+                "room",
+                room,
+                "user",
+                user,
+            });
+      });
 
-                        client->send(
-                            "chat.join",
-                            {
-                                "room", room,
-                                "user", user,
-                            }); });
+  client->on_message(
+      [](const std::string &msg)
+      {
+        auto jm = JsonMessage::parse(msg);
 
-  client->on_message([](const std::string &msg)
-                     {
-                           auto jm = JsonMessage::parse(msg);
+        if (!jm)
+        {
+          std::cout << msg << std::endl;
+          return;
+        }
 
-                           if (!jm)
-                           {
-                               std::cout << msg << std::endl;
-                               return;
-                           }
+        const std::string &type = jm->type;
 
-                           const std::string &type = jm->type;
+        if (type == "chat.system")
+        {
+          std::string text = jm->get_string("text");
+          std::string roomName = jm->get_string("room");
 
-                           if (type == "chat.system")
-                           {
-                               std::string text     = jm->get_string("text");
-                               std::string roomName = jm->get_string("room");
+          if (!roomName.empty())
+          {
+            std::cout << "[system][" << roomName << "] " << text << std::endl;
+          }
+          else
+          {
+            std::cout << "[system] " << text << std::endl;
+          }
+        }
+        else if (type == "chat.message")
+        {
+          std::string user = jm->get_string("user");
+          std::string text = jm->get_string("text");
+          std::string roomName = jm->get_string("room");
 
-                               if (!roomName.empty())
-                               {
-                                   std::cout << "[system][" << roomName << "] " << text << std::endl;
-                               }
-                               else
-                               {
-                                   std::cout << "[system] " << text << std::endl;
-                               }
-                           }
-                           else if (type == "chat.message")
-                           {
-                               std::string user     = jm->get_string("user");
-                               std::string text     = jm->get_string("text");
-                               std::string roomName = jm->get_string("room");
+          if (user.empty())
+            user = "anonymous";
 
-                               if (user.empty())
-                                   user = "anonymous";
+          if (!roomName.empty())
+          {
+            std::cout << "[chat][" << roomName << "] " << user << ": " << text << std::endl;
+          }
+          else
+          {
+            std::cout << "[chat] " << user << ": " << text << std::endl;
+          }
+        }
+        else
+        {
+          std::cout << msg << std::endl;
+        }
+      });
 
-                               if (!roomName.empty())
-                               {
-                                   std::cout << "[chat][" << roomName << "] " << user << ": " << text << std::endl;
-                               }
-                               else
-                               {
-                                   std::cout << "[chat] " << user << ": " << text << std::endl;
-                               }
-                           }
-                           else
-                           {
-                               std::cout << msg << std::endl;
-                           } });
+  client->on_close(
+      []()
+      { std::cout << "[client] Disconnected." << std::endl; });
 
-  client->on_close([]()
-                   { std::cout << "[client] Disconnected." << std::endl; });
+  client->on_error(
+      [](const boost::system::error_code &ec)
+      { std::cerr << "[client] error: " << ec.message() << std::endl; });
 
-  client->on_error([](const boost::system::error_code &ec)
-                   { std::cerr << "[client] error: " << ec.message() << std::endl; });
-
-  // Auto-reconnect + heartbeat
   client->enable_auto_reconnect(true, std::chrono::seconds(3));
   client->enable_heartbeat(std::chrono::seconds(20));
 
   return client;
 }
 
-/**
- * @brief Boucle CLI : gère /join, /leave, /quit et envoie les messages.
- */
 void run_chat_cli(ClientPtr client, std::string user, std::string room)
 {
   std::cout << "Type messages, /join <room>, /leave, /quit\n";
@@ -203,7 +204,6 @@ void run_chat_cli(ClientPtr client, std::string user, std::string room)
     if (line == "/quit")
       break;
 
-    // /join <room>
     if (starts_with(line, "/join "))
     {
       std::string newRoom = line.substr(6);
@@ -213,7 +213,6 @@ void run_chat_cli(ClientPtr client, std::string user, std::string room)
         continue;
       }
 
-      // Leave ancienne room
       client->send(
           "chat.leave",
           {
@@ -225,7 +224,6 @@ void run_chat_cli(ClientPtr client, std::string user, std::string room)
 
       room = newRoom;
 
-      // Join nouvelle room
       client->send(
           "chat.join",
           {
@@ -239,7 +237,6 @@ void run_chat_cli(ClientPtr client, std::string user, std::string room)
       continue;
     }
 
-    // /leave (reste connecté, mais ne participe plus à la room)
     if (line == "/leave")
     {
       client->send(
@@ -255,7 +252,6 @@ void run_chat_cli(ClientPtr client, std::string user, std::string room)
       continue;
     }
 
-    // Message normal → chat.message dans la room courante
     if (!line.empty())
     {
       client->send(
@@ -274,7 +270,6 @@ void run_chat_cli(ClientPtr client, std::string user, std::string room)
 
 int main()
 {
-  // ───────────── Prompt user + room ─────────────
   std::cout << "Pseudo: ";
   std::string user;
   std::getline(std::cin, user);
@@ -288,11 +283,8 @@ int main()
     room = "general";
 
   auto client = create_chat_client("localhost", "9090", "/", user, room);
-
   client->connect();
-
   run_chat_cli(client, user, room);
-
   client->close();
   return 0;
 }
