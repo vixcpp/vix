@@ -1,5 +1,15 @@
 # ------------------------------------------------------------------------------
-#  CMakeLists.txt — Advanced WebSocket Examples for Vix.cpp
+#  @file CMakeLists.cpp
+#  @author Gaspard Kirira
+#
+#  Copyright 2025, Gaspard Kirira.  All rights reserved.
+#  https://github.com/vixcpp/vix
+#  Use of this source code is governed by a MIT license
+#  that can be found in the License file.
+#
+#  Vix.cpp
+#
+#  Advanced WebSocket Examples for Vix.cpp
 #
 #  This CMake file builds two advanced demonstration executables showcasing
 #  production-style usage of the Vix.cpp WebSocket module:
@@ -30,10 +40,7 @@ project(vix_ws_advanced LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# ------------------------------------------------------------------------------
 #  Advanced WebSocket Server
-# ------------------------------------------------------------------------------
-
 add_executable(vix-ws-advanced-server
     src/server.cpp
 )
@@ -43,10 +50,7 @@ target_link_libraries(vix-ws-advanced-server
         vix::websocket
 )
 
-# ------------------------------------------------------------------------------
 #  Advanced WebSocket Client
-# ------------------------------------------------------------------------------
-
 add_executable(vix-ws-advanced-client
     src/client.cpp
 )
