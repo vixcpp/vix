@@ -136,34 +136,6 @@ int main()
 }
 ```
 
-### config/config.json
-```json
-{
-  "database": {
-    "default": {
-      "ENGINE": "mysql",
-      "NAME": "mydb",
-      "USER": "myuser",
-      "PASSWORD": "",
-      "HOST": "localhost",
-      "PORT": 3306
-    }
-  },
-  "server": {
-    "port": 8080,
-    "request_timeout": 5000
-  },
-  "websocket": {
-    "port": 9090,
-    "max_message_size": 65536,
-    "idle_timeout": 600,
-    "ping_interval": 30,
-    "enable_deflate": true,
-    "auto_ping_pong": true
-  }
-}
-```
-
 ### Client.cpp
 ```cpp
 #include <vix/websocket/Client.hpp>
