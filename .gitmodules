@@ -71,3 +71,11 @@
   path = modules/async
   url = https://github.com/vixcpp/async.git
   branch = dev
+[submodule "modules/conversion"]
+	path = modules/conversion
+	url = https://github.com/vixcpp/conversion.git
+	branch = dev
+[submodule "modules/validation"]
+	path = modules/validation
+	url = https://github.com/vixcpp/validation.git
+	branch = dev

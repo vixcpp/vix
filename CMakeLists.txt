@@ -129,6 +129,7 @@ option(VIX_ENABLE_P2P_HTTP    "Build Vix P2P HTTP adapter module"          ON)
 option(VIX_ENABLE_CACHE       "Build Vix Cache module"                      ON)
 option(VIX_FETCH_DEPS         "Allow fetching missing deps from the internet" OFF)
 option(VIX_ENABLE_ASYNC        "Build Vix Async module"                       ON)
+option(VIX_ENABLE_VALIDATION "Build Vix Validation module" ON)
 
 # ----------------------------------------------------
 # Tooling / Static analysis
@@ -395,6 +396,53 @@ else()
   message(FATAL_ERROR "Missing 'modules/core'. Run: git submodule update --init --recursive")
 endif()
 
+# --- Conversion (required by Validation) ---
+set(VIX_HAS_CONVERSION OFF)
+
+if (TARGET vix::conversion)
+  set(VIX_HAS_CONVERSION ON)
+else()
+  # If you have it as a module, add it here (umbrella must not fetch)
+  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/conversion/CMakeLists.txt")
+    message(STATUS "Adding 'modules/conversion'...")
+    add_subdirectory(modules/conversion conversion_build)
+
+    if (TARGET vix::conversion OR TARGET vix_conversion)
+      set(VIX_HAS_CONVERSION ON)
+      if (TARGET vix_conversion AND NOT TARGET vix::conversion)
+        add_library(vix::conversion ALIAS vix_conversion)
+      endif()
+    else()
+      message(FATAL_ERROR "Conversion module added but no vix::conversion target was exported.")
+    endif()
+  else()
+    message(STATUS "Conversion: not present as module. Expecting it to be provided by core or another module.")
+  endif()
+endif()
+
+# --- Validation (optional) ---
+set(VIX_HAS_VALIDATION OFF)
+
+if (VIX_ENABLE_VALIDATION AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/validation/CMakeLists.txt")
+  if (NOT TARGET vix::conversion)
+    message(FATAL_ERROR "Validation requires vix::conversion. Ensure conversion is added before validation in the umbrella.")
+  endif()
+
+  message(STATUS "Adding 'modules/validation'...")
+  add_subdirectory(modules/validation validation_build)
+
+  if (TARGET vix::validation OR TARGET vix_validation)
+    set(VIX_HAS_VALIDATION ON)
+    if (TARGET vix_validation AND NOT TARGET vix::validation)
+      add_library(vix::validation ALIAS vix_validation)
+    endif()
+  else()
+    message(WARNING "Validation module added but no vix::validation target was exported.")
+  endif()
+else()
+  message(STATUS "Validation: disabled or not present.")
+endif()
+
 # --- Async (optional) ---
 set(VIX_HAS_ASYNC OFF)
 if (VIX_ENABLE_ASYNC AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/async/CMakeLists.txt")
@@ -625,6 +673,14 @@ target_link_libraries(vix INTERFACE
   vix::utils
   ${JSON_TARGET}
 )
+
+if (TARGET vix::conversion)
+  target_link_libraries(vix INTERFACE vix::conversion)
+endif()
+
+if (TARGET vix::validation)
+  target_link_libraries(vix INTERFACE vix::validation)
+endif()
 
 if (TARGET vix::net)
   target_link_libraries(vix INTERFACE vix::net)
@@ -894,6 +950,16 @@ if (VIX_ENABLE_INSTALL)
             FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
   endif()
 
+  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/conversion/include")
+    install(DIRECTORY modules/conversion/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+  endif()
+
+  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/validation/include")
+    install(DIRECTORY modules/validation/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+  endif()
+
   if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/json/include")
     install(DIRECTORY modules/json/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
             FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
@@ -1003,6 +1069,16 @@ if (VIX_ENABLE_INSTALL)
   set(VIX_HAS_P2P_HTTP  ${VIX_HAS_P2P_HTTP})
   set(VIX_WITH_P2P_HTTP ${VIX_WITH_P2P_HTTP})
 
+  set(VIX_WITH_CONVERSION OFF)
+  if (VIX_HAS_CONVERSION)
+    set(VIX_WITH_CONVERSION ON)
+  endif()
+
+  set(VIX_WITH_VALIDATION OFF)
+  if (VIX_HAS_VALIDATION)
+    set(VIX_WITH_VALIDATION ON)
+  endif()
+
   configure_package_config_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/VixConfig.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/VixConfig.cmake"
@@ -1041,6 +1117,8 @@ message(STATUS "WebSocket built   : ${VIX_HAS_WEBSOCKET}")
 message(STATUS "ORM packaged      : ${VIX_HAS_ORM}")
 message(STATUS "DB built         : ${VIX_HAS_DB}")
 message(STATUS "P2P built         : ${VIX_HAS_P2P}")
+message(STATUS "Conversion built : ${VIX_HAS_CONVERSION}")
+message(STATUS "Validation built : ${VIX_HAS_VALIDATION}")
 message(STATUS "Middleware built : ${VIX_HAS_MIDDLEWARE}")
 message(STATUS "Examples          : ${VIX_BUILD_EXAMPLES}")
 message(STATUS "Tests             : ${VIX_BUILD_TESTS}")
@@ -1048,6 +1126,6 @@ message(STATUS "Sanitizers        : ${VIX_ENABLE_SANITIZERS}")
 message(STATUS "Coverage          : ${VIX_ENABLE_COVERAGE}")
 message(STATUS "LTO               : ${VIX_ENABLE_LTO}")
 message(STATUS "Install/Export    : ${VIX_ENABLE_INSTALL}")
-message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P}")
+message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P}")
 message(STATUS "------------------------------------------------------")
 
