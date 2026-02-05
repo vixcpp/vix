@@ -130,6 +130,7 @@ option(VIX_ENABLE_CACHE       "Build Vix Cache module"                      ON)
 option(VIX_FETCH_DEPS         "Allow fetching missing deps from the internet" OFF)
 option(VIX_ENABLE_ASYNC        "Build Vix Async module"                       ON)
 option(VIX_ENABLE_VALIDATION "Build Vix Validation module" ON)
+option(VIX_ENABLE_CRYPTO "Build Vix Crypto module" ON)
 
 # ----------------------------------------------------
 # Tooling / Static analysis
@@ -357,6 +358,36 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/utils/CMakeLists.txt")
 else()
   message(FATAL_ERROR "Missing 'modules/utils'. Run: git submodule update --init --recursive")
 endif()
+
+# --- Crypto (optional) ---
+set(VIX_HAS_CRYPTO OFF)
+
+if (VIX_ENABLE_CRYPTO AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/crypto/CMakeLists.txt")
+  message(STATUS "Adding 'modules/crypto'...")
+
+  # Important: en umbrella, crypto ne fait pas find_package(OpenSSL),
+  # il attend que OpenSSL::Crypto existe deja.
+  find_package(OpenSSL QUIET)
+  if (OpenSSL_FOUND AND TARGET OpenSSL::Crypto)
+    message(STATUS "Crypto: OpenSSL found -> provider available")
+  else()
+    message(STATUS "Crypto: OpenSSL not found -> provider will be disabled")
+  endif()
+
+  add_subdirectory(modules/crypto crypto_build)
+
+  if (TARGET vix::crypto OR TARGET vix_crypto)
+    set(VIX_HAS_CRYPTO ON)
+    if (TARGET vix_crypto AND NOT TARGET vix::crypto)
+      add_library(vix::crypto ALIAS vix_crypto)
+    endif()
+  else()
+    message(WARNING "Crypto module added but no vix::crypto target was exported.")
+  endif()
+else()
+  message(STATUS "Crypto: disabled or not present.")
+endif()
+
 
 # Resolve real utils target (dereference ALIAS if needed)
 set(_VIX_UTILS_REAL "")
@@ -682,6 +713,10 @@ if (TARGET vix::validation)
   target_link_libraries(vix INTERFACE vix::validation)
 endif()
 
+if (TARGET vix::crypto)
+  target_link_libraries(vix INTERFACE vix::crypto)
+endif()
+
 if (TARGET vix::net)
   target_link_libraries(vix INTERFACE vix::net)
 endif()
@@ -950,6 +985,11 @@ if (VIX_ENABLE_INSTALL)
             FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
   endif()
 
+  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/crypto/include")
+    install(DIRECTORY modules/crypto/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+  endif()
+
   if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/conversion/include")
     install(DIRECTORY modules/conversion/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
             FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
@@ -1074,10 +1114,21 @@ if (VIX_ENABLE_INSTALL)
     set(VIX_WITH_CONVERSION ON)
   endif()
 
+  set(VIX_WITH_CRYPTO OFF)
+  if (VIX_HAS_CRYPTO)
+    set(VIX_WITH_CRYPTO ON)
+  endif()
+
+  set(VIX_HAS_CRYPTO  ${VIX_HAS_CRYPTO})
+  set(VIX_WITH_CRYPTO ${VIX_WITH_CRYPTO})
+
   set(VIX_WITH_VALIDATION OFF)
   if (VIX_HAS_VALIDATION)
     set(VIX_WITH_VALIDATION ON)
   endif()
+
+  set(VIX_HAS_VALIDATION  ${VIX_HAS_VALIDATION})
+  set(VIX_WITH_VALIDATION ${VIX_WITH_VALIDATION})
 
   configure_package_config_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/VixConfig.cmake.in"
@@ -1126,6 +1177,6 @@ message(STATUS "Sanitizers        : ${VIX_ENABLE_SANITIZERS}")
 message(STATUS "Coverage          : ${VIX_ENABLE_COVERAGE}")
 message(STATUS "LTO               : ${VIX_ENABLE_LTO}")
 message(STATUS "Install/Export    : ${VIX_ENABLE_INSTALL}")
-message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P}")
+message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P}")
 message(STATUS "------------------------------------------------------")
 

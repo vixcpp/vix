@@ -79,3 +79,7 @@
 	path = modules/validation
 	url = https://github.com/vixcpp/validation.git
 	branch = dev
+[submodule "modules/crypto"]
+	path = modules/crypto
+	url = https://github.com/vixcpp/crypto.git
+	branch = dev
