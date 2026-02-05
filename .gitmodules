@@ -83,3 +83,7 @@
 	path = modules/crypto
 	url = https://github.com/vixcpp/crypto.git
 	branch = dev
+[submodule "modules/webrpc"]
+	path = modules/webrpc
+	url = https://github.com/vixcpp/webrpc.git
+	branch = dev
