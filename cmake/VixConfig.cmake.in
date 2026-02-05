@@ -109,6 +109,14 @@ endif()
 
 set(VIX_WITH_CACHE @VIX_WITH_CACHE@)
 
+# Crypto flags
+set(VIX_HAS_CRYPTO @VIX_HAS_CRYPTO@)
+if (VIX_HAS_CRYPTO AND NOT TARGET vix::crypto)
+  set(VIX_HAS_CRYPTO OFF)
+endif()
+
+set(VIX_WITH_CRYPTO @VIX_WITH_CRYPTO@)
+
 set(VIX_HAS_P2P @VIX_HAS_P2P@)
 if (VIX_HAS_P2P AND NOT TARGET vix::p2p)
   set(VIX_HAS_P2P OFF)
