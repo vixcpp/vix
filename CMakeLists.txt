@@ -95,42 +95,35 @@ add_custom_target(copy-compile-commands ALL
 # ----------------------------------------------------
 # Options
 # ----------------------------------------------------
-option(VIX_ENABLE_WARNINGS     "Enable extra warnings"                    ON)
-option(VIX_ENABLE_LTO          "Enable IPO/LTO (Release only)"            OFF)
-option(VIX_MSVC_STATIC_RUNTIME "Link MSVC runtime statically (/MT)"       OFF)
-
-option(VIX_ENABLE_CLANG_TIDY   "Enable clang-tidy if available"           OFF)
-option(VIX_ENABLE_CPPCHECK     "Enable cppcheck if available"             OFF)
-
-option(VIX_ENABLE_COVERAGE     "Enable coverage flags (Debug only)"       OFF)
-option(VIX_ENABLE_SANITIZERS   "Enable ASan+UBSan (GCC/Clang only)"       OFF)
-
-option(VIX_BUILD_EXAMPLES      "Build umbrella examples in ./examples"    ON)
-option(VIX_BUILD_TESTS         "Build unit tests (GoogleTest)"            ON)
-
-option(VIX_ENABLE_ORM          "Build Vix ORM module"                     ON)
-option(VIX_ENABLE_WEBSOCKET    "Build Vix WebSocket module"               ON)
-option(VIX_ENABLE_CLI          "Build Vix CLI module"                     ON)
-
-option(VIX_FORCE_FETCH_JSON    "Fetch JSON backend if modules/json missing" ON)
-option(VIX_BENCH_MODE "Disable heavy security/logging checks for benchmarks" OFF)
-option(VIX_ENABLE_MIDDLEWARE   "Build Vix middleware module"              ON)
-option(VIX_ENABLE_HTTP_COMPRESSION "Enable HTTP compression middleware deps (zlib/brotli)" ON)
-
-option(VIX_ENABLE_DB          "Build Vix DB module (core anti-ORM)"         ON)
-
-# DB backends (forwarded to modules/db)
-option(VIX_DB_USE_MYSQL       "Enable MySQL backend in vix_db"              ON)
-option(VIX_DB_USE_SQLITE      "Enable SQLite backend in vix_db"             OFF)
-option(VIX_DB_USE_POSTGRES    "Enable PostgreSQL backend in vix_db"         OFF)
-option(VIX_DB_USE_REDIS       "Enable Redis backend in vix_db"              OFF)
-option(VIX_ENABLE_P2P         "Build Vix P2P module"                        ON)
-option(VIX_ENABLE_P2P_HTTP    "Build Vix P2P HTTP adapter module"          ON)
-option(VIX_ENABLE_CACHE       "Build Vix Cache module"                      ON)
-option(VIX_FETCH_DEPS         "Allow fetching missing deps from the internet" OFF)
-option(VIX_ENABLE_ASYNC        "Build Vix Async module"                       ON)
-option(VIX_ENABLE_VALIDATION "Build Vix Validation module" ON)
-option(VIX_ENABLE_CRYPTO "Build Vix Crypto module" ON)
+option(VIX_ENABLE_WARNINGS         "Enable extra warnings"                                        ON)
+option(VIX_ENABLE_LTO              "Enable IPO/LTO (Release only)"                                OFF)
+option(VIX_MSVC_STATIC_RUNTIME     "Link MSVC runtime statically (/MT)"                           OFF)
+option(VIX_ENABLE_CLANG_TIDY       "Enable clang-tidy if available"                               OFF)
+option(VIX_ENABLE_CPPCHECK         "Enable cppcheck if available"                                 OFF)
+option(VIX_ENABLE_COVERAGE         "Enable coverage flags (Debug only)"                           OFF)
+option(VIX_ENABLE_SANITIZERS       "Enable ASan+UBSan (GCC/Clang only)"                           OFF)
+option(VIX_BUILD_EXAMPLES          "Build umbrella examples in ./examples"                        ON)
+option(VIX_BUILD_TESTS             "Build unit tests (GoogleTest)"                                ON)
+option(VIX_ENABLE_ORM              "Build Vix ORM module"                                         ON)
+option(VIX_ENABLE_WEBSOCKET        "Build Vix WebSocket module"                                   ON)
+option(VIX_ENABLE_CLI              "Build Vix CLI module"                                         ON)
+option(VIX_FORCE_FETCH_JSON        "Fetch JSON backend if modules/json missing"                   ON)
+option(VIX_BENCH_MODE              "Disable heavy security/logging checks for benchmarks"         OFF)
+option(VIX_ENABLE_MIDDLEWARE       "Build Vix middleware module"                                  ON)
+option(VIX_ENABLE_HTTP_COMPRESSION "Enable HTTP compression middleware deps (zlib/brotli)"        ON)
+option(VIX_ENABLE_DB               "Build Vix DB module (core anti-ORM)"                          ON)
+option(VIX_DB_USE_MYSQL            "Enable MySQL backend in vix_db"                               ON)
+option(VIX_DB_USE_SQLITE           "Enable SQLite backend in vix_db"                              OFF)
+option(VIX_DB_USE_POSTGRES         "Enable PostgreSQL backend in vix_db"                          OFF)
+option(VIX_DB_USE_REDIS            "Enable Redis backend in vix_db"                               OFF)
+option(VIX_ENABLE_P2P              "Build Vix P2P module"                                         ON)
+option(VIX_ENABLE_P2P_HTTP         "Build Vix P2P HTTP adapter module"                            ON)
+option(VIX_ENABLE_CACHE            "Build Vix Cache module"                                       ON)
+option(VIX_FETCH_DEPS              "Allow fetching missing deps from the internet"                OFF)
+option(VIX_ENABLE_ASYNC            "Build Vix Async module"                                       ON)
+option(VIX_ENABLE_VALIDATION       "Build Vix Validation module"                                  ON)
+option(VIX_ENABLE_CRYPTO           "Build Vix Crypto module"                                      ON)
+option(VIX_ENABLE_WEBRPC           "Build Vix WebRPC module"                                      ON)
 
 # ----------------------------------------------------
 # Tooling / Static analysis
@@ -349,6 +342,26 @@ elseif (TARGET vix_json)
   set(JSON_TARGET vix_json)
 else()
   message(FATAL_ERROR "JSON backend target not found (expected vix::json or vix_json).")
+endif()
+
+# --- WebRPC (optional) ---
+set(VIX_HAS_WEBRPC OFF)
+
+if (VIX_ENABLE_WEBRPC AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/webrpc/CMakeLists.txt")
+  message(STATUS "Adding 'modules/webrpc'...")
+  add_subdirectory(modules/webrpc webrpc_build)
+
+  # Normalise: expose vix::webrpc
+  if (TARGET vix::webrpc OR TARGET vix_webrpc)
+    set(VIX_HAS_WEBRPC ON)
+    if (TARGET vix_webrpc AND NOT TARGET vix::webrpc)
+      add_library(vix::webrpc ALIAS vix_webrpc)
+    endif()
+  else()
+    message(WARNING "WebRPC module added but no vix::webrpc target was exported.")
+  endif()
+else()
+  message(STATUS "WebRPC: disabled or not present.")
 endif()
 
 # --- Utils ---
@@ -745,6 +758,10 @@ if (TARGET vix::db)
   target_link_libraries(vix INTERFACE vix::db)
 endif()
 
+if (TARGET vix::webrpc)
+  target_link_libraries(vix INTERFACE vix::webrpc)
+endif()
+
 # Link websocket only if it exists
 if (TARGET vix::websocket)
   target_link_libraries(vix INTERFACE vix::websocket)
@@ -1005,6 +1022,11 @@ if (VIX_ENABLE_INSTALL)
             FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
   endif()
 
+  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/webrpc/include")
+    install(DIRECTORY modules/webrpc/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+  endif()
+
   if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/websocket/include")
     install(DIRECTORY modules/websocket/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
             FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
@@ -1122,6 +1144,11 @@ if (VIX_ENABLE_INSTALL)
   set(VIX_HAS_CRYPTO  ${VIX_HAS_CRYPTO})
   set(VIX_WITH_CRYPTO ${VIX_WITH_CRYPTO})
 
+  set(VIX_WITH_WEBRPC OFF)
+  if (VIX_HAS_WEBRPC)
+    set(VIX_WITH_WEBRPC ON)
+  endif()
+
   set(VIX_WITH_VALIDATION OFF)
   if (VIX_HAS_VALIDATION)
     set(VIX_WITH_VALIDATION ON)
@@ -1164,6 +1191,7 @@ message(STATUS "------------------------------------------------------")
 message(STATUS "Vix umbrella configured")
 message(STATUS "Project version   : ${PROJECT_VERSION}")
 message(STATUS "JSON backend      : ${_VIX_JSON_BACKEND}")
+message(STATUS "WebRPC built      : ${VIX_HAS_WEBRPC}")
 message(STATUS "WebSocket built   : ${VIX_HAS_WEBSOCKET}")
 message(STATUS "ORM packaged      : ${VIX_HAS_ORM}")
 message(STATUS "DB built         : ${VIX_HAS_DB}")
@@ -1177,6 +1205,6 @@ message(STATUS "Sanitizers        : ${VIX_ENABLE_SANITIZERS}")
 message(STATUS "Coverage          : ${VIX_ENABLE_COVERAGE}")
 message(STATUS "LTO               : ${VIX_ENABLE_LTO}")
 message(STATUS "Install/Export    : ${VIX_ENABLE_INSTALL}")
-message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P}")
+message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} WEBRPC=${VIX_WITH_WEBRPC} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P}")
 message(STATUS "------------------------------------------------------")
 
