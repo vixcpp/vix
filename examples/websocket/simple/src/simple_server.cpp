@@ -1,7 +1,7 @@
 /**
- * @file simple_server.cpp
- * @brief Minimal WebSocket server example for Vix.cpp
- * @author Gaspard Kirira
+ *
+ *  @file simple_server.cpp
+ *  @author Gaspard Kirira
  *
  *  Copyright 2025, Gaspard Kirira.  All rights reserved.
  *  https://github.com/vixcpp/vix
@@ -9,6 +9,7 @@
  *  that can be found in the License file.
  *
  *  Vix.cpp
+ * @brief Minimal WebSocket server example for Vix.cpp
  *
  * This file provides a compact, beginner-friendly demonstration of how to
  * start a WebSocket server using the Vix.cpp runtime. It serves as the

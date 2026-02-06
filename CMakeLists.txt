@@ -994,7 +994,10 @@ if (VIX_ENABLE_INSTALL)
   # Install headers if present
   if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/core/include")
     install(DIRECTORY modules/core/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+            FILES_MATCHING
+              PATTERN "*.hpp"
+              PATTERN "*.h"
+              PATTERN "*.inc")
   endif()
 
   if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/utils/include")

@@ -121,8 +121,6 @@ function disconnect() {
   }
 }
 
-// Boutons
-
 connectBtn.addEventListener("click", (e) => {
   e.preventDefault();
   connect();
@@ -132,8 +130,6 @@ disconnectBtn.addEventListener("click", (e) => {
   e.preventDefault();
   disconnect();
 });
-
-// Formulaire d'envoi
 
 formEl.addEventListener("submit", (e) => {
   e.preventDefault();

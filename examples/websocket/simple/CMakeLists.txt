@@ -1,4 +1,12 @@
-# ------------------------------------------------------------------------------
+#  @file CMakeLists.cpp
+#  @author Gaspard Kirira
+#
+#  Copyright 2025, Gaspard Kirira.  All rights reserved.
+#  https://github.com/vixcpp/vix
+#  Use of this source code is governed by a MIT license
+#  that can be found in the License file.
+#
+#  Vix.cpp
 #  CMakeLists.txt — Simple WebSocket Examples for Vix.cpp
 #
 #  This CMake file builds two minimal demonstration executables showcasing
@@ -34,12 +42,6 @@
 #  auto-reconnect, and history replay, see:
 #      examples/advanced/
 #
-# ------------------------------------------------------------------------------
-
-# ------------------------------------------------------------------------------
-#  Simple WebSocket Server
-# ------------------------------------------------------------------------------
-
 add_executable(vix-ws-simple-server
     src/simple_server.cpp
 )
@@ -66,10 +68,6 @@ target_link_libraries(vix-ws-minimal-server
     PRIVATE
         vix::websocket
 )
-
-# ------------------------------------------------------------------------------
-#  Simple WebSocket Client
-# ------------------------------------------------------------------------------
 
 add_executable(vix-ws-simple-client
     src/simple_client.cpp

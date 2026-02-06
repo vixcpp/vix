@@ -1,6 +1,6 @@
 /**
- * @file simple_client.cpp
- * @brief Minimal WebSocket client example for Vix.cpp
+ *
+ *  @file simple_client.cpp
  *  @author Gaspard Kirira
  *
  *  Copyright 2025, Gaspard Kirira.  All rights reserved.
@@ -9,7 +9,7 @@
  *  that can be found in the License file.
  *
  *  Vix.cpp
- *
+ * @brief Minimal WebSocket client example for Vix.cpp
  *
  * This example demonstrates the simplest possible interactive WebSocket
  * client built with the Vix.cpp WebSocket module. It connects to a server,
