@@ -66,7 +66,6 @@ body {
 }
 
 /* Layout chat */
-
 .chat {
   display: grid;
   grid-template-columns: 220px 1fr;
@@ -138,7 +137,6 @@ body {
 }
 
 /* Messages */
-
 .message {
   margin-bottom: 8px;
   font-size: 0.9rem;
@@ -160,7 +158,6 @@ body {
 }
 
 /* Form */
-
 .message-form {
   display: flex;
   padding: 8px;

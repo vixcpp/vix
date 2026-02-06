@@ -3,7 +3,7 @@
     "port": 8080,
     "request_timeout": 2000,
     "io_threads": 0,
-    "session_timeout_sec": 120
+    "session_timeout_sec": 300
   },
   "logging": {
     "async": true,

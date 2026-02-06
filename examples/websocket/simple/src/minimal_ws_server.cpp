@@ -9,7 +9,6 @@
  *  that can be found in the License file.
  *
  *  Vix.cpp
- *
  */
 #include <vix/websocket.hpp>
 #include <vix/websocket/protocol.hpp>
@@ -28,20 +27,19 @@ int main()
   std::cout << "[minimal] WebSocket server starting on port "
             << server.port() << std::endl;
 
-  server.on_open([](ws::Session &session)
-                 {
-                       vix::json::kvs payload{
-                           "message", std::string{"Welcome to minimal Vix WebSocket 👋"},
-                       };
+  server.on_open(
+      [](ws::Session &session)
+      {
+        vix::json::kvs payload{
+            "message", std::string{"Welcome to minimal Vix WebSocket 👋"},
+        };
 
-                       // { "type": "system.welcome", "payload": { ... } }
-                       std::string text = ws::JsonMessage::serialize("system.welcome", payload);
+        // { "type": "system.welcome", "payload": { ... } }
+        std::string text = ws::JsonMessage::serialize("system.welcome", payload);
+        session.send_text(text);
+        std::cout << "[minimal] New session opened, welcome sent" << std::endl; });
 
-                       session.send_text(text);
-
-                       std::cout << "[minimal] New session opened, welcome sent" << std::endl; });
-
-  (void)app.ws(
+  [[maybe_unused]] auto &chatRoute = app.ws(
       "/chat",
       [&server](ws::Session &session,
                 const std::string &type,
@@ -55,7 +53,6 @@ int main()
         }
       });
 
-  // 4) Boucle bloquante
   app.run_blocking();
 
   return 0;

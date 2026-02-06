@@ -39,8 +39,8 @@ int main()
   app.get("/connect", [](Request &, Response &res)
           { res.file("./public/connect.html"); });
 
-  app.listen(5178, [](const vix::utils::ServerReadyInfo &info)
-             { console.info("UI API listening on", info.port); });
+  app.listen(5178, []()
+             { console.info("UI API listening on", 5178); });
 
   app.wait();
   runtime.stop();
