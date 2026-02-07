@@ -94,12 +94,22 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Copy compile_commands.json to repo root (tooling QoL)
-add_custom_target(copy-compile-commands ALL
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-          "${CMAKE_BINARY_DIR}/compile_commands.json"
-          "${CMAKE_SOURCE_DIR}/compile_commands.json"
-  COMMENT "Copy compile_commands.json to project root"
-)
+# Disabled on Windows because Visual Studio generators do not reliably
+# generate compile_commands.json and this must never fail a build.
+if (NOT WIN32)
+  if (CMAKE_EXPORT_COMPILE_COMMANDS)
+    add_custom_target(copy-compile-commands ALL
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different
+              "${CMAKE_BINARY_DIR}/compile_commands.json"
+              "${CMAKE_SOURCE_DIR}/compile_commands.json"
+      BYPRODUCTS "${CMAKE_SOURCE_DIR}/compile_commands.json"
+      COMMENT "Copy compile_commands.json to project root"
+      VERBATIM
+    )
+  endif()
+else()
+  message(STATUS "compile_commands.json copy disabled on Windows.")
+endif()
 
 # ----------------------------------------------------
 # Options
