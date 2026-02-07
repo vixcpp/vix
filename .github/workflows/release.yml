@@ -155,7 +155,7 @@ jobs:
           cd $env:GITHUB_WORKSPACE\vcpkg
           .\bootstrap-vcpkg.bat
 
-          .\vcpkg.exe install boost-system:x64-windows
+          .\vcpkg.exe install boost-system:x64-windows sqlite3:x64-windows
           .\vcpkg.exe integrate install
 
           "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Append
