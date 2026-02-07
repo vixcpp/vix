@@ -77,7 +77,11 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             pkg-config ninja-build ca-certificates \
             libboost-all-dev \
-            libssl-dev zlib1g-dev libsqlite3-dev libbrotli-dev
+            nlohmann-json3-dev \
+            libssl-dev \
+            zlib1g-dev \
+            libsqlite3-dev \
+            libbrotli-dev
 
       # -------------------------
       # Linux aarch64 toolchain + arm64 dev libs (cross)
@@ -95,10 +99,12 @@ jobs:
             gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
             pkg-config ninja-build ca-certificates \
             libboost-all-dev:arm64 \
+            nlohmann-json3-dev:arm64 \
             libssl-dev:arm64 \
             zlib1g-dev:arm64 \
             libsqlite3-dev:arm64 \
             libbrotli-dev:arm64
+
 
           cat > toolchain-aarch64.cmake <<'EOF'
           set(CMAKE_SYSTEM_NAME Linux)
