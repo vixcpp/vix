@@ -1,6 +1,9 @@
 name: release
 
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
     inputs:
       tag:
@@ -52,7 +55,7 @@ jobs:
           fetch-depth: 0
 
       - name: Checkout tag (manual input)
-        if: ${{ github.event.inputs.tag != '' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag != '' }}
         shell: bash
         run: |
           set -euxo pipefail
@@ -377,7 +380,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          if [ -n "${{ github.event.inputs.tag }}" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.tag }}" ]; then
             echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
           else
             echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
