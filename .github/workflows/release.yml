@@ -265,6 +265,7 @@ jobs:
           $openssl = (Get-ChildItem "C:\Program Files" -Directory -ErrorAction SilentlyContinue |
             Where-Object { $_.Name -like "OpenSSL-*" } | Select-Object -First 1).FullName
           if (-not $openssl) { $openssl = "C:\Program Files\OpenSSL-Win64" }
+
           Write-Host "OPENSSL_ROOT_DIR=$openssl"
           Write-Host "VCPKG_ROOT=$env:VCPKG_ROOT"
 
@@ -276,12 +277,48 @@ jobs:
             -DOPENSSL_ROOT_DIR="$openssl" `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" 2>&1 | Tee-Object -FilePath cmake_output.log -Append
 
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CMAKE_CONFIGURE_EXIT=$LASTEXITCODE" | Out-File -FilePath $env:GITHUB_ENV -Append
+          exit 0
+
+      - name: Dump vcpkg manifest log (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if ($env:CMAKE_CONFIGURE_EXIT -eq "0") {
+            Write-Host "Configure succeeded. No vcpkg dump needed."
+            exit 0
+          }
+
+          Write-Host "=== vcpkg-manifest-install.log ==="
+          if (Test-Path "build\vcpkg-manifest-install.log") {
+            Get-Content "build\vcpkg-manifest-install.log" -Raw
+          } else {
+            Write-Host "missing build\vcpkg-manifest-install.log"
+          }
+
+          Write-Host "=== vcpkg logs (last 200 lines each) ==="
+          $logRoot = "$env:VCPKG_ROOT\buildtrees"
+          if (Test-Path $logRoot) {
+            Get-ChildItem -Recurse $logRoot -Filter "*.log" -ErrorAction SilentlyContinue |
+              Sort-Object LastWriteTime -Descending |
+              Select-Object -First 8 |
+              ForEach-Object {
+                Write-Host "`n--- $($_.FullName) ---"
+                Get-Content $_.FullName -Tail 200
+              }
+          } else {
+            Write-Host "missing vcpkg buildtrees folder"
+          }
 
       - name: Build (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
+          if ($env:CMAKE_CONFIGURE_EXIT -ne "0") {
+            Write-Host "Configure failed (exit=$env:CMAKE_CONFIGURE_EXIT). Skipping build."
+            exit 1
+          }
+
           "" | Out-File -FilePath build_output.log -Encoding utf8
           cmake --build build --config Release 2>&1 | Tee-Object -FilePath build_output.log -Append
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

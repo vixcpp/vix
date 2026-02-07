@@ -1,134 +1,108 @@
-# Installation — Vix.cpp
-
-## 🚀 Getting Started
-
-## 🧩 Overview
-
-Vix.cpp is a high-performance C++20 web framework inspired by FastAPI, Vue.js, and React.
-It’s modular by design — each component (core, utils, json, orm, cli) can be built independently or together under the umbrella project.pdlog
-
-## 🧩 Build & Developer Setup
-
-### 🧱 Prerequisites
-
-You’ll need the following tools and libraries depending on your platform:
-
-| **Component**       | **Minimum Version**              | **Purpose**              |
-| ------------------- | -------------------------------- | ------------------------ |
-| C++ Compiler        | GCC 12+ / Clang 16+ / MSVC 2022+ | C++20 support            |
-| CMake               | ≥ 3.20                           | Build system             |
-| Boost               | asio, beast                      | Networking (core module) |
-| nlohmann/json       | ≥ 3.11                           | JSON serialization       |
-| spdlog              | ≥ 1.10                           | Logging                  |
-| MySQL Connector/C++ | _optional_                       | ORM (database driver)    |
-
-This guide explains how to build and install Vix.cpp on Linux, macOS, and Windows.
-
----
-
-## 🐧 Linux / Ubuntu
+## Installation
 
 ### Prerequisites
 
+Vix.cpp is a **native C++ runtime** and requires a modern toolchain.
+
+#### All platforms
+- **CMake ≥ 3.20**
+- **C++20 compiler**
+  - GCC ≥ 11
+  - Clang ≥ 14
+  - MSVC ≥ 19.34 (Visual Studio 2022)
+- **Git** (with submodules)
+
+#### Linux
+- `pkg-config`
+- `ninja` (recommended)
+- system development packages:
+  - Boost
+  - OpenSSL
+  - SQLite
+  - zlib / brotli (optional)
+
+**Example (Ubuntu):**
 ```bash
 sudo apt update
-sudo apt install -y \ g++-12 cmake make git \                            # Build tools
-  libboost-all-dev \                                 # Boost (includes asio, beast)
-  nlohmann-json3-dev \                               # JSON (nlohmann/json)
-  libspdlog-dev \                                    # Logging (spdlog)
-  libmysqlcppconn-dev                                # Optional: MySQL Connector/C++ for ORM
+sudo apt install -y \
+  build-essential cmake ninja-build pkg-config \
+  libboost-all-dev libssl-dev libsqlite3-dev
 ```
 
-Optional dependencies:
+#### macOS
+- Xcode Command Line Tools
+- Homebrew
 
 ```bash
-sudo apt install -y libmysqlcppconn-dev libsqlite3-dev
+brew install cmake ninja pkg-config boost openssl@3
 ```
 
-### Build
-
-```bash
-git clone https://github.com/vixcpp/vix.git
-cd vix
-git submodule update --init --recursive
-cmake -S . -B build-rel -DCMAKE_BUILD_TYPE=Release
-cmake --build build-rel -j
-sudo cmake --install build-rel --prefix /usr/local
-```
+#### Windows
+- **Visual Studio 2022** (Desktop development with C++)
+- **Git**
+- **PowerShell**
+- **vcpkg** (handled automatically by the install script)
 
 ---
 
-## 🍎 macOS
+### Install Vix.cpp (recommended)
 
-### Prerequisites
+Vix provides platform-specific install scripts that:
+- fetch dependencies
+- configure the build
+- produce the `vix` binary
 
-Install Homebrew first, then:
-
+#### Linux / macOS
 ```bash
-brew install cmake ninja llvm boost nlohmann-json spdlog fmt mysql sqlite3
+./install.sh
 ```
 
-### Build
-
+You may need:
 ```bash
-cmake -S . -B build-rel -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build-rel -j
-sudo cmake --install build-rel
+chmod +x install.sh
 ```
+
+#### Windows (PowerShell)
+```powershell
+.\install.ps1
+```
+
+> On Windows, dependencies such as **Boost** and **SQLite** are installed automatically via **vcpkg**.
 
 ---
 
-## 🪟 Windows
+### Verify installation
 
-### Requirements
-
-- Visual Studio 2022 (with C++ Desktop workload)
-- [vcpkg](https://github.com/microsoft/vcpkg)
-- Git Bash or PowerShell
-
-### Build
-
-```bash
-git clone https://github.com/vixcpp/vix.git
-cd vix
-git submodule update --init --recursive
-
-cmake -S . -B build-rel -G "Ninja" ^
-  -DCMAKE_BUILD_TYPE=Release ^
-  -DCMAKE_TOOLCHAIN_FILE=C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake
-
-cmake --build build-rel -j
-```
-
----
-
-## ⚙️ Verify Installation
+After installation, verify that `vix` is available:
 
 ```bash
 vix --version
 ```
 
-Output example:
-
+or on Windows:
+```powershell
+vix.exe --version
 ```
-Vix.cpp v1.9.0 (C++20, GCC 13, Ubuntu 24.04)
-```
 
-If `vix` is not found, ensure `/usr/local/bin` (or your custom prefix) is in your PATH.
+You should see the current release version printed.
 
 ---
 
-## 🧩 Troubleshooting
+### Script mode (no project setup)
 
-- **Missing headers** — Ensure all dependencies are installed (Boost, fmt, spdlog).
-- **CMake errors** — Check `CMAKE_CXX_STANDARD` (must be ≥ 20).
-- **Link errors on Linux** — Use `lld` (`-fuse-ld=lld`) for faster and cleaner linking.
-- **Permission denied on install** — Add `sudo` to the `cmake --install` command.
+Once installed, you can run C++ files directly:
+
+```bash
+vix run main.cpp
+vix dev main.cpp
+```
+
+This compiles, links, and runs your code with the Vix runtime automatically.
 
 ---
 
-## ✅ Next Steps
+### Manual build (advanced)
 
-- [Quick Start](./quick-start.md)
-- [Build & Packaging](./build.md) _(optional)_
-- [Benchmarks](./benchmarks.md)
+If you prefer full control, see:
+- **Build & Installation**
+
