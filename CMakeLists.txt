@@ -13,6 +13,15 @@ cmake_minimum_required(VERSION 3.20)
 #   cmake --build build -j
 # ====================================================================
 
+# Policies for newer CMake versions
+if (POLICY CMP0126)
+  cmake_policy(SET CMP0126 NEW)
+endif()
+
+if (POLICY CMP0167)
+  cmake_policy(SET CMP0167 NEW)
+endif()
+
 # Resolve umbrella version from git (preferred)
 set(_VIX_VERSION_FALLBACK "0.0.0")
 
@@ -244,20 +253,58 @@ add_library(vix INTERFACE)
 
 # ----------------------------------------------------
 # Third-party: Boost (required by core/websocket headers: Boost.Beast)
+# Prefer CONFIG mode (CMake 4+), fallback to module mode if needed.
 # ----------------------------------------------------
-find_package(Boost REQUIRED COMPONENTS system)
 
-# Certains Boost exposent Boost::headers au lieu de Boost::boost
+set(VIX_WITH_BOOST ON)
+
+set(_VIX_BOOST_OK OFF)
+
+# Try CONFIG first (preferred with CMake 4+)
+find_package(Boost CONFIG QUIET COMPONENTS system)
+
+if (Boost_FOUND)
+  set(_VIX_BOOST_OK ON)
+  message(STATUS "Boost found (CONFIG)")
+else()
+  # Fallback for environments without BoostConfig.cmake
+  find_package(Boost QUIET COMPONENTS system)
+  if (Boost_FOUND)
+    set(_VIX_BOOST_OK ON)
+    message(STATUS "Boost found (FindBoost fallback)")
+  endif()
+endif()
+
+if (NOT _VIX_BOOST_OK)
+  message(FATAL_ERROR "Boost is required (core/websocket). Install Boost (headers + system).")
+endif()
+
+# Normalize targets
 if (TARGET Boost::headers AND NOT TARGET Boost::boost)
   add_library(Boost::boost ALIAS Boost::headers)
 endif()
 
 add_library(vix_thirdparty_boost INTERFACE)
 add_library(vix::thirdparty_boost ALIAS vix_thirdparty_boost)
-target_link_libraries(vix_thirdparty_boost INTERFACE Boost::boost Boost::system)
 
-# Propagate to umbrella
+# Some distros do not provide Boost::system target in module mode, so guard it
+if (TARGET Boost::system)
+  target_link_libraries(vix_thirdparty_boost INTERFACE Boost::boost Boost::system)
+else()
+  # Module mode can expose include dirs + libs variables
+  if (DEFINED Boost_INCLUDE_DIRS)
+    target_include_directories(vix_thirdparty_boost SYSTEM INTERFACE ${Boost_INCLUDE_DIRS})
+  endif()
+  if (DEFINED Boost_LIBRARIES)
+    target_link_libraries(vix_thirdparty_boost INTERFACE ${Boost_LIBRARIES})
+  else()
+    # At least headers
+    target_link_libraries(vix_thirdparty_boost INTERFACE Boost::boost)
+  endif()
+endif()
+
 target_link_libraries(vix INTERFACE vix::thirdparty_boost)
+
 
 # ----------------------------------------------------
 # Third-party: Asio (standalone, header-only)

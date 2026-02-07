@@ -66,16 +66,17 @@ jobs:
         uses: lukka/get-cmake@latest
 
       # -------------------------
-      # Linux deps (native only)
+      # Linux deps (native x86_64)
       # -------------------------
-      - name: Install deps (Linux)
-        if: runner.os == 'Linux' && matrix.arch != 'aarch64'
+      - name: Install deps (Linux x86_64)
+        if: runner.os == 'Linux' && matrix.arch == 'x86_64'
         shell: bash
         run: |
           set -euxo pipefail
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             pkg-config ninja-build ca-certificates \
+            libboost-all-dev \
             libssl-dev zlib1g-dev libsqlite3-dev libbrotli-dev
 
       # -------------------------
@@ -93,6 +94,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
             pkg-config ninja-build ca-certificates \
+            libboost-all-dev:arm64 \
             libssl-dev:arm64 \
             zlib1g-dev:arm64 \
             libsqlite3-dev:arm64 \
@@ -116,6 +118,11 @@ jobs:
           set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
           set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
           set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+
+          # Force pkg-config to use arm64 .pc files (avoid host x86_64)
+          set(PKG_CONFIG_EXECUTABLE /usr/bin/pkg-config)
+          set(ENV{PKG_CONFIG_LIBDIR} "/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig")
+          set(ENV{PKG_CONFIG_PATH} "")
           EOF
 
       # -------------------------
@@ -127,16 +134,25 @@ jobs:
         run: |
           set -euxo pipefail
           brew update
-          brew install pkg-config openssl@3 boost || true
+          brew install pkg-config openssl@3 boost
 
       # -------------------------
-      # Windows deps
+      # Windows deps (OpenSSL + Boost via vcpkg)
       # -------------------------
       - name: Install deps (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           choco install openssl -y
+
+          git clone https://github.com/microsoft/vcpkg $env:GITHUB_WORKSPACE\vcpkg
+          cd $env:GITHUB_WORKSPACE\vcpkg
+          .\bootstrap-vcpkg.bat
+
+          .\vcpkg.exe install boost-system:x64-windows
+          .\vcpkg.exe integrate install
+
+          "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       # -------------------------
       # Configure (Unix)
@@ -171,8 +187,7 @@ jobs:
 
               BREW_BOOST="$(brew --prefix boost 2>/dev/null || true)"
               if [ -n "$BREW_BOOST" ] && [ -d "$BREW_BOOST" ]; then
-                CMAKE_ARGS+=(-DBoost_ROOT="$BREW_BOOST")
-                CMAKE_ARGS+=(-DBoost_NO_SYSTEM_PATHS=ON)
+                CMAKE_ARGS+=(-DBoost_ROOT="$BREW_BOOST" -DBoost_NO_SYSTEM_PATHS=ON)
               fi
             fi
           fi
@@ -208,7 +223,6 @@ jobs:
           : > build_output.log
           cmake --build build -j 2>&1 | tee -a build_output.log
 
-      # Upload logs into a UNIQUE folder to avoid extraction collisions
       - name: Collect logs (Unix)
         if: always() && runner.os != 'Windows'
         shell: bash
@@ -246,13 +260,15 @@ jobs:
             Where-Object { $_.Name -like "OpenSSL-*" } | Select-Object -First 1).FullName
           if (-not $openssl) { $openssl = "C:\Program Files\OpenSSL-Win64" }
           Write-Host "OPENSSL_ROOT_DIR=$openssl"
+          Write-Host "VCPKG_ROOT=$env:VCPKG_ROOT"
 
           cmake -S . -B build -A x64 `
             -DVIX_ENABLE_INSTALL=OFF `
             -DVIX_DB_USE_MYSQL=OFF `
             -DVIX_CORE_WITH_MYSQL=OFF `
             -DVIX_ENABLE_HTTP_COMPRESSION=OFF `
-            -DOPENSSL_ROOT_DIR="$openssl" 2>&1 | Tee-Object -FilePath cmake_output.log -Append
+            -DOPENSSL_ROOT_DIR="$openssl" `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" 2>&1 | Tee-Object -FilePath cmake_output.log -Append
 
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
