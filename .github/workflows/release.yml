@@ -127,7 +127,7 @@ jobs:
         run: |
           set -euxo pipefail
           brew update
-          brew install pkg-config openssl@3 || true
+          brew install pkg-config openssl@3 boost || true
 
       # -------------------------
       # Windows deps
@@ -167,6 +167,12 @@ jobs:
               BREW_SSL="$(brew --prefix openssl@3 2>/dev/null || true)"
               if [ -n "$BREW_SSL" ] && [ -d "$BREW_SSL" ]; then
                 CMAKE_ARGS+=(-DOPENSSL_ROOT_DIR="$BREW_SSL")
+              fi
+
+              BREW_BOOST="$(brew --prefix boost 2>/dev/null || true)"
+              if [ -n "$BREW_BOOST" ] && [ -d "$BREW_BOOST" ]; then
+                CMAKE_ARGS+=(-DBoost_ROOT="$BREW_BOOST")
+                CMAKE_ARGS+=(-DBoost_NO_SYSTEM_PATHS=ON)
               fi
             fi
           fi
