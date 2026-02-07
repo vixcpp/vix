@@ -7,36 +7,63 @@ find_dependency(Threads REQUIRED)
 find_dependency(fmt CONFIG REQUIRED)
 find_dependency(spdlog CONFIG REQUIRED)
 
+# ---- Boost (required by core/websocket headers: Boost.Beast) ----
+if (@VIX_WITH_BOOST@)
+  find_dependency(Boost REQUIRED COMPONENTS system)
+
+  # Some environments expose Boost headers as Boost::headers, others as Boost::boost.
+  # Ensure Boost::boost exists (headers target).
+  if (TARGET Boost::headers AND NOT TARGET Boost::boost)
+    add_library(Boost::boost ALIAS Boost::headers)
+  endif()
+
+  if (NOT TARGET Boost::boost)
+    message(FATAL_ERROR "Boost requested but Boost::boost (headers) target is unavailable.")
+  endif()
+
+  if (NOT TARGET Boost::system)
+    message(FATAL_ERROR "Boost requested but Boost::system target is unavailable.")
+  endif()
+endif()
+
+# ---- OpenSSL ----
 if (@VIX_WITH_OPENSSL@)
   find_dependency(OpenSSL REQUIRED)
 endif()
 
+# ---- JSON backend ----
 if (@VIX_WITH_JSON@)
   find_dependency(nlohmann_json CONFIG REQUIRED)
 endif()
 
+# ---- SQLite ----
 if (@VIX_WITH_SQLITE@)
   find_dependency(SQLite3 REQUIRED)
 
-  if (TARGET SQLite::SQLite3)
-  elseif (TARGET SQLite3::SQLite3)
+  # Normalize to SQLite::SQLite3 because many projects use that name.
+  if (TARGET SQLite3::SQLite3 AND NOT TARGET SQLite::SQLite3)
     add_library(SQLite::SQLite3 ALIAS SQLite3::SQLite3)
-  elseif (TARGET sqlite3)
+  elseif (TARGET sqlite3 AND NOT TARGET SQLite::SQLite3)
     add_library(SQLite::SQLite3 ALIAS sqlite3)
   endif()
 
   if (NOT TARGET SQLite::SQLite3)
-    message(FATAL_ERROR "SQLite requested but no usable SQLite target was found.")
+    message(FATAL_ERROR "SQLite requested but no usable SQLite target was found (SQLite3::SQLite3 / sqlite3).")
   endif()
 endif()
 
+# ---- ZLIB (gzip) ----
 if (@VIX_WITH_ZLIB@)
-  find_dependency(ZLIB QUIET)
+  # If Vix was built with gzip support, zlib must be present.
+  find_dependency(ZLIB REQUIRED)
+
+  # Some FindZLIB variants set ZLIB_FOUND but don't define ZLIB::ZLIB.
   if (ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
     add_library(ZLIB::ZLIB INTERFACE IMPORTED)
     target_include_directories(ZLIB::ZLIB INTERFACE "${ZLIB_INCLUDE_DIRS}")
     target_link_libraries(ZLIB::ZLIB INTERFACE "${ZLIB_LIBRARIES}")
   endif()
+
   if (NOT TARGET ZLIB::ZLIB)
     message(FATAL_ERROR "Vix built with gzip support but ZLIB::ZLIB is unavailable.")
   endif()
@@ -90,8 +117,7 @@ endif()
 include("${CMAKE_CURRENT_LIST_DIR}/VixTargets.cmake")
 
 # ---- third-party exported targets (aliases) ----
-# Re-create ALIAS targets that are used in-tree, because ALIAS targets
-# are not exported by CMake.
+# Re-create ALIAS targets that are used in-tree, because ALIAS targets are not exported by CMake.
 if (TARGET vix_thirdparty_asio AND NOT TARGET vix::thirdparty_asio)
   add_library(vix::thirdparty_asio ALIAS vix_thirdparty_asio)
 endif()
@@ -123,3 +149,24 @@ if (VIX_HAS_P2P AND NOT TARGET vix::p2p)
 endif()
 
 set(VIX_WITH_P2P @VIX_WITH_P2P@)
+
+# Optional flags you may export later (kept for forward compatibility)
+set(VIX_HAS_TIME @VIX_HAS_TIME@)
+if (VIX_HAS_TIME AND NOT TARGET vix::time)
+  set(VIX_HAS_TIME OFF)
+endif()
+
+set(VIX_WITH_VALIDATION @VIX_WITH_VALIDATION@)
+if (VIX_WITH_VALIDATION AND NOT TARGET vix::validation)
+  set(VIX_WITH_VALIDATION OFF)
+endif()
+
+set(VIX_WITH_WEBRPC @VIX_WITH_WEBRPC@)
+if (VIX_WITH_WEBRPC AND NOT TARGET vix::webrpc)
+  set(VIX_WITH_WEBRPC OFF)
+endif()
+
+set(VIX_WITH_CONVERSION @VIX_WITH_CONVERSION@)
+if (VIX_WITH_CONVERSION AND NOT TARGET vix::conversion)
+  set(VIX_WITH_CONVERSION OFF)
+endif()

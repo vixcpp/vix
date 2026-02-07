@@ -11,6 +11,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.event.inputs.tag || github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-release:
     name: build (${{ matrix.vixos }} / ${{ matrix.arch }})
@@ -47,7 +51,6 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      # If user provided a tag via workflow_dispatch, checkout that tag explicitly
       - name: Checkout tag (manual input)
         if: ${{ github.event.inputs.tag != '' }}
         shell: bash
@@ -63,7 +66,7 @@ jobs:
       # Linux deps (native only)
       # -------------------------
       - name: Install deps (Linux)
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && matrix.arch != 'aarch64'
         shell: bash
         run: |
           set -euxo pipefail
@@ -148,14 +151,11 @@ jobs:
             -DVIX_DB_USE_MYSQL=OFF
             -DVIX_CORE_WITH_MYSQL=OFF
             -DVIX_ENABLE_HTTP_COMPRESSION=OFF
-            --log-level=VERBOSE
-            --debug-output
           )
 
           if [ "${{ runner.os }}" = "Linux" ] && [ "${{ matrix.arch }}" = "aarch64" ]; then
             CMAKE_ARGS+=(
               -DCMAKE_TOOLCHAIN_FILE="${GITHUB_WORKSPACE}/toolchain-aarch64.cmake"
-              --debug-find
             )
           fi
 
@@ -168,7 +168,8 @@ jobs:
             fi
           fi
 
-          cmake "${CMAKE_ARGS[@]}" 2>&1 | tee cmake_output.log
+          : > cmake_output.log
+          cmake "${CMAKE_ARGS[@]}" --log-level=VERBOSE --debug-output 2>&1 | tee -a cmake_output.log
 
       - name: Dump CMake logs (Unix)
         if: failure() && runner.os != 'Windows'
@@ -190,62 +191,6 @@ jobs:
           echo "=== cmake_output.log (tail) ==="
           test -f cmake_output.log && tail -n 200 cmake_output.log || echo "missing"
 
-      # Upload logs into a UNIQUE folder to avoid extraction collisions
-      - name: Collect logs (Unix)
-        if: always() && runner.os != 'Windows'
-        shell: bash
-        run: |
-          set -euxo pipefail
-          OUT="logs/${{ matrix.vixos }}-${{ matrix.arch }}"
-          mkdir -p "$OUT"
-          echo "no logs captured (step failed before logs were generated)" > "$OUT/_no_logs.txt"
-          test -f cmake_output.log && cp -f cmake_output.log "$OUT/" || true
-          test -f build_output.log && cp -f build_output.log "$OUT/" || true
-          test -f build/CMakeCache.txt && cp -f build/CMakeCache.txt "$OUT/" || true
-          test -f build/CMakeFiles/CMakeError.log && cp -f build/CMakeFiles/CMakeError.log "$OUT/" || true
-          test -f build/CMakeFiles/CMakeOutput.log && cp -f build/CMakeFiles/CMakeOutput.log "$OUT/" || true
-          test -f build/CMakeFiles/CMakeConfigureLog.yaml && cp -f build/CMakeFiles/CMakeConfigureLog.yaml "$OUT/" || true
-          find logs -type f -maxdepth 3 -print || true
-
-      - name: Collect logs (Windows)
-        if: always() && runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $out = "logs/${{ matrix.vixos }}-${{ matrix.arch }}"
-          New-Item -ItemType Directory -Force -Path $out | Out-Null
-
-          if (Test-Path "cmake_output.log") {
-            Copy-Item "cmake_output.log" $out -Force
-          }
-
-          if (Test-Path "build\CMakeCache.txt") {
-            Copy-Item "build\CMakeCache.txt" $out -Force
-          }
-
-          if (Test-Path "build\CMakeFiles\CMakeError.log") {
-            Copy-Item "build\CMakeFiles\CMakeError.log" $out -Force
-          }
-
-          if (Test-Path "build\CMakeFiles\CMakeOutput.log") {
-            Copy-Item "build\CMakeFiles\CMakeOutput.log" $out -Force
-          }
-
-          if (Test-Path "build\CMakeFiles\CMakeConfigureLog.yaml") {
-            Copy-Item "build\CMakeFiles\CMakeConfigureLog.yaml" $out -Force
-          }
-
-          if (-not (Get-ChildItem -File $out -ErrorAction SilentlyContinue)) {
-            "no logs captured (step failed before logs were generated)" | Out-File (Join-Path $out "_no_logs.txt") -Encoding utf8
-          }
-
-          if (Test-Path "build_output.log") { Copy-Item "build_output.log" $out -Force }
-
-          if (Test-Path "build") {
-            Compress-Archive -Path "build\*" -DestinationPath "$out\build.zip" -Force
-          }
-
-          Get-ChildItem -Recurse -Depth 3 logs | ForEach-Object { $_.FullName }
-
       - name: Build (Unix)
         if: runner.os != 'Windows'
         shell: bash
@@ -254,17 +199,24 @@ jobs:
           : > build_output.log
           cmake --build build -j 2>&1 | tee -a build_output.log
 
-      - name: Collect logs (post-build) (Unix)
+      # Upload logs into a UNIQUE folder to avoid extraction collisions
+      - name: Collect logs (Unix)
         if: always() && runner.os != 'Windows'
         shell: bash
         run: |
           set -euxo pipefail
           OUT="logs/${{ matrix.vixos }}-${{ matrix.arch }}"
           mkdir -p "$OUT"
+          echo "logs collected" > "$OUT/_ok.txt"
+          test -f cmake_output.log && cp -f cmake_output.log "$OUT/" || true
           test -f build_output.log && cp -f build_output.log "$OUT/" || true
+          test -f build/CMakeCache.txt && cp -f build/CMakeCache.txt "$OUT/" || true
+          test -f build/CMakeFiles/CMakeError.log && cp -f build/CMakeFiles/CMakeError.log "$OUT/" || true
+          test -f build/CMakeFiles/CMakeOutput.log && cp -f build/CMakeFiles/CMakeOutput.log "$OUT/" || true
+          test -f build/CMakeFiles/CMakeConfigureLog.yaml && cp -f build/CMakeFiles/CMakeConfigureLog.yaml "$OUT/" || true
           find logs -type f -maxdepth 3 -print || true
 
-      - name: Upload logs (configure + build)
+      - name: Upload logs (Unix)
         if: always() && runner.os != 'Windows'
         uses: actions/upload-artifact@v4
         with:
@@ -303,16 +255,26 @@ jobs:
           cmake --build build --config Release 2>&1 | Tee-Object -FilePath build_output.log -Append
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Collect logs (post-build) (Windows)
+      - name: Collect logs (Windows)
         if: always() && runner.os == 'Windows'
         shell: pwsh
         run: |
           $out = "logs/${{ matrix.vixos }}-${{ matrix.arch }}"
           New-Item -ItemType Directory -Force -Path $out | Out-Null
+
           if (Test-Path "cmake_output.log") { Copy-Item "cmake_output.log" $out -Force }
           if (Test-Path "build_output.log") { Copy-Item "build_output.log" $out -Force }
 
-      - name: Upload logs (configure + build)
+          if (Test-Path "build\CMakeCache.txt") { Copy-Item "build\CMakeCache.txt" $out -Force }
+          if (Test-Path "build\CMakeFiles\CMakeError.log") { Copy-Item "build\CMakeFiles\CMakeError.log" $out -Force }
+          if (Test-Path "build\CMakeFiles\CMakeOutput.log") { Copy-Item "build\CMakeFiles\CMakeOutput.log" $out -Force }
+          if (Test-Path "build\CMakeFiles\CMakeConfigureLog.yaml") { Copy-Item "build\CMakeFiles\CMakeConfigureLog.yaml" $out -Force }
+
+          if (Test-Path "build") {
+            Compress-Archive -Path "build\*" -DestinationPath "$out\build.zip" -Force
+          }
+
+      - name: Upload logs (Windows)
         if: always() && runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
@@ -337,7 +299,7 @@ jobs:
           if [ -z "$BIN" ]; then
             echo "Expected vix binary not found. Listing build/ ..." >&2
             ls -la build || true
-            find build -maxdepth 5 -type f -name vix -print || true
+            find build -maxdepth 6 -type f -name vix -print || true
             exit 1
           fi
 
@@ -383,6 +345,7 @@ jobs:
         with:
           name: dist-${{ matrix.vixos }}-${{ matrix.arch }}
           path: dist/*
+          if-no-files-found: error
 
   publish:
     name: publish (github release)
@@ -394,12 +357,12 @@ jobs:
         with:
           path: dist-all
 
-      - name: Flatten
+      - name: Flatten dist only
         shell: bash
         run: |
           set -euxo pipefail
           mkdir -p dist
-          find dist-all -type f -maxdepth 4 -print0 | while IFS= read -r -d '' f; do
+          find dist-all -type f -path "*dist-*/dist/*" -print0 | while IFS= read -r -d '' f; do
             base="$(basename "$f")"
             if [ -f "dist/$base" ]; then
               echo "Collision while flattening: $base" >&2
@@ -409,7 +372,22 @@ jobs:
           done
           ls -la dist
 
+      - name: Determine tag
+        id: tag
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create GitHub Release + upload
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
+          draft: false
+          prerelease: false
           files: dist/*
