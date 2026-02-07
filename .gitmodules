@@ -87,3 +87,7 @@
 	path = modules/webrpc
 	url = https://github.com/vixcpp/webrpc.git
 	branch = dev
+[submodule "modules/time"]
+	path = modules/time
+	url = https://github.com/vixcpp/time.git
+	branch = dev

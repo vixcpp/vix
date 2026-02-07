@@ -124,6 +124,9 @@ option(VIX_ENABLE_ASYNC            "Build Vix Async module"                     
 option(VIX_ENABLE_VALIDATION       "Build Vix Validation module"                                  ON)
 option(VIX_ENABLE_CRYPTO           "Build Vix Crypto module"                                      ON)
 option(VIX_ENABLE_WEBRPC           "Build Vix WebRPC module"                                      ON)
+option(VIX_ENABLE_TIME             "Build Vix Time module"                                        ON)
+option(VIX_TIME_BUILD_TESTS        "Build vix::time tests"                                        OFF)
+option(VIX_TIME_BUILD_BENCH        "Build vix::time benchmarks"                                   OFF)
 
 # ----------------------------------------------------
 # Tooling / Static analysis
@@ -370,6 +373,30 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/utils/CMakeLists.txt")
   add_subdirectory(modules/utils utils_build)
 else()
   message(FATAL_ERROR "Missing 'modules/utils'. Run: git submodule update --init --recursive")
+endif()
+
+# --- Time (foundation module) ---
+set(VIX_HAS_TIME OFF)
+
+if (VIX_ENABLE_TIME AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/time/CMakeLists.txt")
+  message(STATUS "Adding 'modules/time'...")
+
+  set(VIX_TIME_BUILD_TESTS ${VIX_TIME_BUILD_TESTS} CACHE BOOL "" FORCE)
+  set(VIX_TIME_BUILD_BENCH ${VIX_TIME_BUILD_BENCH} CACHE BOOL "" FORCE)
+
+  add_subdirectory(modules/time time_build)
+
+  if (TARGET vix::time OR TARGET vix_time)
+    set(VIX_HAS_TIME ON)
+
+    if (TARGET vix_time AND NOT TARGET vix::time)
+      add_library(vix::time ALIAS vix_time)
+    endif()
+  else()
+    message(WARNING "Time module added but no vix::time target was exported.")
+  endif()
+else()
+  message(STATUS "Time: disabled or not present.")
 endif()
 
 # --- Crypto (optional) ---
@@ -718,6 +745,10 @@ target_link_libraries(vix INTERFACE
   ${JSON_TARGET}
 )
 
+if (TARGET vix::time)
+  target_link_libraries(vix INTERFACE vix::time)
+endif()
+
 if (TARGET vix::conversion)
   target_link_libraries(vix INTERFACE vix::conversion)
 endif()
@@ -966,6 +997,11 @@ if (VIX_ENABLE_HTTP_COMPRESSION AND ZLIB_FOUND)
   set(VIX_WITH_ZLIB ON)
 endif()
 
+set(VIX_HAS_TIME OFF)
+if (VIX_HAS_TIME)
+  set(VIX_HAS_TIME ON)
+endif()
+
 set(VIX_WITH_MYSQL OFF)
 if (VIX_HAS_DB AND VIX_DB_USE_MYSQL)
   set(VIX_WITH_MYSQL ON)
@@ -1003,6 +1039,14 @@ if (VIX_ENABLE_INSTALL)
   if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/utils/include")
     install(DIRECTORY modules/utils/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
             FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+  endif()
+
+  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/time/include")
+    install(DIRECTORY modules/time/include/
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+            FILES_MATCHING
+              PATTERN "*.hpp"
+              PATTERN "*.h")
   endif()
 
   if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/crypto/include")
@@ -1133,6 +1177,7 @@ if (VIX_ENABLE_INSTALL)
   set(VIX_WITH_P2P   ${VIX_WITH_P2P})
   set(VIX_HAS_P2P_HTTP  ${VIX_HAS_P2P_HTTP})
   set(VIX_WITH_P2P_HTTP ${VIX_WITH_P2P_HTTP})
+  set(VIX_HAS_TIME ${VIX_HAS_TIME})
 
   set(VIX_WITH_CONVERSION OFF)
   if (VIX_HAS_CONVERSION)
@@ -1194,6 +1239,7 @@ message(STATUS "------------------------------------------------------")
 message(STATUS "Vix umbrella configured")
 message(STATUS "Project version   : ${PROJECT_VERSION}")
 message(STATUS "JSON backend      : ${_VIX_JSON_BACKEND}")
+message(STATUS "Time module       : ${VIX_HAS_TIME}")
 message(STATUS "WebRPC built      : ${VIX_HAS_WEBRPC}")
 message(STATUS "WebSocket built   : ${VIX_HAS_WEBSOCKET}")
 message(STATUS "ORM packaged      : ${VIX_HAS_ORM}")
