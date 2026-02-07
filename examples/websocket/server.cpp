@@ -53,11 +53,7 @@ int main()
 
     app.get("/", [](auto &, auto &res)
     {
-      nlohmann::json j{
-        {"message", "Hello from Vix.cpp minimal example"},
-        {"framework", "Vix.cpp"}
-      };
-      res.json(j);
+      res.json({"message", "Hello form Vix.cpp"});
     });
 
     app.get("/ws/poll", [&ws](auto &req, auto &res)
@@ -73,11 +69,10 @@ int main()
     app.get("/ws/status", [&ws](auto &, auto &res)
     {
       auto b = ws.long_polling_bridge();
-      nlohmann::json j{
-        {"bridge_attached", static_cast<bool>(b)},
+      res.json(json::kv({
+       {"bridge_attached", static_cast<bool>(b)},
         {"sessions", b ? static_cast<int>(b->session_count()) : 0}
-      };
-      res.json(j);
+      }));
     });
 
   ws.on_typed_message([&ws](auto &, const std::string &type, const vix::json::kvs &payload)
