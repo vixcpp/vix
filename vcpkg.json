@@ -1,0 +1,8 @@
+{
+  "name": "vix",
+  "version-string": "dev",
+  "dependencies": [
+    "boost",
+    "sqlite3"
+  ]
+}
