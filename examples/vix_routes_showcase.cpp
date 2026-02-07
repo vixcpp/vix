@@ -282,13 +282,6 @@ static void register_body_routes(App &app)
       "body", body
     }); });
 
-  // Parse JSON body (req.json()) and echo it back
-  app.get("/echo/json", [](Request &req, Response &res)
-          {
-    const auto& j = req.json();
-    // returns parsed JSON as response
-    res.json(j); });
-
   // Read JSON fields safely (show the style; exact fields depend on your payload)
   app.get("/echo/json/fields", [](Request &req, Response &res)
           {
