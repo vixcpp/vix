@@ -193,7 +193,7 @@ jobs:
 
               BREW_BOOST="$(brew --prefix boost 2>/dev/null || true)"
               if [ -n "$BREW_BOOST" ] && [ -d "$BREW_BOOST" ]; then
-                CMAKE_ARGS+=(-DBoost_ROOT="$BREW_BOOST" -DBoost_NO_SYSTEM_PATHS=ON)
+                CMAKE_ARGS+=(-DBoost_ROOT="$BREW_BOOST")
               fi
             fi
           fi
