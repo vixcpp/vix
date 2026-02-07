@@ -241,6 +241,24 @@ endif()
 # Umbrella INTERFACE target (created early)
 # ----------------------------------------------------
 add_library(vix INTERFACE)
+
+# ----------------------------------------------------
+# Third-party: Boost (required by core/websocket headers: Boost.Beast)
+# ----------------------------------------------------
+find_package(Boost REQUIRED COMPONENTS system)
+
+# Certains Boost exposent Boost::headers au lieu de Boost::boost
+if (TARGET Boost::headers AND NOT TARGET Boost::boost)
+  add_library(Boost::boost ALIAS Boost::headers)
+endif()
+
+add_library(vix_thirdparty_boost INTERFACE)
+add_library(vix::thirdparty_boost ALIAS vix_thirdparty_boost)
+target_link_libraries(vix_thirdparty_boost INTERFACE Boost::boost Boost::system)
+
+# Propagate to umbrella
+target_link_libraries(vix INTERFACE vix::thirdparty_boost)
+
 # ----------------------------------------------------
 # Third-party: Asio (standalone, header-only)
 # Exposes: vix::thirdparty_asio
@@ -274,7 +292,15 @@ if (VIX_ENABLE_HTTP_COMPRESSION)
   if (ZLIB_FOUND)
     message(STATUS "Compression: zlib found -> gzip enabled")
     target_compile_definitions(vix INTERFACE VIX_HAS_ZLIB=1)
-    target_link_libraries(vix INTERFACE ZLIB::ZLIB)
+
+    if (TARGET ZLIB::ZLIB)
+      target_link_libraries(vix INTERFACE ZLIB::ZLIB)
+    else()
+      add_library(ZLIB::ZLIB INTERFACE IMPORTED)
+      target_include_directories(ZLIB::ZLIB INTERFACE "${ZLIB_INCLUDE_DIRS}")
+      target_link_libraries(ZLIB::ZLIB INTERFACE "${ZLIB_LIBRARIES}")
+      target_link_libraries(vix INTERFACE ZLIB::ZLIB)
+    endif()
   else()
     message(STATUS "Compression: zlib not found -> gzip disabled")
   endif()
@@ -987,19 +1013,19 @@ option(VIX_ENABLE_INSTALL "Enable install/export rules for packaging" ON)
 
 # Compute feature flags as real ON/OFF at configure-time (NO generator expressions)
 set(VIX_WITH_JSON     ON)     # umbrella always links JSON backend
-set(VIX_WITH_BOOST_FS OFF)    # do NOT require Boost for consumers by default
-set(VIX_WITH_OPENSSL  ON)     # adjust if you ever disable SSL in core
+set(VIX_WITH_BOOST    ON)
+set(VIX_WITH_BOOST_FS OFF)  # si tu n'utilises pas filesystem explicitement
+set(VIX_WITH_OPENSSL OFF)
+find_package(OpenSSL QUIET)
+if (OpenSSL_FOUND AND TARGET OpenSSL::Crypto)
+  set(VIX_WITH_OPENSSL ON)
+endif()
 set(VIX_WITH_MYSQL    OFF)    # do NOT require MySQL for consumers by default
 set(VIX_WITH_SQLITE   OFF)    # will be set ON only if websocket exists
 
 set(VIX_WITH_ZLIB OFF)
 if (VIX_ENABLE_HTTP_COMPRESSION AND ZLIB_FOUND)
   set(VIX_WITH_ZLIB ON)
-endif()
-
-set(VIX_HAS_TIME OFF)
-if (VIX_HAS_TIME)
-  set(VIX_HAS_TIME ON)
 endif()
 
 set(VIX_WITH_MYSQL OFF)
@@ -1027,104 +1053,20 @@ if (TARGET vix::websocket OR TARGET vix_websocket)
 endif()
 
 if (VIX_ENABLE_INSTALL)
-  # Install headers if present
-  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/core/include")
-    install(DIRECTORY modules/core/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            FILES_MATCHING
-              PATTERN "*.hpp"
-              PATTERN "*.h"
-              PATTERN "*.inc")
-  endif()
 
-  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/utils/include")
-    install(DIRECTORY modules/utils/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
-  endif()
+  foreach(_m core utils json websocket webrpc crypto time conversion validation async net cache sync p2p p2p_http middleware db orm)
+    if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/${_m}/include")
+      install(DIRECTORY "modules/${_m}/include/"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+        FILES_MATCHING
+          PATTERN "*.hpp"
+          PATTERN "*.h"
+          PATTERN "*.inc"
+      )
+    endif()
+  endforeach()
 
-  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/time/include")
-    install(DIRECTORY modules/time/include/
-            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            FILES_MATCHING
-              PATTERN "*.hpp"
-              PATTERN "*.h")
-  endif()
-
-  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/crypto/include")
-    install(DIRECTORY modules/crypto/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
-  endif()
-
-  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/conversion/include")
-    install(DIRECTORY modules/conversion/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
-  endif()
-
-  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/validation/include")
-    install(DIRECTORY modules/validation/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
-  endif()
-
-  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/json/include")
-    install(DIRECTORY modules/json/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
-  endif()
-
-  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/webrpc/include")
-    install(DIRECTORY modules/webrpc/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
-  endif()
-
-  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/websocket/include")
-    install(DIRECTORY modules/websocket/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
-  endif()
-
-  if (VIX_HAS_ORM AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/orm/include")
-    install(DIRECTORY modules/orm/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
-  endif()
-
-  if (VIX_HAS_DB AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/db/include")
-    install(DIRECTORY modules/db/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
-  endif()
-
-  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/async/include")
-    install(DIRECTORY modules/async/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
-  endif()
-
-  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/net/include")
-    install(DIRECTORY modules/net/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
-  endif()
-
-  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/cache/include")
-    install(DIRECTORY modules/cache/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
-  endif()
-
-  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/sync/include")
-    install(DIRECTORY modules/sync/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
-  endif()
-
-  if (VIX_HAS_P2P AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/p2p/include")
-    install(DIRECTORY modules/p2p/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
-  endif()
-
-  if (VIX_HAS_P2P_HTTP AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/p2p_http/include")
-    install(DIRECTORY modules/p2p_http/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
-  endif()
-
-  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/middleware/include")
-    install(DIRECTORY modules/middleware/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
-  endif()
-
-    # ---- Install Asio (submodule) — robust (no symlink issues) ----
+  # ---- Install Asio (submodule) ----
   set(_VIX_ASIO_INSTALL_SRC "${CMAKE_CURRENT_SOURCE_DIR}/third_party/asio-src/asio/include")
 
   if (NOT EXISTS "${_VIX_ASIO_INSTALL_SRC}/asio.hpp")
@@ -1141,10 +1083,15 @@ if (VIX_ENABLE_INSTALL)
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/vix/third_party/asio"
   )
 
+  # ---- Export umbrella and helper interface targets ----
   install(TARGETS vix EXPORT VixTargets)
 
   if (TARGET vix_thirdparty_asio)
     install(TARGETS vix_thirdparty_asio EXPORT VixTargets)
+  endif()
+
+  if (TARGET vix_thirdparty_boost)
+    install(TARGETS vix_thirdparty_boost EXPORT VixTargets)
   endif()
 
   if (TARGET vix_warnings)
@@ -1155,7 +1102,7 @@ if (VIX_ENABLE_INSTALL)
     install(TARGETS vix_coverage EXPORT VixTargets)
   endif()
 
-  # Config files
+  # ---- Config files ----
   set(VIX_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/Vix")
 
   write_basic_package_version_file(
@@ -1170,6 +1117,8 @@ if (VIX_ENABLE_INSTALL)
   if (VIX_HAS_DB AND VIX_DB_USE_MYSQL)
     set(VIX_DB_WITH_MYSQL ON)
   endif()
+
+  set(VIX_WITH_MYSQL ${VIX_DB_WITH_MYSQL})
 
   set(VIX_HAS_CACHE  ${VIX_HAS_CACHE})
   set(VIX_HAS_P2P    ${VIX_HAS_P2P})
@@ -1221,15 +1170,16 @@ if (VIX_ENABLE_INSTALL)
     DESTINATION "${VIX_INSTALL_CMAKEDIR}"
   )
 
-  # Install CLI executable (not exported)
+  # ---- Install CLI executable (not exported) ----
   if (TARGET vix_cli)
     install(TARGETS vix_cli
       RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     )
     message(STATUS "CLI install: installing target 'vix_cli' as 'vix'")
   else()
-    message(STATUS "CLI install: no 'vix_cli' target detected — CLI not installed")
+    message(STATUS "CLI install: no 'vix_cli' target detected, CLI not installed")
   endif()
+
 endif()
 
 # ----------------------------------------------------
