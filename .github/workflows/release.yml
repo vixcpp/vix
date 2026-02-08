@@ -149,14 +149,14 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          choco install openssl -y
-
           git clone https://github.com/microsoft/vcpkg $env:GITHUB_WORKSPACE\vcpkg
           cd $env:GITHUB_WORKSPACE\vcpkg
           .\bootstrap-vcpkg.bat
 
-          .\vcpkg.exe install boost-system:x64-windows sqlite3:x64-windows
-          .\vcpkg.exe integrate install
+          .\vcpkg.exe install `
+            boost-system:x64-windows `
+            sqlite3:x64-windows `
+            openssl:x64-windows
 
           "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Append
 
@@ -274,8 +274,8 @@ jobs:
             -DVIX_DB_USE_MYSQL=OFF `
             -DVIX_CORE_WITH_MYSQL=OFF `
             -DVIX_ENABLE_HTTP_COMPRESSION=OFF `
-            -DOPENSSL_ROOT_DIR="$openssl" `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" 2>&1 | Tee-Object -FilePath cmake_output.log -Append
+
 
           "CMAKE_CONFIGURE_EXIT=$LASTEXITCODE" | Out-File -FilePath $env:GITHUB_ENV -Append
           exit 0
