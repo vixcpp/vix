@@ -261,6 +261,10 @@ endif()
 # ----------------------------------------------------
 add_library(vix INTERFACE)
 
+if (WIN32)
+  target_compile_definitions(vix INTERFACE _WIN32_WINNT=0x0A00 WIN32_LEAN_AND_MEAN NOMINMAX)
+endif()
+
 # ----------------------------------------------------
 # Third-party: Boost (required by core/websocket headers: Boost.Beast)
 # Prefer CONFIG mode (CMake 4+), fallback to module mode if needed.
