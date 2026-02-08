@@ -6,17 +6,18 @@
 
 <p>
   <a href="https://x.com/vixcpp">
-    <img src="https://img.shields.io/badge/X-Follow-black?logo=x" />
+    <img src="https://img.shields.io/badge/X-Follow-black?logo=x" alt="X" />
   </a>
   <a href="https://www.youtube.com/@vixcpp">
-    <img src="https://img.shields.io/badge/YouTube-Subscribe-red?logo=youtube" />
+    <img src="https://img.shields.io/badge/YouTube-Subscribe-red?logo=youtube" alt="YouTube" />
   </a>
   <a href="https://discord.gg/XXXX">
-    <img src="https://img.shields.io/badge/Discord-Chat-5865F2?logo=discord&logoColor=white" />
+    <img src="https://img.shields.io/badge/Discord-Chat-5865F2?logo=discord&logoColor=white" alt="Discord" />
   </a>
-  <img src="https://img.shields.io/github/stars/vixcpp/vix?style=flat" />
-  <img src="https://img.shields.io/github/forks/vixcpp/vix?style=flat" />
-  <img src="https://img.shields.io/github/actions/workflow/status/vixcpp/vix/SECURITY_CI.yml?label=CI" />
+
+  <img src="https://img.shields.io/github/stars/vixcpp/vix?style=flat" alt="Stars" />
+  <img src="https://img.shields.io/github/forks/vixcpp/vix?style=flat" alt="Forks" />
+  <img src="https://img.shields.io/github/actions/workflow/status/vixcpp/vix/SECURITY_CI.yml?label=CI" alt="CI" />
 </p>
 
 <p>
@@ -26,26 +27,19 @@
 </p>
 
 <p>
-  It is built for real-world conditions: unreliable networks, edge deployments,
-  and performance-critical systems.
-</p>
-
-<p>
-  🌍 <a href="https://vixcpp.com">vixcpp.com</a><br/>
+  🌍 <a href="https://vixcpp.com">vixcpp.com</a><br />
   📘 <a href="https://vixcpp.com/docs">Documentation</a>
 </p>
-
     </td>
     <td valign="top" width="32%" align="right">
-      <img
-        src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1762524350/vixcpp_etndhz.png"
+      <img src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1762524350/vixcpp_etndhz.png"
         alt="Vix.cpp Logo"
-        width="260"
-      />
+        width="260"/>
     </td>
   </tr>
 </table>
-<hr/>
+
+<hr />
 
 ## Performance is not a feature it’s a requirement
 

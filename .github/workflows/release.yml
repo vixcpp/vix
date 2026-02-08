@@ -145,20 +145,14 @@ jobs:
       # -------------------------
       # Windows deps (OpenSSL + Boost via vcpkg)
       # -------------------------
-      - name: Install deps (Windows)
+      - name: Setup vcpkg (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           git clone https://github.com/microsoft/vcpkg $env:GITHUB_WORKSPACE\vcpkg
+          "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Append
           cd $env:GITHUB_WORKSPACE\vcpkg
           .\bootstrap-vcpkg.bat
-
-          .\vcpkg.exe install `
-            boost-system:x64-windows `
-            sqlite3:x64-windows `
-            openssl:x64-windows
-
-          "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       # -------------------------
       # Configure (Unix)
@@ -253,6 +247,16 @@ jobs:
           path: logs/${{ matrix.vixos }}-${{ matrix.arch }}/*
           if-no-files-found: warn
 
+      - name: Vcpkg install (manifest, Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Write-Host "VCPKG_ROOT=$env:VCPKG_ROOT"
+          cd $env:GITHUB_WORKSPACE
+
+          & "$env:VCPKG_ROOT\vcpkg.exe" install --triplet x64-windows --x-manifest-root "$env:GITHUB_WORKSPACE"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       # -------------------------
       # Configure + Build (Windows)
       # -------------------------
@@ -262,11 +266,6 @@ jobs:
         run: |
           "" | Out-File -FilePath cmake_output.log -Encoding utf8
 
-          $openssl = (Get-ChildItem "C:\Program Files" -Directory -ErrorAction SilentlyContinue |
-            Where-Object { $_.Name -like "OpenSSL-*" } | Select-Object -First 1).FullName
-          if (-not $openssl) { $openssl = "C:\Program Files\OpenSSL-Win64" }
-
-          Write-Host "OPENSSL_ROOT_DIR=$openssl"
           Write-Host "VCPKG_ROOT=$env:VCPKG_ROOT"
 
           cmake -S . -B build -A x64 `
@@ -274,6 +273,7 @@ jobs:
             -DVIX_DB_USE_MYSQL=OFF `
             -DVIX_CORE_WITH_MYSQL=OFF `
             -DVIX_ENABLE_HTTP_COMPRESSION=OFF `
+            -DVCPKG_TARGET_TRIPLET=x64-windows `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" 2>&1 | Tee-Object -FilePath cmake_output.log -Append
 
 

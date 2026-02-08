@@ -3,6 +3,7 @@
   "version-string": "dev",
   "dependencies": [
     "boost",
-    "sqlite3"
+    "sqlite3",
+    "openssl"
   ]
 }
