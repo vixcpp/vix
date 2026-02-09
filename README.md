@@ -11,10 +11,6 @@
   <a href="https://www.youtube.com/@vixcpp">
     <img src="https://img.shields.io/badge/YouTube-Subscribe-red?logo=youtube" alt="YouTube" />
   </a>
-  <a href="https://discord.gg/XXXX">
-    <img src="https://img.shields.io/badge/Discord-Chat-5865F2?logo=discord&logoColor=white" alt="Discord" />
-  </a>
-
   <img src="https://img.shields.io/github/stars/vixcpp/vix?style=flat" alt="Stars" />
   <img src="https://img.shields.io/github/forks/vixcpp/vix?style=flat" alt="Forks" />
   <img src="https://img.shields.io/github/actions/workflow/status/vixcpp/vix/SECURITY_CI.yml?label=CI" alt="CI" />
@@ -60,27 +56,7 @@ Vix.cpp is designed to remove overhead, unpredictability, and GC pauses.
 ---
 ## Installation
 
-### Prerequisites
-
-Vix.cpp is a **native C++ runtime** and requires a modern toolchain.
-
-#### All platforms
-- **CMake ≥ 3.20**
-- **C++20 compiler**
-  - GCC ≥ 11
-  - Clang ≥ 14
-  - MSVC ≥ 19.34 (Visual Studio 2022)
-- **Git** (with submodules)
-
 #### Linux
-- `pkg-config`
-- `ninja` (recommended)
-- system development packages:
-  - Boost
-  - OpenSSL
-  - SQLite
-  - zlib / brotli (optional)
-
 **Example (Ubuntu):**
 ```bash
 sudo apt update
@@ -90,9 +66,6 @@ sudo apt install -y \
 ```
 
 #### macOS
-- Xcode Command Line Tools
-- Homebrew
-
 ```bash
 brew install cmake ninja pkg-config boost openssl@3
 ```
@@ -102,7 +75,6 @@ brew install cmake ninja pkg-config boost openssl@3
 - **Git**
 - **PowerShell**
 - **vcpkg** (handled automatically by the install script)
-
 
 ### Shell (Linux, macOS)
 
@@ -164,19 +136,6 @@ vix dev main.cpp
 ```
 
 Vix handles compilation, linking, and execution automatically.
-
----
-
-## What can you build?
-
-- REST APIs
-- Real-time WebSocket servers
-- Offline-first backends
-- Edge services
-- Peer-to-peer control planes
-- Native backend systems with zero GC pauses
-
-All in **modern C++20**.
 
 ---
 

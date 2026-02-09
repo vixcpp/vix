@@ -46,6 +46,14 @@ endif()
 
 project(vix VERSION ${_VIX_PROJECT_VERSION} LANGUAGES CXX)
 
+if (WIN32)
+  add_compile_definitions(
+    _WIN32_WINNT=0x0A00
+    WIN32_LEAN_AND_MEAN
+    NOMINMAX
+  )
+endif()
+
 # Human-friendly version string (can include -N-gHASH[-dirty])
 if(_VIX_GIT_DESCRIBE STREQUAL "")
   set(VIX_UMBRELLA_VERSION "v${PROJECT_VERSION}")
@@ -327,6 +335,14 @@ target_link_libraries(vix INTERFACE vix::thirdparty_boost)
 add_library(vix_thirdparty_asio INTERFACE)
 add_library(vix::thirdparty_asio ALIAS vix_thirdparty_asio)
 target_compile_definitions(vix_thirdparty_asio INTERFACE ASIO_STANDALONE=1)
+
+if (WIN32)
+  target_compile_definitions(vix_thirdparty_asio INTERFACE
+    _WIN32_WINNT=0x0A00
+    WIN32_LEAN_AND_MEAN
+    NOMINMAX
+  )
+endif()
 
 set(VIX_THIRDPARTY_ASIO_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/asio-src/asio/include")
 
