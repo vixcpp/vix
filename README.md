@@ -69,13 +69,6 @@ sudo apt install -y \
 ```bash
 brew install cmake ninja pkg-config boost openssl@3
 ```
-
-#### Windows
-- **Visual Studio 2022** (Desktop development with C++)
-- **Git**
-- **PowerShell**
-- **vcpkg** (handled automatically by the install script)
-
 ### Shell (Linux, macOS)
 
 ```bash

@@ -2,7 +2,8 @@
   "name": "vix",
   "version-string": "dev",
   "dependencies": [
-    "boost",
+    "boost-system",
+    "boost-beast",
     "sqlite3",
     "openssl"
   ]
