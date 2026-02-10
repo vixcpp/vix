@@ -445,6 +445,47 @@ jobs:
 
           test "$(ls -A dist | wc -l)" -gt 0
 
+      - name: Generate sha256 files
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd dist
+          for f in vix-*; do
+            [ -f "$f" ] || continue
+            sha256sum "$f" > "$f.sha256"
+          done
+          ls -la
+
+      - name: Sign assets (minisign)
+        shell: bash
+        env:
+          MINISIGN_PRIVATE_KEY_B64: ${{ secrets.MINISIGN_PRIVATE_KEY_B64 }}
+          MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
+        run: |
+          set -euxo pipefail
+
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends minisign
+
+          cd dist
+
+          keyfile="$(mktemp)"
+          chmod 600 "$keyfile"
+          printf "%s" "$MINISIGN_PRIVATE_KEY_B64" | base64 -d > "$keyfile"
+          test -s "$keyfile"
+
+          for f in vix-*.tar.gz vix-*.zip; do
+            [ -f "$f" ] || continue
+            if [ -n "${MINISIGN_PASSWORD:-}" ]; then
+              printf "%s" "$MINISIGN_PASSWORD" | minisign -S -s "$keyfile" -m "$f"
+            else
+              minisign -S -s "$keyfile" -m "$f"
+            fi
+          done
+
+          rm -f "$keyfile"
+          ls -la
+
       - name: Determine tag
         id: tag
         shell: bash
