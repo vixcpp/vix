@@ -56,6 +56,10 @@ Vix.cpp is designed to remove overhead, unpredictability, and GC pauses.
 ---
 ## Installation
 
+For detailed installation instructions, advanced options, and troubleshooting,
+visit the official installation guide:
+👉 https://vixcpp.com/install
+
 #### Linux
 **Example (Ubuntu):**
 ```bash
