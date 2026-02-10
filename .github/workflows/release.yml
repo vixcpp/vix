@@ -479,9 +479,13 @@ jobs:
           printf "%s" "$MINISIGN_PRIVATE_KEY_B64" | base64 -d > "$keyfile"
           test -s "$keyfile"
 
+          # clé minisign chiffrée -> password obligatoire
+          test -n "${MINISIGN_PASSWORD:-}" || { echo "MINISIGN_PASSWORD missing" >&2; exit 1; }
+
           for f in vix-*.tar.gz vix-*.zip; do
             [ -f "$f" ] || continue
-            printf "%s" "$MINISIGN_PASSWORD" | "$MS" -S -x -s "$keyfile" -m "$f"
+            # IMPORTANT: pas de -x (c'est le chemin du .minisig), et on envoie un vrai newline
+            printf '%s\n' "$MINISIGN_PASSWORD" | "$MS" -S -s "$keyfile" -m "$f"
           done
 
           rm -f "$keyfile"
