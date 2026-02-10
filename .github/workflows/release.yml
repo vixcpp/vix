@@ -430,15 +430,20 @@ jobs:
         run: |
           set -euxo pipefail
           mkdir -p dist
-          find dist-all -type f -path "*dist-*/*" -print0 | while IFS= read -r -d '' f; do
+
+          find dist-all -type f -path "*/dist-*/vix-*" -print0 | while IFS= read -r -d '' f; do
             base="$(basename "$f")"
             if [ -f "dist/$base" ]; then
               echo "Collision while flattening: $base" >&2
+              echo "file: $f" >&2
               exit 1
             fi
             cp -f "$f" "dist/$base"
           done
+
           ls -la dist
+
+          test "$(ls -A dist | wc -l)" -gt 0
 
       - name: Determine tag
         id: tag
