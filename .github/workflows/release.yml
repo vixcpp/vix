@@ -463,10 +463,8 @@ jobs:
           MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
         run: |
           set -euxo pipefail
-
           cd dist
 
-          # Install minisign (static Linux binary) without apt
           MS_VER="0.11"
           curl -fL --retry 10 --retry-delay 2 \
             -o minisign-linux.tar.gz \
@@ -476,20 +474,14 @@ jobs:
           chmod +x minisign-linux/x86_64/minisign
           MS="./minisign-linux/x86_64/minisign"
 
-          # Decode private key (base64) to a temp file
           keyfile="$(mktemp)"
           chmod 600 "$keyfile"
           printf "%s" "$MINISIGN_PRIVATE_KEY_B64" | base64 -d > "$keyfile"
           test -s "$keyfile"
 
-          # Sign only release assets (not .sha256 / not existing .minisig)
           for f in vix-*.tar.gz vix-*.zip; do
             [ -f "$f" ] || continue
-            if [ -n "${MINISIGN_PASSWORD:-}" ]; then
-              printf "%s" "$MINISIGN_PASSWORD" | "$MS" -S -s "$keyfile" -m "$f"
-            else
-              "$MS" -S -s "$keyfile" -m "$f"
-            fi
+            printf "%s" "$MINISIGN_PASSWORD" | "$MS" -S -x -s "$keyfile" -m "$f"
           done
 
           rm -f "$keyfile"
