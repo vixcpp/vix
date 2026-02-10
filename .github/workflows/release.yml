@@ -464,22 +464,31 @@ jobs:
         run: |
           set -euxo pipefail
 
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends minisign
-
           cd dist
 
+          # Install minisign (static Linux binary) without apt
+          MS_VER="0.11"
+          curl -fL --retry 10 --retry-delay 2 \
+            -o minisign-linux.tar.gz \
+            "https://github.com/jedisct1/minisign/releases/download/${MS_VER}/minisign-${MS_VER}-linux.tar.gz"
+
+          tar -xzf minisign-linux.tar.gz
+          chmod +x minisign-linux/x86_64/minisign
+          MS="./minisign-linux/x86_64/minisign"
+
+          # Decode private key (base64) to a temp file
           keyfile="$(mktemp)"
           chmod 600 "$keyfile"
           printf "%s" "$MINISIGN_PRIVATE_KEY_B64" | base64 -d > "$keyfile"
           test -s "$keyfile"
 
+          # Sign only release assets (not .sha256 / not existing .minisig)
           for f in vix-*.tar.gz vix-*.zip; do
             [ -f "$f" ] || continue
             if [ -n "${MINISIGN_PASSWORD:-}" ]; then
-              printf "%s" "$MINISIGN_PASSWORD" | minisign -S -s "$keyfile" -m "$f"
+              printf "%s" "$MINISIGN_PASSWORD" | "$MS" -S -s "$keyfile" -m "$f"
             else
-              minisign -S -s "$keyfile" -m "$f"
+              "$MS" -S -s "$keyfile" -m "$f"
             fi
           done
 
