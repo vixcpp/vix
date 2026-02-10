@@ -77,3 +77,8 @@ create-labels.sh
 *.key
 *.minisig
 *.sha256
+# minisign private keys (CI)
+*.key
+*.key.b64
+minisign_ci.key
+minisign_ci.key.b64

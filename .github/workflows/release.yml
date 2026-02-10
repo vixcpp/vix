@@ -460,7 +460,6 @@ jobs:
         shell: bash
         env:
           MINISIGN_PRIVATE_KEY_B64: ${{ secrets.MINISIGN_PRIVATE_KEY_B64 }}
-          MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
         run: |
           set -euxo pipefail
           cd dist
@@ -479,13 +478,9 @@ jobs:
           printf "%s" "$MINISIGN_PRIVATE_KEY_B64" | base64 -d > "$keyfile"
           test -s "$keyfile"
 
-          # clé minisign chiffrée -> password obligatoire
-          test -n "${MINISIGN_PASSWORD:-}" || { echo "MINISIGN_PASSWORD missing" >&2; exit 1; }
-
           for f in vix-*.tar.gz vix-*.zip; do
             [ -f "$f" ] || continue
-            # IMPORTANT: pas de -x (c'est le chemin du .minisig), et on envoie un vrai newline
-            printf '%s\n' "$MINISIGN_PASSWORD" | "$MS" -S -s "$keyfile" -m "$f"
+            "$MS" -S -s "$keyfile" -m "$f"
           done
 
           rm -f "$keyfile"
