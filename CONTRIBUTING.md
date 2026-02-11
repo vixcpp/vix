@@ -144,6 +144,24 @@ Rules:
 
 ---
 
+## Branch Protection and Maintainer Workflow
+
+The `main` branch is protected and does not allow direct pushes.
+
+All changes to `main` must be made through Pull Requests (PRs).
+
+### Maintainer Fix Workflow
+
+When applying fixes or updates, maintainers should follow this workflow:
+
+1. Create a new branch from `main`
+2. Apply the fix or change in the new branch
+3. Open a Pull Request targeting `main`
+4. Review and merge the Pull Request
+
+This ensures code quality, reviewability, and a consistent project history.
+---
+
 ## Submitting Changes
 
 1. Fork the repository
