@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v1.35.1] - 2026-02-14
+
+### Fixed
+- Silenced MSVC warnings in CLI module:
+  - C4505 (unreferenced static functions removed)
+  - C4189 (unused local variable)
+- Scoped Unix-only helpers under `#ifndef _WIN32` to avoid Windows-only compilation warnings.
+- Removed deprecated `std::getenv` usage in CLI commands in favor of `vix::utils::vix_getenv` (MSVC C4996 clean).
+
+### Improved
+- Cleaner cross-platform compilation (Windows + Linux/macOS).
+- More deterministic Windows builds (no internal linkage noise).
+- Safer environment variable handling in `doctor`, `upgrade`, and `uninstall`.
+
+### Internal
+- Minor CLI refactoring to ensure functions are only compiled where used.
+- No behavioral changes.
+
 # v1.35.0
 
 ## CLI --- Install Lifecycle & Environment Diagnostics
