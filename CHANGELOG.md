@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## v1.35.2
+
+### Fixed
+- CLI (Doctor): Fix MSVC build failure (`which_vix` not declared on Windows).
+- Removed duplicate `<vix/utils/Env.hpp>` include.
+- Added missing `<cstdio>` include for `_popen` / `popen` usage.
+- Minor MSVC compatibility adjustments.
+
+### Notes
+This is a patch release focused on Windows/MSVC build stability.
+No runtime behavior changes.
+
 ## [v1.35.1] - 2026-02-14
 
 ### Fixed
