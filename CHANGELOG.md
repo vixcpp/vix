@@ -8,6 +8,117 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+# v1.35.0
+
+## CLI --- Install Lifecycle & Environment Diagnostics
+
+This release introduces a complete install lifecycle for the Vix CLI,
+including environment diagnostics, secure upgrades, uninstall logic, and
+install metadata tracking.
+
+## ✨ New
+
+### `vix doctor`
+
+Environment and install health checker.
+
+-   Detects OS and architecture
+-   Detects current binary location
+-   Reads `install.json` metadata
+-   Checks PATH consistency
+-   Verifies required tools (curl/wget, tar, sha256, etc.)
+-   Optional GitHub latest release check (`--online`)
+-   JSON output mode (`--json`)
+-   Proper exit codes for CI usage
+
+Example:
+
+``` bash
+vix doctor
+vix doctor --online
+vix doctor --json --online
+```
+
+### `vix upgrade`
+
+Secure binary upgrade mechanism.
+
+-   Resolves latest tag from GitHub
+-   Verifies sha256
+-   Verifies minisign (when available)
+-   Atomic install (tmp + move)
+-   Writes structured `install.json` metadata
+-   Preserves install directory
+
+Example:
+
+``` bash
+vix upgrade
+```
+
+### `vix uninstall`
+
+Robust uninstall command.
+
+-   Removes current binary
+-   Supports `--all` to remove all detected binaries in PATH
+-   Supports `--purge` to delete local store/cache
+-   Gracefully handles permission errors
+-   Provides sudo hint when required
+-   Post-check detects remaining binaries in PATH
+
+Example:
+
+``` bash
+vix uninstall
+vix uninstall --all --purge
+```
+
+## 🔐 Install Metadata (`install.json`)
+
+Upgrades now generate structured metadata:
+
+``` json
+{
+  "repo": "vixcpp/vix",
+  "version": "v1.35.0",
+  "installed_version": "v1.35.0",
+  "installed_at": "...",
+  "os": "linux",
+  "arch": "x86_64",
+  "install_dir": "...",
+  "download_bytes": 0,
+  "asset_url": "..."
+}
+```
+
+This enables:
+
+-   Reliable diagnostics (`doctor`)
+-   PATH validation
+-   Upgrade comparison
+-   Future telemetry-safe tooling
+
+## 🎯 Help Output Improvements
+
+The CLI help output is now structured and linked:
+
+-   Section-based layout
+-   Quick start block
+-   Install lifecycle commands surfaced
+-   Documentation links included
+-   Registry link added
+
+Improves discoverability and developer experience.
+
+## Stability
+
+This release does not modify runtime modules.\
+Changes are isolated to the CLI module.
+
+Vix.cpp continues to move toward a fully self-managed, production-grade
+runtime.
+
 v1.22.13: sync cli/middleware/p2p and extend middleware example
 
 - update submodules: cli, middleware, p2p

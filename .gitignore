@@ -82,3 +82,4 @@ create-labels.sh
 *.key.b64
 minisign_ci.key
 minisign_ci.key.b64
+issues_audit.json
