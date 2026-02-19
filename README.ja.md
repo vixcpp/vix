@@ -1,10 +1,10 @@
 # Vix.cpp
 
 <p align="center" style="margin:0;">
-  <img 
-    src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1762524350/vixcpp_etndhz.png" 
-    alt="Vix.cpp Banner" 
-    width="100%" 
+  <img
+    src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1762524350/vixcpp_etndhz.png"
+    alt="Vix.cpp Banner"
+    width="100%"
     style="
       display:block;
       height:auto;
@@ -32,23 +32,23 @@
 
 目標は明確です。
 
-> **Node / Deno / Bun のようなアプリを実行でき、  
+> **Node / Deno / Bun のようなアプリを実行でき、
 > しかも不安定で低品質な「現実世界のネットワーク」を前提に設計されたランタイム**
 
-Vix は単なるバックエンドフレームワークではありません。  
+Vix は単なるバックエンドフレームワークではありません。
 これは **モジュラー構成のランタイム**であり、分散アプリケーション、エッジシステム、オフラインデバイス、そして従来のクラウド前提フレームワークが機能しない環境向けに設計されています。
 
-**FastAPI**, **Vue.js**, **React**、最新のランタイムに着想を得つつ、  
+**FastAPI**, **Vue.js**, **React**、最新のランタイムに着想を得つつ、
 **C++20 によってゼロから再設計**され、圧倒的な速度と完全な制御性を実現しています。
 
 ---
 
 # ⚡ ベンチマーク（更新版 — 二〇二五年 十二月）
 
-すべてのベンチマークは **wrk** を使用して実行されました。  
+すべてのベンチマークは **wrk** を使用して実行されました。
 **八スレッド / 八百接続 / 三十秒**、同一マシンで測定しています。
 
-**環境**  
+**環境**
 Ubuntu 二十四点〇四 — Intel Xeon — C++20 最適化ビルド — ログ無効
 
 結果は `"OK"` を返すシンプルなエンドポイントでの **定常状態スループット**です。
@@ -68,8 +68,8 @@ Ubuntu 二十四点〇四 — Intel Xeon — C++20 最適化ビルド — ログ
 | Crow（C++）                     | 一千百四十九                          | 四一・六〇 ms           | 〇・三五 MB/s        |
 | FastAPI（Python）               | 七百五十二                            | 六三・七一 ms           | 〇・一一 MB/s        |
 
-> 🔥 **新記録**  
-> 単一コアに固定（`taskset -c 2`）した場合、  
+> 🔥 **新記録**
+> 単一コアに固定（`taskset -c 2`）した場合、
 > **約 九万九千 req/s** に到達し、Go を上回り、最速クラスの C++ マイクロフレームワークに並びました。
 
 ---
@@ -174,25 +174,31 @@ using namespace vix;
 
 int main()
 {
-    auto bundle = vix::make_http_and_ws("config/config.json");
-    auto &[app, ws] = bundle;
+  // Use default config path "config/config.json" and port 8080
+  vix::serve_http_and_ws([](auto &app, auto &ws)
+                         {
+        // Minimal HTTP route
+        app.get("/", [](auto&, auto& res) {
+            res.json({
+                "message",   "Hello from Vix.cpp minimal example 👋",
+                "framework", "Vix.cpp"
+            });
+        });
 
-    app.get("/", [](const Request &, Response &res)
-            { res.json({"framework", "Vix.cpp",
-                        "message", "HTTP + WebSocket example (basic) 🚀"}); });
+        // Minimal WebSocket handler: log and echo chat.message
+        ws.on_typed_message(
+            [&ws](auto& session,
+                  const std::string& type,
+                  const vix::json::kvs& payload)
+            {
+                (void)session;
 
-    ws.on_open([&ws](auto &session)
-               {
-        (void)session;
+                if (type == "chat.message") {
+                    ws.broadcast_json("chat.message", payload);
+                }
+            }); });
 
-        ws.broadcast_json("chat.system", {
-            "user", "server",
-            "text", "Welcome to Vix WebSocket! 👋"
-        }); });
-
-    vix::run_http_and_ws(app, ws, 8080);
-
-    return 0;
+  return 0;
 }
 ```
 
@@ -249,10 +255,7 @@ app.get("/search", [](Request req, Response res) {
 
 ```cpp
 app.get("/missing", [](Request req, Response res) {
-    return std::pair{
-        404,
-        json::o("error", "Not found")
-    };
+          res.status(404).json({"error", "Not found"});
 });
 ```
 

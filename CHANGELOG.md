@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## v1.35.3
+
+### Changed
+
+- **CLI (new)** : Generate modern `vix.json` for header-only libraries.
+- Replace deprecated `repo` field with `repository`.
+- Set `type` to `"header-only"` for `--lib` template.
+- Add `include`, `keywords`, and `authors` fields to generated manifest.
+
+### Notes
+
+This is a patch release improving CLI scaffolding consistency with the Vix Registry specification.
+No runtime behavior changes.
+
 ## v1.35.2
 
 ### Fixed

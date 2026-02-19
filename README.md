@@ -140,15 +140,13 @@ Vix handles compilation, linking, and execution automatically.
 
 - 📘 Docs: https://vixcpp.com/docs
 - 🌍 Website: https://vixcpp.com
-- 📦 Examples: https://github.com/vixcpp/vix/tree/main/examples
+- 📦 Examples: https://vixcpp.com/docs/examples
 ---
 
 ## Contributing
 
 Contributions are welcome.
-
 If you care about modern C++, performance, and real-world reliability, you’ll feel at home here.
-
 Please read the contributing guide before opening a PR.
 
 ---
