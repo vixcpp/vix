@@ -8,6 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## v1.36.0
+
+### ✨ Added
+
+- `vix unpublish` command
+  Allows package owners to remove an existing registry entry in a controlled way.
+- Full CLI integration for unpublish flow (dispatch + command wiring).
+- Tag-driven registry compatibility (CLI aligned with automated `index_from_tags` workflow).
+
+### 🔄 Improved
+
+- Registry sync stability (`vix registry sync`) with stricter reset and checkout handling.
+- Publish / remove flows aligned with Git tag–based version indexing.
+- CLI registry commands hardened for consistency with automated GitHub Actions pipeline.
+
+### 🛠 Internal
+
+- Registry index now derives owner/repo from `repo.url` instead of namespace.
+- Improved compatibility with automated registry version generation from Git tags.
+- CLI prepared for fully automated registry maintenance workflow.
+
+---
+
+This release strengthens the reliability of the Vix Registry and completes the tag-driven publication lifecycle.
 ## v1.35.3
 
 ### Changed
