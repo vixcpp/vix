@@ -81,7 +81,7 @@ curl -fsSL https://vixcpp.com/install.sh | bash
 
 ### PowerShell (Windows)
 
-```powershell
+```bash
 irm https://vixcpp.com/install.ps1 | iex
 ```
 

@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## v1.36.1
+
+### Improvements
+
+- CLI: improve `vix publish` messaging when triggering registry index updates
+- Better feedback after tag push and registry workflow trigger
+- Clearer output when version is already registered
+
+### Registry
+
+- Confirmed fully automatic tag-driven registry workflow
+- Auto PR creation + auto-merge stabilized using bot token
+
+### Internal
+
+- Minor CLI output refinements
+- No breaking changes
 ## v1.36.0
 
 ### ✨ Added
