@@ -8,6 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v1.36.3] - 2026-02-19
+
+### Improved
+
+#### CLI – `vix publish`
+
+- Generate a **rich registry entry** when publishing a new package:
+  - Adds structured `api` metadata (`format`, `generatedBy`, `updatedAt`)
+  - Includes `constraints`, `dependencies`, `exports`, `maintainers`, and `quality`
+  - Derives defaults from `vix.json` when available
+- Automatically refreshes `api.updatedAt` on every publish
+- Keeps backward compatibility with existing registry entries
+- Ensures `versions` is always a valid object before insertion
+
+### Why this matters
+
+Registry entries are now:
+- More consistent
+- Self-describing
+- Future-proof for tooling and validation
+- Closer to production-grade metadata from first publish
+
 ## v1.36.2
 
 ### Fix
