@@ -8,6 +8,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## v1.36.2
+
+### Fix
+
+- **publish**: always include published version (`tag` + `commit`) inside registry entry `versions` field
+
+### Why
+
+Registry validation requires a non-empty `versions` object.
+
+Previously, `vix publish` created a registry entry with:
+
+```json
+{
+  "versions": {}
+}
+```
+
+This caused the `validate_registry_pr` workflow to fail before auto-merge.
+
+### Result
+
+- Registry PRs are now immediately valid
+- Auto-merge works reliably without manual intervention
+- No need to manually patch `index/*.json`
+- `registry_index_from_tags` remains compatible
+
+### Impact
+
+Publishing a new library version is now fully automated and stable.
 ## v1.36.1
 
 ### Improvements
