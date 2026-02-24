@@ -8,7 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
-# 🚀 New: `--auto-deps` for single-file C++ (script mode)
+
+# [v1.38.0]
+
+Vix now supports automatic version resolution when adding packages.
+## You can run:
+
+```bash
+vix add namespace/name
+```
+and Vix will resolve the latest version automatically.
+This release also improves transitive dependency installation and ensures vix.lock correctly pins the resolved commit for deterministic builds.
+
+# [v1.37.0] 🚀 New: `--auto-deps` for single-file C++ (script mode)
 
 You can now use libraries installed from the Vix registry directly inside a single `.cpp` file:
 
@@ -40,6 +52,8 @@ Useful for nested layouts and running scripts from subfolders.
 - Proper validation and error handling for invalid `--auto-deps` values
 - Improved `vix run --help` documentation
 - Cleaner separation between runtime args (`--args`) and compiler flags (`--`)
+
+
 ## [v1.36.3] - 2026-02-19
 
 ### Improved
