@@ -8,6 +8,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+# 🚀 New: `--auto-deps` for single-file C++ (script mode)
+
+You can now use libraries installed from the Vix registry directly inside a single `.cpp` file:
+
+```bash
+vix run server.cpp --auto-deps
+```
+
+- Automatically detects installed dependencies in `.vix/deps`
+- Injects the correct `-I` include paths
+- Avoids duplicate include flags
+- No `CMakeLists.txt` required
+
+---
+
+# 🔼 New: `--auto-deps=up`
+
+```bash
+vix run src/server.cpp --auto-deps=up
+```
+
+In addition to the script directory, Vix can now search for `.vix/deps` in parent directories.
+Useful for nested layouts and running scripts from subfolders.
+
+---
+
+# 🧠 Improvements
+
+- Introduced `AutoDepsMode` (`None`, `Local`, `Up`)
+- Proper validation and error handling for invalid `--auto-deps` values
+- Improved `vix run --help` documentation
+- Cleaner separation between runtime args (`--args`) and compiler flags (`--`)
 ## [v1.36.3] - 2026-02-19
 
 ### Improved
