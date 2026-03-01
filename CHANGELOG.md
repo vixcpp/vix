@@ -8,6 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+# [v1.39.0]
+
+## CLI
+
+### Self-healing vix tests
+
+`vix tests` now automatically configures and builds the project when CTest is not ready.
+
+---
+
+### Changes
+
+- Automatically runs `vix check --tests` if the build directory does not exist
+- Automatically builds when `CTestTestfile.cmake` is missing
+- Re-resolves the preset build directory after auto-build
+- Preserves the selected preset to avoid mismatched build directories
+
+---
+
+### Impact
+
+- `vix tests` works on fresh clones without requiring a manual `vix check`
+- Removes unnecessary friction in the test workflow
+- Improves overall CLI robustness
 
 # [v1.38.0]
 
