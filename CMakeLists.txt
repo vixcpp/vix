@@ -346,14 +346,31 @@ endif()
 
 set(VIX_THIRDPARTY_ASIO_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/asio-src/asio/include")
 
+# Prefer vendored Asio (submodule)
 if (EXISTS "${VIX_THIRDPARTY_ASIO_DIR}/asio.hpp")
   message(STATUS "Asio: using vendored Asio at ${VIX_THIRDPARTY_ASIO_DIR}")
+
   target_include_directories(vix_thirdparty_asio SYSTEM INTERFACE
     $<BUILD_INTERFACE:${VIX_THIRDPARTY_ASIO_DIR}>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/vix/third_party/asio>
   )
+
 else()
-  message(FATAL_ERROR "Asio submodule missing: third_party/asio-src. Run: git submodule update --init --recursive")
+  message(STATUS "Asio submodule missing, fetching Asio automatically...")
+
+  include(FetchContent)
+
+  FetchContent_Declare(
+    asio
+    GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
+    GIT_TAG        asio-1-30-2
+  )
+
+  FetchContent_MakeAvailable(asio)
+
+  target_include_directories(vix_thirdparty_asio SYSTEM INTERFACE
+    $<BUILD_INTERFACE:${asio_SOURCE_DIR}/asio/include>
+  )
 endif()
 target_link_libraries(vix INTERFACE vix::thirdparty_asio)
 
