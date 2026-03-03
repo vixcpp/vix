@@ -8,6 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## v1.40.0
+
+### CLI
+
+- feat(cli): support `vix new .` (in-place project scaffold)
+
+  You can now scaffold a Vix project directly in the current directory:
+
+  ```bash
+  vix new .
+  ```
+
+  If the directory is not empty, Vix prompts before overwriting template files.
+
+- feat(cli): support npm-style scoped packages (`@namespace/name`)
+
+  Vix now supports scoped package names similar to npm:
+
+  ```bash
+  vix add @vix/http
+  vix add @gaspardkirira/api_app
+  ```
+
+  This enables clearer ecosystem organization and registry namespaces.
 # [v1.39.0]
 
 ## CLI

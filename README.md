@@ -1,6 +1,6 @@
 <table>
   <tr>
-    <td valign="top" width="68%">
+    <td valign="top" width="70%">
 
 <h1>Vix.cpp</h1>
 
@@ -26,11 +26,15 @@
   🌍 <a href="https://vixcpp.com">vixcpp.com</a><br />
   📘 <a href="https://vixcpp.com/docs">Documentation</a>
 </p>
-    </td>
-    <td valign="top" width="32%" align="right">
-      <img src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1762524350/vixcpp_etndhz.png"
+
+</td>
+    <td valign="middle" width="30%" align="right">
+      <img
+        src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1762524350/vixcpp_etndhz.png"
         alt="Vix.cpp Logo"
-        width="260"/>
+        width="200"
+        style="border-radius:50%;"
+      />
     </td>
   </tr>
 </table>
@@ -53,35 +57,37 @@ Vix.cpp is designed to remove overhead, unpredictability, and GC pauses.
 | PHP (Slim)                  | ~2,800       | ~17 ms      |
 | FastAPI (Python)            | ~750         | ~64 ms      |
 
----
 ## Installation
 
-For detailed installation instructions, advanced options, and troubleshooting,
-visit the official installation guide:
-👉 https://vixcpp.com/install
+Install the Vix runtime on your system using one of the commands below.
+Note that there are multiple ways to install Vix.
 
 #### Linux
-**Example (Ubuntu):**
+
+**Ubuntu / Debian deps (example):**
+
 ```bash
 sudo apt update
 sudo apt install -y \
   build-essential cmake ninja-build pkg-config \
-  libboost-all-dev libssl-dev libsqlite3-dev
+  libssl-dev libsqlite3-dev
 ```
 
-#### macOS
+## macOS Dependencies (example)
+
 ```bash
-brew install cmake ninja pkg-config boost openssl@3
+brew install cmake ninja pkg-config openssl@3
 ```
-### Shell (Linux, macOS)
+
+## <a href="https://vixcpp.com/install">Shell (Linux, macOS)</a>
 
 ```bash
 curl -fsSL https://vixcpp.com/install.sh | bash
 ```
 
-### PowerShell (Windows)
+## <a href="https://vixcpp.com/install">PowerShell (Windows)</a>
 
-```bash
+```powershell
 irm https://vixcpp.com/install.ps1 | iex
 ```
 
@@ -91,7 +97,21 @@ Verify installation:
 vix --version
 ```
 
----
+## Build from source
+```bash
+git clone --recurse-submodules https://github.com/vixcpp/vix.git
+cd vix
+
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+
+# Install for current user (recommended)
+cmake --install build --prefix "$HOME/.local"
+
+# Ensure PATH contains ~/.local/bin then restart your terminal
+vix --version
+vix doctor
+```
 
 ## Your first Vix.cpp program
 
@@ -134,12 +154,11 @@ vix dev main.cpp
 
 Vix handles compilation, linking, and execution automatically.
 
----
-
 ## Learn more
 
 - 📘 Docs: https://vixcpp.com/docs
 - 🌍 Website: https://vixcpp.com
+- 📦 Registry: https://vixcpp.com/registry
 - 📦 Examples: https://vixcpp.com/docs/examples
 ---
 
