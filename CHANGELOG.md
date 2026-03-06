@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## v1.41.0
+
+### CLI
+
+**Improved interactive navigation**
+
+Interactive menus now support both arrow keys and Vim-style navigation.
+
+| Action | Keys |
+|------|------|
+| Up | `↑` or `k` |
+| Down | `↓` or `j` |
+| Confirm | `Enter` or `l` |
+| Cancel | `Esc`, `h`, `q` |
+| Toggle | `Space` |
+| Toggle all | `a` |
+
+This improves usability on compact keyboards and Vim-style workflows.
+
 ## v1.40.0
 
 ### CLI
