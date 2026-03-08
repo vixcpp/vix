@@ -8,6 +8,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## v1.42.0
+
+### Core
+
+**New universal printing system**
+
+Added a powerful type-aware printing engine inspired by Python's `print()`.
+
+The new `vix::print` module can render most common C++ types automatically:
+
+- STL containers (`vector`, `map`, `set`, etc.)
+- tuples and pairs
+- `std::optional`
+- `std::variant`
+- smart pointers
+- chrono types
+- filesystem paths
+- nested structures
+
+Example:
+
+```cpp
+#include <vix/print.hpp>
+
+vix::print(42, "hello", std::vector{1,2,3});
+```
+
+Additional utilities:
+
+- `vix::pprint()` – multi-line pretty printing
+- `vix::sprint()` – format values to string
+- `vix::print_each()` – iterate and display ranges
+- `vix::print_table()` – map-style table display
+- `vix::print_stats()` – numeric container statistics
+- `vix::print_diff()` / `vix::print_check()` – debugging helpers
+
+The system is extensible via:
+
+- `operator<<`
+- ADL `vix_format(...)`
+- `vix::formatter<T>` specialization
+
+### Examples
+
+Added new printing examples:
+
+```
+examples/print/
+```
+
 ## v1.41.0
 
 ### CLI
