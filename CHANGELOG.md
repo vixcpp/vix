@@ -8,6 +8,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [1.43.0] - 2026-03-14
+### Added
+- Add `vix.json` for all modules, enabling registry and package management.
+- Introduce universal header-and-source support for core modules.
+- New CLI utilities for publishing, syncing, and displaying tips in registry workflows.
+- Low-level async runtime improvements (scheduler, coroutines, timers, thread pool).
+- Enhanced HTTP caching engine with pluggable stores, policies, and keying strategies.
+- Extended crypto primitives: AEAD, HMAC, KDF, signatures, and random utilities.
+- DB module improvements: pool, drivers, transactions, migrations.
+- WebSocket & P2P enhancements: client/server support, edge sync, discovery, transport layers.
+- Middleware & P2P HTTP: routing, session, pipeline, and security modules.
+- Validation header-only improvements: schemas, rules, and error handling.
+
+### Changed
+- CLI `Ui.hpp` improved tip display formatting.
+- Core printing and reflection system refined for runtime debugging.
+- JSON module: release v1.10.0 with registry integration.
+- Minor API adjustments in ORM, sync, utils, and net modules.
+- Bug fixes and header/source consistency across modules.
+
+### Fixed
+- Registry publish errors: local registry tips added when `pull --ff-only` fails.
+- WebRPC and validation publishing conflicts resolved.
+- Various module header/source mismatches corrected.
+
+### Notes
+- Version 1.43.0 consolidates registry, package management, and module release workflow.
+- All modules now include a `vix.json` for Vix package system integration.
+- Developers should run `vix registry sync` before publishing new versions to avoid pull conflicts.
+
 ## v1.42.0
 
 ### Core
