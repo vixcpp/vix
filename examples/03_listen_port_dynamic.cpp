@@ -1,5 +1,4 @@
 #include <vix.hpp>
-#include <iostream>
 
 using namespace vix;
 
@@ -12,7 +11,7 @@ int main()
 
   // Port 0 → choisi par l’OS
   app.listen_port(0, [](int port)
-                  { std::cout << "Listening on http://localhost:" << port << "\n"; });
+                  { console.log("Listening on http://localhost:", port); });
 
   app.wait();
 }
