@@ -8,6 +8,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v1.45.0]
+
+### CLI
+
+**Improved install experience and cache management**
+
+- Simplified and cleaner output for `vix install`
+- Reduced noise and improved readability during dependency installation
+
+- New `vix cache` command
+
+  Manage local cache directly from the CLI:
+
+```bash
+vix cache
+```
+This introduces better control over cached packages and improves developer workflows.
+
+- General UX improvements across CLI commands
+- More consistent output formatting
+- Better feedback during operations
+- Smoother command interactions
+
+## [v1.44.0]
+
+### Registry
+
+**Deterministic dependency installation**
+
+- Introduced deterministic dependency resolution for `vix install`
+
+  Dependencies are now installed in a fully predictable and reproducible way,
+  ensuring consistent builds across environments.
+
+- Improved registry integration
+
+  - Better handling of dependency graphs
+  - More reliable installs across machines and CI environments
+
+- Submodule synchronization improvements
+
+  - Ensures correct versions are resolved and linked during installation
+
 ## [1.43.0] - 2026-03-14
 ### Added
 - Add `vix.json` for all modules, enabling registry and package management.
