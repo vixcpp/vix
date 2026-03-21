@@ -8,6 +8,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v1.46.0]
+
+### CLI
+
+**Improved command UX and dependency detection**
+
+- Standardized help output across commands (`add`, `remove`, `new`, `p2p`)
+
+  All commands now follow a consistent structure with:
+  - clear usage
+  - practical examples
+  - explanation of what happens
+
+- Switched to product-style CLI help
+
+  Help messages are now easier to read and more developer-friendly,
+  improving onboarding and daily usage.
+
+- Improved overall CLI readability and developer experience
+
+  - cleaner output
+  - more consistent formatting
+  - better command interactions
+
+- Fixed dependency install detection
+
+  The `vix deps` command no longer incorrectly reports
+  "up to date" on first install.
+
+- Ensured consistent behavior across all CLI commands
+
 ## [v1.45.0]
 
 ### CLI
