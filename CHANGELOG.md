@@ -8,6 +8,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v1.47.0]
+
+### CLI
+
+**Improved dependency handling for compiled packages**
+
+- Fixed `vix run` dependency handling for compiled libraries
+
+  Dependencies are now correctly integrated into CMake with proper
+  `add_subdirectory` ordering, ensuring reliable builds.
+
+- Load dependencies from `vix.lock`
+
+  The CLI now uses the lockfile as the source of truth instead of relying
+  on header-only detection, improving determinism and correctness.
+
+- Support for `header-and-source` packages
+
+  Packages that include both headers and source files are now treated
+  as compiled libraries and handled correctly during build.
+
+- Improved initialization order for dependencies
+
+  Ensures correct build order for interdependent modules such as
+  `core`, `wal`, `store`, and others.
+
+- Enhanced `ScriptCMake` reliability
+
+  Better handling of non header-only dependencies, making builds
+  more robust across different package types.
+
 ## [v1.46.0]
 
 ### CLI
