@@ -5,7 +5,7 @@
 <h1>Vix.cpp</h1>
 
 <p>
-  <a href="https://x.com/vixcpp">
+  <a href="https://x.com/vix_cpp">
     <img src="https://img.shields.io/badge/X-Follow-black?logo=x" alt="X" />
   </a>
   <a href="https://www.youtube.com/@vixcpp">
