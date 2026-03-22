@@ -8,6 +8,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v1.47.1]
+
+### CLI
+
+**Fix header-only dependency handling in `vix run`**
+
+- Fixed incorrect linking of header-only dependencies in auto-generated CMake
+
+  The CLI no longer attempts to link all inferred dependency aliases blindly.
+
+- Detect compiled dependencies using `CMakeLists.txt`
+
+  Only dependencies that define build targets are treated as compiled libraries.
+
+- Link only valid CMake targets
+
+  Uses `if(TARGET ...)` to ensure safe and correct linking during build.
+
+- Avoid linking header-only libraries
+
+  Header-only packages without CMake targets are no longer passed to
+  `target_link_libraries`, preventing build errors.
+
+- Fixed runtime error
+```cmake
+target_link_libraries(... gk::pdf) target not found
+```
+This restores full support for header-only packages while maintaining
+correct behavior for compiled dependencies.
+
+
 ## [v1.47.0]
 
 ### CLI
