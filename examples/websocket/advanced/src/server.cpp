@@ -10,11 +10,11 @@
  *
  *  Vix.cpp
  *
- * This example demonstrates a fully–featured, production-style WebSocket
+ * This example demonstrates a fully featured, production-style WebSocket
  * server using the Vix.cpp runtime. It showcases how to combine:
  *
- *  • Asynchronous WebSocket server (Beast + Asio)
- *  • ThreadPoolExecutor integration (high-performance scheduling)
+ *  • Asynchronous native WebSocket server
+ *  • RuntimeExecutor integration
  *  • Room-based messaging (join, leave, broadcast)
  *  • Typed JSON protocol ("type" + "payload")
  *  • Persistent message storage using SQLite (WAL enabled)
@@ -22,88 +22,28 @@
  *  • Prometheus-compatible metrics server (/metrics endpoint)
  *  • Structured system events for room lifecycle (join/leave)
  *
- * Key Concepts Illustrated
- * -------------------------
- * 1. WebSocketMetrics:
- *      A lightweight metrics collector exposed via an HTTP endpoint.
- *      Metrics include connections, messages in/out, and error counts.
- *
- * 2. run_metrics_server():
- *      A minimal Beast-based HTTP server exposing Prometheus text format.
- *      Runs independently from the WebSocket server in a detached thread.
- *
- * 3. SqliteMessageStore:
- *      Provides durable message persistence with replay support.
- *      Uses WAL mode for crash safety and high write throughput.
- *
- * 4. Typed Message Handling:
- *      The WebSocket server routes messages based on their "type" field:
- *          • chat.join    – joins a room + replays history + broadcasts notice
- *          • chat.leave   – leaves a room + broadcasts notice
- *          • chat.message – persists and broadcasts user messages
- *          • other types  – fallback handler for custom events
- *
- * 5. Room Broadcasts:
- *      Room membership is automatically managed by Vix.cpp.
- *      The example shows how to broadcast to a single room or globally.
- *
- * 6. Offline-First Design:
- *      Messages are appended to SQLite before being broadcast,
- *      enabling reliable replay, reconnect recovery, and audit logging.
- *
- * Intended Usage
- * --------------
- * This example is designed for developers building:
- *
- *  • Real-time chat systems
- *  • Collaboration tools
- *  • Event-driven dashboards
- *  • IoT or telemetry streaming
- *  • Any system requiring durable WebSocket channels
- *
- * It demonstrates recommended architectural patterns for Vix.cpp
- * WebSocket applications, including:
- *
- *  • async I/O separation
- *  • metrics visibility
- *  • persistence layering
- *  • structured JSON protocols
- *  • minimalistic yet production-ready design
- *
- * How to Run
- * ----------
- *  1. Ensure dependencies are built: Vix.cpp, nlohmann/json, SQLite3.
- *  2. Create a config file: config/config.json (with websocket.port, etc.)
- *  3. Compile the example:
- *         cmake -S . -B build && cmake --build build -j
- *  4. Run:
- *         ./build/examples/advanced/server
- *  5. Connect using a WebSocket client:
- *         websocat ws://127.0.0.1:9090/
- *  6. Scrape metrics:
- *         curl http://127.0.0.1:9100/metrics
- *
- * This file is part of the Vix.cpp WebSocket module examples and is meant
- * to serve as a reference for building robust real-time systems in C++20.
  */
-#include <iostream>
-#include <string>
-#include <thread>
 #include <atomic>
+#include <chrono>
 #include <cstdint>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <thread>
 
 #include <nlohmann/json.hpp>
 
 #include <vix.hpp>
 
+#include <vix/executor/RuntimeExecutor.hpp>
 #include <vix/websocket.hpp>
+#include <vix/websocket/LongPolling.hpp>
+#include <vix/websocket/LongPollingBridge.hpp>
 #include <vix/websocket/Metrics.hpp>
 #include <vix/websocket/SqliteMessageStore.hpp>
 #include <vix/websocket/protocol.hpp>
-#include <vix/websocket/LongPolling.hpp>
-#include <vix/websocket/LongPollingBridge.hpp>
-
-#include <boost/beast/http.hpp>
 
 int main()
 {
@@ -115,20 +55,23 @@ int main()
   using vix::websocket::WebSocketMetrics;
   using vix::websocket::detail::ws_kvs_to_nlohmann;
 
-  namespace http = boost::beast::http;
   using njson = nlohmann::json;
 
-  App wsApp{"config/config.json"};
+  auto exec = std::make_shared<vix::executor::RuntimeExecutor>();
+
+  App wsApp{"config/config.json", exec};
   auto &ws = wsApp.server();
 
   WebSocketMetrics metrics;
 
   std::thread metricsThread(
       [&metrics]()
-      { vix::websocket::run_metrics_http_exporter(
+      {
+        vix::websocket::run_metrics_http_exporter(
             metrics,
             "0.0.0.0",
-            9100); });
+            9100);
+      });
   metricsThread.detach();
 
   vix::websocket::SqliteMessageStore store{"chat_messages.db"};
@@ -137,22 +80,28 @@ int main()
   auto resolver = [](const JsonMessage &msg)
   {
     if (!msg.room.empty())
+    {
       return std::string{"room:"} + msg.room;
+    }
     return std::string{"broadcast"};
   };
 
   auto httpToWs = [&ws](const JsonMessage &msg)
   {
     if (!msg.room.empty())
+    {
       ws.broadcast_room_json(msg.room, msg.type, msg.payload);
+    }
     else
+    {
       ws.broadcast_json(msg.type, msg.payload);
+    }
   };
 
   auto lpBridge = std::make_shared<LongPollingBridge>(
       &metrics,
-      std::chrono::seconds{60}, // TTL
-      256,                      // max buffer / session
+      std::chrono::seconds{60},
+      256,
       resolver,
       httpToWs);
 
@@ -161,8 +110,6 @@ int main()
   ws.on_open(
       [&store, &metrics](Session &session)
       {
-        (void)session;
-
         metrics.connections_total.fetch_add(1, std::memory_order_relaxed);
         metrics.connections_active.fetch_add(1, std::memory_order_relaxed);
 
@@ -189,13 +136,10 @@ int main()
                               const std::string &type,
                               const vix::json::kvs &payload)
       {
-        (void)session;
-
         metrics.messages_in_total.fetch_add(1, std::memory_order_relaxed);
 
         njson j = ws_kvs_to_nlohmann(payload);
 
-        // 1) JOIN
         if (type == "chat.join")
         {
           std::string room = j.value("room", "");
@@ -209,7 +153,9 @@ int main()
             for (auto msg : history)
             {
               if (msg.kind.empty())
+              {
                 msg.kind = "history";
+              }
 
               session.send_text(JsonMessage::serialize(msg));
               metrics.messages_out_total.fetch_add(1, std::memory_order_relaxed);
@@ -235,7 +181,6 @@ int main()
           return;
         }
 
-        // 2) LEAVE
         if (type == "chat.leave")
         {
           std::string room = j.value("room", "");
@@ -265,7 +210,6 @@ int main()
           return;
         }
 
-        // 3) MESSAGE
         if (type == "chat.message")
         {
           std::string room = j.value("room", "");
@@ -296,7 +240,6 @@ int main()
           }
         }
 
-        // 4) Fallback global
         {
           JsonMessage msg;
           msg.kind = "event";
@@ -310,68 +253,29 @@ int main()
         }
       });
 
-  // 7) HTTP App : /ws/poll + /ws/send (LongPolling)
   vix::App httpApp;
-
-  auto get_query_param = [](const http::request<http::string_body> &req,
-                            std::string_view key) -> std::optional<std::string>
-  {
-    std::string target = std::string(req.target());
-    auto pos = target.find('?');
-    if (pos == std::string::npos)
-      return std::nullopt;
-
-    std::string query = target.substr(pos + 1);
-    std::size_t start = 0;
-
-    while (start < query.size())
-    {
-      auto amp = query.find('&', start);
-      auto part = query.substr(
-          start,
-          (amp == std::string::npos) ? std::string::npos : (amp - start));
-
-      auto eq = part.find('=');
-      if (eq != std::string::npos)
-      {
-        std::string k = part.substr(0, eq);
-        std::string v = part.substr(eq + 1);
-        if (k == key)
-        {
-          return v;
-        }
-      }
-
-      if (amp == std::string::npos)
-        break;
-      start = amp + 1;
-    }
-    return std::nullopt;
-  };
 
   httpApp.get(
       "/ws/poll",
-      [lpBridge, &get_query_param](const http::request<http::string_body> &req,
-                                   vix::vhttp::ResponseWrapper &res)
+      [lpBridge](vix::vhttp::Request &req,
+                 vix::vhttp::ResponseWrapper &res)
       {
-        auto sessionIdOpt = get_query_param(req, "session_id");
-        if (!sessionIdOpt || sessionIdOpt->empty())
+        const std::string sessionId = req.query_value("session_id");
+        if (sessionId.empty())
         {
-          res.status(http::status::bad_request).json({
-              "error",
-              "missing_session_id",
+          res.bad_request().json(nlohmann::json{
+              {"error", "missing_session_id"},
           });
           return;
         }
 
-        std::string sessionId = *sessionIdOpt;
-
         std::size_t maxMessages = 50;
-        if (auto maxStrOpt = get_query_param(req, "max"))
+        if (req.has_query("max"))
         {
           try
           {
-            maxMessages = static_cast<std::size_t>(std::stoul(*maxStrOpt));
+            maxMessages = static_cast<std::size_t>(
+                std::stoul(req.query_value("max")));
           }
           catch (...)
           {
@@ -381,12 +285,12 @@ int main()
         auto messages = lpBridge->poll(sessionId, maxMessages, true);
         auto body = vix::websocket::json_messages_to_nlohmann_array(messages);
 
-        res.status(http::status::ok).json(body);
+        res.ok().json(body);
       });
 
   httpApp.post(
       "/ws/send",
-      [lpBridge](const http::request<http::string_body> &req,
+      [lpBridge](vix::vhttp::Request &req,
                  vix::vhttp::ResponseWrapper &res)
       {
         njson j;
@@ -396,9 +300,8 @@ int main()
         }
         catch (...)
         {
-          res.status(http::status::bad_request).json({
-              "error",
-              "invalid_json_body",
+          res.bad_request().json(njson{
+              {"error", "invalid_json_body"},
           });
           return;
         }
@@ -409,9 +312,8 @@ int main()
 
         if (type.empty())
         {
-          res.status(http::status::bad_request).json({
-              "error",
-              "missing_type",
+          res.bad_request().json(njson{
+              {"error", "missing_type"},
           });
           return;
         }
@@ -439,34 +341,36 @@ int main()
 
         lpBridge->send_from_http(sessionId, msg);
 
-        res.status(http::status::accepted).json({
-            "status",
-            "queued",
-            "session_id",
-            sessionId,
+        res.status(202).json(njson{
+            {"status", "queued"},
+            {"session_id", sessionId},
         });
       });
 
   httpApp.get(
       "/health",
-      [](auto &, vix::vhttp::ResponseWrapper &res)
+      [](vix::vhttp::Request &, vix::vhttp::ResponseWrapper &res)
       {
-        res.status(http::status::ok).json({
-            "status",
-            "ok",
+        res.ok().json(njson{
+            {"status", "ok"},
         });
       });
 
-  std::thread wsThread{[&wsApp]()
-                       { wsApp.run_blocking(); }};
+  std::thread wsThread(
+      [&wsApp]()
+      {
+        wsApp.run_blocking();
+      });
 
-  httpApp.set_shutdown_callback([&wsApp, &wsThread]()
-                                {
+  httpApp.set_shutdown_callback(
+      [&wsApp, &wsThread]()
+      {
         wsApp.stop();
         if (wsThread.joinable())
         {
-            wsThread.join();
-        } });
+          wsThread.join();
+        }
+      });
 
   httpApp.run(8080);
 

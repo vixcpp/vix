@@ -1,6 +1,6 @@
 /**
  *
- *  @file server.cpp
+ *  @file client.cpp
  *  @author Gaspard Kirira
  *
  *  Copyright 2025, Gaspard Kirira.  All rights reserved.
@@ -81,12 +81,10 @@
  * This file demonstrates best practices when building interactive,
  * reconnect-friendly, real-time WebSocket clients with Vix.cpp.
  */
-#include <iostream>
-#include <string>
-#include <memory>
 #include <chrono>
-
-#include <boost/system/error_code.hpp>
+#include <iostream>
+#include <memory>
+#include <string>
 
 #include <vix/websocket.hpp>
 
@@ -183,11 +181,15 @@ ClientPtr create_chat_client(
 
   client->on_close(
       []()
-      { std::cout << "[client] Disconnected." << std::endl; });
+      {
+        std::cout << "[client] Disconnected." << std::endl;
+      });
 
   client->on_error(
-      [](const boost::system::error_code &ec)
-      { std::cerr << "[client] error: " << ec.message() << std::endl; });
+      [](const std::string &error)
+      {
+        std::cerr << "[client] error: " << error << std::endl;
+      });
 
   client->enable_auto_reconnect(true, std::chrono::seconds(3));
   client->enable_heartbeat(std::chrono::seconds(20));

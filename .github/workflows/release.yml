@@ -76,7 +76,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             pkg-config ninja-build ca-certificates \
-            libboost-all-dev \
             nlohmann-json3-dev \
             libssl-dev \
             zlib1g-dev \
@@ -98,7 +97,6 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
             pkg-config ninja-build ca-certificates \
-            libboost-all-dev:arm64 \
             nlohmann-json3-dev:arm64 \
             libssl-dev:arm64 \
             zlib1g-dev:arm64 \
@@ -140,10 +138,10 @@ jobs:
         run: |
           set -euxo pipefail
           brew update
-          brew install pkg-config openssl@3 boost
+          brew install pkg-config openssl@3
 
       # -------------------------
-      # Windows deps (OpenSSL + Boost via vcpkg)
+      # Windows deps (OpenSSL via vcpkg)
       # -------------------------
       - name: Setup vcpkg (Windows)
         if: runner.os == 'Windows'
@@ -183,11 +181,6 @@ jobs:
               BREW_SSL="$(brew --prefix openssl@3 2>/dev/null || true)"
               if [ -n "$BREW_SSL" ] && [ -d "$BREW_SSL" ]; then
                 CMAKE_ARGS+=(-DOPENSSL_ROOT_DIR="$BREW_SSL")
-              fi
-
-              BREW_BOOST="$(brew --prefix boost 2>/dev/null || true)"
-              if [ -n "$BREW_BOOST" ] && [ -d "$BREW_BOOST" ]; then
-                CMAKE_ARGS+=(-DBoost_ROOT="$BREW_BOOST")
               fi
             fi
           fi

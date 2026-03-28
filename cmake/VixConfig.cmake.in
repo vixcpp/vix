@@ -7,25 +7,6 @@ find_dependency(Threads REQUIRED)
 find_dependency(fmt CONFIG REQUIRED)
 find_dependency(spdlog CONFIG REQUIRED)
 
-# ---- Boost (required by core/websocket headers: Boost.Beast) ----
-if (@VIX_WITH_BOOST@)
-  find_dependency(Boost REQUIRED COMPONENTS system)
-
-  # Some environments expose Boost headers as Boost::headers, others as Boost::boost.
-  # Ensure Boost::boost exists (headers target).
-  if (TARGET Boost::headers AND NOT TARGET Boost::boost)
-    add_library(Boost::boost ALIAS Boost::headers)
-  endif()
-
-  if (NOT TARGET Boost::boost)
-    message(FATAL_ERROR "Boost requested but Boost::boost (headers) target is unavailable.")
-  endif()
-
-  if (NOT TARGET Boost::system)
-    message(FATAL_ERROR "Boost requested but Boost::system target is unavailable.")
-  endif()
-endif()
-
 # ---- OpenSSL ----
 if (@VIX_WITH_OPENSSL@)
   find_dependency(OpenSSL REQUIRED)

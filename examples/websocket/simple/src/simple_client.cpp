@@ -111,8 +111,8 @@ int main()
   client->on_close([]
                    { std::cout << "[client] Disconnected." << std::endl; });
 
-  client->on_error([](const boost::system::error_code &ec)
-                   { std::cerr << "[client] error: " << ec.message() << std::endl; });
+  client->on_error([](const std::string &error)
+                   { std::cerr << "[client] error: " << error << std::endl; });
 
   client->enable_auto_reconnect(true, std::chrono::seconds(3));
   client->enable_heartbeat(std::chrono::seconds(20));

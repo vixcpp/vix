@@ -274,61 +274,6 @@ if (WIN32)
 endif()
 
 # ----------------------------------------------------
-# Third-party: Boost (required by core/websocket headers: Boost.Beast)
-# Prefer CONFIG mode (CMake 4+), fallback to module mode if needed.
-# ----------------------------------------------------
-
-set(VIX_WITH_BOOST ON)
-
-set(_VIX_BOOST_OK OFF)
-
-# Try CONFIG first (preferred with CMake 4+)
-find_package(Boost CONFIG QUIET COMPONENTS system)
-
-if (Boost_FOUND)
-  set(_VIX_BOOST_OK ON)
-  message(STATUS "Boost found (CONFIG)")
-else()
-  # Fallback for environments without BoostConfig.cmake
-  find_package(Boost QUIET COMPONENTS system)
-  if (Boost_FOUND)
-    set(_VIX_BOOST_OK ON)
-    message(STATUS "Boost found (FindBoost fallback)")
-  endif()
-endif()
-
-if (NOT _VIX_BOOST_OK)
-  message(FATAL_ERROR "Boost is required (core/websocket). Install Boost (headers + system).")
-endif()
-
-# Normalize targets
-if (TARGET Boost::headers AND NOT TARGET Boost::boost)
-  add_library(Boost::boost ALIAS Boost::headers)
-endif()
-
-add_library(vix_thirdparty_boost INTERFACE)
-add_library(vix::thirdparty_boost ALIAS vix_thirdparty_boost)
-
-# Some distros do not provide Boost::system target in module mode, so guard it
-if (TARGET Boost::system)
-  target_link_libraries(vix_thirdparty_boost INTERFACE Boost::boost Boost::system)
-else()
-  # Module mode can expose include dirs + libs variables
-  if (DEFINED Boost_INCLUDE_DIRS)
-    target_include_directories(vix_thirdparty_boost SYSTEM INTERFACE ${Boost_INCLUDE_DIRS})
-  endif()
-  if (DEFINED Boost_LIBRARIES)
-    target_link_libraries(vix_thirdparty_boost INTERFACE ${Boost_LIBRARIES})
-  else()
-    # At least headers
-    target_link_libraries(vix_thirdparty_boost INTERFACE Boost::boost)
-  endif()
-endif()
-
-target_link_libraries(vix INTERFACE vix::thirdparty_boost)
-
-
-# ----------------------------------------------------
 # Third-party: Asio (standalone, header-only)
 # Exposes: vix::thirdparty_asio
 # ----------------------------------------------------
@@ -579,6 +524,24 @@ else()
   message(WARNING "Could not resolve real utils target (tried: vix_utils, vix-utils, utils).")
 endif()
 
+# --- Async (optional) ---
+set(VIX_HAS_ASYNC OFF)
+if (VIX_ENABLE_ASYNC AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/async/CMakeLists.txt")
+  message(STATUS "Adding 'modules/async'...")
+  add_subdirectory(modules/async async_build)
+
+  if (TARGET vix::async OR TARGET vix_async)
+    set(VIX_HAS_ASYNC ON)
+    if (TARGET vix_async AND NOT TARGET vix::async)
+      add_library(vix::async ALIAS vix_async)
+    endif()
+  else()
+    message(WARNING "Async module added but no vix::async target was exported.")
+  endif()
+else()
+  message(STATUS "Async: disabled or not present.")
+endif()
+
 # --- Core ---
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/core/CMakeLists.txt")
   message(STATUS "Adding 'modules/core'...")
@@ -632,24 +595,6 @@ if (VIX_ENABLE_VALIDATION AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/valida
   endif()
 else()
   message(STATUS "Validation: disabled or not present.")
-endif()
-
-# --- Async (optional) ---
-set(VIX_HAS_ASYNC OFF)
-if (VIX_ENABLE_ASYNC AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/async/CMakeLists.txt")
-  message(STATUS "Adding 'modules/async'...")
-  add_subdirectory(modules/async async_build)
-
-  if (TARGET vix::async OR TARGET vix_async)
-    set(VIX_HAS_ASYNC ON)
-    if (TARGET vix_async AND NOT TARGET vix::async)
-      add_library(vix::async ALIAS vix_async)
-    endif()
-  else()
-    message(WARNING "Async module added but no vix::async target was exported.")
-  endif()
-else()
-  message(STATUS "Async: disabled or not present.")
 endif()
 
 # --- Net (required by P2P) ---
@@ -766,6 +711,32 @@ if (VIX_ENABLE_MIDDLEWARE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/middle
   endif()
 else()
   message(STATUS "Middleware: disabled or not present.")
+endif()
+
+# --- Template (optional) ---
+set(VIX_HAS_TEMPLATE OFF)
+
+if (VIX_ENABLE_TEMPLATE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/template/CMakeLists.txt")
+  message(STATUS "Adding 'modules/template'...")
+
+  set(TEMPLATE_BUILD_TESTS ${VIX_TEMPLATE_BUILD_TESTS} CACHE BOOL "" FORCE)
+  set(TEMPLATE_BUILD_EXAMPLES ${VIX_TEMPLATE_BUILD_EXAMPLES} CACHE BOOL "" FORCE)
+  set(TEMPLATE_BUILD_BENCHMARKS ${VIX_TEMPLATE_BUILD_BENCH} CACHE BOOL "" FORCE)
+  set(TEMPLATE_INSTALL OFF CACHE BOOL "" FORCE)
+
+  add_subdirectory(modules/template template_build)
+
+  if (TARGET vix::template OR TARGET template)
+    set(VIX_HAS_TEMPLATE ON)
+
+    if (TARGET template AND NOT TARGET vix::template)
+      add_library(vix::template ALIAS template)
+    endif()
+  else()
+    message(WARNING "Template module added but no vix::template target was exported.")
+  endif()
+else()
+  message(STATUS "Template: disabled or not present.")
 endif()
 
 # Bench mode (compile-time flags)
@@ -929,6 +900,10 @@ elseif (TARGET vix_middleware)
   add_library(vix::middleware ALIAS vix_middleware)
   target_link_libraries(vix INTERFACE vix::middleware)
   target_compile_definitions(vix INTERFACE VIX_HAS_MIDDLEWARE=1)
+endif()
+
+if (TARGET vix::template)
+  target_link_libraries(vix INTERFACE vix::template)
 endif()
 
 # Propagate sanitizers to consumers (umbrella)
@@ -1106,10 +1081,8 @@ endif()
 option(VIX_ENABLE_INSTALL "Enable install/export rules for packaging" ON)
 
 # Compute feature flags as real ON/OFF at configure-time (NO generator expressions)
-set(VIX_WITH_JSON     ON)     # umbrella always links JSON backend
-set(VIX_WITH_BOOST    ON)
-set(VIX_WITH_BOOST_FS OFF)  # si tu n'utilises pas filesystem explicitement
-set(VIX_WITH_OPENSSL OFF)
+set(VIX_WITH_JSON     ON)
+set(VIX_WITH_OPENSSL  OFF)
 find_package(OpenSSL QUIET)
 if (OpenSSL_FOUND AND TARGET OpenSSL::Crypto)
   set(VIX_WITH_OPENSSL ON)
@@ -1148,7 +1121,7 @@ endif()
 
 if (VIX_ENABLE_INSTALL)
 
-  foreach(_m core utils json websocket webrpc crypto time conversion validation async net cache sync p2p p2p_http middleware db orm)
+    foreach(_m core utils json websocket webrpc crypto time conversion validation async net cache sync p2p p2p_http middleware db orm template)
     if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/${_m}/include")
       install(DIRECTORY "modules/${_m}/include/"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
@@ -1182,10 +1155,6 @@ if (VIX_ENABLE_INSTALL)
 
   if (TARGET vix_thirdparty_asio)
     install(TARGETS vix_thirdparty_asio EXPORT VixTargets)
-  endif()
-
-  if (TARGET vix_thirdparty_boost)
-    install(TARGETS vix_thirdparty_boost EXPORT VixTargets)
   endif()
 
   if (TARGET vix_warnings)
@@ -1292,6 +1261,7 @@ message(STATUS "P2P built         : ${VIX_HAS_P2P}")
 message(STATUS "Conversion built : ${VIX_HAS_CONVERSION}")
 message(STATUS "Validation built : ${VIX_HAS_VALIDATION}")
 message(STATUS "Middleware built : ${VIX_HAS_MIDDLEWARE}")
+message(STATUS "Template built     : ${VIX_HAS_TEMPLATE}")
 message(STATUS "Examples          : ${VIX_BUILD_EXAMPLES}")
 message(STATUS "Tests             : ${VIX_BUILD_TESTS}")
 message(STATUS "Sanitizers        : ${VIX_ENABLE_SANITIZERS}")

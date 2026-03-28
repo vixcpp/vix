@@ -1,6 +1,6 @@
 # Vix.cpp – WebSocket Examples
 
-This directory contains all **WebSocket-only** example applications for Vix.cpp.  
+This directory contains all **WebSocket-only** example applications for Vix.cpp.
 They demonstrate:
 
 - The low-level WebSocket server
@@ -185,14 +185,6 @@ Server ws(cfg, std::move(exec));
 
 ---
 
-## 🧱 8. High-Level API (Node.js-like)
-
-```cpp
-auto [app, ws] = vix::make_http_and_ws("config/config.json");
-vix::run_http_and_ws(app, ws, 8080);
-```
-
----
 
 ## 📦 9. Build All WebSocket Examples
 

@@ -8,6 +8,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [2.0.0] - 2026-03-24
+
+Major release of **Vix.cpp** introducing a new native HTTP stack, full async runtime improvements, and removal of Boost dependencies.
+
+### Core Runtime
+
+- Introduced **native HTTP stack (`vix::vhttp`)**
+- Removed dependency on **Boost.Beast**
+- Improved **HTTP listener startup**
+  - deterministic startup behavior
+  - clean accept loop shutdown
+- Added **async HTTP listener startup**
+- Improved **runtime executor and threadpool shutdown safety**
+- Fixed:
+  - double shutdown issues in `App::close`
+  - unsafe shutdown paths causing aborts
+- Improved session handling by silencing normal EOF disconnect logs
+
+### Async Module
+
+- Refactored `tcp_listener`
+  - asynchronous `listen()` implementation
+  - asynchronous accept loop
+- Improved shutdown safety
+  - safe termination of `io_context`
+  - proper worker thread cleanup
+- Transitioned from synchronous startup to a fully asynchronous listener model
+
+### WebSocket
+
+- Migrated to **vix::vhttp**
+- Removed all **Boost dependencies**
+- Introduced
+  - async listener startup
+  - improved runtime integration
+- Fixed
+  - shutdown race conditions
+  - dangling callbacks in `AttachedRuntime`
+  - connection refused issues during startup
+- Improved
+  - clean accept shutdown
+  - lifecycle stability
+
+### Middleware
+
+- Full migration to **vix::vhttp**
+- Removed **Boost.Beast compatibility layer**
+- Unified middleware behavior with the new HTTP stack
+
+### CLI and Tooling
+
+- Improved **auto-deps system**
+  - support for compiled dependencies
+  - correct handling of header-only packages
+- Added deterministic dependency installation
+- Improved CLI UX
+  - cleaner output
+  - better dependency detection
+- Added internal caching improvements
+
+### Architecture
+
+- Unified runtime around
+  - native HTTP layer
+  - async execution model
+  - modular system
+- Cleaner separation between
+  - runtime
+  - transport
+  - application layer
+
+### Breaking Changes
+
+- Removed Boost.Beast and related Boost dependencies
+- Old HTTP stack is no longer supported
+- Legacy executors were replaced by `RuntimeExecutor`
+- Listener startup behavior changed to an async-first model
+
+### Highlights
+
+- Fully Boost-free runtime
+- Native high-performance HTTP stack
+- Async-first architecture
+- Safer shutdown across modules
+- Stronger production foundation for the Vix ecosystem
+
 ## [v1.47.1]
 
 ### CLI
