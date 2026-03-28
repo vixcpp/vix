@@ -69,18 +69,13 @@ env:
 
 jobs:
   build-test:
-    name: Build and Tests (${{ matrix.compiler }}, examples=${{ matrix.examples }}, sanitizers=${{ matrix.sanitizers }})
+    name: Build and Tests (${{ matrix.compiler }}, examples=${{ matrix.examples }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         compiler: [clang, gcc]
         examples: [ON, OFF]
-        sanitizers: [OFF]
-        include:
-          - compiler: clang
-            examples: ON
-            sanitizers: ON
 
     steps:
       - name: Checkout umbrella repository
@@ -119,7 +114,7 @@ jobs:
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DVIX_BUILD_TESTS=ON \
             -DVIX_BUILD_EXAMPLES=${{ matrix.examples }} \
-            -DVIX_ENABLE_SANITIZERS=${{ matrix.sanitizers }} \
+            -DVIX_ENABLE_SANITIZERS=OFF \
             -DVIX_ENABLE_WARNINGS=ON \
             -DVIX_ENABLE_LTO=OFF \
             -DVIX_ENABLE_INSTALL=ON \
@@ -152,15 +147,67 @@ jobs:
 
       - name: Run ctest
         run: |
-          set -e
           cd build
-          if ctest --output-on-failure --timeout 120; then
-            echo "Umbrella tests passed."
-          else
-            echo "::warning::Some umbrella tests failed or no tests were discovered."
-            test -f Testing/Temporary/LastTest.log && cat Testing/Temporary/LastTest.log || true
-            exit 0
-          fi
+          ctest --output-on-failure --timeout 120
+
+  sanitizers:
+    name: Sanitizers (clang, examples=ON)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout umbrella repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y $DEPS
+
+      - name: Select clang
+        run: |
+          echo "CC=clang" >> "$GITHUB_ENV"
+          echo "CXX=clang++" >> "$GITHUB_ENV"
+
+      - name: Configure sanitizer build
+        run: |
+          cmake -G Ninja -S . -B build-san \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DVIX_BUILD_TESTS=ON \
+            -DVIX_BUILD_EXAMPLES=ON \
+            -DVIX_ENABLE_SANITIZERS=ON \
+            -DVIX_ENABLE_WARNINGS=ON \
+            -DVIX_ENABLE_LTO=OFF \
+            -DVIX_ENABLE_INSTALL=OFF \
+            -DVIX_FORCE_FETCH_JSON=OFF \
+            -DVIX_FETCH_DEPS=OFF \
+            -DVIX_ENABLE_ASYNC=ON \
+            -DVIX_ENABLE_CRYPTO=ON \
+            -DVIX_ENABLE_TIME=ON \
+            -DVIX_ENABLE_WEBRPC=ON \
+            -DVIX_ENABLE_VALIDATION=ON \
+            -DVIX_ENABLE_CACHE=ON \
+            -DVIX_ENABLE_P2P=ON \
+            -DVIX_ENABLE_P2P_HTTP=ON \
+            -DVIX_ENABLE_DB=ON \
+            -DVIX_DB_USE_MYSQL=ON \
+            -DVIX_DB_USE_SQLITE=OFF \
+            -DVIX_ENABLE_ORM=ON \
+            -DVIX_ENABLE_MIDDLEWARE=ON \
+            -DVIX_ENABLE_CLI=ON \
+            -DVIX_ENABLE_WEBSOCKET=ON
+
+      - name: Build sanitizer config
+        run: |
+          cmake --build build-san -j"${BUILD_JOBS}"
+
+      - name: Run sanitizer tests
+        run: |
+          cd build-san
+          ctest --output-on-failure --timeout 120
 
   runtime-smoke:
     name: Runtime Smoke and CLI Checks
@@ -187,7 +234,7 @@ jobs:
             -DVIX_ENABLE_SANITIZERS=OFF \
             -DVIX_ENABLE_WARNINGS=ON \
             -DVIX_ENABLE_LTO=OFF \
-            -DVIX_ENABLE_INSTALL=ON \
+            -DVIX_ENABLE_INSTALL=OFF \
             -DVIX_FORCE_FETCH_JSON=OFF \
             -DVIX_FETCH_DEPS=OFF \
             -DVIX_ENABLE_ASYNC=ON \
@@ -225,33 +272,21 @@ jobs:
       - name: Run CLI smoke checks
         shell: bash
         run: |
-          set +e
-          FAIL=0
-
-          echo "==> vix --help"
-          timeout 10s "$VIX_BIN" --help >/tmp/vix_help.log 2>&1
-          STATUS=$?
+          set -e
+          timeout 10s "$VIX_BIN" --help >/tmp/vix_help.log 2>&1 || STATUS=$?
           cat /tmp/vix_help.log || true
-          if [ $STATUS -ne 0 ] && [ $STATUS -ne 124 ]; then
-            echo "::warning::vix --help failed"
-            FAIL=1
+          if [ "${STATUS:-0}" -ne 0 ] && [ "${STATUS:-0}" -ne 124 ]; then
+            echo "::error::vix --help failed"
+            exit 1
           fi
 
-          echo "==> vix --version"
-          timeout 10s "$VIX_BIN" --version >/tmp/vix_version.log 2>&1
-          STATUS=$?
+          unset STATUS
+          timeout 10s "$VIX_BIN" --version >/tmp/vix_version.log 2>&1 || STATUS=$?
           cat /tmp/vix_version.log || true
-          if [ $STATUS -ne 0 ] && [ $STATUS -ne 124 ]; then
-            echo "::warning::vix --version failed"
-            FAIL=1
+          if [ "${STATUS:-0}" -ne 0 ] && [ "${STATUS:-0}" -ne 124 ]; then
+            echo "::error::vix --version failed"
+            exit 1
           fi
-
-          if [ $FAIL -ne 0 ]; then
-            echo "::warning::Runtime smoke checks reported issues."
-          else
-            echo "Runtime smoke checks completed."
-          fi
-          exit 0
 
   static-analysis:
     name: Umbrella Static Analysis
@@ -274,7 +309,7 @@ jobs:
           cmake -G Ninja -S . -B build-analyze \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DVIX_BUILD_TESTS=ON \
+            -DVIX_BUILD_TESTS=OFF \
             -DVIX_BUILD_EXAMPLES=ON \
             -DVIX_ENABLE_SANITIZERS=OFF \
             -DVIX_ENABLE_WARNINGS=ON \
@@ -300,12 +335,6 @@ jobs:
         run: |
           set +e
           find modules tests examples -name '*.cpp' -print0 2>/dev/null | xargs -0 -r -n1 -P2 clang-tidy -p build-analyze
-          STATUS=$?
-          if [ $STATUS -ne 0 ]; then
-            echo "::warning::clang-tidy reported issues."
-          else
-            echo "clang-tidy completed successfully."
-          fi
           exit 0
 
       - name: Run cppcheck on umbrella tree
@@ -318,12 +347,6 @@ jobs:
             --quiet \
             --suppress=missingIncludeSystem \
             modules/ tests/ examples/
-          STATUS=$?
-          if [ $STATUS -ne 0 ]; then
-            echo "::warning::cppcheck reported issues."
-          else
-            echo "cppcheck completed successfully."
-          fi
           exit 0
 
   valgrind:
@@ -351,7 +374,8 @@ jobs:
             -DVIX_BUILD_EXAMPLES=OFF \
             -DVIX_ENABLE_SANITIZERS=OFF \
             -DVIX_ENABLE_WARNINGS=ON \
-            -DVIX_ENABLE_INSTALL=ON \
+            -DVIX_ENABLE_LTO=OFF \
+            -DVIX_ENABLE_INSTALL=OFF \
             -DVIX_FORCE_FETCH_JSON=OFF \
             -DVIX_FETCH_DEPS=OFF \
             -DVIX_ENABLE_ASYNC=ON \
@@ -387,28 +411,17 @@ jobs:
       - name: Run valgrind on CLI
         shell: bash
         run: |
-          set +e
-          FAIL=0
-
+          set -e
           timeout 20s valgrind \
             --leak-check=full \
             --show-leak-kinds=all \
             --track-origins=yes \
-            "$VIX_BIN" --help >/tmp/umbrella_valgrind.log 2>&1
-          STATUS=$?
+            "$VIX_BIN" --help >/tmp/umbrella_valgrind.log 2>&1 || STATUS=$?
           cat /tmp/umbrella_valgrind.log || true
-
-          if [ $STATUS -ne 0 ] && [ $STATUS -ne 124 ]; then
-            echo "::warning::Valgrind reported issues for umbrella CLI"
-            FAIL=1
+          if [ "${STATUS:-0}" -ne 0 ] && [ "${STATUS:-0}" -ne 124 ]; then
+            echo "::error::Valgrind reported issues for umbrella CLI"
+            exit 1
           fi
-
-          if [ $FAIL -ne 0 ]; then
-            echo "::warning::Valgrind detected potential issues."
-          else
-            echo "Valgrind checks completed."
-          fi
-          exit 0
 
   standalone-package-check:
     name: Umbrella Package Export Check
@@ -434,6 +447,7 @@ jobs:
             -DVIX_BUILD_EXAMPLES=OFF \
             -DVIX_ENABLE_SANITIZERS=OFF \
             -DVIX_ENABLE_WARNINGS=ON \
+            -DVIX_ENABLE_LTO=OFF \
             -DVIX_ENABLE_INSTALL=ON \
             -DVIX_FORCE_FETCH_JSON=OFF \
             -DVIX_FETCH_DEPS=OFF \
@@ -447,6 +461,7 @@ jobs:
             -DVIX_ENABLE_P2P_HTTP=ON \
             -DVIX_ENABLE_DB=ON \
             -DVIX_DB_USE_MYSQL=ON \
+            -DVIX_DB_USE_SQLITE=OFF \
             -DVIX_ENABLE_ORM=ON \
             -DVIX_ENABLE_MIDDLEWARE=ON \
             -DVIX_ENABLE_CLI=ON \
@@ -468,16 +483,8 @@ jobs:
 
           test -f .ci-install/lib/cmake/Vix/VixConfig.cmake || (echo "::error::VixConfig.cmake missing"; exit 1)
           test -f .ci-install/lib/cmake/Vix/VixConfigVersion.cmake || (echo "::error::VixConfigVersion.cmake missing"; exit 1)
-          test -f .ci-install/include/vix/core/App.hpp || true
           test -f .ci-install/include/vix/json/Simple.hpp || (echo "::error::json headers missing"; exit 1)
           test -f .ci-install/include/vix/utils/Logger.hpp || (echo "::error::utils headers missing"; exit 1)
-          test -f .ci-install/include/vix/webrpc/webrpc.hpp || true
-
-          if [ -f .ci-install/bin/vix ]; then
-            echo "CLI binary installed."
-          else
-            echo "::warning::No installed CLI binary found in install tree."
-          fi
 
       - name: Consumer package check
         run: |
@@ -576,25 +583,23 @@ jobs:
           cmake --build build-full -j"${BUILD_JOBS}"
 
   summary:
-    name: Umbrella Strict CI Summary
+    name: SECURITY_CI Summary
     needs:
-      [
-        build-test,
-        runtime-smoke,
-        static-analysis,
-        valgrind,
-        standalone-package-check,
-        config-coverage,
-      ]
+      - build-test
+      - sanitizers
+      - runtime-smoke
+      - static-analysis
+      - valgrind
+      - standalone-package-check
+      - config-coverage
     runs-on: ubuntu-latest
 
     steps:
       - name: Print summary
         run: |
-          echo "Umbrella strict CI completed."
-          echo "This workflow validates:"
-          echo "- umbrella build with clang and gcc"
-          echo "- tests and examples"
+          echo "SECURITY_CI completed."
+          echo "- standard build and tests"
+          echo "- dedicated sanitizer build without install/export"
           echo "- CLI runtime smoke"
           echo "- static analysis"
           echo "- valgrind"
