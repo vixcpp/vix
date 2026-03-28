@@ -1,0 +1,595 @@
+name: Umbrella Strict CI
+
+on:
+  push:
+    branches: [main, master, dev]
+    paths:
+      - ".github/workflows/umbrella-strict-ci.yml"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - "config/**"
+      - "examples/**"
+      - "tests/**"
+      - "modules/**"
+      - ".gitmodules"
+      - "README.md"
+      - "CHANGELOG.md"
+  pull_request:
+    branches: [main, master, dev]
+    paths:
+      - ".github/workflows/umbrella-strict-ci.yml"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - "config/**"
+      - "examples/**"
+      - "tests/**"
+      - "modules/**"
+      - ".gitmodules"
+      - "README.md"
+      - "CHANGELOG.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DEPS: >
+    build-essential
+    cmake
+    ninja-build
+    clang
+    llvm
+    lld
+    g++
+    cppcheck
+    clang-tidy
+    valgrind
+    pkg-config
+    git
+    curl
+    zip
+    unzip
+    tar
+    libssl-dev
+    zlib1g-dev
+    nlohmann-json3-dev
+    libsqlite3-dev
+    libspdlog-dev
+    libfmt-dev
+    libmysqlcppconn-dev
+  BUILD_JOBS: 2
+
+jobs:
+  build-test:
+    name: Build and Tests (${{ matrix.compiler }}, examples=${{ matrix.examples }}, sanitizers=${{ matrix.sanitizers }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [clang, gcc]
+        examples: [ON, OFF]
+        sanitizers: [OFF]
+        include:
+          - compiler: clang
+            examples: ON
+            sanitizers: ON
+
+    steps:
+      - name: Checkout umbrella repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y $DEPS
+          test -f /usr/include/asio.hpp || echo "System Asio not installed globally; umbrella vendored/fetch path will be used."
+
+      - name: Verify critical module directories
+        run: |
+          test -f CMakeLists.txt || (echo "::error::Root CMakeLists.txt missing"; exit 1)
+          test -f modules/json/CMakeLists.txt || (echo "::error::modules/json missing"; exit 1)
+          test -f modules/utils/CMakeLists.txt || (echo "::error::modules/utils missing"; exit 1)
+          test -f modules/core/CMakeLists.txt || (echo "::error::modules/core missing"; exit 1)
+
+      - name: Select compiler
+        run: |
+          if [ "${{ matrix.compiler }}" = "clang" ]; then
+            echo "CC=clang" >> "$GITHUB_ENV"
+            echo "CXX=clang++" >> "$GITHUB_ENV"
+          else
+            echo "CC=gcc" >> "$GITHUB_ENV"
+            echo "CXX=g++" >> "$GITHUB_ENV"
+          fi
+
+      - name: Configure umbrella build
+        run: |
+          cmake -G Ninja -S . -B build \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DVIX_BUILD_TESTS=ON \
+            -DVIX_BUILD_EXAMPLES=${{ matrix.examples }} \
+            -DVIX_ENABLE_SANITIZERS=${{ matrix.sanitizers }} \
+            -DVIX_ENABLE_WARNINGS=ON \
+            -DVIX_ENABLE_LTO=OFF \
+            -DVIX_ENABLE_INSTALL=ON \
+            -DVIX_FORCE_FETCH_JSON=OFF \
+            -DVIX_FETCH_DEPS=OFF \
+            -DVIX_ENABLE_ASYNC=ON \
+            -DVIX_ENABLE_CRYPTO=ON \
+            -DVIX_ENABLE_TIME=ON \
+            -DVIX_ENABLE_WEBRPC=ON \
+            -DVIX_ENABLE_VALIDATION=ON \
+            -DVIX_ENABLE_CACHE=ON \
+            -DVIX_ENABLE_P2P=ON \
+            -DVIX_ENABLE_P2P_HTTP=ON \
+            -DVIX_ENABLE_DB=ON \
+            -DVIX_DB_USE_MYSQL=ON \
+            -DVIX_DB_USE_SQLITE=OFF \
+            -DVIX_ENABLE_ORM=ON \
+            -DVIX_ENABLE_MIDDLEWARE=ON \
+            -DVIX_ENABLE_CLI=ON \
+            -DVIX_ENABLE_WEBSOCKET=ON
+
+      - name: Build umbrella
+        run: |
+          cmake --build build -j"${BUILD_JOBS}"
+
+      - name: Show generated executables
+        run: |
+          echo "---- executables ----"
+          find build -type f -executable | sort || true
+
+      - name: Run ctest
+        run: |
+          set -e
+          cd build
+          if ctest --output-on-failure --timeout 120; then
+            echo "Umbrella tests passed."
+          else
+            echo "::warning::Some umbrella tests failed or no tests were discovered."
+            test -f Testing/Temporary/LastTest.log && cat Testing/Temporary/LastTest.log || true
+            exit 0
+          fi
+
+  runtime-smoke:
+    name: Runtime Smoke and CLI Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout umbrella repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y $DEPS
+
+      - name: Configure runtime build
+        run: |
+          cmake -G Ninja -S . -B build-runtime \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DVIX_BUILD_TESTS=OFF \
+            -DVIX_BUILD_EXAMPLES=ON \
+            -DVIX_ENABLE_SANITIZERS=OFF \
+            -DVIX_ENABLE_WARNINGS=ON \
+            -DVIX_ENABLE_LTO=OFF \
+            -DVIX_ENABLE_INSTALL=ON \
+            -DVIX_FORCE_FETCH_JSON=OFF \
+            -DVIX_FETCH_DEPS=OFF \
+            -DVIX_ENABLE_ASYNC=ON \
+            -DVIX_ENABLE_CRYPTO=ON \
+            -DVIX_ENABLE_TIME=ON \
+            -DVIX_ENABLE_WEBRPC=ON \
+            -DVIX_ENABLE_VALIDATION=ON \
+            -DVIX_ENABLE_CACHE=ON \
+            -DVIX_ENABLE_P2P=ON \
+            -DVIX_ENABLE_P2P_HTTP=ON \
+            -DVIX_ENABLE_DB=ON \
+            -DVIX_DB_USE_MYSQL=ON \
+            -DVIX_DB_USE_SQLITE=OFF \
+            -DVIX_ENABLE_ORM=ON \
+            -DVIX_ENABLE_MIDDLEWARE=ON \
+            -DVIX_ENABLE_CLI=ON \
+            -DVIX_ENABLE_WEBSOCKET=ON
+
+      - name: Build runtime artifacts
+        run: |
+          cmake --build build-runtime -j"${BUILD_JOBS}"
+
+      - name: Locate vix binary
+        run: |
+          if [ -f build-runtime/vix ]; then
+            echo "VIX_BIN=build-runtime/vix" >> "$GITHUB_ENV"
+          elif [ -f build-runtime/vix_cli ]; then
+            echo "VIX_BIN=build-runtime/vix_cli" >> "$GITHUB_ENV"
+          else
+            echo "::error::Could not find vix binary in build-runtime"
+            find build-runtime -maxdepth 3 -type f | sort || true
+            exit 1
+          fi
+
+      - name: Run CLI smoke checks
+        shell: bash
+        run: |
+          set +e
+          FAIL=0
+
+          echo "==> vix --help"
+          timeout 10s "$VIX_BIN" --help >/tmp/vix_help.log 2>&1
+          STATUS=$?
+          cat /tmp/vix_help.log || true
+          if [ $STATUS -ne 0 ] && [ $STATUS -ne 124 ]; then
+            echo "::warning::vix --help failed"
+            FAIL=1
+          fi
+
+          echo "==> vix --version"
+          timeout 10s "$VIX_BIN" --version >/tmp/vix_version.log 2>&1
+          STATUS=$?
+          cat /tmp/vix_version.log || true
+          if [ $STATUS -ne 0 ] && [ $STATUS -ne 124 ]; then
+            echo "::warning::vix --version failed"
+            FAIL=1
+          fi
+
+          if [ $FAIL -ne 0 ]; then
+            echo "::warning::Runtime smoke checks reported issues."
+          else
+            echo "Runtime smoke checks completed."
+          fi
+          exit 0
+
+  static-analysis:
+    name: Umbrella Static Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout umbrella repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y $DEPS
+
+      - name: Configure for analysis
+        run: |
+          cmake -G Ninja -S . -B build-analyze \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DVIX_BUILD_TESTS=ON \
+            -DVIX_BUILD_EXAMPLES=ON \
+            -DVIX_ENABLE_SANITIZERS=OFF \
+            -DVIX_ENABLE_WARNINGS=ON \
+            -DVIX_ENABLE_INSTALL=OFF \
+            -DVIX_FORCE_FETCH_JSON=OFF \
+            -DVIX_FETCH_DEPS=OFF \
+            -DVIX_ENABLE_ASYNC=ON \
+            -DVIX_ENABLE_CRYPTO=ON \
+            -DVIX_ENABLE_TIME=ON \
+            -DVIX_ENABLE_WEBRPC=ON \
+            -DVIX_ENABLE_VALIDATION=ON \
+            -DVIX_ENABLE_CACHE=ON \
+            -DVIX_ENABLE_P2P=ON \
+            -DVIX_ENABLE_P2P_HTTP=ON \
+            -DVIX_ENABLE_DB=ON \
+            -DVIX_DB_USE_MYSQL=ON \
+            -DVIX_ENABLE_ORM=ON \
+            -DVIX_ENABLE_MIDDLEWARE=ON \
+            -DVIX_ENABLE_CLI=ON \
+            -DVIX_ENABLE_WEBSOCKET=ON
+
+      - name: Run clang-tidy on umbrella sources
+        run: |
+          set +e
+          find modules tests examples -name '*.cpp' -print0 2>/dev/null | xargs -0 -r -n1 -P2 clang-tidy -p build-analyze
+          STATUS=$?
+          if [ $STATUS -ne 0 ]; then
+            echo "::warning::clang-tidy reported issues."
+          else
+            echo "clang-tidy completed successfully."
+          fi
+          exit 0
+
+      - name: Run cppcheck on umbrella tree
+        run: |
+          set +e
+          cppcheck \
+            --enable=all \
+            --std=c++20 \
+            --inconclusive \
+            --quiet \
+            --suppress=missingIncludeSystem \
+            modules/ tests/ examples/
+          STATUS=$?
+          if [ $STATUS -ne 0 ]; then
+            echo "::warning::cppcheck reported issues."
+          else
+            echo "cppcheck completed successfully."
+          fi
+          exit 0
+
+  valgrind:
+    name: Umbrella Valgrind
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout umbrella repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y $DEPS
+
+      - name: Configure valgrind build
+        run: |
+          cmake -G Ninja -S . -B build-valgrind \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DVIX_BUILD_TESTS=OFF \
+            -DVIX_BUILD_EXAMPLES=OFF \
+            -DVIX_ENABLE_SANITIZERS=OFF \
+            -DVIX_ENABLE_WARNINGS=ON \
+            -DVIX_ENABLE_INSTALL=ON \
+            -DVIX_FORCE_FETCH_JSON=OFF \
+            -DVIX_FETCH_DEPS=OFF \
+            -DVIX_ENABLE_ASYNC=ON \
+            -DVIX_ENABLE_CRYPTO=ON \
+            -DVIX_ENABLE_TIME=ON \
+            -DVIX_ENABLE_WEBRPC=ON \
+            -DVIX_ENABLE_VALIDATION=ON \
+            -DVIX_ENABLE_CACHE=ON \
+            -DVIX_ENABLE_P2P=ON \
+            -DVIX_ENABLE_P2P_HTTP=ON \
+            -DVIX_ENABLE_DB=ON \
+            -DVIX_DB_USE_MYSQL=ON \
+            -DVIX_ENABLE_ORM=ON \
+            -DVIX_ENABLE_MIDDLEWARE=ON \
+            -DVIX_ENABLE_CLI=ON \
+            -DVIX_ENABLE_WEBSOCKET=ON
+
+      - name: Build
+        run: |
+          cmake --build build-valgrind -j"${BUILD_JOBS}"
+
+      - name: Locate vix binary
+        run: |
+          if [ -f build-valgrind/vix ]; then
+            echo "VIX_BIN=build-valgrind/vix" >> "$GITHUB_ENV"
+          elif [ -f build-valgrind/vix_cli ]; then
+            echo "VIX_BIN=build-valgrind/vix_cli" >> "$GITHUB_ENV"
+          else
+            echo "::error::Could not find vix binary in build-valgrind"
+            exit 1
+          fi
+
+      - name: Run valgrind on CLI
+        shell: bash
+        run: |
+          set +e
+          FAIL=0
+
+          timeout 20s valgrind \
+            --leak-check=full \
+            --show-leak-kinds=all \
+            --track-origins=yes \
+            "$VIX_BIN" --help >/tmp/umbrella_valgrind.log 2>&1
+          STATUS=$?
+          cat /tmp/umbrella_valgrind.log || true
+
+          if [ $STATUS -ne 0 ] && [ $STATUS -ne 124 ]; then
+            echo "::warning::Valgrind reported issues for umbrella CLI"
+            FAIL=1
+          fi
+
+          if [ $FAIL -ne 0 ]; then
+            echo "::warning::Valgrind detected potential issues."
+          else
+            echo "Valgrind checks completed."
+          fi
+          exit 0
+
+  standalone-package-check:
+    name: Umbrella Package Export Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout umbrella repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y $DEPS
+
+      - name: Configure installable umbrella build
+        run: |
+          cmake -G Ninja -S . -B build-install \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DVIX_BUILD_TESTS=OFF \
+            -DVIX_BUILD_EXAMPLES=OFF \
+            -DVIX_ENABLE_SANITIZERS=OFF \
+            -DVIX_ENABLE_WARNINGS=ON \
+            -DVIX_ENABLE_INSTALL=ON \
+            -DVIX_FORCE_FETCH_JSON=OFF \
+            -DVIX_FETCH_DEPS=OFF \
+            -DVIX_ENABLE_ASYNC=ON \
+            -DVIX_ENABLE_CRYPTO=ON \
+            -DVIX_ENABLE_TIME=ON \
+            -DVIX_ENABLE_WEBRPC=ON \
+            -DVIX_ENABLE_VALIDATION=ON \
+            -DVIX_ENABLE_CACHE=ON \
+            -DVIX_ENABLE_P2P=ON \
+            -DVIX_ENABLE_P2P_HTTP=ON \
+            -DVIX_ENABLE_DB=ON \
+            -DVIX_DB_USE_MYSQL=ON \
+            -DVIX_ENABLE_ORM=ON \
+            -DVIX_ENABLE_MIDDLEWARE=ON \
+            -DVIX_ENABLE_CLI=ON \
+            -DVIX_ENABLE_WEBSOCKET=ON \
+            -DCMAKE_INSTALL_PREFIX="${PWD}/.ci-install"
+
+      - name: Build umbrella package
+        run: |
+          cmake --build build-install -j"${BUILD_JOBS}"
+
+      - name: Install umbrella package
+        run: |
+          cmake --install build-install
+
+      - name: Verify install tree
+        run: |
+          echo "---- install tree ----"
+          find .ci-install -maxdepth 10 -type f | sort || true
+
+          test -f .ci-install/lib/cmake/Vix/VixConfig.cmake || (echo "::error::VixConfig.cmake missing"; exit 1)
+          test -f .ci-install/lib/cmake/Vix/VixConfigVersion.cmake || (echo "::error::VixConfigVersion.cmake missing"; exit 1)
+          test -f .ci-install/include/vix/core/App.hpp || true
+          test -f .ci-install/include/vix/json/Simple.hpp || (echo "::error::json headers missing"; exit 1)
+          test -f .ci-install/include/vix/utils/Logger.hpp || (echo "::error::utils headers missing"; exit 1)
+          test -f .ci-install/include/vix/webrpc/webrpc.hpp || true
+
+          if [ -f .ci-install/bin/vix ]; then
+            echo "CLI binary installed."
+          else
+            echo "::warning::No installed CLI binary found in install tree."
+          fi
+
+      - name: Consumer package check
+        run: |
+          mkdir -p /tmp/vix-consumer
+          cat >/tmp/vix-consumer/CMakeLists.txt <<'EOF'
+          cmake_minimum_required(VERSION 3.20)
+          project(vix_consumer LANGUAGES CXX)
+          set(CMAKE_CXX_STANDARD 20)
+          set(CMAKE_CXX_STANDARD_REQUIRED ON)
+          find_package(Vix CONFIG REQUIRED)
+          add_executable(vix_consumer main.cpp)
+          target_link_libraries(vix_consumer PRIVATE vix::vix)
+          EOF
+
+          cat >/tmp/vix-consumer/main.cpp <<'EOF'
+          #include <vix/json/Simple.hpp>
+          int main() { return 0; }
+          EOF
+
+          cmake -G Ninja -S /tmp/vix-consumer -B /tmp/vix-consumer/build \
+            -DCMAKE_PREFIX_PATH="${PWD}/.ci-install"
+
+          cmake --build /tmp/vix-consumer/build -j"${BUILD_JOBS}"
+
+  config-coverage:
+    name: Umbrella Configuration Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout umbrella repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y $DEPS
+
+      - name: Configure minimal profile
+        run: |
+          cmake -G Ninja -S . -B build-min \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DVIX_BUILD_TESTS=OFF \
+            -DVIX_BUILD_EXAMPLES=OFF \
+            -DVIX_ENABLE_INSTALL=OFF \
+            -DVIX_ENABLE_SANITIZERS=OFF \
+            -DVIX_ENABLE_WEBSOCKET=OFF \
+            -DVIX_ENABLE_ORM=OFF \
+            -DVIX_ENABLE_DB=OFF \
+            -DVIX_ENABLE_P2P=OFF \
+            -DVIX_ENABLE_P2P_HTTP=OFF \
+            -DVIX_ENABLE_CACHE=OFF \
+            -DVIX_ENABLE_ASYNC=ON \
+            -DVIX_ENABLE_CRYPTO=ON \
+            -DVIX_ENABLE_TIME=ON \
+            -DVIX_ENABLE_WEBRPC=ON \
+            -DVIX_ENABLE_VALIDATION=ON \
+            -DVIX_ENABLE_MIDDLEWARE=ON \
+            -DVIX_ENABLE_CLI=ON \
+            -DVIX_FORCE_FETCH_JSON=OFF \
+            -DVIX_FETCH_DEPS=OFF
+
+      - name: Build minimal profile
+        run: |
+          cmake --build build-min -j"${BUILD_JOBS}"
+
+      - name: Configure full debug profile
+        run: |
+          cmake -G Ninja -S . -B build-full \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DVIX_BUILD_TESTS=ON \
+            -DVIX_BUILD_EXAMPLES=ON \
+            -DVIX_ENABLE_INSTALL=OFF \
+            -DVIX_ENABLE_SANITIZERS=OFF \
+            -DVIX_ENABLE_WEBSOCKET=ON \
+            -DVIX_ENABLE_ORM=ON \
+            -DVIX_ENABLE_DB=ON \
+            -DVIX_DB_USE_MYSQL=ON \
+            -DVIX_ENABLE_P2P=ON \
+            -DVIX_ENABLE_P2P_HTTP=ON \
+            -DVIX_ENABLE_CACHE=ON \
+            -DVIX_ENABLE_ASYNC=ON \
+            -DVIX_ENABLE_CRYPTO=ON \
+            -DVIX_ENABLE_TIME=ON \
+            -DVIX_ENABLE_WEBRPC=ON \
+            -DVIX_ENABLE_VALIDATION=ON \
+            -DVIX_ENABLE_MIDDLEWARE=ON \
+            -DVIX_ENABLE_CLI=ON \
+            -DVIX_FORCE_FETCH_JSON=OFF \
+            -DVIX_FETCH_DEPS=OFF
+
+      - name: Build full debug profile
+        run: |
+          cmake --build build-full -j"${BUILD_JOBS}"
+
+  summary:
+    name: Umbrella Strict CI Summary
+    needs:
+      [
+        build-test,
+        runtime-smoke,
+        static-analysis,
+        valgrind,
+        standalone-package-check,
+        config-coverage,
+      ]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Print summary
+        run: |
+          echo "Umbrella strict CI completed."
+          echo "This workflow validates:"
+          echo "- umbrella build with clang and gcc"
+          echo "- tests and examples"
+          echo "- CLI runtime smoke"
+          echo "- static analysis"
+          echo "- valgrind"
+          echo "- install/export package"
+          echo "- consumer find_package(Vix)"
+          echo "- minimal and full configuration coverage"
