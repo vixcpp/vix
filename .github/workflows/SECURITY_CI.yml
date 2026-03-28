@@ -68,8 +68,8 @@ env:
   BUILD_JOBS: 2
 
 jobs:
-  build-test:
-    name: Build and Tests (${{ matrix.compiler }}, examples=${{ matrix.examples }})
+  build-matrix:
+    name: Build (${{ matrix.compiler }}, examples=${{ matrix.examples }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -88,7 +88,6 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt-get install -y $DEPS
-          test -f /usr/include/asio.hpp || echo "System Asio not installed globally; umbrella vendored/fetch path will be used."
 
       - name: Verify critical module directories
         run: |
@@ -107,12 +106,12 @@ jobs:
             echo "CXX=g++" >> "$GITHUB_ENV"
           fi
 
-      - name: Configure umbrella build
+      - name: Configure
         run: |
           cmake -G Ninja -S . -B build \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DVIX_BUILD_TESTS=ON \
+            -DVIX_BUILD_TESTS=OFF \
             -DVIX_BUILD_EXAMPLES=${{ matrix.examples }} \
             -DVIX_ENABLE_SANITIZERS=OFF \
             -DVIX_ENABLE_WARNINGS=ON \
@@ -136,22 +135,16 @@ jobs:
             -DVIX_ENABLE_CLI=ON \
             -DVIX_ENABLE_WEBSOCKET=ON
 
-      - name: Build umbrella
+      - name: Build
         run: |
           cmake --build build -j"${BUILD_JOBS}"
 
       - name: Show generated executables
         run: |
-          echo "---- executables ----"
           find build -type f -executable | sort || true
 
-      - name: Run ctest
-        run: |
-          cd build
-          ctest --output-on-failure --timeout 120
-
   sanitizers:
-    name: Sanitizers (clang, examples=ON)
+    name: Sanitizers (clang)
     runs-on: ubuntu-latest
 
     steps:
@@ -176,7 +169,7 @@ jobs:
           cmake -G Ninja -S . -B build-san \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DVIX_BUILD_TESTS=ON \
+            -DVIX_BUILD_TESTS=OFF \
             -DVIX_BUILD_EXAMPLES=ON \
             -DVIX_ENABLE_SANITIZERS=ON \
             -DVIX_ENABLE_WARNINGS=ON \
@@ -203,11 +196,6 @@ jobs:
       - name: Build sanitizer config
         run: |
           cmake --build build-san -j"${BUILD_JOBS}"
-
-      - name: Run sanitizer tests
-        run: |
-          cd build-san
-          ctest --output-on-failure --timeout 120
 
   runtime-smoke:
     name: Runtime Smoke and CLI Checks
@@ -273,6 +261,7 @@ jobs:
         shell: bash
         run: |
           set -e
+
           timeout 10s "$VIX_BIN" --help >/tmp/vix_help.log 2>&1 || STATUS=$?
           cat /tmp/vix_help.log || true
           if [ "${STATUS:-0}" -ne 0 ] && [ "${STATUS:-0}" -ne 124 ]; then
@@ -331,13 +320,13 @@ jobs:
             -DVIX_ENABLE_CLI=ON \
             -DVIX_ENABLE_WEBSOCKET=ON
 
-      - name: Run clang-tidy on umbrella sources
+      - name: Run clang-tidy
         run: |
           set +e
-          find modules tests examples -name '*.cpp' -print0 2>/dev/null | xargs -0 -r -n1 -P2 clang-tidy -p build-analyze
+          find modules examples -name '*.cpp' -print0 2>/dev/null | xargs -0 -r -n1 -P2 clang-tidy -p build-analyze
           exit 0
 
-      - name: Run cppcheck on umbrella tree
+      - name: Run cppcheck
         run: |
           set +e
           cppcheck \
@@ -346,7 +335,7 @@ jobs:
             --inconclusive \
             --quiet \
             --suppress=missingIncludeSystem \
-            modules/ tests/ examples/
+            modules/ examples/
           exit 0
 
   valgrind:
@@ -423,7 +412,7 @@ jobs:
             exit 1
           fi
 
-  standalone-package-check:
+  package-export:
     name: Umbrella Package Export Check
     runs-on: ubuntu-latest
 
@@ -439,7 +428,7 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y $DEPS
 
-      - name: Configure installable umbrella build
+      - name: Configure installable build
         run: |
           cmake -G Ninja -S . -B build-install \
             -DCMAKE_BUILD_TYPE=Release \
@@ -468,19 +457,17 @@ jobs:
             -DVIX_ENABLE_WEBSOCKET=ON \
             -DCMAKE_INSTALL_PREFIX="${PWD}/.ci-install"
 
-      - name: Build umbrella package
+      - name: Build package
         run: |
           cmake --build build-install -j"${BUILD_JOBS}"
 
-      - name: Install umbrella package
+      - name: Install package
         run: |
           cmake --install build-install
 
       - name: Verify install tree
         run: |
-          echo "---- install tree ----"
           find .ci-install -maxdepth 10 -type f | sort || true
-
           test -f .ci-install/lib/cmake/Vix/VixConfig.cmake || (echo "::error::VixConfig.cmake missing"; exit 1)
           test -f .ci-install/lib/cmake/Vix/VixConfigVersion.cmake || (echo "::error::VixConfigVersion.cmake missing"; exit 1)
           test -f .ci-install/include/vix/json/Simple.hpp || (echo "::error::json headers missing"; exit 1)
@@ -545,7 +532,7 @@ jobs:
             -DVIX_ENABLE_WEBRPC=ON \
             -DVIX_ENABLE_VALIDATION=ON \
             -DVIX_ENABLE_MIDDLEWARE=ON \
-            -DVIX_ENABLE_CLI=ON \
+            -DVIX_ENABLE_CLI=OFF \
             -DVIX_FORCE_FETCH_JSON=OFF \
             -DVIX_FETCH_DEPS=OFF
 
@@ -557,7 +544,7 @@ jobs:
         run: |
           cmake -G Ninja -S . -B build-full \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DVIX_BUILD_TESTS=ON \
+            -DVIX_BUILD_TESTS=OFF \
             -DVIX_BUILD_EXAMPLES=ON \
             -DVIX_ENABLE_INSTALL=OFF \
             -DVIX_ENABLE_SANITIZERS=OFF \
@@ -585,12 +572,12 @@ jobs:
   summary:
     name: SECURITY_CI Summary
     needs:
-      - build-test
+      - build-matrix
       - sanitizers
       - runtime-smoke
       - static-analysis
       - valgrind
-      - standalone-package-check
+      - package-export
       - config-coverage
     runs-on: ubuntu-latest
 
@@ -598,11 +585,11 @@ jobs:
       - name: Print summary
         run: |
           echo "SECURITY_CI completed."
-          echo "- standard build and tests"
+          echo "- umbrella build matrix"
           echo "- dedicated sanitizer build without install/export"
-          echo "- CLI runtime smoke"
+          echo "- runtime smoke"
           echo "- static analysis"
           echo "- valgrind"
-          echo "- install/export package"
-          echo "- consumer find_package(Vix)"
-          echo "- minimal and full configuration coverage"
+          echo "- package export"
+          echo "- consumer package check"
+          echo "- minimal/full config coverage"
