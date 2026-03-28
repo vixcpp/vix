@@ -1,10 +1,13 @@
-name: Umbrella Strict CI
+name: SECURITY_CI
 
 on:
   push:
-    branches: [main, master, dev]
+    branches:
+      - main
+      - dev
+      - release/**
     paths:
-      - ".github/workflows/umbrella-strict-ci.yml"
+      - ".github/workflows/SECURITY_CI.yml"
       - "CMakeLists.txt"
       - "cmake/**"
       - "config/**"
@@ -14,10 +17,14 @@ on:
       - ".gitmodules"
       - "README.md"
       - "CHANGELOG.md"
+
   pull_request:
-    branches: [main, master, dev]
+    branches:
+      - main
+      - dev
+      - release/**
     paths:
-      - ".github/workflows/umbrella-strict-ci.yml"
+      - ".github/workflows/SECURITY_CI.yml"
       - "CMakeLists.txt"
       - "cmake/**"
       - "config/**"
@@ -27,6 +34,7 @@ on:
       - ".gitmodules"
       - "README.md"
       - "CHANGELOG.md"
+
   workflow_dispatch:
 
 permissions:
