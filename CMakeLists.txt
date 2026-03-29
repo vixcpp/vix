@@ -869,28 +869,10 @@ else()
 endif()
 
 # ----------------------------------------------------
-# Apply sanitizers to local targets only
+# Sanitizers
+# Apply sanitizer flags only to final executables/tests/examples.
+# Do not apply them to library/module targets.
 # ----------------------------------------------------
-vix_enable_sanitizers_first(vix_json)
-vix_enable_sanitizers_first(vix_webrpc)
-vix_enable_sanitizers_first(vix_utils vix-utils utils)
-vix_enable_sanitizers_first(vix_time)
-vix_enable_sanitizers_first(vix_crypto)
-vix_enable_sanitizers_first(vix_async)
-vix_enable_sanitizers_first(vix_core vix-core core)
-vix_enable_sanitizers_first(vix_conversion)
-vix_enable_sanitizers_first(vix_validation)
-vix_enable_sanitizers_first(vix_net)
-vix_enable_sanitizers_first(vix_cache)
-vix_enable_sanitizers_first(vix_sync)
-vix_enable_sanitizers_first(vix_p2p)
-vix_enable_sanitizers_first(vix_p2p_http)
-vix_enable_sanitizers_first(vix_middleware)
-vix_enable_sanitizers_first(template)
-vix_enable_sanitizers_first(vix_db)
-vix_enable_sanitizers_first(vix_websocket)
-vix_enable_sanitizers_first(vix_cli)
-vix_enable_sanitizers_first(vix_orm)
 
 # ----------------------------------------------------
 # Link umbrella to required module targets
