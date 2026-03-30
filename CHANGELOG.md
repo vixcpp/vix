@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v2.0.1]
+
+### Fixes
+
+- template: fix ambiguous std::to_string call on macOS (libc++)
+- template: ensure stable source signature generation using explicit int64_t cast
+
+### Notes
+
+This patch improves cross-platform compatibility of the template module,
+specifically fixing a build failure on macOS with libc++.
+
+No breaking changes.
+
 ## [2.0.0] - 2026-03-24
 
 Major release of **Vix.cpp** introducing a new native HTTP stack, full async runtime improvements, and removal of Boost dependencies.
