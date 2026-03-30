@@ -9,48 +9,83 @@
  *  that can be found in the License file.
  *
  *  Vix.cpp
+ * @brief Minimal WebSocket server example for Vix.cpp
  *
+ * This file provides a compact, beginner-friendly demonstration of how to
+ * start a WebSocket server using the Vix.cpp runtime. It serves as the
+ * simplest reference implementation, showing only the essential components:
+ *
+ *  • Loading configuration (port, timeouts, etc.)
+ *  • Creating a RuntimeExecutor for async execution
+ *  • Starting a WebSocket server instance
+ *  • Reacting to connection events (on_open)
+ *  • Handling typed JSON messages (on_typed_message)
+ *  • Broadcasting messages to all connected clients
+ *
+ * Key Concepts Illustrated
+ * -------------------------
+ * 1. Server Initialization:
+ *      The WebSocket server automatically binds to the port defined in
+ *      config/config.json and manages all asynchronous I/O.
+ *
+ * 2. Runtime Integration:
+ *      The example uses Vix’s RuntimeExecutor to drive async execution,
+ *      aligning the WebSocket layer with the modern Vix runtime architecture.
+ *
+ * 3. Global Broadcast:
+ *      Messages received with type "chat.message" are broadcast to all
+ *      connected clients without room routing or persistence.
+ *
+ * 4. System Notifications:
+ *      On connection open, the server emits a "chat.system" JSON message
+ *      welcoming new clients to the Softadastra network.
+ *
+ * Intended Usage
+ * --------------
+ * This minimal example is ideal for:
+ *
+ *  • Developers learning the basics of Vix.cpp WebSockets
+ *  • Quick prototypes and internal tools
+ *  • Testing client applications
+ *  • Teaching how typed WebSocket protocols work in C++
+ *
+ * How to Run
+ * ----------
+ * 1. Ensure your config file exists:
+ *        config/config.json
+ *
+ * 2. Build the project:
+ *        cmake -S . -B build && cmake --build build -j
+ *
+ * 3. Run the server:
+ *        ./build/examples/simple/simple_server
+ *
+ * 4. Connect using a WebSocket client:
+ *        websocat ws://127.0.0.1:9090/
+ *
+ * This example is intentionally minimal; use the advanced examples for
+ * persistence, metrics, room routing, history replay, and auto-reconnect.
  */
-// Minimal WebSocket server using Vix.cpp.
-//
-// This example demonstrates:
-//   - how to bootstrap the WebSocket Server
-//   - how to handle connection open events
-//   - how to handle typed messages and broadcast JSON
-//
-// Expected message format (typed protocol):
-//   {
-//     "type": "chat.message",
-//     "payload": { "user": "Alice", "text": "Hello!" }
-//   }
-//
+
+#include <memory>
 
 #include <vix/config/Config.hpp>
-#include <vix/experimental/ThreadPoolExecutor.hpp>
+#include <vix/executor/RuntimeExecutor.hpp>
 #include <vix/websocket.hpp>
 
 int main()
 {
   using vix::websocket::Server;
 
-  // 1) Load configuration
-  //
-  // The Config loader will try to find "config/config.json"
-  // relative to the project root or the current working directory.
-  //
+  // Load configuration from config/config.json
   vix::config::Config cfg{"config/config.json"};
 
-  // 2) Create a thread pool executor for the WebSocket server
-  auto exec = vix::experimental::make_threadpool_executor(
-      4, // min threads
-      8, // max threads
-      0  // default priority
-  );
+  // Runtime executor for async work
+  auto exec = std::make_shared<vix::executor::RuntimeExecutor>();
 
-  // 3) Construct the WebSocket server
-  Server ws(cfg, std::move(exec));
+  Server ws(cfg, exec);
 
-  // 4) On new connection
+  // On new connection: broadcast a welcome system message
   ws.on_open(
       [&ws](auto &session)
       {
@@ -62,11 +97,11 @@ int main()
                 "user",
                 "server",
                 "text",
-                "Welcome to the simple WebSocket server 👋",
+                "welcome to Softadastra Chat 👋",
             });
       });
 
-  // 5) On typed message
+  // On typed message: echo chat messages to everyone
   ws.on_typed_message(
       [&ws](auto &session,
             const std::string &type,
@@ -76,20 +111,10 @@ int main()
 
         if (type == "chat.message")
         {
-          // echo / broadcast chat messages
           ws.broadcast_json("chat.message", payload);
-        }
-        else
-        {
-          // optional: broadcast unknown message types for debugging
-          ws.broadcast_json("chat.unknown",
-                            {"type", type,
-                             "info", "Unknown message type"});
         }
       });
 
-  // 6) Start the WebSocket server (blocking)
   ws.listen_blocking();
-
   return 0;
 }

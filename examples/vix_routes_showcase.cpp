@@ -95,11 +95,6 @@ static inline bool to_bool(std::string_view s)
   return false;
 }
 
-static inline std::string take_or(std::string_view v, std::string fallback)
-{
-  return v.empty() ? fallback : std::string(v);
-}
-
 // ---------------------------------------------------------------------------
 // Routes registration (grouped by themes)
 // ---------------------------------------------------------------------------

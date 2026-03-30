@@ -70,7 +70,7 @@ Note that there are multiple ways to install Vix.
 sudo apt update
 sudo apt install -y \
   build-essential cmake ninja-build pkg-config \
-  libssl-dev libsqlite3-dev
+  libssl-dev libsqlite3-dev zlib1g-dev
 ```
 
 ## macOS Dependencies (example)

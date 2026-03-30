@@ -16,7 +16,7 @@
  * simplest reference implementation, showing only the essential components:
  *
  *  • Loading configuration (port, timeouts, etc.)
- *  • Creating a ThreadPoolExecutor for async execution
+ *  • Creating a RuntimeExecutor for async execution
  *  • Starting a WebSocket server instance
  *  • Reacting to connection events (on_open)
  *  • Handling typed JSON messages (on_typed_message)
@@ -28,9 +28,9 @@
  *      The WebSocket server automatically binds to the port defined in
  *      config/config.json and manages all asynchronous I/O.
  *
- * 2. ThreadPool Integration:
- *      The example uses Vix’s ThreadPoolExecutor to handle concurrency,
- *      enabling scalable real-time workloads even in minimal setups.
+ * 2. Runtime Integration:
+ *      The example uses Vix’s RuntimeExecutor to drive async execution,
+ *      aligning the WebSocket layer with the modern Vix runtime architecture.
  *
  * 3. Global Broadcast:
  *      Messages received with type "chat.message" are broadcast to all
@@ -63,12 +63,14 @@
  * 4. Connect using a WebSocket client:
  *        websocat ws://127.0.0.1:9090/
  *
- * This example is intentionally minimal—use the advanced examples for
+ * This example is intentionally minimal; use the advanced examples for
  * persistence, metrics, room routing, history replay, and auto-reconnect.
  */
 
+#include <memory>
+
 #include <vix/config/Config.hpp>
-#include <vix/experimental/ThreadPoolExecutor.hpp>
+#include <vix/executor/RuntimeExecutor.hpp>
 #include <vix/websocket.hpp>
 
 int main()
@@ -78,14 +80,10 @@ int main()
   // Load configuration from config/config.json
   vix::config::Config cfg{"config/config.json"};
 
-  // Thread pool for async work
-  auto exec = vix::experimental::make_threadpool_executor(
-      4, // min threads
-      8, // max threads
-      0  // default priority
-  );
+  // Runtime executor for async work
+  auto exec = std::make_shared<vix::executor::RuntimeExecutor>();
 
-  Server ws(cfg, std::move(exec));
+  Server ws(cfg, exec);
 
   // On new connection: broadcast a welcome system message
   ws.on_open(
@@ -118,4 +116,5 @@ int main()
       });
 
   ws.listen_blocking();
+  return 0;
 }

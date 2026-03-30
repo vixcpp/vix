@@ -87,6 +87,60 @@ function(vix_resolve_real_target out name)
   set(${out} "${_real}" PARENT_SCOPE)
 endfunction()
 
+# Apply sanitizer flags to a real local target only.
+function(vix_enable_sanitizers target)
+  if (NOT VIX_ENABLE_SANITIZERS)
+    return()
+  endif()
+
+  if (NOT TARGET "${target}")
+    return()
+  endif()
+
+  get_target_property(_target_type "${target}" TYPE)
+  if (NOT _target_type)
+    return()
+  endif()
+
+  # INTERFACE libraries do not compile or link anything themselves.
+  # Sanitizer flags must not be applied to them.
+  if (_target_type STREQUAL "INTERFACE_LIBRARY")
+    message(STATUS "Sanitizers: skipping interface target '${target}'")
+    return()
+  endif()
+
+  if (MSVC)
+    message(FATAL_ERROR "Sanitizers are not supported on MSVC. Use Clang or GCC.")
+  endif()
+
+  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    target_compile_options(${target} PRIVATE
+      -O1
+      -g
+      -fno-omit-frame-pointer
+      -fsanitize=address,undefined
+    )
+    target_link_options(${target} PRIVATE
+      -fsanitize=address,undefined
+    )
+  endif()
+endfunction()
+
+# Resolve the first existing target name among candidates, then apply sanitizers.
+function(vix_enable_sanitizers_first)
+  foreach(_candidate IN LISTS ARGN)
+    if (TARGET "${_candidate}")
+      get_target_property(_aliased "${_candidate}" ALIASED_TARGET)
+      if (_aliased)
+        vix_enable_sanitizers("${_aliased}")
+      else()
+        vix_enable_sanitizers("${_candidate}")
+      endif()
+      return()
+    endif()
+  endforeach()
+endfunction()
+
 # RPATH to easily run after installation
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH ON)
 if (APPLE)
@@ -155,6 +209,11 @@ option(VIX_ENABLE_TIME             "Build Vix Time module"                      
 option(VIX_TIME_BUILD_TESTS        "Build vix::time tests"                                        OFF)
 option(VIX_TIME_BUILD_BENCH        "Build vix::time benchmarks"                                   OFF)
 
+option(VIX_ENABLE_TEMPLATE         "Build Vix Template module"                                    ON)
+option(VIX_TEMPLATE_BUILD_TESTS    "Build vix::template tests"                                    OFF)
+option(VIX_TEMPLATE_BUILD_EXAMPLES "Build vix::template examples"                                 OFF)
+option(VIX_TEMPLATE_BUILD_BENCH    "Build vix::template benchmarks"                               OFF)
+
 # ----------------------------------------------------
 # Tooling / Static analysis
 # ----------------------------------------------------
@@ -216,24 +275,10 @@ if (VIX_ENABLE_COVERAGE AND CMAKE_BUILD_TYPE MATCHES "Debug")
 endif()
 
 # ----------------------------------------------------
-# Sanitizers (opt-in, GCC/Clang) — as INTERFACE target
+# Sanitizers (opt-in, GCC/Clang) — internal flags only
 # ----------------------------------------------------
-set(_VIX_SAN_COMMON "")
-set(_VIX_SAN_TYPES  "")
-
 if (VIX_ENABLE_SANITIZERS)
-  if (MSVC)
-    message(FATAL_ERROR "Sanitizers are not supported on MSVC. Use Clang or GCC.")
-  endif()
-
-  set(_VIX_SAN_COMMON -O1 -g -fno-omit-frame-pointer)
-  set(_VIX_SAN_TYPES  -fsanitize=address,undefined)
-
-  add_library(vix_sanitizers INTERFACE)
-  target_compile_options(vix_sanitizers INTERFACE ${_VIX_SAN_COMMON} ${_VIX_SAN_TYPES})
-  target_link_options(vix_sanitizers INTERFACE ${_VIX_SAN_TYPES})
-
-  message(STATUS "Sanitizers enabled via vix_sanitizers interface target.")
+  message(STATUS "Sanitizers enabled via internal target flags.")
 endif()
 
 # ----------------------------------------------------
@@ -272,61 +317,6 @@ add_library(vix INTERFACE)
 if (WIN32)
   target_compile_definitions(vix INTERFACE _WIN32_WINNT=0x0A00 WIN32_LEAN_AND_MEAN NOMINMAX)
 endif()
-
-# ----------------------------------------------------
-# Third-party: Boost (required by core/websocket headers: Boost.Beast)
-# Prefer CONFIG mode (CMake 4+), fallback to module mode if needed.
-# ----------------------------------------------------
-
-set(VIX_WITH_BOOST ON)
-
-set(_VIX_BOOST_OK OFF)
-
-# Try CONFIG first (preferred with CMake 4+)
-find_package(Boost CONFIG QUIET COMPONENTS system)
-
-if (Boost_FOUND)
-  set(_VIX_BOOST_OK ON)
-  message(STATUS "Boost found (CONFIG)")
-else()
-  # Fallback for environments without BoostConfig.cmake
-  find_package(Boost QUIET COMPONENTS system)
-  if (Boost_FOUND)
-    set(_VIX_BOOST_OK ON)
-    message(STATUS "Boost found (FindBoost fallback)")
-  endif()
-endif()
-
-if (NOT _VIX_BOOST_OK)
-  message(FATAL_ERROR "Boost is required (core/websocket). Install Boost (headers + system).")
-endif()
-
-# Normalize targets
-if (TARGET Boost::headers AND NOT TARGET Boost::boost)
-  add_library(Boost::boost ALIAS Boost::headers)
-endif()
-
-add_library(vix_thirdparty_boost INTERFACE)
-add_library(vix::thirdparty_boost ALIAS vix_thirdparty_boost)
-
-# Some distros do not provide Boost::system target in module mode, so guard it
-if (TARGET Boost::system)
-  target_link_libraries(vix_thirdparty_boost INTERFACE Boost::boost Boost::system)
-else()
-  # Module mode can expose include dirs + libs variables
-  if (DEFINED Boost_INCLUDE_DIRS)
-    target_include_directories(vix_thirdparty_boost SYSTEM INTERFACE ${Boost_INCLUDE_DIRS})
-  endif()
-  if (DEFINED Boost_LIBRARIES)
-    target_link_libraries(vix_thirdparty_boost INTERFACE ${Boost_LIBRARIES})
-  else()
-    # At least headers
-    target_link_libraries(vix_thirdparty_boost INTERFACE Boost::boost)
-  endif()
-endif()
-
-target_link_libraries(vix INTERFACE vix::thirdparty_boost)
-
 
 # ----------------------------------------------------
 # Third-party: Asio (standalone, header-only)
@@ -411,7 +401,6 @@ if (VIX_ENABLE_HTTP_COMPRESSION)
     message(STATUS "Compression: brotli not found -> br disabled")
   endif()
 endif()
-
 
 # Attach warnings/coverage to umbrella (propagates to consumers)
 if (TARGET vix_warnings)
@@ -548,7 +537,6 @@ else()
   message(STATUS "Crypto: disabled or not present.")
 endif()
 
-
 # Resolve real utils target (dereference ALIAS if needed)
 set(_VIX_UTILS_REAL "")
 
@@ -577,6 +565,24 @@ if (_VIX_UTILS_REAL AND NOT _VIX_UTILS_REAL STREQUAL "")
   endif()
 else()
   message(WARNING "Could not resolve real utils target (tried: vix_utils, vix-utils, utils).")
+endif()
+
+# --- Async (optional) ---
+set(VIX_HAS_ASYNC OFF)
+if (VIX_ENABLE_ASYNC AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/async/CMakeLists.txt")
+  message(STATUS "Adding 'modules/async'...")
+  add_subdirectory(modules/async async_build)
+
+  if (TARGET vix::async OR TARGET vix_async)
+    set(VIX_HAS_ASYNC ON)
+    if (TARGET vix_async AND NOT TARGET vix::async)
+      add_library(vix::async ALIAS vix_async)
+    endif()
+  else()
+    message(WARNING "Async module added but no vix::async target was exported.")
+  endif()
+else()
+  message(STATUS "Async: disabled or not present.")
 endif()
 
 # --- Core ---
@@ -632,24 +638,6 @@ if (VIX_ENABLE_VALIDATION AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/valida
   endif()
 else()
   message(STATUS "Validation: disabled or not present.")
-endif()
-
-# --- Async (optional) ---
-set(VIX_HAS_ASYNC OFF)
-if (VIX_ENABLE_ASYNC AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/async/CMakeLists.txt")
-  message(STATUS "Adding 'modules/async'...")
-  add_subdirectory(modules/async async_build)
-
-  if (TARGET vix::async OR TARGET vix_async)
-    set(VIX_HAS_ASYNC ON)
-    if (TARGET vix_async AND NOT TARGET vix::async)
-      add_library(vix::async ALIAS vix_async)
-    endif()
-  else()
-    message(WARNING "Async module added but no vix::async target was exported.")
-  endif()
-else()
-  message(STATUS "Async: disabled or not present.")
 endif()
 
 # --- Net (required by P2P) ---
@@ -768,6 +756,30 @@ else()
   message(STATUS "Middleware: disabled or not present.")
 endif()
 
+# --- Template (optional) ---
+set(VIX_HAS_TEMPLATE OFF)
+
+if (VIX_ENABLE_TEMPLATE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/template/CMakeLists.txt")
+  message(STATUS "Adding 'modules/template'...")
+
+  set(TEMPLATE_BUILD_TESTS ${VIX_TEMPLATE_BUILD_TESTS} CACHE BOOL "" FORCE)
+  set(TEMPLATE_BUILD_EXAMPLES ${VIX_TEMPLATE_BUILD_EXAMPLES} CACHE BOOL "" FORCE)
+  set(TEMPLATE_BUILD_BENCHMARKS ${VIX_TEMPLATE_BUILD_BENCH} CACHE BOOL "" FORCE)
+  set(TEMPLATE_INSTALL OFF CACHE BOOL "" FORCE)
+
+  add_subdirectory(modules/template template_build)
+
+  if (TARGET vix::template)
+    set(VIX_HAS_TEMPLATE ON)
+  elseif (TARGET template)
+    set(VIX_HAS_TEMPLATE ON)
+  else()
+    message(WARNING "Template module added but no template target was exported.")
+  endif()
+else()
+  message(STATUS "Template: disabled or not present.")
+endif()
+
 # Bench mode (compile-time flags)
 if (VIX_BENCH_MODE)
   message(STATUS "Bench mode enabled: defining VIX_BENCH_MODE")
@@ -857,6 +869,12 @@ else()
 endif()
 
 # ----------------------------------------------------
+# Sanitizers
+# Apply sanitizer flags only to final executables/tests/examples.
+# Do not apply them to library/module targets.
+# ----------------------------------------------------
+
+# ----------------------------------------------------
 # Link umbrella to required module targets
 # ----------------------------------------------------
 target_link_libraries(vix INTERFACE
@@ -931,9 +949,10 @@ elseif (TARGET vix_middleware)
   target_compile_definitions(vix INTERFACE VIX_HAS_MIDDLEWARE=1)
 endif()
 
-# Propagate sanitizers to consumers (umbrella)
-if (TARGET vix_sanitizers)
-  target_link_libraries(vix INTERFACE vix_sanitizers)
+if (TARGET vix::template)
+  target_link_libraries(vix INTERFACE vix::template)
+elseif (TARGET template)
+  target_link_libraries(vix INTERFACE template)
 endif()
 
 # ----------------------------------------------------
@@ -982,7 +1001,7 @@ if (VIX_BUILD_EXAMPLES)
   endif()
 
   # 2) If ORM is ON but MySQL backend is OFF → remove MySQL-based ORM examples
- if (VIX_HAS_ORM AND NOT VIX_DB_USE_MYSQL)
+  if (VIX_HAS_ORM AND NOT VIX_DB_USE_MYSQL)
     foreach(_ex IN LISTS _ORM_MYSQL_EXAMPLES)
       list(FILTER VIX_UMBRELLA_EXAMPLES EXCLUDE REGEX ".*/${_ex}\\.cpp$")
       list(FILTER VIX_UMBRELLA_EXAMPLES EXCLUDE REGEX ".*\\\\${_ex}\\.cpp$")
@@ -1008,7 +1027,6 @@ if (VIX_BUILD_EXAMPLES)
       add_executable("${EXAMPLE_NAME}" "${EXAMPLE_SRC}")
       target_link_libraries("${EXAMPLE_NAME}" PRIVATE vix::vix)
 
-      # ✅ Link ORM only for examples/orm/*
       if (VIX_HAS_ORM AND TARGET vix::orm AND EXAMPLE_SRC MATCHES "examples[/\\\\]orm[/\\\\]")
         target_link_libraries("${EXAMPLE_NAME}" PRIVATE vix::orm)
       endif()
@@ -1017,9 +1035,7 @@ if (VIX_BUILD_EXAMPLES)
         target_link_libraries("${EXAMPLE_NAME}" PRIVATE vix_warnings)
       endif()
 
-      if (TARGET vix_sanitizers)
-        target_link_libraries("${EXAMPLE_NAME}" PRIVATE vix_sanitizers)
-      endif()
+      vix_enable_sanitizers("${EXAMPLE_NAME}")
 
       if (TARGET vix_coverage)
         target_link_libraries("${EXAMPLE_NAME}" PRIVATE vix_coverage)
@@ -1078,6 +1094,8 @@ if (VIX_BUILD_TESTS)
       target_link_libraries(vix_tests PRIVATE vix_warnings)
     endif()
 
+    vix_enable_sanitizers(vix_tests)
+
     if (TARGET vix_coverage)
       target_link_libraries(vix_tests PRIVATE vix_coverage)
     endif()
@@ -1106,16 +1124,15 @@ endif()
 option(VIX_ENABLE_INSTALL "Enable install/export rules for packaging" ON)
 
 # Compute feature flags as real ON/OFF at configure-time (NO generator expressions)
-set(VIX_WITH_JSON     ON)     # umbrella always links JSON backend
-set(VIX_WITH_BOOST    ON)
-set(VIX_WITH_BOOST_FS OFF)  # si tu n'utilises pas filesystem explicitement
-set(VIX_WITH_OPENSSL OFF)
+set(VIX_WITH_JSON     ON)
+set(VIX_WITH_OPENSSL  OFF)
 find_package(OpenSSL QUIET)
 if (OpenSSL_FOUND AND TARGET OpenSSL::Crypto)
   set(VIX_WITH_OPENSSL ON)
 endif()
 set(VIX_WITH_MYSQL    OFF)    # do NOT require MySQL for consumers by default
 set(VIX_WITH_SQLITE   OFF)    # will be set ON only if websocket exists
+set(VIX_WITH_BOOST_FS OFF)
 
 set(VIX_WITH_ZLIB OFF)
 if (VIX_ENABLE_HTTP_COMPRESSION AND ZLIB_FOUND)
@@ -1148,7 +1165,7 @@ endif()
 
 if (VIX_ENABLE_INSTALL)
 
-  foreach(_m core utils json websocket webrpc crypto time conversion validation async net cache sync p2p p2p_http middleware db orm)
+  foreach(_m core utils json websocket webrpc crypto time conversion validation async net cache sync p2p p2p_http middleware db orm template)
     if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/${_m}/include")
       install(DIRECTORY "modules/${_m}/include/"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
@@ -1184,10 +1201,6 @@ if (VIX_ENABLE_INSTALL)
     install(TARGETS vix_thirdparty_asio EXPORT VixTargets)
   endif()
 
-  if (TARGET vix_thirdparty_boost)
-    install(TARGETS vix_thirdparty_boost EXPORT VixTargets)
-  endif()
-
   if (TARGET vix_warnings)
     install(TARGETS vix_warnings EXPORT VixTargets)
   endif()
@@ -1221,6 +1234,7 @@ if (VIX_ENABLE_INSTALL)
   set(VIX_HAS_P2P_HTTP  ${VIX_HAS_P2P_HTTP})
   set(VIX_WITH_P2P_HTTP ${VIX_WITH_P2P_HTTP})
   set(VIX_HAS_TIME ${VIX_HAS_TIME})
+  set(VIX_HAS_TEMPLATE ${VIX_HAS_TEMPLATE})
 
   set(VIX_WITH_CONVERSION OFF)
   if (VIX_HAS_CONVERSION)
@@ -1243,6 +1257,11 @@ if (VIX_ENABLE_INSTALL)
   set(VIX_WITH_VALIDATION OFF)
   if (VIX_HAS_VALIDATION)
     set(VIX_WITH_VALIDATION ON)
+  endif()
+
+  set(VIX_WITH_TEMPLATE OFF)
+  if (VIX_HAS_TEMPLATE)
+    set(VIX_WITH_TEMPLATE ON)
   endif()
 
   set(VIX_HAS_VALIDATION  ${VIX_HAS_VALIDATION})
@@ -1287,17 +1306,17 @@ message(STATUS "Time module       : ${VIX_HAS_TIME}")
 message(STATUS "WebRPC built      : ${VIX_HAS_WEBRPC}")
 message(STATUS "WebSocket built   : ${VIX_HAS_WEBSOCKET}")
 message(STATUS "ORM packaged      : ${VIX_HAS_ORM}")
-message(STATUS "DB built         : ${VIX_HAS_DB}")
+message(STATUS "DB built          : ${VIX_HAS_DB}")
 message(STATUS "P2P built         : ${VIX_HAS_P2P}")
-message(STATUS "Conversion built : ${VIX_HAS_CONVERSION}")
-message(STATUS "Validation built : ${VIX_HAS_VALIDATION}")
-message(STATUS "Middleware built : ${VIX_HAS_MIDDLEWARE}")
+message(STATUS "Conversion built  : ${VIX_HAS_CONVERSION}")
+message(STATUS "Validation built  : ${VIX_HAS_VALIDATION}")
+message(STATUS "Middleware built  : ${VIX_HAS_MIDDLEWARE}")
+message(STATUS "Template built    : ${VIX_HAS_TEMPLATE}")
 message(STATUS "Examples          : ${VIX_BUILD_EXAMPLES}")
 message(STATUS "Tests             : ${VIX_BUILD_TESTS}")
 message(STATUS "Sanitizers        : ${VIX_ENABLE_SANITIZERS}")
 message(STATUS "Coverage          : ${VIX_ENABLE_COVERAGE}")
 message(STATUS "LTO               : ${VIX_ENABLE_LTO}")
 message(STATUS "Install/Export    : ${VIX_ENABLE_INSTALL}")
-message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} WEBRPC=${VIX_WITH_WEBRPC} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P}")
+message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} WEBRPC=${VIX_WITH_WEBRPC} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P} TEMPLATE=${VIX_WITH_TEMPLATE}")
 message(STATUS "------------------------------------------------------")
-

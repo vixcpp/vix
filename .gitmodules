@@ -91,3 +91,7 @@
 	path = modules/time
 	url = https://github.com/vixcpp/time.git
 	branch = dev
+[submodule "modules/template"]
+	path = modules/template
+	url = https://github.com/vixcpp/template.git
+	branch = dev

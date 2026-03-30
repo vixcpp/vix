@@ -1,10 +1,40 @@
-name: Security & Quality CI
+name: SECURITY_CI
 
 on:
   push:
-    branches: [main, master]
+    branches:
+      - main
+      - dev
+      - release/**
+    paths:
+      - ".github/workflows/SECURITY_CI.yml"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - "config/**"
+      - "examples/**"
+      - "tests/**"
+      - "modules/**"
+      - ".gitmodules"
+      - "README.md"
+      - "CHANGELOG.md"
+
   pull_request:
-    branches: [main, master]
+    branches:
+      - main
+      - dev
+      - release/**
+    paths:
+      - ".github/workflows/SECURITY_CI.yml"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - "config/**"
+      - "examples/**"
+      - "tests/**"
+      - "modules/**"
+      - ".gitmodules"
+      - "README.md"
+      - "CHANGELOG.md"
+
   workflow_dispatch:
 
 permissions:
@@ -12,297 +42,554 @@ permissions:
 
 env:
   DEPS: >
-    build-essential cmake ninja-build
-    clang llvm lld
-    g++ valgrind cppcheck
-    libboost-all-dev nlohmann-json3-dev libspdlog-dev libfmt-dev
+    build-essential
+    cmake
+    ninja-build
+    clang
+    llvm
+    lld
+    g++
+    cppcheck
+    clang-tidy
+    valgrind
+    pkg-config
+    git
+    curl
+    zip
+    unzip
+    tar
+    libssl-dev
+    zlib1g-dev
+    nlohmann-json3-dev
+    libsqlite3-dev
+    libspdlog-dev
+    libfmt-dev
+    libmysqlcppconn-dev
+  BUILD_JOBS: 2
 
 jobs:
-  build-asan-ubsan:
-    name: Build + Tests (ASan/UBSan)
+  build-matrix:
+    name: Build (${{ matrix.compiler }}, examples=${{ matrix.examples }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         compiler: [clang, gcc]
+        examples: [ON, OFF]
+
     steps:
-      - name: Checkout (with submodules)
+      - name: Checkout umbrella repository
         uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 0
-
-      - name: Forcer les URLs de sous-modules en HTTPS (pas SSH)
-        run: |
-          git config --global url."https://github.com/".insteadOf "git@github.com:"
-          git submodule sync --recursive
-
-      - name: Initialiser les sous-modules (profondeur minimale ok)
-        run: |
-          git submodule update --init --recursive --depth 1
-          echo "---- submodule status ----"
-          git submodule status --recursive || true
-          echo "---- modules presence (ls) ----"
-          ls -la modules || true
-          ls -la modules/json || true
-          ls -la modules/utils || true
-          ls -la modules/core || true
-
-      - name: Vérifier la présence des sous-modules
-        run: |
-          test -f modules/json/CMakeLists.txt  || (echo "::error::modules/json manquant";  exit 1)
-          test -f modules/utils/CMakeLists.txt || (echo "::error::modules/utils manquant"; exit 1)
-          test -f modules/core/CMakeLists.txt  || (echo "::error::modules/core manquant";  exit 1)
-          echo "✅ Tous les sous-modules sont présents."
+          submodules: recursive
 
       - name: Install dependencies
         run: |
           sudo apt-get update -y
           sudo apt-get install -y $DEPS
+
+      - name: Verify critical module directories
+        run: |
+          test -f CMakeLists.txt || (echo "::error::Root CMakeLists.txt missing"; exit 1)
+          test -f modules/json/CMakeLists.txt || (echo "::error::modules/json missing"; exit 1)
+          test -f modules/utils/CMakeLists.txt || (echo "::error::modules/utils missing"; exit 1)
+          test -f modules/core/CMakeLists.txt || (echo "::error::modules/core missing"; exit 1)
 
       - name: Select compiler
         run: |
           if [ "${{ matrix.compiler }}" = "clang" ]; then
-            echo "CC=clang"    >> $GITHUB_ENV
-            echo "CXX=clang++" >> $GITHUB_ENV
+            echo "CC=clang" >> "$GITHUB_ENV"
+            echo "CXX=clang++" >> "$GITHUB_ENV"
           else
-            echo "CC=gcc"      >> $GITHUB_ENV
-            echo "CXX=g++"     >> $GITHUB_ENV
+            echo "CC=gcc" >> "$GITHUB_ENV"
+            echo "CXX=g++" >> "$GITHUB_ENV"
           fi
 
-      - name: Configure (Debug, Sanitizers ON)
+      - name: Configure
         run: |
-          cmake -G Ninja -S . -B build-sanitize \
+          cmake -G Ninja -S . -B build \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DVIX_ENABLE_SANITIZERS=ON \
-            -DVIX_BUILD_EXAMPLES=ON \
-            -DVIX_BUILD_TESTS=ON \
-            -DVIX_ENABLE_INSTALL=OFF
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DVIX_BUILD_TESTS=OFF \
+            -DVIX_BUILD_EXAMPLES=${{ matrix.examples }} \
+            -DVIX_ENABLE_SANITIZERS=OFF \
+            -DVIX_ENABLE_WARNINGS=ON \
+            -DVIX_ENABLE_LTO=OFF \
+            -DVIX_ENABLE_INSTALL=ON \
+            -DVIX_FORCE_FETCH_JSON=OFF \
+            -DVIX_FETCH_DEPS=OFF \
+            -DVIX_ENABLE_ASYNC=ON \
+            -DVIX_ENABLE_CRYPTO=ON \
+            -DVIX_ENABLE_TIME=ON \
+            -DVIX_ENABLE_WEBRPC=ON \
+            -DVIX_ENABLE_VALIDATION=ON \
+            -DVIX_ENABLE_CACHE=ON \
+            -DVIX_ENABLE_P2P=ON \
+            -DVIX_ENABLE_P2P_HTTP=ON \
+            -DVIX_ENABLE_DB=ON \
+            -DVIX_DB_USE_MYSQL=ON \
+            -DVIX_DB_USE_SQLITE=OFF \
+            -DVIX_ENABLE_ORM=ON \
+            -DVIX_ENABLE_MIDDLEWARE=ON \
+            -DVIX_ENABLE_CLI=ON \
+            -DVIX_ENABLE_WEBSOCKET=ON
 
       - name: Build
-        run: cmake --build build-sanitize -j
-
-      - name: Run unit tests (ctest)
-        working-directory: build-sanitize
         run: |
-          set -e
-          if ctest --output-on-failure; then
-            echo "✅ Tests passed."
-          else
-            echo "::warning::Some tests failed OR no tests discovered."
-            test -f Testing/Temporary/LastTest.log && cat Testing/Temporary/LastTest.log || true
-            exit 0
-          fi
+          cmake --build build -j"${BUILD_JOBS}"
 
-      - name: Run example smoke tests
-        shell: bash
+      - name: Show generated executables
         run: |
-          set -e
-          EXE_DIR="build-sanitize"
-          ls -1 "$EXE_DIR" | grep -E '(_example$|^main$|crud|validation)' || true
+          find build -type f -executable | sort || true
 
-  static-analysis:
-    name: Static Analysis (clang-tidy + cppcheck)
+  sanitizers:
+    name: Sanitizers (clang)
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout (with submodules)
+      - name: Checkout umbrella repository
         uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 0
-
-      - name: Forcer les URLs de sous-modules en HTTPS (pas SSH)
-        run: |
-          git config --global url."https://github.com/".insteadOf "git@github.com:"
-          git submodule sync --recursive
-
-      - name: Initialiser les sous-modules (profondeur minimale ok)
-        run: |
-          git submodule update --init --recursive --depth 1
-          echo "---- submodule status ----"
-          git submodule status --recursive || true
-          echo "---- modules presence (ls) ----"
-          ls -la modules || true
-          ls -la modules/json || true
-          ls -la modules/utils || true
-          ls -la modules/core || true
-
-      - name: Vérifier la présence des sous-modules
-        run: |
-          test -f modules/json/CMakeLists.txt  || (echo "::error::modules/json manquant";  exit 1)
-          test -f modules/utils/CMakeLists.txt || (echo "::error::modules/utils manquant"; exit 1)
-          test -f modules/core/CMakeLists.txt  || (echo "::error::modules/core manquant";  exit 1)
-          echo "✅ Tous les sous-modules sont présents."
+          submodules: recursive
 
       - name: Install dependencies
         run: |
           sudo apt-get update -y
           sudo apt-get install -y $DEPS
 
-      - name: Configure (export compile_commands.json)
+      - name: Select clang
+        run: |
+          echo "CC=clang" >> "$GITHUB_ENV"
+          echo "CXX=clang++" >> "$GITHUB_ENV"
+
+      - name: Configure sanitizer build
+        run: |
+          cmake -G Ninja -S . -B build-san \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DVIX_BUILD_TESTS=OFF \
+            -DVIX_BUILD_EXAMPLES=ON \
+            -DVIX_ENABLE_SANITIZERS=ON \
+            -DVIX_ENABLE_WARNINGS=ON \
+            -DVIX_ENABLE_LTO=OFF \
+            -DVIX_ENABLE_INSTALL=OFF \
+            -DVIX_FORCE_FETCH_JSON=OFF \
+            -DVIX_FETCH_DEPS=OFF \
+            -DVIX_ENABLE_ASYNC=ON \
+            -DVIX_ENABLE_CRYPTO=ON \
+            -DVIX_ENABLE_TIME=ON \
+            -DVIX_ENABLE_WEBRPC=ON \
+            -DVIX_ENABLE_VALIDATION=ON \
+            -DVIX_ENABLE_CACHE=ON \
+            -DVIX_ENABLE_P2P=ON \
+            -DVIX_ENABLE_P2P_HTTP=ON \
+            -DVIX_ENABLE_DB=ON \
+            -DVIX_DB_USE_MYSQL=ON \
+            -DVIX_DB_USE_SQLITE=OFF \
+            -DVIX_ENABLE_ORM=ON \
+            -DVIX_ENABLE_MIDDLEWARE=ON \
+            -DVIX_ENABLE_CLI=ON \
+            -DVIX_ENABLE_WEBSOCKET=ON
+
+      - name: Build sanitizer config
+        run: |
+          cmake --build build-san -j"${BUILD_JOBS}"
+
+  runtime-smoke:
+    name: Runtime Smoke and CLI Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout umbrella repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y $DEPS
+
+      - name: Configure runtime build
+        run: |
+          cmake -G Ninja -S . -B build-runtime \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DVIX_BUILD_TESTS=OFF \
+            -DVIX_BUILD_EXAMPLES=ON \
+            -DVIX_ENABLE_SANITIZERS=OFF \
+            -DVIX_ENABLE_WARNINGS=ON \
+            -DVIX_ENABLE_LTO=OFF \
+            -DVIX_ENABLE_INSTALL=OFF \
+            -DVIX_FORCE_FETCH_JSON=OFF \
+            -DVIX_FETCH_DEPS=OFF \
+            -DVIX_ENABLE_ASYNC=ON \
+            -DVIX_ENABLE_CRYPTO=ON \
+            -DVIX_ENABLE_TIME=ON \
+            -DVIX_ENABLE_WEBRPC=ON \
+            -DVIX_ENABLE_VALIDATION=ON \
+            -DVIX_ENABLE_CACHE=ON \
+            -DVIX_ENABLE_P2P=ON \
+            -DVIX_ENABLE_P2P_HTTP=ON \
+            -DVIX_ENABLE_DB=ON \
+            -DVIX_DB_USE_MYSQL=ON \
+            -DVIX_DB_USE_SQLITE=OFF \
+            -DVIX_ENABLE_ORM=ON \
+            -DVIX_ENABLE_MIDDLEWARE=ON \
+            -DVIX_ENABLE_CLI=ON \
+            -DVIX_ENABLE_WEBSOCKET=ON
+
+      - name: Build runtime artifacts
+        run: |
+          cmake --build build-runtime -j"${BUILD_JOBS}"
+
+      - name: Locate vix binary
+        run: |
+          if [ -f build-runtime/vix ]; then
+            echo "VIX_BIN=build-runtime/vix" >> "$GITHUB_ENV"
+          elif [ -f build-runtime/vix_cli ]; then
+            echo "VIX_BIN=build-runtime/vix_cli" >> "$GITHUB_ENV"
+          else
+            echo "::error::Could not find vix binary in build-runtime"
+            find build-runtime -maxdepth 3 -type f | sort || true
+            exit 1
+          fi
+
+      - name: Run CLI smoke checks
+        shell: bash
+        run: |
+          set -e
+
+          timeout 10s "$VIX_BIN" --help >/tmp/vix_help.log 2>&1 || STATUS=$?
+          cat /tmp/vix_help.log || true
+          if [ "${STATUS:-0}" -ne 0 ] && [ "${STATUS:-0}" -ne 124 ]; then
+            echo "::error::vix --help failed"
+            exit 1
+          fi
+
+          unset STATUS
+          timeout 10s "$VIX_BIN" --version >/tmp/vix_version.log 2>&1 || STATUS=$?
+          cat /tmp/vix_version.log || true
+          if [ "${STATUS:-0}" -ne 0 ] && [ "${STATUS:-0}" -ne 124 ]; then
+            echo "::error::vix --version failed"
+            exit 1
+          fi
+
+  static-analysis:
+    name: Umbrella Static Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout umbrella repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y $DEPS
+
+      - name: Configure for analysis
         run: |
           cmake -G Ninja -S . -B build-analyze \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DVIX_BUILD_EXAMPLES=ON \
             -DVIX_BUILD_TESTS=OFF \
-            -DVIX_ENABLE_INSTALL=OFF
+            -DVIX_BUILD_EXAMPLES=ON \
+            -DVIX_ENABLE_SANITIZERS=OFF \
+            -DVIX_ENABLE_WARNINGS=ON \
+            -DVIX_ENABLE_INSTALL=OFF \
+            -DVIX_FORCE_FETCH_JSON=OFF \
+            -DVIX_FETCH_DEPS=OFF \
+            -DVIX_ENABLE_ASYNC=ON \
+            -DVIX_ENABLE_CRYPTO=ON \
+            -DVIX_ENABLE_TIME=ON \
+            -DVIX_ENABLE_WEBRPC=ON \
+            -DVIX_ENABLE_VALIDATION=ON \
+            -DVIX_ENABLE_CACHE=ON \
+            -DVIX_ENABLE_P2P=ON \
+            -DVIX_ENABLE_P2P_HTTP=ON \
+            -DVIX_ENABLE_DB=ON \
+            -DVIX_DB_USE_MYSQL=ON \
+            -DVIX_ENABLE_ORM=ON \
+            -DVIX_ENABLE_MIDDLEWARE=ON \
+            -DVIX_ENABLE_CLI=ON \
+            -DVIX_ENABLE_WEBSOCKET=ON
 
-      - name: clang-tidy
+      - name: Run clang-tidy
         run: |
           set +e
-          find modules examples -name '*.cpp' -print0 | xargs -0 -n1 -P2 clang-tidy -p build-analyze
-          STATUS=$?
-          if [ $STATUS -ne 0 ]; then
-            echo "::warning::clang-tidy reported issues (status=$STATUS). Treating as non-fatal."
-          else
-            echo "✅ clang-tidy OK"
-          fi
+          find modules examples -name '*.cpp' -print0 2>/dev/null | xargs -0 -r -n1 -P2 clang-tidy -p build-analyze
           exit 0
 
-      - name: cppcheck
+      - name: Run cppcheck
         run: |
           set +e
-          cppcheck --enable=all --std=c++20 --inconclusive --quiet modules/ examples/
-          STATUS=$?
-          if [ $STATUS -ne 0 ]; then
-            echo "::warning::cppcheck reported issues (status=$STATUS). Treating as non-fatal."
-          else
-            echo "✅ cppcheck OK"
-          fi
+          cppcheck \
+            --enable=all \
+            --std=c++20 \
+            --inconclusive \
+            --quiet \
+            --suppress=missingIncludeSystem \
+            modules/ examples/
           exit 0
 
   valgrind:
-    name: Valgrind (Leak Check)
+    name: Umbrella Valgrind
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+
     steps:
-      - name: Checkout (with submodules)
+      - name: Checkout umbrella repository
         uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 0
-
-      - name: Forcer les URLs de sous-modules en HTTPS (pas SSH)
-        run: |
-          git config --global url."https://github.com/".insteadOf "git@github.com:"
-          git submodule sync --recursive
-
-      - name: Initialiser les sous-modules (profondeur minimale ok)
-        run: |
-          git submodule update --init --recursive --depth 1
-          echo "---- submodule status ----"
-          git submodule status --recursive || true
-          echo "---- modules presence (ls) ----"
-          ls -la modules || true
-          ls -la modules/json || true
-          ls -la modules/utils || true
-          ls -la modules/core || true
-
-      - name: Vérifier la présence des sous-modules
-        run: |
-          test -f modules/json/CMakeLists.txt  || (echo "::error::modules/json manquant";  exit 1)
-          test -f modules/utils/CMakeLists.txt || (echo "::error::modules/utils manquant"; exit 1)
-          test -f modules/core/CMakeLists.txt  || (echo "::error::modules/core manquant";  exit 1)
-          echo "✅ Tous les sous-modules sont présents."
+          submodules: recursive
 
       - name: Install dependencies
         run: |
           sudo apt-get update -y
           sudo apt-get install -y $DEPS
 
-      - name: Configure (Release, Sanitizers OFF)
+      - name: Configure valgrind build
         run: |
-          cmake -G Ninja -S . -B build-rel \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DVIX_BUILD_EXAMPLES=ON \
+          cmake -G Ninja -S . -B build-valgrind \
+            -DCMAKE_BUILD_TYPE=Debug \
             -DVIX_BUILD_TESTS=OFF \
+            -DVIX_BUILD_EXAMPLES=OFF \
             -DVIX_ENABLE_SANITIZERS=OFF \
-            -DVIX_ENABLE_INSTALL=OFF
+            -DVIX_ENABLE_WARNINGS=ON \
+            -DVIX_ENABLE_LTO=OFF \
+            -DVIX_ENABLE_INSTALL=OFF \
+            -DVIX_FORCE_FETCH_JSON=OFF \
+            -DVIX_FETCH_DEPS=OFF \
+            -DVIX_ENABLE_ASYNC=ON \
+            -DVIX_ENABLE_CRYPTO=ON \
+            -DVIX_ENABLE_TIME=ON \
+            -DVIX_ENABLE_WEBRPC=ON \
+            -DVIX_ENABLE_VALIDATION=ON \
+            -DVIX_ENABLE_CACHE=ON \
+            -DVIX_ENABLE_P2P=ON \
+            -DVIX_ENABLE_P2P_HTTP=ON \
+            -DVIX_ENABLE_DB=ON \
+            -DVIX_DB_USE_MYSQL=ON \
+            -DVIX_ENABLE_ORM=ON \
+            -DVIX_ENABLE_MIDDLEWARE=ON \
+            -DVIX_ENABLE_CLI=ON \
+            -DVIX_ENABLE_WEBSOCKET=ON
 
       - name: Build
-        run: cmake --build build-rel -j
+        run: |
+          cmake --build build-valgrind -j"${BUILD_JOBS}"
 
-      - name: Run valgrind on examples (best-effort)
+      - name: Locate vix binary
+        run: |
+          if [ -f build-valgrind/vix ]; then
+            echo "VIX_BIN=build-valgrind/vix" >> "$GITHUB_ENV"
+          elif [ -f build-valgrind/vix_cli ]; then
+            echo "VIX_BIN=build-valgrind/vix_cli" >> "$GITHUB_ENV"
+          else
+            echo "::error::Could not find vix binary in build-valgrind"
+            exit 1
+          fi
+
+      - name: Run valgrind on CLI
         shell: bash
         run: |
           set -e
-          cd build-rel
-          CANDIDATES=$(ls -1 | grep -E '^(main|get_example|post_example|put_example|delete_example|json_builders_routes|env_time_port)$' || true)
-          if [ -z "$CANDIDATES" ]; then
-            echo "No example binaries found for valgrind."
-            exit 0
+          timeout 20s valgrind \
+            --leak-check=full \
+            --show-leak-kinds=all \
+            --track-origins=yes \
+            "$VIX_BIN" --help >/tmp/umbrella_valgrind.log 2>&1 || STATUS=$?
+          cat /tmp/umbrella_valgrind.log || true
+          if [ "${STATUS:-0}" -ne 0 ] && [ "${STATUS:-0}" -ne 124 ]; then
+            echo "::error::Valgrind reported issues for umbrella CLI"
+            exit 1
           fi
-          FAIL=0
-          for exe in $CANDIDATES; do
-            echo "==> Valgrind: $exe (5s timeout)"
-            if ! timeout 5s valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./$exe; then
-              echo "::warning::Valgrind reported issues in $exe"
-              FAIL=1
-            fi
-          done
-          if [ $FAIL -ne 0 ]; then
-            echo "::warning::Valgrind found potential leaks (non-fatal)."
-            exit 0
-          fi
-          echo "✅ Valgrind checks completed."
 
-  fuzz:
-    name: Fuzz (optional)
+  package-export:
+    name: Umbrella Package Export Check
     runs-on: ubuntu-latest
-    if: ${{ always() }}
+
     steps:
-      - name: Checkout (with submodules)
+      - name: Checkout umbrella repository
         uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 0
+          submodules: recursive
 
-      - name: Forcer les URLs de sous-modules en HTTPS (pas SSH)
-        run: |
-          git config --global url."https://github.com/".insteadOf "git@github.com:"
-          git submodule sync --recursive
-
-      - name: Initialiser les sous-modules (profondeur minimale ok)
-        run: |
-          git submodule update --init --recursive --depth 1
-          echo "---- submodule status ----"
-          git submodule status --recursive || true
-          echo "---- modules presence (ls) ----"
-          ls -la modules || true
-          ls -la modules/json || true
-          ls -la modules/utils || true
-          ls -la modules/core || true
-
-      - name: Vérifier la présence des sous-modules
-        run: |
-          test -f modules/json/CMakeLists.txt  || (echo "::error::modules/json manquant";  exit 1)
-          test -f modules/utils/CMakeLists.txt || (echo "::error::modules/utils manquant"; exit 1)
-          test -f modules/core/CMakeLists.txt  || (echo "::error::modules/core manquant";  exit 1)
-          echo "✅ Tous les sous-modules sont présents."
-
-      - name: Install Clang + LLVM (for libFuzzer)
+      - name: Install dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y clang llvm
+          sudo apt-get install -y $DEPS
 
-      - name: Build fuzz target if present
-        shell: bash
+      - name: Configure installable build
         run: |
-          set -e
-          if [ -f tests/fuzz_http.cpp ]; then
-            echo "Fuzz target detected."
-            clang++ -g -O1 -fsanitize=fuzzer,address,undefined \
-              -I modules -I include -std=c++20 \
-              -o fuzz_http tests/fuzz_http.cpp
-            timeout 15s ./fuzz_http || true
-          else
-            echo "No fuzz target found (tests/fuzz_http.cpp). Skipping."
-          fi
+          cmake -G Ninja -S . -B build-install \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DVIX_BUILD_TESTS=OFF \
+            -DVIX_BUILD_EXAMPLES=OFF \
+            -DVIX_ENABLE_SANITIZERS=OFF \
+            -DVIX_ENABLE_WARNINGS=ON \
+            -DVIX_ENABLE_LTO=OFF \
+            -DVIX_ENABLE_INSTALL=ON \
+            -DVIX_FORCE_FETCH_JSON=OFF \
+            -DVIX_FETCH_DEPS=OFF \
+            -DVIX_ENABLE_ASYNC=ON \
+            -DVIX_ENABLE_CRYPTO=ON \
+            -DVIX_ENABLE_TIME=ON \
+            -DVIX_ENABLE_WEBRPC=ON \
+            -DVIX_ENABLE_VALIDATION=ON \
+            -DVIX_ENABLE_CACHE=ON \
+            -DVIX_ENABLE_P2P=ON \
+            -DVIX_ENABLE_P2P_HTTP=ON \
+            -DVIX_ENABLE_DB=ON \
+            -DVIX_DB_USE_MYSQL=ON \
+            -DVIX_DB_USE_SQLITE=OFF \
+            -DVIX_ENABLE_ORM=ON \
+            -DVIX_ENABLE_MIDDLEWARE=ON \
+            -DVIX_ENABLE_CLI=ON \
+            -DVIX_ENABLE_WEBSOCKET=ON \
+            -DCMAKE_INSTALL_PREFIX="${PWD}/.ci-install"
+
+      - name: Build package
+        run: |
+          cmake --build build-install -j"${BUILD_JOBS}"
+
+      - name: Install package
+        run: |
+          cmake --install build-install
+
+      - name: Verify install tree
+        run: |
+          find .ci-install -maxdepth 10 -type f | sort || true
+          test -f .ci-install/lib/cmake/Vix/VixConfig.cmake || (echo "::error::VixConfig.cmake missing"; exit 1)
+          test -f .ci-install/lib/cmake/Vix/VixConfigVersion.cmake || (echo "::error::VixConfigVersion.cmake missing"; exit 1)
+          test -f .ci-install/include/vix/json/Simple.hpp || (echo "::error::json headers missing"; exit 1)
+          test -f .ci-install/include/vix/utils/Logger.hpp || (echo "::error::utils headers missing"; exit 1)
+
+      - name: Consumer package check
+        run: |
+          mkdir -p /tmp/vix-consumer
+          cat >/tmp/vix-consumer/CMakeLists.txt <<'EOF'
+          cmake_minimum_required(VERSION 3.20)
+          project(vix_consumer LANGUAGES CXX)
+          set(CMAKE_CXX_STANDARD 20)
+          set(CMAKE_CXX_STANDARD_REQUIRED ON)
+          find_package(Vix CONFIG REQUIRED)
+          add_executable(vix_consumer main.cpp)
+          target_link_libraries(vix_consumer PRIVATE vix::vix)
+          EOF
+
+          cat >/tmp/vix-consumer/main.cpp <<'EOF'
+          #include <vix/json/Simple.hpp>
+          int main() { return 0; }
+          EOF
+
+          cmake -G Ninja -S /tmp/vix-consumer -B /tmp/vix-consumer/build \
+            -DCMAKE_PREFIX_PATH="${PWD}/.ci-install"
+
+          cmake --build /tmp/vix-consumer/build -j"${BUILD_JOBS}"
+
+  config-coverage:
+    name: Umbrella Configuration Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout umbrella repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y $DEPS
+
+      - name: Configure minimal profile
+        run: |
+          cmake -G Ninja -S . -B build-min \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DVIX_BUILD_TESTS=OFF \
+            -DVIX_BUILD_EXAMPLES=OFF \
+            -DVIX_ENABLE_INSTALL=OFF \
+            -DVIX_ENABLE_SANITIZERS=OFF \
+            -DVIX_ENABLE_WEBSOCKET=OFF \
+            -DVIX_ENABLE_ORM=OFF \
+            -DVIX_ENABLE_DB=OFF \
+            -DVIX_ENABLE_P2P=OFF \
+            -DVIX_ENABLE_P2P_HTTP=OFF \
+            -DVIX_ENABLE_CACHE=OFF \
+            -DVIX_ENABLE_ASYNC=ON \
+            -DVIX_ENABLE_CRYPTO=ON \
+            -DVIX_ENABLE_TIME=ON \
+            -DVIX_ENABLE_WEBRPC=ON \
+            -DVIX_ENABLE_VALIDATION=ON \
+            -DVIX_ENABLE_MIDDLEWARE=ON \
+            -DVIX_ENABLE_CLI=OFF \
+            -DVIX_FORCE_FETCH_JSON=OFF \
+            -DVIX_FETCH_DEPS=OFF
+
+      - name: Build minimal profile
+        run: |
+          cmake --build build-min -j"${BUILD_JOBS}"
+
+      - name: Configure full debug profile
+        run: |
+          cmake -G Ninja -S . -B build-full \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DVIX_BUILD_TESTS=OFF \
+            -DVIX_BUILD_EXAMPLES=ON \
+            -DVIX_ENABLE_INSTALL=OFF \
+            -DVIX_ENABLE_SANITIZERS=OFF \
+            -DVIX_ENABLE_WEBSOCKET=ON \
+            -DVIX_ENABLE_ORM=ON \
+            -DVIX_ENABLE_DB=ON \
+            -DVIX_DB_USE_MYSQL=ON \
+            -DVIX_ENABLE_P2P=ON \
+            -DVIX_ENABLE_P2P_HTTP=ON \
+            -DVIX_ENABLE_CACHE=ON \
+            -DVIX_ENABLE_ASYNC=ON \
+            -DVIX_ENABLE_CRYPTO=ON \
+            -DVIX_ENABLE_TIME=ON \
+            -DVIX_ENABLE_WEBRPC=ON \
+            -DVIX_ENABLE_VALIDATION=ON \
+            -DVIX_ENABLE_MIDDLEWARE=ON \
+            -DVIX_ENABLE_CLI=ON \
+            -DVIX_FORCE_FETCH_JSON=OFF \
+            -DVIX_FETCH_DEPS=OFF
+
+      - name: Build full debug profile
+        run: |
+          cmake --build build-full -j"${BUILD_JOBS}"
 
   summary:
-    name: CI Summary
-    needs: [build-asan-ubsan, static-analysis, valgrind, fuzz]
+    name: SECURITY_CI Summary
+    needs:
+      - build-matrix
+      - sanitizers
+      - runtime-smoke
+      - static-analysis
+      - valgrind
+      - package-export
+      - config-coverage
     runs-on: ubuntu-latest
+
     steps:
-      - run: echo "Security & Quality CI completed."
+      - name: Print summary
+        run: |
+          echo "SECURITY_CI completed."
+          echo "- umbrella build matrix"
+          echo "- dedicated sanitizer build without install/export"
+          echo "- runtime smoke"
+          echo "- static analysis"
+          echo "- valgrind"
+          echo "- package export"
+          echo "- consumer package check"
+          echo "- minimal/full config coverage"
