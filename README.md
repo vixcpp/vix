@@ -30,11 +30,11 @@
 
 </td>
 
-<td valign="middle" width="35%" align="right">
+<td valign="middle" width="25%" align="right">
 
 <img
-  src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1762524350/vixcpp_etndhz.png"
-  width="160"
+  src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1774966011/vix_logo_yqjne1.png"
+  width="260"
   style="border-radius:50%; object-fit:cover;"
 />
 
