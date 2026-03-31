@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="layout">
+  <aside class="card">
+    <h3 class="section-title">Navigation</h3>
+
+    {% for item in sidebar_items %}
+      {% if item.active %}
+        <a class="sidebar-link active" href="{{ item.href }}">{{ item.label }}</a>
+      {% endif %}
+
+      {% if !item.active %}
+        <a class="sidebar-link" href="{{ item.href }}">{{ item.label }}</a>
+      {% endif %}
+    {% endfor %}
+  </aside>
+
+  <section>
+    <div class="stats-grid" id="overview">
+      <div class="card">
+        <div class="muted">Total users</div>
+        <div class="stat-value">{{ total_users }}</div>
+      </div>
+
+      <div class="card">
+        <div class="muted">Active sessions</div>
+        <div class="stat-value">{{ active_sessions }}</div>
+      </div>
+
+      <div class="card">
+        <div class="muted">Monthly requests</div>
+        <div class="stat-value">{{ monthly_requests }}</div>
+      </div>
+
+      <div class="card">
+        <div class="muted">System health</div>
+        <div class="stat-value">{{ system_health }}</div>
+      </div>
+    </div>
+
+    <div class="content-grid">
+      <div>
+        <div class="card" id="users">
+          <h3 class="section-title">Users</h3>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for user in users %}
+                <tr>
+                  <td><strong>{{ user.name }}</strong></td>
+                  <td class="muted">{{ user.email }}</td>
+                  <td>{{ user.role }}</td>
+                  <td>
+                    {% if user.status == "Active" %}
+                      <span class="badge green">{{ user.status }}</span>
+                    {% endif %}
+
+                    {% if user.status == "Pending" %}
+                      <span class="badge yellow">{{ user.status }}</span>
+                    {% endif %}
+
+                    {% if user.status == "Suspended" %}
+                      <span class="badge red">{{ user.status }}</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card" id="activity">
+          <h3 class="section-title">Recent activity</h3>
+
+          <ul style="padding-left:18px; margin-bottom:0;">
+            {% for activity in activities %}
+              <li style="margin-bottom:12px;">
+                <strong>{{ activity.title }}</strong><br />
+                <span class="muted">{{ activity.type }} · {{ activity.time }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" id="tasks">
+          <h3 class="section-title">Pending tasks</h3>
+
+          <ul style="padding-left:18px; margin-bottom:0;">
+            {% for task in tasks %}
+              <li style="margin-bottom:14px;">
+                <strong>{{ task.title }}</strong><br />
+
+                {% if task.done %}
+                  <span class="badge gray">Done</span>
+                {% endif %}
+
+                {% if !task.done %}
+                  <span class="badge yellow">{{ task.priority }}</span>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <div class="card">
+          <h3 class="section-title">Summary</h3>
+          <p class="muted" style="line-height:1.8; margin-bottom:0;">
+            This example demonstrates how to build a server-rendered admin dashboard
+            with templates, reusable layout files, loops, conditional badges,
+            tables, and structured data passed from C++.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+{% endblock %}

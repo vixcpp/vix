@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="card">
+  <h2 style="margin-top:0;">Dashboard</h2>
+
+  {% if is_shop_open %}
+    <span class="badge">Shop open</span>
+  {% endif %}
+
+  {% if !is_shop_open %}
+    <span class="badge closed">Shop closed</span>
+  {% endif %}
+</div>
+
+<div class="stats">
+  <div class="card">
+    <div class="muted">Products</div>
+    <div class="stat-value">{{ total_products }}</div>
+  </div>
+
+  <div class="card">
+    <div class="muted">Orders</div>
+    <div class="stat-value">{{ total_orders }}</div>
+  </div>
+
+  <div class="card">
+    <div class="muted">Monthly revenue</div>
+    <div class="stat-value">{{ monthly_revenue }} {{ currency }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0;">Recent alerts</h3>
+
+  {% if alerts | length > 0 %}
+    <ul class="alert-list">
+      {% for alert in alerts %}
+        <li>{{ alert }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0;">Recent orders</h3>
+
+  <ul class="order-list">
+    {% for order in recent_orders %}
+      <li>
+        <strong>{{ order.id }}</strong>
+        · {{ order.customer }}
+        · {{ order.status }}
+        · {{ order.amount }} {{ currency }}
+      </li>
+    {% endfor %}
+  </ul>
+</div>
+
+{% endblock %}

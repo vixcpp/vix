@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<article class="card">
+  <div class="tag">{{ post.category }}</div>
+
+  <h2 class="post-title">{{ post.title }}</h2>
+
+  <p class="muted">
+    By {{ post.author }} · {{ post.date }} · {{ post.read_time }}
+  </p>
+
+  <p style="font-size:18px; line-height:1.7;">
+    {{ post.excerpt }}
+  </p>
+
+  <div class="post-body">
+    <p>{{ post.content_1 }}</p>
+    <p>{{ post.content_2 }}</p>
+    <p>{{ post.content_3 }}</p>
+  </div>
+</article>
+
+<section class="card">
+  <h3 class="section-title">Tags</h3>
+
+  {% for tag in tags %}
+    <span class="tag">{{ tag }}</span>
+  {% endfor %}
+</section>
+
+<section class="card">
+  <h3 class="section-title">About the author</h3>
+  <p><strong>{{ author.name }}</strong></p>
+  <p class="muted">{{ author.role }}</p>
+  <p>{{ author.bio }}</p>
+</section>
+
+<section class="card">
+  <h3 class="section-title">Related posts</h3>
+
+  <ul style="padding-left:18px; margin-bottom:0;">
+    {% for related in related_posts %}
+      <li style="margin-bottom:12px;">
+        <strong>{{ related.title }}</strong><br />
+        <span class="muted">{{ related.category }} · {{ related.date }}</span>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+
+{% endblock %}

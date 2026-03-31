@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="layout">
+  <aside class="card">
+    <h3 class="section-title">Navigation</h3>
+
+    {% for item in sidebar %}
+      {% if item.active %}
+        <a class="sidebar-link active" href="{{ item.href }}">{{ item.title }}</a>
+      {% endif %}
+
+      {% if !item.active %}
+        <a class="sidebar-link" href="{{ item.href }}">{{ item.title }}</a>
+      {% endif %}
+    {% endfor %}
+  </aside>
+
+  <section>
+    <div class="card">
+      <h2 style="margin-top:0;">{{ doc_title }}</h2>
+      <p class="muted">{{ doc_description }}</p>
+    </div>
+
+    <div class="card" id="templates">
+      <h3 class="section-title">What you can do</h3>
+
+      <ul style="padding-left:18px; margin-bottom:0;">
+        {% for concept in concepts %}
+          <li style="margin-bottom:10px;">{{ concept }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3 class="section-title">Example</h3>
+      <div class="code-block">{{ code_example }}</div>
+    </div>
+
+    <div class="card">
+      <h3 class="section-title">Quick links</h3>
+
+      <ul style="padding-left:18px; margin-bottom:0;">
+        {% for link in quick_links %}
+          <li style="margin-bottom:10px;">
+            <a href="{{ link.href }}">{{ link.label }}</a>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </section>
+</div>
+
+{% endblock %}
