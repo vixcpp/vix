@@ -8,7 +8,132 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
-## [v2.0.1]
+## [v2.0.0] - 2026-03-31
+
+Vix.cpp 2.0 starts here.
+
+This is the first official V2 release published through the release pipeline.
+
+### Highlights
+
+- major cleanup and reorganization across the Vix ecosystem
+- improved examples across HTTP, cache, P2P, sync, templates, database, and ORM
+- better developer onboarding with clearer and more progressive examples
+- improved Windows/MSVC compatibility across CLI, core, and middleware
+- cleaner internal consistency across multiple modules
+
+### Examples
+
+#### Added
+- new cache examples
+- new P2P examples
+- new sync examples
+- new template examples
+- new database and ORM examples
+
+#### Improved
+- updated HTTP examples
+- improved middleware demos
+- refined security-related examples
+
+#### Removed
+- removed outdated and legacy examples
+- cleaned older CRUD and deprecated demo layouts
+
+### Stability
+
+- fixed Windows build blockers
+- improved cross-platform behavior
+- reduced MSVC-specific issues and portability problems
+
+### Notes
+
+This release establishes the real V2 baseline for Vix.cpp.
+Future patch and minor releases will build from here.
+
+### Highlights
+
+- massive overhaul of examples across the entire Vix ecosystem
+- improved developer experience with clearer, structured, and progressive examples
+- continued stabilization of cross-platform support (Windows/MSVC)
+
+---
+
+### Examples
+
+#### Added
+
+- new cache examples (memory, file persistence, LRU, offline handling, headers)
+- new p2p examples (envelope, handshake, discovery, router, WAL, UDP, bootstrap)
+- new sync examples (offline-first workflows and replication)
+- new template examples
+- new http cache examples
+- new database and ORM examples
+
+#### Updated
+
+- improved HTTP examples (json_api, router params, tracing, etc.)
+- updated middleware demos (mega middleware routes)
+- improved security examples (JWT, CSRF, headers)
+
+#### Removed
+
+- removed legacy http_crud examples (replaced by cleaner and more modular examples)
+- removed outdated cache demos
+- removed old P2P demo assets
+
+---
+
+### Core & Modules
+
+- improvements across cache, cli, core, p2p, p2p_http, sync, and websocket modules
+- better consistency across modules and examples
+- improved internal structure for long-term maintainability
+
+---
+
+### Fixes
+
+- multiple internal fixes across modules
+- improved stability of CLI and runtime behavior
+- continued Windows/MSVC compatibility improvements
+
+---
+
+### Developer Experience
+
+- examples now follow a more progressive learning path
+- clearer separation between basic and advanced use cases
+- better alignment between modules and real-world usage
+
+---
+
+### Stability
+
+This release focuses on improving usability, clarity, and ecosystem consistency.
+
+No breaking changes, but many improvements to structure and developer experience.
+
+### Fixes
+
+- fixed Windows build errors across CLI, core, and middleware modules
+- restored missing join_for_log in CLI commands (Windows process handling)
+- removed invalid OS checks causing compilation issues
+- fixed ambiguous std::to_string usage in template module
+- improved environment variable handling for cross-platform support
+
+### Improvements
+
+- added fallback for Unicode rendering in print (Windows compatibility)
+- cleaned MSVC warnings across multiple modules
+- improved formatting stability and safety in format module
+
+### Stability
+
+This release significantly improves cross-platform reliability,
+especially on Windows/MSVC environments.
+
+No breaking changes.
 
 ### Fixes
 
@@ -22,7 +147,7 @@ specifically fixing a build failure on macOS with libc++.
 
 No breaking changes.
 
-## [2.0.0] - 2026-03-24
+## 2026-03-24
 
 Major release of **Vix.cpp** introducing a new native HTTP stack, full async runtime improvements, and removal of Boost dependencies.
 

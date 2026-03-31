@@ -1,6 +1,6 @@
 /**
  *
- *  @file csrf_pipeline_demo.cpp — CSRF pipeline demo (Vix.cpp)
+ *  @file csrf_pipeline_demo.cpp - CSRF pipeline demo (Vix.cpp)
  *  @author Gaspard Kirira
  *
  *  Copyright 2025, Gaspard Kirira.  All rights reserved.
@@ -17,74 +17,71 @@
 
 #include <cassert>
 #include <iostream>
+#include <string>
 
-#include <boost/beast/http.hpp>
-
+#include <vix/http/Request.hpp>
+#include <vix/http/Response.hpp>
+#include <vix/http/ResponseWrapper.hpp>
 #include <vix/middleware/pipeline.hpp>
 #include <vix/middleware/security/csrf.hpp>
 
 using namespace vix::middleware;
 
-static vix::vhttp::RawRequest make_post(bool ok)
+static vix::vhttp::Request make_post(bool ok)
 {
-  namespace http = boost::beast::http;
-
-  vix::vhttp::RawRequest req{http::verb::post, "/api/update", 11};
-  req.set(http::field::host, "localhost");
+  vix::vhttp::Request::HeaderMap headers;
+  headers["Host"] = "localhost";
 
   // Cookie + header must match
-  req.set("Cookie", "csrf_token=abc");
-  req.set("x-csrf-token", ok ? "abc" : "wrong");
+  headers["Cookie"] = "csrf_token=abc";
+  headers["x-csrf-token"] = ok ? "abc" : "wrong";
+  headers["Content-Type"] = "application/x-www-form-urlencoded";
 
-  req.body() = "x=1";
-  req.prepare_payload();
-  return req;
+  return vix::vhttp::Request(
+      "POST",
+      "/api/update",
+      std::move(headers),
+      "x=1");
 }
 
 int main()
 {
-  namespace http = boost::beast::http;
-
   // FAIL
   {
-    auto raw = make_post(false);
-    http::response<http::string_body> res;
-
-    vix::vhttp::Request req(raw, {});
-    vix::vhttp::ResponseWrapper w(res);
-
-    HttpPipeline p;
-    p.use(vix::middleware::security::csrf()); // MiddlewareFn(Context&, Next)
-
-    int final_calls = 0;
-    p.run(req, w, [&](Request &, Response &)
-          {
-            final_calls++;
-            w.ok().text("OK"); });
-
-    assert(final_calls == 0);
-    assert(res.result_int() == 403);
-  }
-
-  // OK
-  {
-    auto raw = make_post(true);
-    http::response<http::string_body> res;
-
-    vix::vhttp::Request req(raw, {});
-    vix::vhttp::ResponseWrapper w(res);
+    auto req = make_post(false);
+    vix::vhttp::Response raw_res;
+    vix::vhttp::ResponseWrapper w(raw_res);
 
     HttpPipeline p;
     p.use(vix::middleware::security::csrf());
 
     int final_calls = 0;
-    p.run(req, w, [&](Request &, Response &)
+    p.run(req, w, [&](Request &, Response &res)
           {
             final_calls++;
-            w.ok().text("OK"); });
+            res.ok().text("OK"); });
+
+    assert(final_calls == 0);
+    assert(raw_res.status() == 403);
+  }
+
+  // OK
+  {
+    auto req = make_post(true);
+    vix::vhttp::Response raw_res;
+    vix::vhttp::ResponseWrapper w(raw_res);
+
+    HttpPipeline p;
+    p.use(vix::middleware::security::csrf());
+
+    int final_calls = 0;
+    p.run(req, w, [&](Request &, Response &res)
+          {
+            final_calls++;
+            res.ok().text("OK"); });
 
     assert(final_calls == 1);
-    assert(res.result_int() == 200);
+    assert(raw_res.status() == 200);
   }
 
   std::cout << "[OK] csrf pipeline demo\n";

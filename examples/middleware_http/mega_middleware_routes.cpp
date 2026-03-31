@@ -349,16 +349,11 @@ static void register_api_routes(vix::App &app)
 {
   // GET /api/ping
   app.get("/api/ping", [](Request &, Response &res)
-          {
-            const bool hasRid = res.has_header(boost::beast::http::field::unknown)
-                                ? false
-                                : true;
-            (void)hasRid;
-            res.json(J::obj({
-                "ok", true,
-                "pong", true,
-                "ts_ms", (long long)now_ms_wall(),
-            })); });
+          { res.json({
+                {"ok", true},
+                {"pong", true},
+                {"ts_ms", (long long)now_ms_wall()},
+            }); });
 
   // GET /api/who
   app.get("/api/who", [](Request &req, Response &res)
