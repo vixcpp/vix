@@ -28,7 +28,7 @@ int main()
 {
   auto &log = Logger::getInstance();
   log.setPattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %v");
-  log.setLevel(Logger::Level::INFO);
+  log.setLevel(Logger::Level::Info);
   log.setAsync(true);
 
   App app;
@@ -45,7 +45,7 @@ int main()
         std::string method(req.method().data(), req.method().size());
 
         Logger::getInstance().logf(
-            Logger::Level::INFO,
+            Logger::Level::Info,
             "Incoming request",
             "path", path.c_str(),
             "method", method.c_str(),

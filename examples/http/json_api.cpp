@@ -51,7 +51,6 @@ int main()
            {
         try
         {
-            // req is typically a boost::beast::http::request<string_body>
             const auto& body = req.body();
             json::Json data = json::Json::parse(body);
 

@@ -13,6 +13,7 @@
  */
 
 #include <vix.hpp>
+#include <vix/json/json.hpp>
 
 using namespace vix;
 

@@ -1,6 +1,6 @@
 /**
  *
- *  @file headers_pipeline_demo.cpp — Security headers pipeline demo (Vix.cpp)
+ *  @file headers_pipeline_demo.cpp - Security headers pipeline demo (Vix.cpp)
  *  @author Gaspard Kirira
  *
  *  Copyright 2025, Gaspard Kirira.  All rights reserved.
@@ -19,30 +19,31 @@
 #include <cassert>
 #include <iostream>
 
-#include <boost/beast/http.hpp>
+#include <vix/http/Request.hpp>
+#include <vix/http/Response.hpp>
+#include <vix/http/ResponseWrapper.hpp>
 #include <vix/middleware/pipeline.hpp>
 #include <vix/middleware/security/headers.hpp>
 
 using namespace vix::middleware;
 
-static vix::vhttp::RawRequest make_req()
+static vix::vhttp::Request make_req()
 {
-  namespace http = boost::beast::http;
-  vix::vhttp::RawRequest req{http::verb::get, "/x", 11};
-  req.set(http::field::host, "localhost");
-  req.prepare_payload();
-  return req;
+  vix::vhttp::Request::HeaderMap headers;
+  headers["Host"] = "localhost";
+
+  return vix::vhttp::Request(
+      "GET",
+      "/x",
+      std::move(headers),
+      "");
 }
 
 int main()
 {
-  namespace http = boost::beast::http;
-
-  auto raw = make_req();
-  http::response<http::string_body> res;
-
-  vix::vhttp::Request req(raw, {});
-  vix::vhttp::ResponseWrapper w(res);
+  auto req = make_req();
+  vix::vhttp::Response raw_res;
+  vix::vhttp::ResponseWrapper w(raw_res);
 
   HttpPipeline p;
 
@@ -54,19 +55,19 @@ int main()
   p.use(vix::middleware::security::headers());
 
   int final_calls = 0;
-  p.run(req, w, [&](Request &, Response &)
+  p.run(req, w, [&](Request &, Response &res)
         {
-        final_calls++;
-        w.ok().text("OK"); });
+          final_calls++;
+          res.ok().text("OK"); });
 
   assert(final_calls == 1);
-  assert(res.result_int() == 200);
+  assert(raw_res.status() == 200);
 
   // Must exist
-  assert(res.find("X-Content-Type-Options") != res.end());
-  assert(res.find("X-Frame-Options") != res.end());
-  assert(res.find("Referrer-Policy") != res.end());
-  assert(res.find("Permissions-Policy") != res.end());
+  assert(raw_res.has_header("X-Content-Type-Options"));
+  assert(raw_res.has_header("X-Frame-Options"));
+  assert(raw_res.has_header("Referrer-Policy"));
+  assert(raw_res.has_header("Permissions-Policy"));
 
   std::cout << "[OK] security headers pipeline demo\n";
   return 0;

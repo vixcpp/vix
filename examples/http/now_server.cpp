@@ -27,7 +27,7 @@ int main()
 {
   auto &log = Logger::getInstance();
   log.setPattern("[%H:%M:%S.%e] [%^%l%$] %v");
-  log.setLevel(Logger::Level::INFO);
+  log.setLevel(Logger::Level::Info);
 
   const int port = utils::env_int("PORT", 8081);
 
@@ -38,7 +38,7 @@ int main()
           { res.json({"iso8601", utils::iso8601_now(),
                       "ms", static_cast<long long>(utils::now_ms())}); });
 
-  log.log(Logger::Level::INFO, "Starting server on port {}", port);
+  log.log(Logger::Level::Info, "Starting server on port {}", port);
 
   app.run(port);
   return 0;
