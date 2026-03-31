@@ -1,70 +1,50 @@
 <table>
   <tr>
-    <td valign="top" width="70%">
+    <td valign="top" width="65%">
 
 <h1>Vix.cpp</h1>
 
 <p>
   <a href="https://x.com/vix_cpp">
-    <img src="https://img.shields.io/badge/X-Follow-black?logo=x" alt="X" />
+    <img src="https://img.shields.io/badge/X-Follow-black?logo=x" />
   </a>
   <a href="https://www.youtube.com/@vixcpp">
-    <img src="https://img.shields.io/badge/YouTube-Subscribe-red?logo=youtube" alt="YouTube" />
+    <img src="https://img.shields.io/badge/YouTube-Subscribe-red?logo=youtube" />
   </a>
-  <img src="https://img.shields.io/github/stars/vixcpp/vix?style=flat" alt="Stars" />
-  <img src="https://img.shields.io/github/forks/vixcpp/vix?style=flat" alt="Forks" />
-  <img src="https://img.shields.io/github/actions/workflow/status/vixcpp/vix/SECURITY_CI.yml?label=CI" alt="CI" />
 </p>
 
 <p>
-  <b>Vix.cpp</b> is a modern <b>C++ runtime</b> for building HTTP, WebSocket, and P2P applications with
-  <b>predictable performance</b>, <b>offline-first design</b>, and a
-  <b>Node/Deno-like developer experience</b>.
+  <b>A modern C++ runtime for real-world systems.</b>
 </p>
 
 <p>
-  🌍 <a href="https://vixcpp.com">vixcpp.com</a><br />
-  📘 <a href="https://vixcpp.com/docs">Documentation</a>
+  Build HTTP, WebSocket, and peer-to-peer applications with
+  <b>predictable performance</b> and <b>offline-first reliability</b>.
+</p>
+
+<p>
+  🌍 <a href="https://vixcpp.com">Website</a> ·
+  📘 <a href="https://vixcpp.com/docs">Docs</a> ·
+  ⬇️ <a href="https://github.com/vixcpp/vix/releases">Download</a>
 </p>
 
 </td>
-    <td valign="middle" width="30%" align="right">
-      <img
-        src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1762524350/vixcpp_etndhz.png"
-        alt="Vix.cpp Logo"
-        width="200"
-        style="border-radius:50%;"
-      />
-    </td>
+
+<td valign="middle" width="35%" align="right">
+
+<img
+  src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1762524350/vixcpp_etndhz.png"
+  width="160"
+  style="border-radius:50%; object-fit:cover;"
+/>
+
+</td>
   </tr>
 </table>
 
-<hr />
-
-## Performance is not a feature it’s a requirement
-
-Vix.cpp is designed to remove overhead, unpredictability, and GC pauses.
-
-### ⚡ Benchmarks (Dec 2025)
-
-| Framework                   | Requests/sec | Avg Latency |
-| --------------------------- | ------------ | ----------- |
-| ⭐ **Vix.cpp (pinned CPU)** | **~99,000**  | 7–10 ms     |
-| Vix.cpp (default)           | ~81,400      | 9–11 ms     |
-| Go (Fiber)                  | ~81,300      | ~0.6 ms     |
-| Deno                        | ~48,800      | ~16 ms      |
-| Node.js (Fastify)           | ~4,200       | ~16 ms      |
-| PHP (Slim)                  | ~2,800       | ~17 ms      |
-| FastAPI (Python)            | ~750         | ~64 ms      |
-
-## Installation
-
-Install the Vix runtime on your system using one of the commands below.
-Note that there are multiple ways to install Vix.
+## Install
 
 #### Linux
-
-**Ubuntu / Debian deps (example):**
 
 ```bash
 sudo apt update
@@ -149,27 +129,64 @@ Run C++ like a script:
 
 ```bash
 vix run main.cpp
-vix dev main.cpp
 ```
 
-Vix handles compilation, linking, and execution automatically.
+Open http://localhost:8080
+
+## Why Vix.cpp
+
+Most systems assume perfect conditions.
+Vix is built for when things are not.
+
+- predictable under load
+- no GC pauses
+- offline-first by design
+- deterministic execution
+- minimal setup
+
+---
+
+## Performance
+
+Stable under sustained load.
+
+| Metric        | Value          |
+|--------------|----------------|
+| Requests/sec | ~66k – 68k     |
+| Avg Latency  | ~13–20 ms      |
+| P99 Latency  | ~17–50 ms      |
+
+---
+
+## Core principles
+
+- Local-first execution
+- Network is optional
+- Deterministic behavior
+- Failure-tolerant
+- Built for unreliable environments
+
+---
 
 ## Learn more
 
-- 📘 Docs: https://vixcpp.com/docs
-- 🌍 Website: https://vixcpp.com
-- 📦 Registry: https://vixcpp.com/registry
-- 📦 Examples: https://vixcpp.com/docs/examples
+- Docs: https://vixcpp.com/docs
+- Registry: https://vixcpp.com/registry
+- Examples: https://vixcpp.com/docs/examples
+
 ---
 
 ## Contributing
 
 Contributions are welcome.
-If you care about modern C++, performance, and real-world reliability, you’ll feel at home here.
-Please read the contributing guide before opening a PR.
+
+### Focus areas
+
+- performance
+- reliability
+- networking
+- offline-first systems
 
 ---
 
-⭐ If this project resonates with you, consider starring the repository.
 MIT License
-

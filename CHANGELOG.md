@@ -8,6 +8,110 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v2.1.0]
+
+This release focuses on performance, developer experience, and ecosystem maturity.
+
+Vix is no longer just fast.
+It is now structured, documented, and ready to be used in real projects.
+
+---
+
+### Performance
+
+- optimized HTTP hot path in core runtime
+- improved scheduler and task execution model
+- reduced overhead in run queue processing
+- optimized async coroutine fast-path
+- removed redundant error handling in async layer
+
+Result:
+- lower latency
+- better throughput
+- more predictable execution under load
+
+---
+
+### Templates
+
+- complete refactor of template examples
+- introduction of real-world use cases (dashboard, blog, marketing pages)
+- improved layout system (extends, includes, filters)
+
+New examples include:
+- shop dashboard
+- blog home and post pages
+- admin dashboards
+- marketing landing pages
+
+---
+
+### Documentation
+
+- massive addition of documentation across the entire ecosystem
+- new structured docs for:
+  - core modules
+  - async
+  - cache
+  - p2p and sync
+  - middleware and HTTP
+  - database and ORM
+- detailed real-world examples (auth, JWT, caching, rate limit, etc.)
+
+Result:
+- significantly improved onboarding
+- clearer mental model of Vix architecture
+- easier adoption for new developers
+
+---
+
+### Examples
+
+#### Added
+- structured template examples (01 → 12 progression)
+- new real-world scenarios across modules
+- improved consistency across all example categories
+
+#### Removed
+- removed outdated and legacy template examples
+- cleaned old and unstructured demo files
+
+---
+
+### Core & Modules
+
+- improvements across:
+  - core
+  - async
+  - template
+- better internal consistency and structure
+- improved maintainability for future features
+
+---
+
+### Developer Experience
+
+- examples now follow a progressive learning path
+- documentation aligned with real usage patterns
+- clearer separation between basic and advanced concepts
+
+---
+
+### Stability
+
+- improved runtime reliability
+- better performance under load
+- no breaking changes
+
+---
+
+### Summary
+
+v2.1.0 marks a major step toward making Vix a complete developer platform.
+
+From performance to documentation to real-world examples,
+Vix is now designed to be learned, used, and extended.
+
 ## [v2.0.0] - 2026-03-31
 
 Vix.cpp 2.0 starts here.

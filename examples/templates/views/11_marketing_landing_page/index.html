@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="hero">
+  <h1>{{ hero_title }}</h1>
+  <p>{{ hero_subtitle }}</p>
+
+  <div style="margin-top:24px;">
+    <a href="#" class="btn btn-primary">{{ primary_cta }}</a>
+    <a href="#" class="btn btn-secondary">{{ secondary_cta }}</a>
+  </div>
+</section>
+
+<section class="stats">
+  <div class="card">
+    <div class="stat-value">{{ stat_1_value }}</div>
+    <div class="muted">{{ stat_1_label }}</div>
+  </div>
+
+  <div class="card">
+    <div class="stat-value">{{ stat_2_value }}</div>
+    <div class="muted">{{ stat_2_label }}</div>
+  </div>
+
+  <div class="card">
+    <div class="stat-value">{{ stat_3_value }}</div>
+    <div class="muted">{{ stat_3_label }}</div>
+  </div>
+</section>
+
+<section style="margin-top:28px;">
+  <h2 class="section-title">Why teams use {{ brand_name }}</h2>
+
+  <div class="feature-grid">
+    {% for feature in features %}
+      <div class="card">
+        <h3 style="margin-top:0;">{{ feature.title }}</h3>
+        <p class="muted" style="line-height:1.8; margin-bottom:0;">
+          {{ feature.description }}
+        </p>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section style="margin-top:28px;">
+  <h2 class="section-title">Pricing</h2>
+
+  <div class="pricing-grid">
+    {% for plan in plans %}
+      <div class="card">
+        <h3 style="margin-top:0;">{{ plan.name }}</h3>
+        <div style="font-size:34px; font-weight:bold; margin-bottom:12px;">
+          {{ plan.price }}
+        </div>
+        <p class="muted" style="line-height:1.8;">{{ plan.description }}</p>
+        <a href="#" class="btn btn-primary" style="margin-top:10px;">{{ plan.cta }}</a>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="card" style="margin-top:28px; text-align:center;">
+  <h2 style="margin-top:0;">Ready to ship with confidence?</h2>
+  <p class="muted" style="max-width:700px; margin:0 auto 20px auto; line-height:1.8;">
+    Move from development to deployment with a product designed for reliability,
+    clarity, and real-world infrastructure constraints.
+  </p>
+  <a href="#" class="btn btn-primary">{{ primary_cta }}</a>
+</section>
+
+{% endblock %}

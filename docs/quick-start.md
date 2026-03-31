@@ -1,96 +1,134 @@
-# Quick Start — Vix.cpp
+# Quick start
 
-This guide helps you get a Vix.cpp application running in minutes.
+::: warning Hardware requirements Vix.cpp runs everywhere, but
+performance depends on your hardware.
 
----
+For real-world production workloads, use a modern multi-core CPU, fast
+I/O, and enough memory to avoid contention. GPU acceleration is optional
+and only required for specialized compute workloads.
+:::
 
-## 1️⃣ Clone the Repository
+## 1. Minimal server
 
-```bash
-git clone https://github.com/vixcpp/vix.git
-cd vix
-git submodule update --init --recursive
+Create a file `main.cpp`:
+
+``` cpp
+#include <vix.hpp>
+
+using namespace vix;
+
+int main()
+{
+  App app;
+
+  app.get("/", [](Request&, Response& res) {
+    res.json({"message", "Hello, Vix!"});
+  });
+
+  app.get("/health", [](Request&, Response& res) {
+    res.json({"ok", true, "service", "vix"});
+  });
+
+  app.run(8080);
+}
 ```
 
----
+This is a complete working server.
 
-## 2️⃣ Build the Framework
+No configuration. No boilerplate. Just routes.
 
-### Linux / macOS
+------------------------------------------------------------------------
 
-```bash
-cmake -S . -B build-rel -DCMAKE_BUILD_TYPE=Release
-cmake --build build-rel -j
+## 2. Run
+
+If you have Vix CLI installed:
+
+``` bash
+vix run main.cpp
 ```
 
-### Windows (Visual Studio + vcpkg)
+Or compile normally with your C++ toolchain.
 
-```bash
-cmake -S . -B build-rel -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake
-cmake --build build-rel -j
+------------------------------------------------------------------------
+
+## 3. Test
+
+``` bash
+curl http://127.0.0.1:8080/
+curl http://127.0.0.1:8080/health
 ```
 
----
+Expected:
 
-## 3️⃣ Run Your First Example
-
-```bash
-./build-rel/hello_routes
-# or
-./build-rel/main
+``` json
+{"message":"Hello, Vix!"}
 ```
 
-Expected output:
-
-```bash
-[GET] / → {"message": "Hello world"}
+``` json
+{"ok":true,"service":"vix"}
 ```
 
-Visit <http://localhost:8080/> to see your first JSON response.
+------------------------------------------------------------------------
 
----
+## 4. Minimal route examples
 
-## 4️⃣ Create a New App with the CLI
+### Plain text
 
-Once Vix.cpp is installed system-wide:
-
-```bash
-vix new myapp
-cd myapp
-vix build
-vix run
+``` cpp
+app.get("/txt", [](const Request&, Response&) {
+  return "Hello world";
+});
 ```
 
-The CLI automatically:
+### Path parameter
 
-- Configures your project
-- Builds using CMake
-- Launches the HTTP server
-
----
-
-## 5️⃣ Verify Installation
-
-```bash
-vix --version
+``` cpp
+app.get("/users/{id}", [](Request& req, Response& res) {
+  const std::string id = req.param("id", "0");
+  res.json({"id", id});
+});
 ```
 
-Should print something like:
+Test:
 
-```bash
-Vix.cpp v1.9.0  (C++20, GCC 13, Ubuntu 24.04)
+``` bash
+curl http://127.0.0.1:8080/users/42
 ```
 
----
+------------------------------------------------------------------------
 
-## 6️⃣ Explore Examples
+### Query parameter
 
-See [docs/examples/overview.md](./examples/overview.md) for CRUD, ORM, JSON, Logger, and Time demos.
+``` cpp
+app.get("/search", [](Request& req, Response& res) {
+  const std::string q = req.query_value("q", "");
+  res.json({"q", q});
+});
+```
 
----
+Test:
 
-## 7️⃣ Next Steps
+``` bash
+curl "http://127.0.0.1:8080/search?q=vix"
+```
 
-- Learn the architecture → [docs/architecture.md](./architecture.md)
-- See all build flags → [docs/options.md](./options.md)
-- Benchmark results → [docs/benchmarks.md](./benchmarks.md)
+------------------------------------------------------------------------
+
+### Status code
+
+``` cpp
+app.get("/notfound", [](Request&, Response& res) {
+  res.status(404).json({"error", "Not found"});
+});
+```
+
+------------------------------------------------------------------------
+
+## Philosophy
+
+-   Routes are explicit.
+-   No hidden magic.
+-   You control status codes.
+-   You control payload format.
+-   The network layer stays predictable.
+
