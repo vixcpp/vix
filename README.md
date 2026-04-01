@@ -131,8 +131,6 @@ Run C++ like a script:
 vix run main.cpp
 ```
 
-Open http://localhost:8080
-
 ## Why Vix.cpp
 
 Most systems assume perfect conditions.
