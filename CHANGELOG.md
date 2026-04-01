@@ -8,6 +8,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## v2.1.1
+
+### Fixes
+
+- fix(install): support `deps` fallback when loading package manifests
+  `vix install` now correctly resolves dependencies declared using both `dependencies` and `deps` fields, ensuring proper topological ordering.
+
+- fix(cmake): stabilize dependency loading order in `.vix/vix_deps.cmake`
+  Prevents missing target errors when packages depend on each other (e.g. router → http).
+
+### Improvements
+
+- feat(cmake): registry-safe generated CMake for applications
+  Generated `CMakeLists.txt` now:
+  - safely includes `.vix/vix_deps.cmake` only when present
+  - allows adding registry packages without breaking builds
+  - introduces `vix_link_optional_targets(...)` helper for optional dependencies
+  - provides clear inline guidance for linking registry libraries
+
+- improve(cmake): better resilience for mixed package formats
+  Ensures consistent behavior between `vix install`, `vix build`, and `vix run`.
+
+### Notes
+
+- This release improves reliability when using the Vix registry with CMake projects.
+- Recommended to standardize on `"dependencies"` in package manifests, although `deps` remains supported.
+
+---
+
+Small release. Big stability upgrade.
+
 ## [v2.1.0]
 
 This release focuses on performance, developer experience, and ecosystem maturity.
