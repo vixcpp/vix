@@ -42,6 +42,23 @@
   </tr>
 </table>
 
+---
+
+## Contents
+
+- [Install](#install)
+- [Build from source](#build-from-source)
+- [Your first Vix.cpp program](#your-first-vixcpp-program)
+- [Script mode](#script-mode-no-project-setup)
+- [Shell completion](#shell-completion)
+- [Why Vix.cpp](#why-vixcpp)
+- [Performance](#performance)
+- [Core principles](#core-principles)
+- [Learn more](#learn-more)
+- [Contributing](#contributing)
+
+---
+
 ## Install
 
 #### Linux
@@ -130,6 +147,23 @@ Run C++ like a script:
 ```bash
 vix run main.cpp
 ```
+
+## Shell completion
+
+Enable tab completion for Vix commands.
+
+```bash
+source <(vix completion bash)
+```
+
+Make it permanent:
+
+```bash
+vix completion bash > ~/.vix-completion.bash
+echo 'source ~/.vix-completion.bash' >> ~/.bashrc
+```
+
+Learn more: https://vixcpp.com/docs/modules/cli/completion
 
 ## Why Vix.cpp
 
