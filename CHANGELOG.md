@@ -8,7 +8,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
-## v2.1.1
+## [v2.1.2]
+
+### Features
+
+- feat(cli): add shell completion command (bash)
+  Generate auto-completion scripts for a smoother CLI experience.
+
+- feat(search): add pagination support
+  Introduces `--page` and `--limit` flags for better navigation in search results.
+
+### Improvements
+
+- fix(run): use PTY for live runtime stdout
+  Improves real-time output when running applications with `vix run`.
+
+- fix(cli): improve command suggestions
+  Suggestions now rely on dispatcher entries for more accurate results.
+
+### Documentation
+
+- add shell completion guide
+  New documentation explaining how to enable and use CLI auto-completion.
+
+### Developer Experience
+
+- smoother CLI interaction with better suggestions
+- improved readability of runtime output
+- enhanced usability for large search results
+
+### Stability
+
+- improved reliability of CLI runtime behavior
+- no breaking changes
+
+## [v2.1.1]
 
 ### Fixes
 
