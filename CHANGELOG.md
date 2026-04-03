@@ -8,6 +8,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v2.1.3]
+
+### Features
+
+- feat(run): clean runtime output
+  Removed terminal clearing and spinner for a cleaner and more predictable output when running applications.
+
+- fix(template): guard examples, tests, and benchmarks subdirectories
+
+- feat(cli): task system and project utilities
+  Introduces task execution via `vix.json`, along with new utilities for managing projects.
+
+- feat(cli): fmt command
+  Adds formatting support to improve code consistency.
+
+- feat(cli): info command
+  Displays environment details, cache statistics, and disk usage.
+
+- feat(update): global update support
+  Adds `-g` flag to update Vix globally.
+
+### Improvements
+
+- improved runtime readability
+  Output is now stable, minimal, and production-friendly.
+
+- improved REPL capabilities
+  Better support for JSON access, array indexing, and typed literals.
+
+- improved project scaffolding
+  Generated projects now better align with the Vix build workflow.
+
+### Fixes
+
+- fix(run): remove spinner dependency from runtime output
+  Ensures consistent output across environments.
+
+- fix(utils): improve runtime log formatting
+  Adds proper spacing between labels and values.
+
+- fix(time): exclude benchmarks from library sources
+  Prevents duplicate `main` symbol during compilation.
+
+### Documentation
+
+- add REPL documentation
+  Introduces `docs/vix_repl.md` for better understanding of runtime interactions.
+
+### Developer Experience
+
+- cleaner CLI output and logs
+- improved project generation and workflow consistency
+- better visibility into runtime and environment state
+
+### Stability
+
+- improved reliability of runtime execution
+- no breaking changes
+
+
 ## [v2.1.2]
 
 ### Features
