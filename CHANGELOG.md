@@ -8,6 +8,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v2.1.15]
+
+### Fixes
+
+- fix(cli): add relative RPATH for SDK binary
+  Ensures the `vix` executable can locate its shared libraries after installation by using a relative runtime path (`$ORIGIN/../lib` on Unix, `@loader_path/../lib` on macOS).
+
+- fix(install): handle same-file symlink in SDK mode
+  Prevents the installer from attempting to create a symbolic link when the CLI is already installed at the target location.
+
+### Improvements
+
+- improve(install): enhance installer UX (Linux & macOS)
+  Introduced a clearer, step-based output with styled messages (steps, success, warnings) for a more professional installation experience.
+
+- improve(install): enhance Windows installer output
+  Added structured logs and better feedback during installation, including clearer success and warning messages.
+
+- improve(install): better installation summary
+  Displays final location, version, and install kind after completion.
+
+### Internal
+
+- refactor(cli): make SDK runtime self-contained
+  CLI now resolves its dependencies relative to its install prefix, improving portability and eliminating the need for manual environment configuration.
+
+- refactor(install): cleaner install flow and logging
+  Simplified installer logic and unified messaging across platforms.
+
 ## [v2.1.14]
 
 ### Fixes
