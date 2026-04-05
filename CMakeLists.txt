@@ -362,6 +362,11 @@ else()
     $<BUILD_INTERFACE:${asio_SOURCE_DIR}/asio/include>
   )
 endif()
+
+target_compile_options(vix_thirdparty_asio INTERFACE
+  $<$<CXX_COMPILER_ID:GNU>:-Wno-null-dereference>
+)
+
 target_link_libraries(vix INTERFACE vix::thirdparty_asio)
 
 add_library(vix::vix ALIAS vix)
