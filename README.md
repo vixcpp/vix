@@ -66,14 +66,16 @@
 ```bash
 sudo apt update
 sudo apt install -y \
-  build-essential cmake ninja-build pkg-config \
-  libssl-dev libsqlite3-dev zlib1g-dev
+  build-essential cmake ninja-build pkg-config git curl unzip zip \
+  libssl-dev libsqlite3-dev zlib1g-dev \
+  nlohmann-json3-dev \
+  libspdlog-dev libfmt-dev
 ```
 
 ## macOS Dependencies (example)
 
 ```bash
-brew install cmake ninja pkg-config openssl@3
+brew install cmake ninja pkg-config openssl@3 spdlog fmt nlohmann-json
 ```
 
 ## <a href="https://vixcpp.com/install">Shell (Linux, macOS)</a>

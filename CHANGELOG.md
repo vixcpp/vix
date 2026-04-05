@@ -8,6 +8,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v2.1.4]
+
+### Improvements
+
+- improve codebase quality (zero warnings)
+  Full cleanup across CLI, Core, and modules to ensure a warning-free build with strict compiler flags (`-Wall`, `-Wextra`, `-Wconversion`).
+
+- improve build system consistency
+  Standardized CMake configuration across modules with consistent `target_link_libraries` usage.
+
+- improve third-party integration
+  Better isolation of external warnings (Asio, spdlog, fmt) using `SYSTEM` includes.
+
+- improve CLI behavior and consistency
+  Cleaner command handling, improved REPL flow, and better internal structure.
+
+- improve runtime safety
+  Replaced unsafe patterns (`snprintf`, implicit conversions, redundant moves) with modern C++ constructs.
+
+### Fixes
+
+- fix(core): correct handling of `const char[]` vs `char*`
+  Prevents template issues and removes warnings in Console.
+
+- fix(session): remove redundant `std::move`
+  Ensures cleaner and safer request construction.
+
+- fix(cli): remove unused variables, functions, and parameters
+  Eliminates warnings across CLI commands and REPL.
+
+- fix(cli): guard platform-specific helpers
+  Windows-only utilities are now properly isolated.
+
+- fix(run): remove unused runtime variables
+  Cleans dead code and ensures consistent execution.
+
+- fix(repl): improve argument parsing and validation
+  Fixes unused parameters and strengthens parsing logic.
+
+- fix(cmake): resolve linking inconsistencies
+  Fixes mixed signature usage and stabilizes builds.
+
+### Documentation
+
+- update CLI command reference
+  README now reflects the complete `vix -h` command list.
+
+### Developer Experience
+
+- fully warning-free development environment
+- cleaner, safer, and more maintainable codebase
+- improved consistency across all modules
+
+### Stability
+
+- improved build reproducibility across environments
+- improved reliability across CLI, core, and modules
+- no breaking changes
+
 ## [v2.1.3]
 
 ### Features

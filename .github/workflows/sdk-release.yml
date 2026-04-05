@@ -1,0 +1,184 @@
+name: sdk-release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Optional tag to build/release (e.g. v2.1.3). If empty, uses the current ref."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sdk-release-${{ github.workflow }}-${{ github.event.inputs.tag || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-sdk:
+    name: build-sdk (${{ matrix.os }} / ${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            sdkos: linux
+            arch: x86_64
+
+          - os: macos-14
+            sdkos: macos
+            arch: aarch64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Checkout tag (manual input)
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag != '' }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git fetch --tags --force
+          git checkout "tags/${{ github.event.inputs.tag }}"
+
+      - name: Setup CMake
+        uses: lukka/get-cmake@latest
+
+      - name: Install deps (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            pkg-config \
+            ninja-build \
+            ca-certificates \
+            git \
+            curl \
+            unzip \
+            zip \
+            nlohmann-json3-dev \
+            libssl-dev \
+            zlib1g-dev \
+            libsqlite3-dev \
+            libspdlog-dev \
+            libfmt-dev
+
+      - name: Install deps (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          brew update
+          brew install cmake ninja pkg-config openssl@3 spdlog fmt nlohmann-json sqlite
+
+      - name: Configure
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          CMAKE_ARGS=(
+            -S . -B build -G Ninja
+            -DCMAKE_BUILD_TYPE=Release
+            -DVIX_ENABLE_INSTALL=ON
+            -DVIX_DB_USE_MYSQL=OFF
+            -DVIX_CORE_WITH_MYSQL=OFF
+            -DVIX_ENABLE_HTTP_COMPRESSION=OFF
+            -DCMAKE_INSTALL_PREFIX="${GITHUB_WORKSPACE}/install"
+          )
+
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            if command -v brew >/dev/null 2>&1; then
+              BREW_SSL="$(brew --prefix openssl@3 2>/dev/null || true)"
+              if [ -n "$BREW_SSL" ] && [ -d "$BREW_SSL" ]; then
+                CMAKE_ARGS+=(-DOPENSSL_ROOT_DIR="$BREW_SSL")
+              fi
+            fi
+          fi
+
+          cmake "${CMAKE_ARGS[@]}"
+
+      - name: Build
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cmake --build build -j2
+
+      - name: Install
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cmake --install build
+
+      - name: Package SDK
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p dist
+          ASSET="vix-sdk-${{ matrix.sdkos }}-${{ matrix.arch }}.tar.gz"
+          tar -C install -czf "dist/$ASSET" .
+
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdk-dist-${{ matrix.sdkos }}-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
+
+  publish-sdk:
+    name: publish-sdk
+    needs: build-sdk
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-all
+
+      - name: Flatten SDK assets
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p dist
+          find dist-all -type f -name "vix-sdk-*" -exec cp -f {} dist/ \;
+          ls -la dist
+
+      - name: Generate sha256 files
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd dist
+          for f in vix-sdk-*; do
+            [ -f "$f" ] || continue
+            sha256sum "$f" > "$f.sha256"
+          done
+          ls -la
+
+      - name: Determine tag
+        id: tag
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload SDK assets to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          files: dist/*
