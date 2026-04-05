@@ -8,6 +8,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v2.1.14]
+
+### Fixes
+
+- fix(cache): remove direct nlohmann_json dependency
+  Replaced direct linkage to `nlohmann_json::nlohmann_json` with the internal facade `vix::json` to ensure a clean and consistent dependency model across modules.
+
+- fix(build): resolve export error in VixTargets
+  Fixed `install(EXPORT VixTargets ...)` failure caused by non-exported external dependencies leaking from the cache module.
+
+### Improvements
+
+- improve(module): enforce unified JSON abstraction
+  All modules now rely on `vix::json` as the single JSON entry point, ensuring better modularity and portability.
+
+- improve(build): cleaner umbrella dependency architecture
+  Cache module no longer performs local JSON resolution or FetchContent logic. Dependency responsibility is delegated to the json module.
+
+### Internal
+
+- remove(cache): local nlohmann_json detection and fallback logic
+  Simplifies the module and avoids duplicated dependency management.
+
+- refactor(cache): align with umbrella build principles
+  Ensures strict separation of responsibilities between modules and prevents accidental export of third-party targets.
+
+
 ## [v2.1.13]
 
 ### Fixes
