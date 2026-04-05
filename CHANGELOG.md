@@ -8,6 +8,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v2.1.9]
+
+### Fixes
+
+- fix(utils): resolve fmt header include failure on macOS
+  Ensured `<fmt/ostream.h>` is properly resolved by linking fmt as a direct dependency.
+
+- fix(utils): correct dependency propagation for logging module
+  Exposed fmt as a PUBLIC dependency to make headers available to all consumers.
+
+- fix(build): remove fragile spdlog fmt detection logic
+  Eliminated conditional handling based on `SPDLOG_FMT_EXTERNAL` to simplify and stabilize builds.
+
+### Improvements
+
+- improve cross-platform build reliability
+  Unified dependency handling for spdlog and fmt across Linux, macOS, and Windows.
+
+- improve CMake clarity and maintainability
+  Simplified dependency configuration with explicit and predictable linking.
+
+### Notes
+
+- v2.1.8 introduced the fmt migration but missed proper linkage in CMake.
+- v2.1.9 completes the transition and provides fully stable builds on all platforms.
+
+
 ## [v2.1.8]
 
 ### Fixes
