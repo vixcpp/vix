@@ -42,23 +42,6 @@
   </tr>
 </table>
 
----
-
-## Contents
-
-- [Install](#install)
-- [Build from source](#build-from-source)
-- [Your first Vix.cpp program](#your-first-vixcpp-program)
-- [Script mode](#script-mode-no-project-setup)
-- [Shell completion](#shell-completion)
-- [Why Vix.cpp](#why-vixcpp)
-- [Performance](#performance)
-- [Core principles](#core-principles)
-- [Learn more](#learn-more)
-- [Contributing](#contributing)
-
----
-
 ## Install
 
 #### Linux
@@ -140,8 +123,6 @@ vix run server.cpp
 Open http://localhost:8080
 That’s it.
 
----
-
 ## Script mode (no project setup)
 
 Run C++ like a script:
@@ -178,8 +159,6 @@ Vix is built for when things are not.
 - deterministic execution
 - minimal setup
 
----
-
 ## Performance
 
 Stable under sustained load.
@@ -190,8 +169,6 @@ Stable under sustained load.
 | Avg Latency  | ~13–20 ms      |
 | P99 Latency  | ~17–50 ms      |
 
----
-
 ## Core principles
 
 - Local-first execution
@@ -200,15 +177,11 @@ Stable under sustained load.
 - Failure-tolerant
 - Built for unreliable environments
 
----
-
 ## Learn more
 
 - Docs: https://vixcpp.com/docs
 - Registry: https://vixcpp.com/registry
 - Examples: https://vixcpp.com/docs/examples
-
----
 
 ## Contributing
 
@@ -220,7 +193,5 @@ Contributions are welcome.
 - reliability
 - networking
 - offline-first systems
-
----
 
 MIT License

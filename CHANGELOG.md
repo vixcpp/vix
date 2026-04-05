@@ -8,6 +8,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v2.1.13]
+
+### Fixes
+
+- fix(cache): make nlohmann_json integration export-safe
+  Removed invalid linkage to FetchContent targets and ensured header-only fallback does not break `install(EXPORT VixTargets)`.
+
+- fix(cache): correct FetchContent usage order
+  Fixed incorrect call sequence causing `No content details recorded for nlohmann_json` during configure.
+
+- fix(cache): properly handle header-only fallback includes
+  Ensured fallback JSON headers are only exposed at build time and not exported as external targets.
+
+### Improvements
+
+- improve SDK install reliability
+  Cache module now installs correctly in both STATIC and HEADER-ONLY modes without missing dependencies.
+
+- improve CMake export consistency
+  All modules now follow a consistent pattern for handling external dependencies in export sets.
+
+- improve fallback dependency handling
+  JSON fallback is now correctly installed with the SDK when system package is not available.
+
+### Notes
+
+- v2.1.12 stabilized JSON and SQLite integration.
+- v2.1.13 completes the fix for cache module and finalizes export-safe SDK packaging across all modules.
+
 ## [v2.1.12]
 
 ### Fixes
