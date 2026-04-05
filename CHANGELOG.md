@@ -8,6 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v2.1.8]
+
+### Fixes
+
+- fix(utils): resolve macOS build failure due to spdlog internal header
+  Replaced usage of `spdlog/fmt/ostr.h` with `fmt/ostream.h` to ensure compatibility with newer spdlog and fmt versions.
+
+- fix(ci): finalize cross-platform build stability
+  Addressed remaining build issues affecting macOS environments.
+
+### Improvements
+
+- improve portability of logging module
+  Removed reliance on spdlog internal headers and aligned with official fmt API.
+
+- improve overall build consistency
+  Ensured successful builds across all supported platforms (Linux, macOS, Windows).
+
+### Notes
+
+- v2.1.7 fixed CI dependency issues but exposed a compatibility issue with spdlog on macOS.
+- v2.1.8 resolves this issue and is fully stable across all targets.
+
 ## [v2.1.7]
 
 ### Fixes
