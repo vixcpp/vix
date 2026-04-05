@@ -8,10 +8,6 @@
   {% if is_shop_open %}
     <span class="badge">Shop open</span>
   {% endif %}
-
-  {% if !is_shop_open %}
-    <span class="badge closed">Shop closed</span>
-  {% endif %}
 </div>
 
 <div class="stats">
@@ -34,7 +30,7 @@
 <div class="card">
   <h3 style="margin-top:0;">Recent alerts</h3>
 
-  {% if alerts | length > 0 %}
+  {% if has_alerts %}
     <ul class="alert-list">
       {% for alert in alerts %}
         <li>{{ alert }}</li>
