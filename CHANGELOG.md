@@ -8,6 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v2.1.7]
+
+### Fixes
+
+- fix(ci): resolve macOS build failure
+  Added missing spdlog and fmt dependencies to macOS environment to fix CMake configuration error.
+
+- fix(ci): complete cross-platform dependency setup
+  Ensured all required system packages are installed across Linux (x86_64, aarch64) and macOS builds.
+
+### Improvements
+
+- improve CI stability across all targets
+  Unified dependency installation strategy for consistent builds on Linux, macOS, and Windows.
+
+- improve release reliability
+  Eliminated remaining platform-specific issues affecting previous releases.
+
+### Notes
+
+- v2.1.6 fixed Linux builds but macOS builds were still incomplete.
+- v2.1.7 is the first fully stable release across all supported platforms.
+
 ## [v2.1.6]
 
 ### Fixes
