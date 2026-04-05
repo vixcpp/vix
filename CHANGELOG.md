@@ -8,6 +8,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v2.1.5]
+
+### Fixes
+
+- fix(release): correct Linux aarch64 build pipeline
+  Fixed cross-compilation setup by updating CMake toolchain configuration to properly resolve system packages (spdlog, fmt).
+
+- fix(ci): ensure dependency discovery in cross builds
+  Updated CMAKE_FIND_ROOT_PATH_MODE_PACKAGE to allow both target and host package resolution.
+
+- fix(ci): install missing dependencies for utils module
+  Added spdlog and fmt to aarch64 build environment to prevent configuration failures.
+
+### Improvements
+
+- improve release reliability
+  Stabilized CI pipeline across all targets (Linux, macOS, Windows).
+
+- improve cross-compilation consistency
+  Better alignment between native and cross builds for dependency resolution.
+
+### Notes
+
+- v2.1.4 was affected by a CI issue on Linux aarch64 and may not produce valid release artifacts.
+- v2.1.5 supersedes v2.1.4 with a fully working release pipeline.
+
 ## [v2.1.4]
 
 ### Improvements
