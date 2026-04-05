@@ -67,7 +67,7 @@
 sudo apt update
 sudo apt install -y \
   build-essential cmake ninja-build pkg-config git curl unzip zip \
-  libssl-dev libsqlite3-dev zlib1g-dev \
+  libssl-dev libsqlite3-dev zlib1g-dev libbrotli-dev \
   nlohmann-json3-dev \
   libspdlog-dev libfmt-dev
 ```
@@ -75,7 +75,7 @@ sudo apt install -y \
 ## macOS Dependencies (example)
 
 ```bash
-brew install cmake ninja pkg-config openssl@3 spdlog fmt nlohmann-json
+brew install cmake ninja pkg-config openssl@3 spdlog fmt nlohmann-json brotli
 ```
 
 ## <a href="https://vixcpp.com/install">Shell (Linux, macOS)</a>
