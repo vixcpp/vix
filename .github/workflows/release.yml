@@ -146,7 +146,7 @@ jobs:
         run: |
           set -euxo pipefail
           brew update
-          brew install pkg-config openssl@3
+          brew install pkg-config openssl@3 spdlog fmt
 
       # -------------------------
       # Windows deps (OpenSSL via vcpkg)
