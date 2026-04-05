@@ -8,6 +8,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v2.1.12]
+
+### Fixes
+
+- fix(json): make nlohmann_json integration export-safe
+  Removed direct linkage to non-exported targets and ensured header-only fallback works correctly with install/export.
+
+- fix(websocket): normalize SQLite target usage
+  Replaced deprecated `SQLite::SQLite3` with `SQLite3::SQLite3` and added compatibility aliases for cross-platform builds.
+
+- fix(build): resolve CMake export errors in SDK builds
+  Fixed `install(EXPORT VixTargets)` issues caused by non-exported dependencies.
+
+### Improvements
+
+- improve CMake package reliability
+  Ensured all modules (json, websocket, etc.) are safe for `install(EXPORT ...)` and `find_package(Vix)` usage.
+
+- improve SDK installability
+  Generated SDK artifacts are now fully usable after installation without missing dependencies.
+
+- improve cross-platform consistency
+  Unified dependency handling across Linux, macOS, and Windows for SQLite and JSON backends.
+
+### Notes
+
+- v2.1.11 introduced SDK packaging.
+- v2.1.12 stabilizes CMake exports and makes Vix fully installable as a reusable SDK.
+
 ## [v2.1.11]
 
 ### Features
