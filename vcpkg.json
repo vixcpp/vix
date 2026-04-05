@@ -1,10 +1,10 @@
 {
   "name": "vix",
-  "version-string": "dev",
+  "version-string": "2.1.9",
   "dependencies": [
-    "boost-system",
-    "boost-beast",
     "sqlite3",
-    "openssl"
+    "openssl",
+    "spdlog",
+    "fmt"
   ]
 }
