@@ -8,6 +8,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v2.1.10]
+
+### Fixes
+
+- fix(build): resolve Windows build failure due to missing spdlog and fmt
+  Added spdlog and fmt to vcpkg manifest to ensure proper dependency resolution.
+
+- fix(utils): ensure fmt is correctly linked across all platforms
+  Confirmed fmt is available as a direct dependency for logging utilities.
+
+### Improvements
+
+- improve dependency consistency across platforms
+  Unified dependency setup for Linux (apt), macOS (brew), and Windows (vcpkg).
+
+- improve build reliability
+  Eliminated platform-specific issues related to missing or inconsistent dependencies.
+
+- refactor(deps): remove unnecessary boost dependencies
+  Simplified project dependencies by removing boost-system and boost-beast.
+
+### Notes
+
+- v2.1.9 stabilized CMake and fmt integration but Windows builds were still missing dependencies.
+- v2.1.10 completes full cross-platform stability across Linux, macOS, and Windows.
+
 ## [v2.1.9]
 
 ### Fixes
