@@ -8,6 +8,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v2.1.11]
+
+### Features
+
+- feat(sdk): introduce full SDK packaging across platforms
+  Added dedicated SDK release workflow producing complete installable artifacts for Linux, macOS, and Windows.
+
+### Fixes
+
+- fix(sdk): correct Windows SDK packaging
+  Added proper Windows build, install, and zip packaging using vcpkg and CMake toolchain.
+
+- fix(ci): ensure consistent dependency installation in SDK builds
+  Aligned Linux, macOS, and Windows environments to produce identical SDK layouts.
+
+### Improvements
+
+- improve installation experience
+  SDK artifacts now contain full installation layout (bin, include, lib) instead of CLI-only binaries.
+
+- improve cross-platform distribution
+  SDK releases now available as:
+  - `vix-sdk-linux-x86_64.tar.gz`
+  - `vix-sdk-macos-aarch64.tar.gz`
+  - `vix-sdk-windows-x86_64.zip`
+
+- improve release architecture
+  Separation between:
+  - CLI releases (`release.yml`)
+  - SDK releases (`sdk-release.yml`)
+
+### Notes
+
+- v2.1.10 stabilized builds across platforms.
+- v2.1.11 introduces a complete SDK distribution model and prepares Vix for real-world integration workflows.
+
 ## [v2.1.10]
 
 ### Fixes

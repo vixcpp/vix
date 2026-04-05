@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Optional tag to build/release (e.g. v2.1.3). If empty, uses the current ref."
+        description: "Optional tag to build/release (e.g. v2.1.10). If empty, uses the current ref."
         required: false
         default: ""
 
@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   build-sdk:
-    name: build-sdk (${{ matrix.os }} / ${{ matrix.arch }})
+    name: build-sdk (${{ matrix.sdkos }} / ${{ matrix.arch }})
     strategy:
       fail-fast: false
       matrix:
@@ -32,6 +32,10 @@ jobs:
           - os: macos-14
             sdkos: macos
             arch: aarch64
+
+          - os: windows-2022
+            sdkos: windows
+            arch: x86_64
 
     runs-on: ${{ matrix.os }}
 
@@ -72,6 +76,7 @@ jobs:
             libssl-dev \
             zlib1g-dev \
             libsqlite3-dev \
+            libbrotli-dev \
             libspdlog-dev \
             libfmt-dev
 
@@ -81,9 +86,29 @@ jobs:
         run: |
           set -euxo pipefail
           brew update
-          brew install cmake ninja pkg-config openssl@3 spdlog fmt nlohmann-json sqlite
+          brew install cmake ninja pkg-config openssl@3 spdlog fmt nlohmann-json sqlite brotli
 
-      - name: Configure
+      - name: Setup vcpkg (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          git clone https://github.com/microsoft/vcpkg $env:GITHUB_WORKSPACE\vcpkg
+          "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Append
+          cd $env:GITHUB_WORKSPACE\vcpkg
+          .\bootstrap-vcpkg.bat
+
+      - name: Vcpkg install (manifest, Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Write-Host "VCPKG_ROOT=$env:VCPKG_ROOT"
+          cd $env:GITHUB_WORKSPACE
+
+          & "$env:VCPKG_ROOT\vcpkg.exe" install --triplet x64-windows --x-manifest-root "$env:GITHUB_WORKSPACE"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Configure (Unix)
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           set -euxo pipefail
@@ -103,31 +128,76 @@ jobs:
               BREW_SSL="$(brew --prefix openssl@3 2>/dev/null || true)"
               if [ -n "$BREW_SSL" ] && [ -d "$BREW_SSL" ]; then
                 CMAKE_ARGS+=(-DOPENSSL_ROOT_DIR="$BREW_SSL")
+                CMAKE_ARGS+=(-DCMAKE_PREFIX_PATH="$(brew --prefix)")
               fi
             fi
           fi
 
           cmake "${CMAKE_ARGS[@]}"
 
-      - name: Build
+      - name: Build (Unix)
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           set -euxo pipefail
           cmake --build build -j2
 
-      - name: Install
+      - name: Install (Unix)
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           set -euxo pipefail
           cmake --install build
 
-      - name: Package SDK
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cmake -S . -B build -A x64 `
+            -DVIX_ENABLE_INSTALL=ON `
+            -DVIX_DB_USE_MYSQL=OFF `
+            -DVIX_CORE_WITH_MYSQL=OFF `
+            -DVIX_ENABLE_HTTP_COMPRESSION=OFF `
+            -DCMAKE_INSTALL_PREFIX="$env:GITHUB_WORKSPACE\install" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cmake --build build --config Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Install (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cmake --install build --config Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Package SDK (Unix)
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           set -euxo pipefail
           mkdir -p dist
           ASSET="vix-sdk-${{ matrix.sdkos }}-${{ matrix.arch }}.tar.gz"
           tar -C install -czf "dist/$ASSET" .
+
+      - name: Package SDK (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          $asset = "vix-sdk-windows-${{ matrix.arch }}.zip"
+
+          if (!(Test-Path "install")) {
+            Write-Host "install directory not found"
+            exit 1
+          }
+
+          Compress-Archive -Path "install\*" -DestinationPath "dist\$asset" -Force
 
       - name: Upload dist
         uses: actions/upload-artifact@v4
