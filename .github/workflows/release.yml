@@ -75,13 +75,12 @@ jobs:
           set -euxo pipefail
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
             pkg-config ninja-build ca-certificates \
-            nlohmann-json3-dev:arm64 \
-            libssl-dev:arm64 \
-            zlib1g-dev:arm64 \
-            libsqlite3-dev:arm64 \
-            libbrotli-dev:arm64 \
+            nlohmann-json3-dev \
+            libssl-dev \
+            zlib1g-dev \
+            libsqlite3-dev \
+            libbrotli-dev \
             libspdlog-dev \
             libfmt-dev
 
@@ -104,7 +103,9 @@ jobs:
             libssl-dev:arm64 \
             zlib1g-dev:arm64 \
             libsqlite3-dev:arm64 \
-            libbrotli-dev:arm64
+            libbrotli-dev:arm64 \
+            libspdlog-dev \
+            libfmt-dev
 
           cat > toolchain-aarch64.cmake <<'EOF'
           set(CMAKE_SYSTEM_NAME Linux)

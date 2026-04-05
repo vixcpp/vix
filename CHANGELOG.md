@@ -8,6 +8,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v2.1.6]
+
+### Fixes
+
+- fix(release): restore missing Linux x86_64 dependencies
+  Reintroduced required system packages (spdlog, fmt, ssl, zlib, sqlite, brotli) for native Linux builds.
+
+- fix(ci): correct aarch64 cross-compilation dependencies
+  Added missing spdlog and fmt packages to the aarch64 environment to resolve CMake configuration failures.
+
+- fix(ci): stabilize cross-compilation toolchain behavior
+  Ensured proper package discovery with updated CMake toolchain configuration.
+
+### Improvements
+
+- improve CI consistency across platforms
+  Unified dependency setup between Linux x86_64 and aarch64 builds.
+
+- improve release reliability
+  Fixed all known issues affecting Linux builds in previous releases.
+
+### Notes
+
+- v2.1.4 and v2.1.5 had CI issues affecting Linux builds.
+- v2.1.6 is the first fully stable release across all targets (Linux, macOS, Windows).
+
 ## [v2.1.5]
 
 ### Fixes
