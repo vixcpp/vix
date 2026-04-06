@@ -21,15 +21,22 @@ endif()
 if (@VIX_WITH_SQLITE@)
   find_dependency(SQLite3 REQUIRED)
 
-  # Normalize to SQLite::SQLite3 because many projects use that name.
+  # Canonical target expected by exported Vix targets.
+  if (TARGET SQLite::SQLite3 AND NOT TARGET SQLite3::SQLite3)
+    add_library(SQLite3::SQLite3 ALIAS SQLite::SQLite3)
+  elseif (TARGET sqlite3 AND NOT TARGET SQLite3::SQLite3)
+    add_library(SQLite3::SQLite3 ALIAS sqlite3)
+  endif()
+
+  # Optional compatibility alias for projects that use SQLite::SQLite3.
   if (TARGET SQLite3::SQLite3 AND NOT TARGET SQLite::SQLite3)
     add_library(SQLite::SQLite3 ALIAS SQLite3::SQLite3)
   elseif (TARGET sqlite3 AND NOT TARGET SQLite::SQLite3)
     add_library(SQLite::SQLite3 ALIAS sqlite3)
   endif()
 
-  if (NOT TARGET SQLite::SQLite3)
-    message(FATAL_ERROR "SQLite requested but no usable SQLite target was found (SQLite3::SQLite3 / sqlite3).")
+  if (NOT TARGET SQLite3::SQLite3)
+    message(FATAL_ERROR "SQLite requested but no usable SQLite target was found (SQLite3::SQLite3 / SQLite::SQLite3 / sqlite3).")
   endif()
 endif()
 

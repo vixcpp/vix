@@ -8,6 +8,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v2.1.17]
+
+### Fixes
+
+- fix(cmake): resolve SQLite target mismatch in exported websocket module
+  Fixed an issue where `vix::websocket` exposed `SQLite3::SQLite3` but the target was not guaranteed to exist in consumer projects, causing CMake configuration failures.
+
+- fix(config): ensure SQLite dependency is correctly resolved before loading Vix targets
+  Added proper `find_dependency(SQLite3)` handling in `VixConfig.cmake` to prevent missing target errors during `find_package(Vix)`.
+
+### Improvements
+
+- improve(cmake): normalize SQLite target naming across modules and config
+  Standardized on `SQLite3::SQLite3` as the canonical target and added compatibility aliases for `SQLite::SQLite3` and `sqlite3`.
+
+- improve(websocket): strengthen SQLite target resolution logic
+  Enhanced detection and aliasing to support multiple environments (vcpkg, system packages, manual installs).
+
+- improve(dev experience): eliminate common `vix run` configuration failures
+  Running simple programs no longer fails due to missing transitive dependencies.
+
+### Notes
+
+- This release fixes a critical developer experience issue when using `vix run` with modules that depend on SQLite.
+- No breaking changes.
+
 ## [v2.1.16]
 
 ### Fixes
