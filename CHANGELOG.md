@@ -8,6 +8,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v2.1.16]
+
+### Fixes
+
+- fix(release): resolve Linux runtime failures due to shared library ABI mismatch
+  Linux artifacts were previously built on Ubuntu 22.04, producing binaries linked against `libfmt.so.8` and incompatible with newer distributions (e.g. Ubuntu 24.04).
+  Updated release workflows to build on Ubuntu 24.04 to align with modern Linux environments.
+
+- fix(sdk): ensure SDK binaries run correctly on modern Linux systems
+  SDK artifacts now use the same updated Linux build environment to avoid runtime failures after installation.
+
+### Improvements
+
+- improve(utils): prefer header-only fmt and spdlog targets
+  Updated `vix_utils` to prioritize `fmt::fmt-header-only` and `spdlog::spdlog_header_only`, reducing reliance on system shared libraries and improving portability.
+
+- improve(utils): avoid implicit shared library dependencies in Linux releases
+  Added `SPDLOG_FMT_EXTERNAL=1` to ensure consistent integration with fmt and prevent unexpected linkage behavior.
+
+- improve(ci): add runtime validation step for packaged Linux artifacts
+  Added a post-build validation step to execute `vix --version` and inspect dependencies via `ldd`, preventing broken binaries from being published.
+
+- improve(ci): unify Linux build environment across release and SDK workflows
+  Standardized on Ubuntu 24.04 for consistency and improved compatibility.
+
+### Notes
+
+- Existing installations on older Linux systems may still require compatible runtime libraries.
+- Future releases aim to provide fully self-contained Linux binaries.
+
 ## [v2.1.15]
 
 ### Fixes

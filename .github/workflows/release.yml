@@ -25,11 +25,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-22.04
+          - os: ubuntu-24.04
             vixos: linux
             arch: x86_64
 
-          - os: ubuntu-22.04-arm
+          - os: ubuntu-24.04-arm
             vixos: linux
             arch: aarch64
 
@@ -380,6 +380,19 @@ jobs:
           tar -C dist -czf "dist/$ASSET" vix
           rm -f dist/vix
 
+      - name: Validate packaged binary (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          mkdir -p smoke
+          tar -xzf "dist/vix-${{ matrix.vixos }}-${{ matrix.arch }}.tar.gz" -C smoke
+
+          file smoke/vix
+          ldd smoke/vix || true
+          smoke/vix --version
+
       - name: Package (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -419,7 +432,7 @@ jobs:
   publish:
     name: publish (github release)
     needs: build-release
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4

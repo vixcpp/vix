@@ -25,7 +25,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-22.04
+          - os: ubuntu-24.04
             sdkos: linux
             arch: x86_64
 
@@ -185,6 +185,20 @@ jobs:
           ASSET="vix-sdk-${{ matrix.sdkos }}-${{ matrix.arch }}.tar.gz"
           tar -C install -czf "dist/$ASSET" .
 
+      - name: Validate packaged SDK (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          mkdir -p smoke
+          tar -xzf "dist/vix-sdk-${{ matrix.sdkos }}-${{ matrix.arch }}.tar.gz" -C smoke
+
+          test -f smoke/bin/vix
+          file smoke/bin/vix
+          ldd smoke/bin/vix || true
+          smoke/bin/vix --version
+
       - name: Package SDK (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -209,7 +223,7 @@ jobs:
   publish-sdk:
     name: publish-sdk
     needs: build-sdk
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Download all artifacts
