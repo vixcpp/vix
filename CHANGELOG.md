@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v2.1.18]
+
+### Fixes
+
+- fix(cmake): make SQLite target normalization robust across CMake versions
+  Replaced fragile SQLite alias normalization with imported compatibility targets so exported Vix packages work reliably with both `SQLite::SQLite3` and `SQLite3::SQLite3`.
+
+- fix(run): resolve remaining `vix run` failures caused by exported websocket SQLite dependency handling
+
+### Improvements
+
+- improve(config): strengthen package compatibility for consumers using older and newer CMake versions
+
 ## [v2.1.17]
 
 ### Fixes
