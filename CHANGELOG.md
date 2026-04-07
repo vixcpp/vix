@@ -8,6 +8,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v2.1.19]
+
+### Features
+
+- feat(cli): structured CMake build error diagnostics
+  Introduces a robust error detection system for CMake builds with clear, actionable diagnostics.
+
+- feat(errors): dedicated detectors for build failures
+  Adds specialized detectors for common build issues (linking, missing targets, compilation failures).
+
+### Improvements
+
+- improve(cli): better error readability
+  Error messages are now cleaner and easier to understand, removing noisy lines like `ninja: build stopped`.
+
+- improve(build): more reliable clean behavior
+  `--clean` now correctly removes local build directories, ensuring a fresh build environment.
+
+- improve(errors): smarter hint system
+  Follow-up hints are only displayed when relevant, reducing confusion during debugging.
+
+### Fixes
+
+- fix(errors): detect missing CMake link targets
+  Prevents silent failures when targets are not properly linked.
+
+- fix(errors): gate hints on handled errors
+  Avoids showing misleading suggestions when errors are already correctly handled.
+
+- fix(build): ensure clean removes build artifacts
+  Fixes incomplete cleanup when using `--clean`.
+
+- fix(publish): handle null cwd and improve git detection
+  Ensures publishing works reliably even in edge cases with missing working directory or git context.
+
 ## [v2.1.18]
 
 ### Fixes
