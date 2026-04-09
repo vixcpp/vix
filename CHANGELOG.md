@@ -8,6 +8,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v2.2.0]
+
+### Features
+
+- feat(cli): introduce manifest + resolver + lockfile architecture
+  New dependency system with manifest, deterministic resolution, and lockfile support.
+
+- feat(cli): introduce semver resolver
+  Full semver support across commands (`add`, `install`, `outdated`, etc.) with correct version selection.
+
+- feat(make): add config generator with interactive prompts
+  New `vix make:config` command to generate structured config files interactively.
+
+### Improvements
+
+- improve(resolver): support legacy vix.json dependencies
+  Ensures backward compatibility with existing packages while enabling transitive resolution.
+
+- improve(resolver): enable transitive dependency resolution
+  Dependencies are now resolved recursively and correctly installed.
+
+### Fixes
+
+- fix(publish): reject duplicate versions
+  Prevents publishing the same version multiple times.
+
+- fix(publish): validate vix.json before publish
+  Adds validation step to avoid invalid package releases.
+
+- fix(publish): infer version from git tags
+  Automatically detects version from git tags for consistency.
+
+- fix(publish): restore correct build order
+  Ensures dependencies are built in the correct sequence.
+
+- fix(resolver): correct version resolution edge cases
+  Fixes inconsistencies in dependency resolution across commands.
+
 ## [v2.1.19]
 
 ### Features
