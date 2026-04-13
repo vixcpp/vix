@@ -13,19 +13,17 @@
   </a>
 </p>
 
+<h3>Remove the friction from C++.</h3>
+
 <p>
-  <b>A modern C++ runtime for real-world systems.</b>
+  A modern runtime for building C++ applications.
 </p>
 
 <p>
-  Build HTTP, WebSocket, and peer-to-peer applications with
-  <b>predictable performance</b> and <b>offline-first reliability</b>.
-</p>
-
-<p>
-  🌍 <a href="https://vixcpp.com">Website</a> ·
-  📘 <a href="https://vixcpp.com/docs">Docs</a> ·
-  ⬇️ <a href="https://github.com/vixcpp/vix/releases">Download</a>
+  <a href="https://vixcpp.com"><b>Website</b></a> ·
+  <a href="https://vixcpp.com/docs"><b>Docs</b></a> ·
+  <a href="https://vixcpp.com/install"><b>Install</b></a> ·
+  <a href="https://github.com/vixcpp/vix/releases"><b>Download</b></a>
 </p>
 
 </td>
@@ -44,23 +42,6 @@
 
 ## Install
 
-#### Linux
-
-```bash
-sudo apt update
-sudo apt install -y \
-  build-essential cmake ninja-build pkg-config git curl unzip zip \
-  libssl-dev libsqlite3-dev zlib1g-dev libbrotli-dev \
-  nlohmann-json3-dev \
-  libspdlog-dev libfmt-dev
-```
-
-## macOS Dependencies (example)
-
-```bash
-brew install cmake ninja pkg-config openssl@3 spdlog fmt nlohmann-json brotli
-```
-
 ## <a href="https://vixcpp.com/install">Shell (Linux, macOS)</a>
 
 ```bash
@@ -73,40 +54,33 @@ curl -fsSL https://vixcpp.com/install.sh | bash
 irm https://vixcpp.com/install.ps1 | iex
 ```
 
-Verify installation:
+## Run C++ instantly
 
-```bash
-vix --version
+```cpp
+#include <iostream>
+
+int main(){
+  std::cout << "Hello, world!" << std::endl;
+}
 ```
 
-## Build from source
 ```bash
-git clone --recurse-submodules https://github.com/vixcpp/vix.git
-cd vix
-
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j
-
-# Install for current user (recommended)
-cmake --install build --prefix "$HOME/.local"
-
-# Ensure PATH contains ~/.local/bin then restart your terminal
-vix --version
-vix doctor
+vix run main.cpp
 ```
 
-## Your first Vix.cpp program
+Done.
 
-Create a file called `server.cpp`:
+## Build a server
 
 ```cpp
 #include <vix.hpp>
+
 using namespace vix;
 
-int main() {
+int main(){
   App app;
 
-  app.get("/", [](Request&, Response& res) {
+  app.get("/", [](Request&, Response& res){
     res.send("Hello, world!");
   });
 
@@ -114,50 +88,84 @@ int main() {
 }
 ```
 
-Run it:
-
 ```bash
 vix run server.cpp
 ```
 
-Open http://localhost:8080
-That’s it.
+→ http://localhost:8080
 
-## Script mode (no project setup)
+---
 
-Run C++ like a script:
+## Install a framework in 1 command
+
+```bash
+vix install -g cnerium/app
+```
+
+```cpp
+#include <cnerium/app/app.hpp>
+using namespace cnerium::app;
+
+int main(){
+  App app;
+
+  app.get("/", [](AppContext &ctx){
+    ctx.text("Hello from Cnerium");
+  });
+
+  app.listen("127.0.0.1", 8080);
+}
+```
 
 ```bash
 vix run main.cpp
 ```
 
-## Shell completion
+## WebSocket
 
-Enable tab completion for Vix commands.
+```cpp
+#include <memory>
+#include <vix/executor/RuntimeExecutor.hpp>
+#include <vix/websocket.hpp>
 
-```bash
-source <(vix completion bash)
+int main(){
+  auto exec = std::make_shared<vix::executor::RuntimeExecutor>();
+
+  vix::websocket::App app{"config/config.json", exec};
+  auto &ws = app.server();
+
+  ws.on_typed_message([](auto &,
+                         const std::string &type,
+                         const vix::json::kvs &payload)
+  {
+    if (type == "chat.message")
+      return payload;
+  });
+
+  app.run_blocking();
+}
 ```
 
-Make it permanent:
+## What Vix.cpp gives you
 
-```bash
-vix completion bash > ~/.vix-completion.bash
-echo 'source ~/.vix-completion.bash' >> ~/.bashrc
-```
+- Run a single `.cpp` file instantly
+- No CMake required for simple apps
+- Native C++ performance
+- HTTP, WebSocket, P2P ready
+- Offline-first architecture support
+- Deterministic execution
 
-Learn more: https://vixcpp.com/docs/modules/cli/completion
 
-## Why Vix.cpp
+## Why Vix exists
 
-Most systems assume perfect conditions.
-Vix is built for when things are not.
+C++ is powerful.
 
-- predictable under load
-- no GC pauses
-- offline-first by design
-- deterministic execution
-- minimal setup
+But:
+- too much setup
+- too much friction
+- too slow to start
+
+Vix removes that.
 
 ## Performance
 
@@ -168,14 +176,6 @@ Stable under sustained load.
 | Requests/sec | ~66k – 68k     |
 | Avg Latency  | ~13–20 ms      |
 | P99 Latency  | ~17–50 ms      |
-
-## Core principles
-
-- Local-first execution
-- Network is optional
-- Deterministic behavior
-- Failure-tolerant
-- Built for unreliable environments
 
 ## Learn more
 

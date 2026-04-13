@@ -9,6 +9,5 @@ int main()
   app.get("/", [](Request &, Response &res)
           { res.text("Hello Vix"); });
 
-  // Bloque le thread courant
   app.run(8080);
 }
