@@ -10,10 +10,8 @@ int main()
   app.get("/health", [](Request &, Response &res)
           { res.json({"ok", true}); });
 
-  // Lance le serveur en background
   app.listen(8080, []()
-             { std::cout << "Server is ready and accepting connections\n"; });
+             { console.log("Server is ready and accepting connections"); });
 
-  // Attente propre
   app.wait();
 }

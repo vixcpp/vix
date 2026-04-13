@@ -8,6 +8,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v2.3.0]
+
+### Features
+
+- feat(run): ultra-fast direct C++ execution
+  Introduces a new execution mode that compiles and runs single C++ files instantly without CMake.
+
+- feat(run): smart CMake fallback
+  Automatically falls back to CMake when the script requires complex dependencies or project structure.
+
+- feat(run,check): add --local-cache for script mode
+  Enables local caching for faster repeated executions and unified cache behavior.
+
+- feat(run,build): add SQLite/MySQL flags
+  Adds support for database flags directly in run/build workflows.
+
+### Improvements
+
+- improve(run): global cache for script builds
+  Script builds are now cached globally and keyed by absolute file path for better reuse.
+
+- improve(run): better executable detection
+  Resolves executables from actual build directories (`bin/`, scanned targets) instead of assuming project names.
+
+- improve(run): reorganized execution pipeline
+  Cleaner and more robust run flow with improved process handling.
+
+- improve(config): enhance configuration system
+  Improved config structure and handling in core module.
+
+### Fixes
+
+- fix(run): detect Vix runtime scripts correctly in fallback mode
+  Prevents incorrect fallback behavior when running Vix-based scripts.
+
+- fix(build): improve CMake error detection
+  Fixes misleading build errors and improves project root handling.
+
+- fix(utils): clean up configuration template
+  Removes redundant content in `vix_utilsConfig.cmake`.
+
+### Examples
+
+- update(examples): improve run examples
+  Updated examples for blocking, background, and dynamic port usage.
+
 ## [v2.2.0]
 
 ### Features
