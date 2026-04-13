@@ -9,7 +9,51 @@ find_dependency(spdlog CONFIG REQUIRED)
 
 # ---- OpenSSL ----
 if (@VIX_WITH_OPENSSL@)
+
+  # If the consumer already provided hints, respect them.
+  set(_VIX_OPENSSL_ALREADY_HINTED OFF)
+  if (DEFINED OpenSSL_ROOT_DIR OR DEFINED OPENSSL_ROOT_DIR)
+    set(_VIX_OPENSSL_ALREADY_HINTED ON)
+  endif()
+
+  # macOS + Homebrew: openssl is often keg-only and not on default search paths.
+  if (APPLE AND NOT _VIX_OPENSSL_ALREADY_HINTED)
+    find_program(_VIX_BREW_EXECUTABLE brew)
+
+    if (_VIX_BREW_EXECUTABLE)
+      execute_process(
+        COMMAND "${_VIX_BREW_EXECUTABLE}" --prefix openssl@3
+        OUTPUT_VARIABLE _VIX_OPENSSL_HOMEBREW_PREFIX
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+      )
+
+      if (_VIX_OPENSSL_HOMEBREW_PREFIX)
+        set(OPENSSL_ROOT_DIR "${_VIX_OPENSSL_HOMEBREW_PREFIX}")
+      else()
+        execute_process(
+          COMMAND "${_VIX_BREW_EXECUTABLE}" --prefix openssl
+          OUTPUT_VARIABLE _VIX_OPENSSL_HOMEBREW_PREFIX
+          OUTPUT_STRIP_TRAILING_WHITESPACE
+          ERROR_QUIET
+        )
+
+        if (_VIX_OPENSSL_HOMEBREW_PREFIX)
+          set(OPENSSL_ROOT_DIR "${_VIX_OPENSSL_HOMEBREW_PREFIX}")
+        endif()
+      endif()
+    endif()
+  endif()
+
   find_dependency(OpenSSL REQUIRED)
+
+  if (NOT TARGET OpenSSL::SSL OR NOT TARGET OpenSSL::Crypto)
+    message(FATAL_ERROR
+      "Vix was built with OpenSSL support, but the consumer project could not resolve "
+      "OpenSSL::SSL and OpenSSL::Crypto. "
+      "Set OPENSSL_ROOT_DIR or CMAKE_PREFIX_PATH to your OpenSSL installation."
+    )
+  endif()
 endif()
 
 # ---- JSON backend ----

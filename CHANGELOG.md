@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## [v2.3.1] - 2026-04-13
+
+### Fixed
+- Improve OpenSSL resolution in `VixConfig.cmake` for consumer projects (macOS / Homebrew)
+- Avoid build failures when OpenSSL is installed but not on default CMake search paths
+
+### Notes
+- This is a patch release focused on packaging and cross-platform stability
+- No changes to `vix run` behavior or runtime features
+
 ## [v2.3.0]
 
 ### Features
