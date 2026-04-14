@@ -186,9 +186,12 @@ jobs:
 
           if [ "${{ runner.os }}" = "macOS" ]; then
             if command -v brew >/dev/null 2>&1; then
+              BREW_PREFIX="$(brew --prefix)"
               BREW_SSL="$(brew --prefix openssl@3 2>/dev/null || true)"
+
               if [ -n "$BREW_SSL" ] && [ -d "$BREW_SSL" ]; then
                 CMAKE_ARGS+=(-DOPENSSL_ROOT_DIR="$BREW_SSL")
+                CMAKE_ARGS+=(-DCMAKE_PREFIX_PATH="$BREW_PREFIX")
               fi
             fi
           fi
