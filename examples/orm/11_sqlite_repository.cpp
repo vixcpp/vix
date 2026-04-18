@@ -38,16 +38,12 @@ int main()
   {
     auto db = vix::db::Database::sqlite("orm_sqlite.db");
 
-    {
-      auto conn = db.pool().acquire();
-      conn->prepare(
-              "CREATE TABLE IF NOT EXISTS notes ("
-              "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-              "title TEXT NOT NULL)")
-          ->exec();
-    }
+    db.exec(
+        "CREATE TABLE IF NOT EXISTS notes ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "title TEXT NOT NULL)");
 
-    auto repo = vix::orm::repository<Note>(db, "notes");
+    vix::orm::BaseRepository<Note> repo(db.pool(), "notes");
     repo.create(Note{0, "Hello SQLite ORM"});
 
     for (const auto &n : repo.findAll())

@@ -10,28 +10,23 @@ int main()
   {
     auto db = vix::db::Database::sqlite("orm_qb_select.db");
 
-    {
-      auto conn = db.pool().acquire();
-      conn->prepare(
-              "CREATE TABLE IF NOT EXISTS users ("
-              "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-              "name TEXT NOT NULL, "
-              "age INTEGER NOT NULL)")
-          ->exec();
-      conn->prepare("DELETE FROM users")->exec();
+    db.exec(
+        "CREATE TABLE IF NOT EXISTS users ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "name TEXT NOT NULL, "
+        "age INTEGER NOT NULL)");
 
-      auto st1 = conn->prepare("INSERT INTO users (name, age) VALUES (?, ?)");
-      st1->bind(1, std::string("Alice"));
-      st1->bind(2, static_cast<std::int64_t>(20));
-      st1->exec();
+    db.exec("DELETE FROM users");
 
-      auto st2 = conn->prepare("INSERT INTO users (name, age) VALUES (?, ?)");
-      st2->bind(1, std::string("Bob"));
-      st2->bind(2, static_cast<std::int64_t>(16));
-      st2->exec();
-    }
+    db.exec("INSERT INTO users (name, age) VALUES (?, ?)",
+            std::string("Alice"),
+            static_cast<std::int64_t>(20));
 
-    auto conn = db.pool().acquire();
+    db.exec("INSERT INTO users (name, age) VALUES (?, ?)",
+            std::string("Bob"),
+            static_cast<std::int64_t>(16));
+
+    vix::db::PooledConn conn(db.pool());
 
     vix::orm::QueryBuilder qb;
     qb.raw("SELECT id, name, age FROM users WHERE age >= ?")
@@ -41,7 +36,7 @@ int main()
     qb.bind(*st);
 
     auto rs = st->query();
-    while (rs->next())
+    while (rs && rs->next())
     {
       const auto &row = rs->row();
       std::cout << row.getInt64(0) << " "

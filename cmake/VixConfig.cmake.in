@@ -171,6 +171,16 @@ if (TARGET vix_thirdparty_asio AND NOT TARGET vix::thirdparty_asio)
   add_library(vix::thirdparty_asio ALIAS vix_thirdparty_asio)
 endif()
 
+set(VIX_HAS_TESTS @VIX_HAS_TESTS@)
+if (VIX_HAS_TESTS AND NOT TARGET vix::tests)
+  set(VIX_HAS_TESTS OFF)
+endif()
+
+set(VIX_WITH_TESTS @VIX_WITH_TESTS@)
+if (VIX_WITH_TESTS AND NOT TARGET vix::tests)
+  set(VIX_WITH_TESTS OFF)
+endif()
+
 # ---- informational flags ----
 set(VIX_HAS_ORM @VIX_HAS_ORM@)
 if (VIX_HAS_ORM AND NOT TARGET vix::orm)

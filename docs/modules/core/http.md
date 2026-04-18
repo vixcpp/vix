@@ -16,7 +16,7 @@ It includes:
 
 ## IRequestHandler
 
-`vix::vhttp::IRequestHandler` is the low-level interface used by the router/server.
+`vix::http::IRequestHandler` is the low-level interface used by the router/server.
 
 ```cpp
 class IRequestHandler
@@ -36,7 +36,7 @@ You typically do not implement this directly as an app developer. Vix generates 
 
 ## Request
 
-`vix::vhttp::Request` is the developer-facing request facade.
+`vix::http::Request` is the developer-facing request facade.
 
 It wraps a raw Boost.Beast request and exposes:
 
@@ -106,7 +106,7 @@ Core API:
 
 ## Response
 
-`vix::vhttp::Response` provides static helpers to build common responses on top of Boost.Beast.
+`vix::http::Response` provides static helpers to build common responses on top of Boost.Beast.
 
 It applies stable defaults like:
 
@@ -124,7 +124,7 @@ It supports:
 Example:
 
 ```cpp
-vix::vhttp::Response::json_response(res, nlohmann::json{{"ok", true}});
+vix::http::Response::json_response(res, nlohmann::json{{"ok", true}});
 ```
 
 ### HTTP date formatting
@@ -135,7 +135,7 @@ vix::vhttp::Response::json_response(res, nlohmann::json{{"ok", true}});
 
 ## ResponseWrapper
 
-`vix::vhttp::ResponseWrapper` is the fluent developer API used in handlers.
+`vix::http::ResponseWrapper` is the fluent developer API used in handlers.
 
 It wraps:
 
@@ -182,7 +182,7 @@ app.get("/json", [](Request&, ResponseWrapper& res) {
 
 ## RequestHandler
 
-`vix::vhttp::RequestHandler<Handler>` is the adapter that:
+`vix::http::RequestHandler<Handler>` is the adapter that:
 
 1. extracts `path_only` (target without query)
 2. extracts route params based on the route pattern
@@ -236,7 +236,7 @@ In release builds, it returns a safe JSON error response and logs details using 
 
 ## Status
 
-`vix::vhttp::Status` exposes numeric constants for common codes:
+`vix::http::Status` exposes numeric constants for common codes:
 
 - `OK = 200`, `CREATED = 201`, `NO_CONTENT = 204`, ...
 - `BAD_REQUEST = 400`, `NOT_FOUND = 404`, ...

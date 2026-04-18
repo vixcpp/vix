@@ -38,28 +38,29 @@ int main()
   {
     auto db = vix::db::Database::sqlite("orm_exists.db");
 
-    {
-      auto conn = db.pool().acquire();
-      conn->prepare(
-              "CREATE TABLE IF NOT EXISTS users ("
-              "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-              "name TEXT NOT NULL)")
-          ->exec();
-      conn->prepare("DELETE FROM users")->exec();
-    }
+    db.exec(
+        "CREATE TABLE IF NOT EXISTS users ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "name TEXT NOT NULL)");
 
-    auto repo = vix::orm::repository<User>(db, "users");
+    db.exec("DELETE FROM users");
+
+    vix::orm::BaseRepository<User> repo(db.pool(), "users");
     const auto id = static_cast<std::int64_t>(repo.create(User{0, "Alice"}));
 
     std::cout << "[OK] exists before delete=" << (repo.existsById(id) ? "yes" : "no") << "\n";
+
     repo.removeById(id);
+
     std::cout << "[OK] exists after delete=" << (repo.existsById(id) ? "yes" : "no") << "\n";
 
     repo.create(User{0, "Bob"});
     repo.create(User{0, "Charlie"});
+
     std::cout << "[OK] count before removeAll=" << repo.count() << "\n";
 
     repo.removeAll();
+
     std::cout << "[OK] count after removeAll=" << repo.count() << "\n";
 
     return 0;

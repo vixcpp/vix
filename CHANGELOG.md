@@ -940,7 +940,7 @@ Major release of **Vix.cpp** introducing a new native HTTP stack, full async run
 
 ### Core Runtime
 
-- Introduced **native HTTP stack (`vix::vhttp`)**
+- Introduced **native HTTP stack (`vix::http`)**
 - Removed dependency on **Boost.Beast**
 - Improved **HTTP listener startup**
   - deterministic startup behavior
@@ -964,7 +964,7 @@ Major release of **Vix.cpp** introducing a new native HTTP stack, full async run
 
 ### WebSocket
 
-- Migrated to **vix::vhttp**
+- Migrated to **vix::http**
 - Removed all **Boost dependencies**
 - Introduced
   - async listener startup
@@ -979,7 +979,7 @@ Major release of **Vix.cpp** introducing a new native HTTP stack, full async run
 
 ### Middleware
 
-- Full migration to **vix::vhttp**
+- Full migration to **vix::http**
 - Removed **Boost.Beast compatibility layer**
 - Unified middleware behavior with the new HTTP stack
 

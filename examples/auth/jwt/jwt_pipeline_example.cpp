@@ -17,13 +17,13 @@
 
 using namespace vix::middleware;
 
-static vix::vhttp::Request make_req_with_bearer(const std::string &token)
+static vix::http::Request make_req_with_bearer(const std::string &token)
 {
-  vix::vhttp::Request::HeaderMap headers;
+  vix::http::Request::HeaderMap headers;
   headers["Host"] = "localhost";
   headers["authorization"] = "Bearer " + token;
 
-  return vix::vhttp::Request(
+  return vix::http::Request(
       "GET",
       "/secure",
       std::move(headers),
@@ -50,8 +50,8 @@ int main()
 
   auto req = make_req_with_bearer(token);
 
-  vix::vhttp::Response raw_res;
-  vix::vhttp::ResponseWrapper res(raw_res);
+  vix::http::Response raw_res;
+  vix::http::ResponseWrapper res(raw_res);
 
   p.run(req, res, [&](Request &r, Response &w)
         {

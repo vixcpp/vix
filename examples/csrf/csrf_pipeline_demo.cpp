@@ -27,9 +27,9 @@
 
 using namespace vix::middleware;
 
-static vix::vhttp::Request make_post(bool ok)
+static vix::http::Request make_post(bool ok)
 {
-  vix::vhttp::Request::HeaderMap headers;
+  vix::http::Request::HeaderMap headers;
   headers["Host"] = "localhost";
 
   // Cookie + header must match
@@ -37,7 +37,7 @@ static vix::vhttp::Request make_post(bool ok)
   headers["x-csrf-token"] = ok ? "abc" : "wrong";
   headers["Content-Type"] = "application/x-www-form-urlencoded";
 
-  return vix::vhttp::Request(
+  return vix::http::Request(
       "POST",
       "/api/update",
       std::move(headers),
@@ -49,8 +49,8 @@ int main()
   // FAIL
   {
     auto req = make_post(false);
-    vix::vhttp::Response raw_res;
-    vix::vhttp::ResponseWrapper w(raw_res);
+    vix::http::Response raw_res;
+    vix::http::ResponseWrapper w(raw_res);
 
     HttpPipeline p;
     p.use(vix::middleware::security::csrf());
@@ -68,8 +68,8 @@ int main()
   // OK
   {
     auto req = make_post(true);
-    vix::vhttp::Response raw_res;
-    vix::vhttp::ResponseWrapper w(raw_res);
+    vix::http::Response raw_res;
+    vix::http::ResponseWrapper w(raw_res);
 
     HttpPipeline p;
     p.use(vix::middleware::security::csrf());

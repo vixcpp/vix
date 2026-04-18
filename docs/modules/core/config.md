@@ -1,21 +1,26 @@
-# Configuration
+# Vix Config
 
-The `vix::config::Config` class loads a JSON file and provides safe, typed accessors.
+The `vix::config::Config` class loads configuration from `.env` files and provides safe, typed accessors.
+
 It is designed for:
 
-- JSON config files
+- `.env` files (primary source of configuration)
+- Layered environments (`.env`, `.env.local`, `.env.production`, etc.)
 - Dot-path access (`server.port`, `database.default.host`, etc.)
-- Defaults on missing or invalid values
+- Defaults on missing values
 - One-time load at startup
-- Optional environment override (example: `DB_PASSWORD`)
 
-Include:
+---
+
+## Include
 
 ```cpp
 #include <vix/config/Config.hpp>
 ```
 
-Namespace:
+---
+
+## Namespace
 
 ```cpp
 using vix::config::Config;
@@ -23,195 +28,182 @@ using vix::config::Config;
 
 ---
 
-# 1. Config file format
+## 1. Environment file format
 
-Vix config is JSON.
-Nested objects are accessed via dot paths.
+Vix uses `.env` files as the main configuration source.
 
-Example `config/config.json`:
+Example `.env`:
 
-```json
-{
-  "server": {
-    "port": 8080,
-    "request_timeout": 2000,
-    "io_threads": 0,
-    "session_timeout_sec": 300
-  },
-  "logging": {
-    "async": true,
-    "queue_max": 20000,
-    "drop_on_overflow": true
-  },
-  "waf": {
-    "mode": "basic",
-    "max_target_len": 4096,
-    "max_body_bytes": 1048576
-  },
-  "database": {
-    "default": {
-      "host": "localhost",
-      "port": 3306,
-      "name": "mydb",
-      "user": "myuser",
-      "password": ""
-    }
-  }
-}
+```env
+# Server
+SERVER_PORT=8080
+SERVER_REQUEST_TIMEOUT=2000
+SERVER_IO_THREADS=0
+
+# Database
+DATABASE_ENGINE=mysql
+DATABASE_DEFAULT_HOST=127.0.0.1
+DATABASE_DEFAULT_PORT=3306
+DATABASE_DEFAULT_USER=root
+DATABASE_DEFAULT_PASSWORD=
+DATABASE_DEFAULT_NAME=appdb
+
+# Logging
+LOGGING_ASYNC=true
+LOGGING_QUEUE_MAX=20000
+
+# WAF
+WAF_MODE=basic
 ```
 
 ---
 
-# 2. Loading config
+## 2. Loading configuration
 
-You can build a `Config` directly.
-The constructor searches common locations and loads if found.
-
-```cpp
-Config cfg{"config/config.json"};
-```
-
-If no file is found, defaults are used.
-
-## Singleton access
-
-The class also exposes a lazy singleton:
+Configuration is loaded explicitly at startup.
 
 ```cpp
-auto& cfg = Config::getInstance("config/config.json");
+Config cfg{".env"};
 ```
 
-This is useful when you want a global config with a single load point.
+This loads all layered environment files.
 
 ---
 
-# 3. Typed getters with defaults
+## 3. Layered environment files
 
-The safe accessors always take a default value.
-If the key is missing or cannot be parsed, the default is returned.
+Vix automatically loads layered files:
+
+- `.env`
+- `.env.local`
+- `.env.production`
+- `.env.production.local`
+
+This allows:
+
+- local development overrides
+- production configuration
+- environment-specific behavior
+
+---
+
+## 4. Typed accessors
+
+Configuration values are accessed using typed getters.
 
 ```cpp
-Config cfg{"config/config.json"};
-
 int port = cfg.getInt("server.port", 8080);
-int timeout_ms = cfg.getInt("server.request_timeout", 2000);
-
-bool log_async = cfg.getBool("logging.async", true);
-std::string waf_mode = cfg.getString("waf.mode", "basic");
+bool async = cfg.getBool("logging.async", true);
+std::string host = cfg.getString("database.default.host", "127.0.0.1");
 ```
 
-Supported getters:
+Available methods:
 
-- `getInt(dottedKey, defaultValue)`
-- `getBool(dottedKey, defaultValue)`
-- `getString(dottedKey, defaultValue)`
-- `has(dottedKey)`
+- `getInt(key, default)`
+- `getBool(key, default)`
+- `getString(key, default)`
+- `has(key)`
 
 ---
 
-# 4. Dot-path lookup
+## 5. Environment variable mapping
 
-Dot paths traverse nested JSON objects.
+Dot-path keys are mapped to environment variables.
 
-Examples:
-
-- `server.port`
-- `logging.queue_max`
-- `database.default.host`
-- `waf.max_body_bytes`
-
-```cpp
-if (cfg.has("database.default.host"))
-{
-  auto host = cfg.getString("database.default.host", "localhost");
-}
-```
+| Key | Env variable |
+|-----|-------------|
+| server.port | SERVER_PORT |
+| database.default.host | DATABASE_DEFAULT_HOST |
+| database.default.name | DATABASE_DEFAULT_NAME |
+| logging.async | LOGGING_ASYNC |
 
 ---
 
-# 5. Convenience getters (server, logging, waf)
+## 6. Convenience getters
 
-`Config` also stores parsed values and exposes dedicated getters.
-This avoids repeating dot paths in your runtime code.
+Config exposes pre-parsed values.
 
-Server:
-
-- `getServerPort()`
-- `getRequestTimeout()`
-- `getIOThreads()`
-- `getSessionTimeoutSec()`
-- `setServerPort(port)`
-
-Logging:
-
-- `getLogAsync()`
-- `getLogQueueMax()`
-- `getLogDropOnOverflow()`
-
-WAF:
-
-- `getWafMode()`
-- `getWafMaxTargetLen()`
-- `getWafMaxBodyBytes()`
-
-Minimal usage:
+### Server
 
 ```cpp
-auto& cfg = Config::getInstance("config/config.json");
+getServerPort();
+getRequestTimeout();
+getIOThreads();
+```
 
+### Logging
+
+```cpp
+getLogAsync();
+getLogQueueMax();
+```
+
+### WAF
+
+```cpp
+getWafMode();
+```
+
+Example:
+
+```cpp
 int port = cfg.getServerPort();
-int io_threads = cfg.getIOThreads();
 
 if (cfg.getLogAsync())
 {
-  // configure async logger
+  // configure logger
 }
 ```
 
 ---
 
-# 6. Environment override (DB password)
+## 7. Passing configuration
 
-Database password can be provided via environment variable:
-
-- `DB_PASSWORD`
-
-`getDbPasswordFromEnv()` returns:
-
-- `DB_PASSWORD` if set
-- otherwise the config value
-
-Example pattern:
+Configuration must be passed explicitly.
 
 ```cpp
-auto& cfg = Config::getInstance("config/config.json");
-
-std::string db_pass = cfg.getDbPasswordFromEnv();
+void register_routes(App& app, const Config& cfg)
+{
+  app.get("/", [&cfg](Request&, Response& res) {
+    res.send("Port: " + std::to_string(cfg.getServerPort()));
+  });
+}
 ```
 
-This keeps secrets out of files.
+---
+
+## 8. Secrets handling
+
+Sensitive values should be stored in environment variables.
+
+Example:
+
+```env
+DATABASE_DEFAULT_PASSWORD=secret
+```
+
+You can also use dedicated helpers:
+
+```cpp
+std::string pass = cfg.getDbPasswordFromEnv();
+```
 
 ---
 
-# 7. Defaults and validation behavior
+## 9. Behavior and defaults
 
-Important behavior from the implementation:
-
-- Missing file: uses defaults (no crash)
-- Missing key: returns your default
-- Wrong type: best-effort parse (example: string to int via `stoi`), otherwise default
-- `setServerPort(port)` validates range (0 or 1024..65535)
+- Missing `.env` file → no crash
+- Missing variable → default used
+- Invalid value → default used
+- Configuration is loaded once at startup
 
 ---
 
-# Best practices
+## Best practices
 
-- Load config once at startup.
-- Always pass defaults to `getInt/getBool/getString`.
-- Keep secrets in environment variables (example: `DB_PASSWORD`).
-- Validate critical settings at boot (ports, timeouts, limits).
-- Avoid reading config per request.
-
-Configuration should be stable and deterministic after startup.
-
+- Load config once at startup
+- Pass it explicitly to your application
+- Do not use global state
+- Keep secrets in `.env`
+- Do not read config inside request handlers repeatedly
 

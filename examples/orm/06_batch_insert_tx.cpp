@@ -11,15 +11,11 @@ int main()
   {
     auto db = vix::db::Database::sqlite("orm_batch.db");
 
-    {
-      auto conn = db.pool().acquire();
-      conn->prepare(
-              "CREATE TABLE IF NOT EXISTS users ("
-              "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-              "name TEXT NOT NULL, "
-              "age INTEGER NOT NULL)")
-          ->exec();
-    }
+    db.exec(
+        "CREATE TABLE IF NOT EXISTS users ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "name TEXT NOT NULL, "
+        "age INTEGER NOT NULL)");
 
     const std::vector<std::pair<std::string, std::int64_t>> users = {
         {"Alice", 20},
@@ -28,7 +24,7 @@ int main()
         {"Diane", 35},
     };
 
-    auto uow = vix::orm::unit_of_work(db);
+    auto uow = vix::orm::UnitOfWork(db);
 
     for (const auto &[name, age] : users)
     {

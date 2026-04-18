@@ -9,7 +9,7 @@ int main()
     auto db = vix::db::Database::sqlite("vix.db");
 
     {
-      auto conn = db.pool().acquire();
+      vix::db::PooledConn conn(db.pool());
 
       conn->prepare(
               "CREATE TABLE IF NOT EXISTS users ("
@@ -27,12 +27,13 @@ int main()
     }
 
     {
-      auto conn = db.pool().acquire();
-      auto st = conn->prepare("SELECT id, name FROM users WHERE age > ?");
+      vix::db::PooledConn conn(db.pool());
 
+      auto st = conn->prepare("SELECT id, name FROM users WHERE age > ?");
       st->bind(1, static_cast<std::int64_t>(18));
 
       auto rs = st->query();
+
       while (rs->next())
       {
         const auto &row = rs->row();

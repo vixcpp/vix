@@ -48,16 +48,12 @@ int main()
   {
     auto db = vix::db::Database::sqlite("orm_entity.db");
 
-    {
-      auto conn = db.pool().acquire();
-      conn->prepare(
-              "CREATE TABLE IF NOT EXISTS users ("
-              "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-              "name TEXT NOT NULL)")
-          ->exec();
-    }
+    db.exec(
+        "CREATE TABLE IF NOT EXISTS users ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "name TEXT NOT NULL)");
 
-    auto repo = vix::orm::repository<User>(db, "users");
+    vix::orm::BaseRepository<User> repo(db.pool(), "users");
 
     User alice{};
     alice.setId(0);

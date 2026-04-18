@@ -50,21 +50,18 @@ int main()
   {
     auto db = vix::db::Database::sqlite("orm_crud.db");
 
-    {
-      auto conn = db.pool().acquire();
-      conn->prepare(
-              "CREATE TABLE IF NOT EXISTS users ("
-              "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-              "name TEXT NOT NULL, "
-              "email TEXT NOT NULL, "
-              "age INTEGER NOT NULL)")
-          ->exec();
-    }
+    db.exec(
+        "CREATE TABLE IF NOT EXISTS users ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "name TEXT NOT NULL, "
+        "email TEXT NOT NULL, "
+        "age INTEGER NOT NULL)");
 
-    auto repo = vix::orm::repository<User>(db, "users");
+    vix::orm::BaseRepository<User> repo(db.pool(), "users");
 
     const auto id = static_cast<std::int64_t>(
         repo.create(User{0, "Alice", "alice@example.com", 25}));
+
     std::cout << "[OK] create id=" << id << "\n";
 
     if (auto u = repo.findById(id))
