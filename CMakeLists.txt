@@ -407,12 +407,18 @@ if (VIX_ENABLE_HTTP_COMPRESSION)
   endif()
 endif()
 
-# Attach warnings/coverage to umbrella (propagates to consumers)
+# Attach warnings/coverage only for local builds.
+# Do not export them through the installed package.
 if (TARGET vix_warnings)
-  target_link_libraries(vix INTERFACE vix_warnings)
+  target_link_libraries(vix INTERFACE
+    $<BUILD_INTERFACE:vix_warnings>
+  )
 endif()
+
 if (TARGET vix_coverage)
-  target_link_libraries(vix INTERFACE vix_coverage)
+  target_link_libraries(vix INTERFACE
+    $<BUILD_INTERFACE:vix_coverage>
+  )
 endif()
 
 # Install include interface root
@@ -1256,7 +1262,7 @@ endif()
 
 if (VIX_ENABLE_INSTALL)
 
-    foreach(_m error path fs io env os log tests core utils json websocket webrpc crypto time conversion validation async net cache sync p2p p2p_http middleware db orm template)
+  foreach(_m error path fs io env os log tests core utils json websocket webrpc crypto time conversion validation async net cache sync p2p p2p_http middleware db orm template)
     if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/${_m}/include")
       install(DIRECTORY "modules/${_m}/include/"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
@@ -1267,6 +1273,27 @@ if (VIX_ENABLE_INSTALL)
       )
     endif()
   endforeach()
+
+  # ----------------------------------------------------
+  # Install root umbrella header
+  # ----------------------------------------------------
+  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vix.hpp")
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/vix.hpp"
+      DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+    )
+  endif()
+
+  # ----------------------------------------------------
+  # Install umbrella public headers (vix/*.hpp)
+  # ----------------------------------------------------
+  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vix")
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/vix/"
+      DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/vix"
+      FILES_MATCHING
+        PATTERN "*.hpp"
+        PATTERN "*.h"
+    )
+  endif()
 
   # ---- Install Asio (submodule) ----
   set(_VIX_ASIO_INSTALL_SRC "${CMAKE_CURRENT_SOURCE_DIR}/third_party/asio-src/asio/include")
@@ -1290,14 +1317,6 @@ if (VIX_ENABLE_INSTALL)
 
   if (TARGET vix_thirdparty_asio)
     install(TARGETS vix_thirdparty_asio EXPORT VixTargets)
-  endif()
-
-  if (TARGET vix_warnings)
-    install(TARGETS vix_warnings EXPORT VixTargets)
-  endif()
-
-  if (TARGET vix_coverage)
-    install(TARGETS vix_coverage EXPORT VixTargets)
   endif()
 
   # ---- Config files ----

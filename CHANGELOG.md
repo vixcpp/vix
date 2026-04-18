@@ -8,6 +8,278 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+# Vix.cpp v2.4.0
+
+A major step forward for the Vix ecosystem.
+
+This release expands the modular architecture, introduces native static file serving in the core runtime, adds a new testing system, improves environment handling, and standardizes the developer experience with umbrella headers and real-world examples.
+
+---
+
+## Core Runtime
+
+- Introduce native `App::static_dir` (no middleware required)
+- Static files are now served via router fallback (before 404)
+- Fix root mount `/` to correctly serve nested paths (`/index.html`, `/style.css`, etc.)
+- Remove legacy static handler bridge and middleware dependency
+- Remove deprecated `vix/core.h`
+
+---
+
+## New Modules
+
+The following modules are now fully integrated into the Vix ecosystem:
+
+- `env`
+- `error`
+- `fs`
+- `io`
+- `log`
+- `os`
+- `path`
+- `tests`
+
+These modules follow the Vix philosophy:
+
+- minimal dependencies
+- predictable behavior
+- production-ready design
+- standalone or umbrella compatible
+
+---
+
+## Umbrella Headers
+
+All modules now expose a single entry point:
+
+- `vix/async.hpp`
+- `vix/cache.hpp`
+- `vix/conversion.hpp`
+- `vix/env.hpp`
+- `vix/error.hpp`
+- `vix/fs.hpp`
+- `vix/io.hpp`
+- `vix/json.hpp`
+- `vix/log.hpp`
+- `vix/middleware.hpp`
+- `vix/net.hpp`
+- `vix/orm.hpp`
+- `vix/os.hpp`
+- `vix/p2p.hpp`
+- `vix/p2p_http.hpp`
+- `vix/path.hpp`
+- `vix/sync.hpp`
+- `vix/template.hpp`
+- `vix/tests.hpp`
+- `vix/time.hpp`
+- `vix/utils.hpp`
+- `vix/validation.hpp`
+- `vix/webrpc.hpp`
+- `vix/websocket.hpp`
+
+This provides:
+
+- consistent includes
+- cleaner public API
+- better developer experience
+
+---
+
+## Native Testing Module
+
+A new module `vix::tests` has been introduced.
+
+Features:
+
+- explicit test registration
+- no macros
+- no hidden magic
+- exception-based failure handling
+- clean API
+- optional CTest integration
+
+### Example
+
+```cpp
+auto &registry = TestRegistry::instance();
+
+registry.add(TestCase("basic test", [] {
+    Assert::equal(2 + 2, 4);
+}));
+
+return TestRunner::run_all_and_exit();
+```
+
+---
+
+## Environment System
+
+The environment system has been significantly expanded:
+
+- `.env` file support
+- layered configuration
+- typed access (`bool`, `string`, etc.)
+- production-ready configuration patterns
+
+New examples included for:
+
+- server configuration
+- database configuration
+- logging configuration
+- websocket configuration
+
+---
+
+## Build System & Packaging
+
+- Fix CMake export issues caused by `vix_warnings` leaking into public interfaces
+- All modules now correctly use `PRIVATE` for build-only helpers (`vix_warnings`, `vix_sanitizers`)
+- Removed invalid `INTERFACE` linkage of internal build targets
+- Fixed header-only modules incorrectly exporting build dependencies
+- Cleaned up `install(EXPORT ...)` usage (now only defined at umbrella level)
+- Standardized export behavior across all modules
+- Improved compatibility between standalone modules and umbrella builds
+
+### This ensures
+
+- reliable `install(EXPORT VixTargets)` generation
+- clean public API for consumers
+- no hidden or invalid dependencies in exported packages
+- consistent behavior across all modules
+
+## Database Integration Improvements
+
+New environment-driven database examples:
+
+- MySQL
+- SQLite
+- connection pooling
+- prepared queries
+- transactions
+
+Includes a full HTTP + DB environment showcase.
+
+---
+
+## Static Files
+
+Static file serving is now part of the core runtime.
+
+Examples:
+
+- `01_basic_static.cpp`
+- `02_static_directory.cpp`
+- `03_static_with_cache.cpp`
+
+Features:
+
+- directory mounting via `app.static_dir`
+- automatic `index.html` resolution
+- cache control support
+- safe path handling
+
+---
+
+## Examples Expansion
+
+A large set of new examples has been added across modules.
+
+#### Config
+- server port
+- database config
+- logging config
+- websocket config
+- layered env
+
+#### Env
+- basic usage
+- loading `.env` files
+- layered configuration
+- production setup
+
+#### Error
+- basic errors
+- chaining
+- exception handling
+- result pattern
+
+#### FS
+- filesystem operations
+- copy / move
+- read / write
+- directory listing
+
+#### IO
+- streams
+- buffers
+- stdin / stdout
+- copy utilities
+
+#### Log
+- basic logging
+- formatting
+- contextual logging
+
+#### OS
+- system info
+- user info
+- sleep utilities
+
+#### ORM
+- environment-based HTTP ORM showcase
+
+---
+
+## Architecture
+
+- Improved modular structure
+- Consistent module boundaries
+- Standardized CMake packaging
+- Better separation between core and extensions
+- Static serving moved to core runtime
+
+---
+
+## Improvements
+
+- Updated documentation across `core` and `db` modules
+- Improved examples consistency
+- Cleanup of legacy configuration usage
+- `.env.example` introduced as standard
+- Removal of outdated documentation
+
+---
+
+## Notes
+
+- `.env` is now treated as a local file and should not be committed
+- Configuration is centered around `.env` and examples
+- Modules can be used independently or via `vix.hpp`
+
+---
+
+## Upgrade Notes
+
+- Review `.env` usage in your projects
+- Update configuration patterns to the new env system
+- Migrate tests to `vix::tests` if needed
+- Static files no longer require middleware or bootstrap
+
+---
+
+## Summary
+
+- Static serving is now **native** to the runtime
+- Middleware is **no longer required** for static files
+- New testing system with clean API
+- Expanded environment system
+- Full umbrella header support
+- Stronger modular architecture
+
+---
+
+> Vix.cpp continues to evolve toward a production-ready C++ runtime with a strong focus on clarity, reliability, and real-world usability.
+
 ## [v2.3.1] - 2026-04-13
 
 ### Fixed
