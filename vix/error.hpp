@@ -26,6 +26,6 @@
 #ifndef VIX_ERROR_HPP
 #define VIX_ERROR_HPP
 
-#include <vix/error/error.hpp>
+#include <vix/error/all.hpp>
 
 #endif // VIX_ERROR_HPP

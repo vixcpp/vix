@@ -46,7 +46,7 @@ Learn more about the Vix runtime in the [documentation](https://vixcpp.com/docs)
 
 ## Installation
 
-Install the Vix runtime on your system using one of the commands below.
+Install Vix using the official installer:
 
 ### <a href="https://vixcpp.com/install">Shell (Linux, macOS)</a>
 
@@ -66,6 +66,9 @@ curl -fsSL https://vixcpp.com/install.sh | bash
 ```powershell
 irm https://vixcpp.com/install.ps1 | iex
 ```
+
+> ⚠️ To use `#include <vix.hpp>`, make sure you install the full SDK (default).
+> See the full installation guide: https://vixcpp.com/install
 
 ## Run C++ instantly
 
