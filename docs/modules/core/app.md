@@ -98,7 +98,7 @@ Vix accepts two handler styles:
 2. Raw handler (advanced)
 
 ```cpp
-(const vix::vhttp::RawRequest&, Response&)
+(const vix::http::RawRequest&, Response&)
 ```
 
 At compile time, Vix validates the handler type via `static_assert`.

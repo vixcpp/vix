@@ -26,10 +26,10 @@
 
 using namespace vix::middleware;
 
-static vix::vhttp::RawRequest make_req()
+static vix::http::RawRequest make_req()
 {
   namespace http = boost::beast::http;
-  vix::vhttp::RawRequest req{http::verb::get, "/api/x", 11};
+  vix::http::RawRequest req{http::verb::get, "/api/x", 11};
   req.set(http::field::host, "localhost");
   req.set("x-forwarded-for", "1.2.3.4");
   req.prepare_payload();
@@ -55,8 +55,8 @@ int main()
   auto run_once = [&](http::response<http::string_body> &res)
   {
     auto raw = make_req();
-    vix::vhttp::Request req(raw, {});
-    vix::vhttp::ResponseWrapper w(res);
+    vix::http::Request req(raw, {});
+    vix::http::ResponseWrapper w(res);
 
     p.run(req, w, [&](Request &, Response &)
           { w.ok().text("OK"); });

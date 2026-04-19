@@ -38,17 +38,14 @@ int main()
   {
     auto db = vix::db::Database::sqlite("orm_find_all.db");
 
-    {
-      auto conn = db.pool().acquire();
-      conn->prepare(
-              "CREATE TABLE IF NOT EXISTS users ("
-              "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-              "name TEXT NOT NULL)")
-          ->exec();
-      conn->prepare("DELETE FROM users")->exec();
-    }
+    db.exec(
+        "CREATE TABLE IF NOT EXISTS users ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "name TEXT NOT NULL)");
 
-    auto repo = vix::orm::repository<User>(db, "users");
+    db.exec("DELETE FROM users");
+
+    vix::orm::BaseRepository<User> repo(db.pool(), "users");
     repo.create(User{0, "Alice"});
     repo.create(User{0, "Bob"});
     repo.create(User{0, "Charlie"});

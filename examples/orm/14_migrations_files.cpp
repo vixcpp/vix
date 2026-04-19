@@ -8,7 +8,8 @@ int main()
   try
   {
     auto db = vix::db::Database::sqlite("orm_migrations_files.db");
-    auto uow = vix::orm::unit_of_work(db);
+
+    vix::orm::UnitOfWork uow(db);
 
     vix::db::FileMigrationsRunner runner(
         uow.conn(),

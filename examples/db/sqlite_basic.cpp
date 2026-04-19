@@ -5,9 +5,7 @@ int main()
 {
   try
   {
-    // Ultra simple
     auto db = vix::db::Database::sqlite("vix.db");
-
     auto &pool = db.pool();
 
     {
@@ -16,16 +14,16 @@ int main()
       conn->prepare(
               "CREATE TABLE IF NOT EXISTS users ("
               "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-              "name TEXT)")
+              "name TEXT NOT NULL)")
           ->exec();
 
-      conn->prepare(
-              "INSERT INTO users (name) VALUES (?)")
-          ->bind(1, std::string("Gaspard"));
+      auto stmt1 = conn->prepare("INSERT INTO users (name) VALUES (?)");
+      stmt1->bind(1, std::string("Gaspard"));
+      stmt1->exec();
 
-      conn->prepare(
-              "INSERT INTO users (name) VALUES (?)")
-          ->bind(1, std::string("Adastra"));
+      auto stmt2 = conn->prepare("INSERT INTO users (name) VALUES (?)");
+      stmt2->bind(1, std::string("Adastra"));
+      stmt2->exec();
 
       std::cout << "[OK] inserted users\n";
     }

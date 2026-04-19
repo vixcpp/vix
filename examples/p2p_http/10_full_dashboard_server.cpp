@@ -69,7 +69,7 @@ namespace
     opt.enable_peers = true;
     opt.stats_every_ms = 1000;
 
-    opt.auth_legacy = [](vix::vhttp::Request &req, vix::vhttp::ResponseWrapper &res) -> bool
+    opt.auth_legacy = [](vix::http::Request &req, vix::http::ResponseWrapper &res) -> bool
     {
       const auto token = req.header("x-auth-token");
       if (token == "dashboard-admin")

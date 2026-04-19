@@ -257,8 +257,8 @@ int main()
 
   httpApp.get(
       "/ws/poll",
-      [lpBridge](vix::vhttp::Request &req,
-                 vix::vhttp::ResponseWrapper &res)
+      [lpBridge](vix::http::Request &req,
+                 vix::http::ResponseWrapper &res)
       {
         const std::string sessionId = req.query_value("session_id");
         if (sessionId.empty())
@@ -290,8 +290,8 @@ int main()
 
   httpApp.post(
       "/ws/send",
-      [lpBridge](vix::vhttp::Request &req,
-                 vix::vhttp::ResponseWrapper &res)
+      [lpBridge](vix::http::Request &req,
+                 vix::http::ResponseWrapper &res)
       {
         njson j;
         try
@@ -349,7 +349,7 @@ int main()
 
   httpApp.get(
       "/health",
-      [](vix::vhttp::Request &, vix::vhttp::ResponseWrapper &res)
+      [](vix::http::Request &, vix::http::ResponseWrapper &res)
       {
         res.ok().json(njson{
             {"status", "ok"},

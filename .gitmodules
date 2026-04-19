@@ -95,3 +95,39 @@
 	path = modules/template
 	url = https://github.com/vixcpp/template.git
 	branch = dev
+[submodule "modules/error"]
+	path = modules/error
+	url = https://github.com/vixcpp/error.git
+	branch = dev
+[submodule "modules/path"]
+	path = modules/path
+	url = https://github.com/vixcpp/path.git
+	branch = dev
+[submodule "modules/log"]
+	path = modules/log
+	url = https://github.com/vixcpp/log.git
+	branch = dev
+[submodule "modules/fs"]
+	path = modules/fs
+	url = https://github.com/vixcpp/fs.git
+	branch = dev
+[submodule "modules/io"]
+	path = modules/io
+	url = https://github.com/vixcpp/io.git
+	branch = dev
+[submodule "modules/env"]
+	path = modules/env
+	url = https://github.com/vixcpp/env.git
+	branch = dev
+[submodule "modules/os"]
+	path = modules/os
+	url = https://github.com/vixcpp/os.git
+	branch = dev
+[submodule "modules/tests"]
+	path = modules/tests
+	url = https://github.com/vixcpp/tests.git
+	branch = dev
+[submodule "modules/process"]
+	path = modules/process
+	url = https://github.com/vixcpp/process.git
+	branch = dev

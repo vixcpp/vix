@@ -7,12 +7,7 @@ int main()
   {
     auto db = vix::db::Database::sqlite("vix.db");
 
-    auto conn = db.pool().acquire();
-    if (!conn->ping())
-    {
-      std::cerr << "DB ping failed\n";
-      return 1;
-    }
+    db.exec("CREATE TABLE IF NOT EXISTS healthcheck (id INTEGER PRIMARY KEY)");
 
     std::cout << "DB connected successfully\n";
     return 0;

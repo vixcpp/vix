@@ -11,24 +11,14 @@ int main()
         "",
         "vixdb");
 
-    auto &pool = db.pool();
+    db.exec(
+        "CREATE TABLE IF NOT EXISTS users ("
+        "id BIGINT PRIMARY KEY AUTO_INCREMENT, "
+        "name VARCHAR(255) NOT NULL)");
 
-    {
-      vix::db::PooledConn conn(pool);
+    db.exec("INSERT INTO users (name) VALUES (?)", "Gaspard");
 
-      conn->prepare(
-              "CREATE TABLE IF NOT EXISTS users ("
-              "id BIGINT AUTO_INCREMENT PRIMARY KEY, "
-              "name TEXT)")
-          ->exec();
-
-      conn->prepare(
-              "INSERT INTO users (name) VALUES (?)")
-          ->bind(1, std::string("Gaspard"));
-
-      std::cout << "[OK] inserted user\n";
-    }
-
+    std::cout << "[OK] inserted user\n";
     return 0;
   }
   catch (const std::exception &e)

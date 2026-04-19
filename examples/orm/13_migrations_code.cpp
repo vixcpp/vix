@@ -31,14 +31,17 @@ int main()
   try
   {
     auto db = vix::db::Database::sqlite("orm_migrations_code.db");
-    auto uow = vix::orm::unit_of_work(db);
+
+    vix::orm::UnitOfWork uow(db);
 
     CreateUsersTable migration;
     vix::db::MigrationsRunner runner(uow.conn());
+
     runner.add(&migration);
     runner.runAll();
 
     uow.commit();
+
     std::cout << "[OK] code migrations applied\n";
     return 0;
   }

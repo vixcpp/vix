@@ -40,6 +40,19 @@
   </tr>
 </table>
 
+Vix.cpp is a modern C++ runtime for building and running real-world applications with predictable performance and minimal friction.
+
+Learn more about the Vix runtime in the [documentation](https://vixcpp.com/docs).
+
+## Installation
+
+Install the Vix runtime on your system using one of the commands below.
+
+### <a href="https://vixcpp.com/install">Shell (Linux, macOS)</a>
+
+```bash
+curl -fsSL https://vixcpp.com/install.sh | bash
+
 ## Install
 
 ## <a href="https://vixcpp.com/install">Shell (Linux, macOS)</a>

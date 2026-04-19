@@ -61,7 +61,7 @@ namespace
     opt.enable_live_logs = false;
     opt.enable_peers = false;
 
-    opt.auth_legacy = [](vix::vhttp::Request &req, vix::vhttp::ResponseWrapper &res) -> bool
+    opt.auth_legacy = [](vix::http::Request &req, vix::http::ResponseWrapper &res) -> bool
     {
       const auto token = req.header("x-auth-token");
       if (token == "legacy-secret")

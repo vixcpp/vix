@@ -27,12 +27,12 @@
 
 using namespace vix::middleware;
 
-static vix::vhttp::Request make_req()
+static vix::http::Request make_req()
 {
-  vix::vhttp::Request::HeaderMap headers;
+  vix::http::Request::HeaderMap headers;
   headers["Host"] = "localhost";
 
-  return vix::vhttp::Request(
+  return vix::http::Request(
       "GET",
       "/x",
       std::move(headers),
@@ -42,8 +42,8 @@ static vix::vhttp::Request make_req()
 int main()
 {
   auto req = make_req();
-  vix::vhttp::Response raw_res;
-  vix::vhttp::ResponseWrapper w(raw_res);
+  vix::http::Response raw_res;
+  vix::http::ResponseWrapper w(raw_res);
 
   HttpPipeline p;
 

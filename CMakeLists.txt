@@ -208,11 +208,12 @@ option(VIX_ENABLE_WEBRPC           "Build Vix WebRPC module"                    
 option(VIX_ENABLE_TIME             "Build Vix Time module"                                        ON)
 option(VIX_TIME_BUILD_TESTS        "Build vix::time tests"                                        OFF)
 option(VIX_TIME_BUILD_BENCH        "Build vix::time benchmarks"                                   OFF)
-
+option(VIX_ENABLE_TESTS_MODULE     "Build Vix Tests module"                                       ON)
 option(VIX_ENABLE_TEMPLATE         "Build Vix Template module"                                    ON)
 option(VIX_TEMPLATE_BUILD_TESTS    "Build vix::template tests"                                    OFF)
 option(VIX_TEMPLATE_BUILD_EXAMPLES "Build vix::template examples"                                 OFF)
 option(VIX_TEMPLATE_BUILD_BENCH    "Build vix::template benchmarks"                               OFF)
+option(VIX_ENABLE_PROCESS          "Build Vix Process module"                                      ON)
 
 # ----------------------------------------------------
 # Tooling / Static analysis
@@ -407,12 +408,18 @@ if (VIX_ENABLE_HTTP_COMPRESSION)
   endif()
 endif()
 
-# Attach warnings/coverage to umbrella (propagates to consumers)
+# Attach warnings/coverage only for local builds.
+# Do not export them through the installed package.
 if (TARGET vix_warnings)
-  target_link_libraries(vix INTERFACE vix_warnings)
+  target_link_libraries(vix INTERFACE
+    $<BUILD_INTERFACE:vix_warnings>
+  )
 endif()
+
 if (TARGET vix_coverage)
-  target_link_libraries(vix INTERFACE vix_coverage)
+  target_link_libraries(vix INTERFACE
+    $<BUILD_INTERFACE:vix_coverage>
+  )
 endif()
 
 # Install include interface root
@@ -425,6 +432,54 @@ target_include_directories(vix INTERFACE
 # ----------------------------------------------------
 set(_VIX_JSON_BACKEND "none")
 set(JSON_TARGET "")
+
+# --- Error ---
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/error/CMakeLists.txt")
+  message(STATUS "Adding 'modules/error'...")
+  add_subdirectory(modules/error error_build)
+else()
+  message(FATAL_ERROR "Missing 'modules/error'. Run: git submodule update --init --recursive")
+endif()
+
+# --- Path ---
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/path/CMakeLists.txt")
+  message(STATUS "Adding 'modules/path'...")
+  add_subdirectory(modules/path path_build)
+else()
+  message(FATAL_ERROR "Missing 'modules/path'. Run: git submodule update --init --recursive")
+endif()
+
+# --- FS ---
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/fs/CMakeLists.txt")
+  message(STATUS "Adding 'modules/fs'...")
+  add_subdirectory(modules/fs fs_build)
+else()
+  message(FATAL_ERROR "Missing 'modules/fs'. Run: git submodule update --init --recursive")
+endif()
+
+# --- IO ---
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/io/CMakeLists.txt")
+  message(STATUS "Adding 'modules/io'...")
+  add_subdirectory(modules/io io_build)
+else()
+  message(FATAL_ERROR "Missing 'modules/io'. Run: git submodule update --init --recursive")
+endif()
+
+# --- Env ---
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/env/CMakeLists.txt")
+  message(STATUS "Adding 'modules/env'...")
+  add_subdirectory(modules/env env_build)
+else()
+  message(FATAL_ERROR "Missing 'modules/env'. Run: git submodule update --init --recursive")
+endif()
+
+# --- OS ---
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/os/CMakeLists.txt")
+  message(STATUS "Adding 'modules/os'...")
+  add_subdirectory(modules/os os_build)
+else()
+  message(FATAL_ERROR "Missing 'modules/os'. Run: git submodule update --init --recursive")
+endif()
 
 # --- JSON ---
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/json/CMakeLists.txt")
@@ -487,6 +542,33 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/utils/CMakeLists.txt")
   add_subdirectory(modules/utils utils_build)
 else()
   message(FATAL_ERROR "Missing 'modules/utils'. Run: git submodule update --init --recursive")
+endif()
+
+# --- Log ---
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/log/CMakeLists.txt")
+  message(STATUS "Adding 'modules/log'...")
+  add_subdirectory(modules/log log_build)
+else()
+  message(FATAL_ERROR "Missing 'modules/log'. Run: git submodule update --init --recursive")
+endif()
+
+# --- Tests (optional) ---
+set(VIX_HAS_TESTS OFF)
+
+if (VIX_ENABLE_TESTS_MODULE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/tests/CMakeLists.txt")
+  message(STATUS "Adding 'modules/tests'...")
+  add_subdirectory(modules/tests tests_build)
+
+  if (TARGET vix::tests OR TARGET vix_tests)
+    set(VIX_HAS_TESTS ON)
+    if (TARGET vix_tests AND NOT TARGET vix::tests)
+      add_library(vix::tests ALIAS vix_tests)
+    endif()
+  else()
+    message(WARNING "Tests module added but no vix::tests target was exported.")
+  endif()
+else()
+  message(STATUS "Tests module: disabled or not present.")
 endif()
 
 # --- Time (foundation module) ---
@@ -588,6 +670,24 @@ if (VIX_ENABLE_ASYNC AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/async/CMake
   endif()
 else()
   message(STATUS "Async: disabled or not present.")
+endif()
+
+# --- Process (optional) ---
+set(VIX_HAS_PROCESS OFF)
+if (VIX_ENABLE_PROCESS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/process/CMakeLists.txt")
+  message(STATUS "Adding 'modules/process'...")
+  add_subdirectory(modules/process process_build)
+
+  if (TARGET vix::process OR TARGET vix_process)
+    set(VIX_HAS_PROCESS ON)
+    if (TARGET vix_process AND NOT TARGET vix::process)
+      add_library(vix::process ALIAS vix_process)
+    endif()
+  else()
+    message(WARNING "Process module added but no vix::process target was exported.")
+  endif()
+else()
+  message(STATUS "Process: disabled or not present.")
 endif()
 
 # --- Core ---
@@ -883,10 +983,21 @@ endif()
 # Link umbrella to required module targets
 # ----------------------------------------------------
 target_link_libraries(vix INTERFACE
-  vix::core
+  vix::error
+  vix::path
+  vix::fs
+  vix::io
+  vix::env
+  vix::os
   vix::utils
+  vix::log
+  vix::core
   ${JSON_TARGET}
 )
+
+if (TARGET vix::tests)
+  target_link_libraries(vix INTERFACE vix::tests)
+endif()
 
 if (TARGET vix::time)
   target_link_libraries(vix INTERFACE vix::time)
@@ -918,6 +1029,10 @@ endif()
 
 if (TARGET vix::async)
   target_link_libraries(vix INTERFACE vix::async)
+endif()
+
+if (TARGET vix::process)
+  target_link_libraries(vix INTERFACE vix::process)
 endif()
 
 if (TARGET vix::p2p)
@@ -1088,25 +1203,25 @@ if (VIX_BUILD_TESTS)
        "${CMAKE_CURRENT_SOURCE_DIR}/tests/*_test.cpp")
 
   if (VIX_TEST_SOURCES)
-    add_executable(vix_tests ${VIX_TEST_SOURCES})
-    target_link_libraries(vix_tests PRIVATE
+    add_executable(vix_umbrella_tests ${VIX_TEST_SOURCES})
+    target_link_libraries(vix_umbrella_tests PRIVATE
       vix::vix
       GTest::gtest
       GTest::gtest_main
     )
 
     if (TARGET vix_warnings)
-      target_link_libraries(vix_tests PRIVATE vix_warnings)
+      target_link_libraries(vix_umbrella_tests PRIVATE vix_warnings)
     endif()
 
-    vix_enable_sanitizers(vix_tests)
+    vix_enable_sanitizers(vix_umbrella_tests)
 
     if (TARGET vix_coverage)
-      target_link_libraries(vix_tests PRIVATE vix_coverage)
+      target_link_libraries(vix_umbrella_tests PRIVATE vix_coverage)
     endif()
 
     include(GoogleTest)
-    gtest_discover_tests(vix_tests
+    gtest_discover_tests(vix_umbrella_tests
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
       DISCOVERY_MODE PRE_TEST
     )
@@ -1170,7 +1285,7 @@ endif()
 
 if (VIX_ENABLE_INSTALL)
 
-  foreach(_m core utils json websocket webrpc crypto time conversion validation async net cache sync p2p p2p_http middleware db orm template)
+  foreach(_m error path fs io env os log tests core utils json websocket webrpc crypto time conversion validation async process net cache sync p2p p2p_http middleware db orm template)
     if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/${_m}/include")
       install(DIRECTORY "modules/${_m}/include/"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
@@ -1181,6 +1296,27 @@ if (VIX_ENABLE_INSTALL)
       )
     endif()
   endforeach()
+
+  # ----------------------------------------------------
+  # Install root umbrella header
+  # ----------------------------------------------------
+  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vix.hpp")
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/vix.hpp"
+      DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+    )
+  endif()
+
+  # ----------------------------------------------------
+  # Install umbrella public headers (vix/*.hpp)
+  # ----------------------------------------------------
+  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vix")
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/vix/"
+      DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/vix"
+      FILES_MATCHING
+        PATTERN "*.hpp"
+        PATTERN "*.h"
+    )
+  endif()
 
   # ---- Install Asio (submodule) ----
   set(_VIX_ASIO_INSTALL_SRC "${CMAKE_CURRENT_SOURCE_DIR}/third_party/asio-src/asio/include")
@@ -1204,14 +1340,6 @@ if (VIX_ENABLE_INSTALL)
 
   if (TARGET vix_thirdparty_asio)
     install(TARGETS vix_thirdparty_asio EXPORT VixTargets)
-  endif()
-
-  if (TARGET vix_warnings)
-    install(TARGETS vix_warnings EXPORT VixTargets)
-  endif()
-
-  if (TARGET vix_coverage)
-    install(TARGETS vix_coverage EXPORT VixTargets)
   endif()
 
   # ---- Config files ----
@@ -1272,6 +1400,13 @@ if (VIX_ENABLE_INSTALL)
   set(VIX_HAS_VALIDATION  ${VIX_HAS_VALIDATION})
   set(VIX_WITH_VALIDATION ${VIX_WITH_VALIDATION})
 
+  set(VIX_HAS_TESTS ${VIX_HAS_TESTS})
+
+  set(VIX_WITH_TESTS OFF)
+  if (VIX_HAS_TESTS)
+    set(VIX_WITH_TESTS ON)
+  endif()
+
   configure_package_config_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/VixConfig.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/VixConfig.cmake"
@@ -1306,10 +1441,12 @@ endif()
 message(STATUS "------------------------------------------------------")
 message(STATUS "Vix umbrella configured")
 message(STATUS "Project version   : ${PROJECT_VERSION}")
+message(STATUS "Tests module      : ${VIX_HAS_TESTS}")
 message(STATUS "JSON backend      : ${_VIX_JSON_BACKEND}")
 message(STATUS "Time module       : ${VIX_HAS_TIME}")
 message(STATUS "WebRPC built      : ${VIX_HAS_WEBRPC}")
 message(STATUS "WebSocket built   : ${VIX_HAS_WEBSOCKET}")
+message(STATUS "Process built     : ${VIX_HAS_PROCESS}")
 message(STATUS "ORM packaged      : ${VIX_HAS_ORM}")
 message(STATUS "DB built          : ${VIX_HAS_DB}")
 message(STATUS "P2P built         : ${VIX_HAS_P2P}")

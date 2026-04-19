@@ -10,24 +10,20 @@ int main()
   {
     auto db = vix::db::Database::sqlite("orm_qb_update.db");
 
-    {
-      auto conn = db.pool().acquire();
-      conn->prepare(
-              "CREATE TABLE IF NOT EXISTS users ("
-              "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-              "name TEXT NOT NULL, "
-              "age INTEGER NOT NULL)")
-          ->exec();
-      conn->prepare("DELETE FROM users")->exec();
+    db.exec(
+        "CREATE TABLE IF NOT EXISTS users ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "name TEXT NOT NULL, "
+        "age INTEGER NOT NULL)");
 
-      auto insert = conn->prepare("INSERT INTO users (name, age) VALUES (?, ?)");
-      insert->bind(1, std::string("Alice"));
-      insert->bind(2, static_cast<std::int64_t>(20));
-      insert->exec();
-    }
+    db.exec("DELETE FROM users");
+
+    db.exec("INSERT INTO users (name, age) VALUES (?, ?)",
+            std::string("Alice"),
+            static_cast<std::int64_t>(20));
 
     {
-      auto conn = db.pool().acquire();
+      vix::db::PooledConn conn(db.pool());
 
       vix::orm::QueryBuilder qb;
       qb.raw("UPDATE users SET age = ? WHERE name = ?")
@@ -40,11 +36,9 @@ int main()
     }
 
     {
-      auto conn = db.pool().acquire();
-      auto st = conn->prepare("SELECT name, age FROM users");
-      auto rs = st->query();
+      auto rs = db.query("SELECT name, age FROM users");
 
-      while (rs->next())
+      while (rs && rs->next())
       {
         const auto &row = rs->row();
         std::cout << row.getString(0) << " " << row.getInt64(1) << "\n";

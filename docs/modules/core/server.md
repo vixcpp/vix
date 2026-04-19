@@ -172,7 +172,7 @@ vix::server::HTTPServer server(cfg, exec);
 
 auto r = server.getRouter();
 r->add_route(boost::beast::http::verb::get, "/health",
-             std::make_shared<vix::vhttp::RequestHandler<...>>(...));
+             std::make_shared<vix::http::RequestHandler<...>>(...));
 
 server.run();
 

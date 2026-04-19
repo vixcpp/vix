@@ -10,15 +10,11 @@ int main()
   {
     auto db = vix::db::Database::sqlite("orm_uow.db");
 
-    {
-      auto conn = db.pool().acquire();
-      conn->prepare(
-              "CREATE TABLE IF NOT EXISTS users ("
-              "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-              "name TEXT NOT NULL, "
-              "age INTEGER NOT NULL)")
-          ->exec();
-    }
+    db.exec(
+        "CREATE TABLE IF NOT EXISTS users ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "name TEXT NOT NULL, "
+        "age INTEGER NOT NULL)");
 
     auto uow = vix::orm::unit_of_work(db);
 

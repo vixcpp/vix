@@ -22,10 +22,10 @@
 
 using namespace vix::middleware;
 
-static vix::vhttp::RawRequest make_req(std::string ip)
+static vix::http::RawRequest make_req(std::string ip)
 {
   namespace http = boost::beast::http;
-  vix::vhttp::RawRequest req{http::verb::get, "/x", 11};
+  vix::http::RawRequest req{http::verb::get, "/x", 11};
   req.set(http::field::host, "localhost");
   req.set("X-Forwarded-For", std::move(ip));
   req.prepare_payload();
@@ -41,8 +41,8 @@ int main()
     auto raw = make_req("1.2.3.4");
     http::response<http::string_body> res;
 
-    vix::vhttp::Request req(raw, {});
-    vix::vhttp::ResponseWrapper w(res);
+    vix::http::Request req(raw, {});
+    vix::http::ResponseWrapper w(res);
 
     vix::middleware::security::IpFilterOptions opt;
     opt.deny = {"1.2.3.4"};
@@ -65,8 +65,8 @@ int main()
     auto raw = make_req("9.9.9.9");
     http::response<http::string_body> res;
 
-    vix::vhttp::Request req(raw, {});
-    vix::vhttp::ResponseWrapper w(res);
+    vix::http::Request req(raw, {});
+    vix::http::ResponseWrapper w(res);
 
     vix::middleware::security::IpFilterOptions opt;
     opt.allow = {"9.9.9.9"};
@@ -89,8 +89,8 @@ int main()
     auto raw = make_req("2.2.2.2");
     http::response<http::string_body> res;
 
-    vix::vhttp::Request req(raw, {});
-    vix::vhttp::ResponseWrapper w(res);
+    vix::http::Request req(raw, {});
+    vix::http::ResponseWrapper w(res);
 
     vix::middleware::security::IpFilterOptions opt;
     opt.allow = {"9.9.9.9"};

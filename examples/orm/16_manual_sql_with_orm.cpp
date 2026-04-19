@@ -38,24 +38,18 @@ int main()
   {
     auto db = vix::db::Database::sqlite("orm_manual_sql.db");
 
-    {
-      auto conn = db.pool().acquire();
-      conn->prepare(
-              "CREATE TABLE IF NOT EXISTS users ("
-              "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-              "name TEXT NOT NULL)")
-          ->exec();
-    }
+    db.exec(
+        "CREATE TABLE IF NOT EXISTS users ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "name TEXT NOT NULL)");
 
-    auto repo = vix::orm::repository<User>(db, "users");
+    vix::orm::BaseRepository<User> repo(db.pool(), "users");
     repo.create(User{0, "Alice"});
     repo.create(User{0, "Bob"});
 
-    auto conn = db.pool().acquire();
-    auto st = conn->prepare("SELECT COUNT(*) FROM users");
-    auto rs = st->query();
+    auto rs = db.query("SELECT COUNT(*) FROM users");
 
-    if (rs->next())
+    if (rs && rs->next())
     {
       std::cout << "[OK] total users=" << rs->row().getInt64(0) << "\n";
     }

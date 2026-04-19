@@ -41,14 +41,14 @@ struct vix::orm::Mapper<User>
   }
 };
 
-class UserRepository : public vix::orm::Repository<User>
+class UserRepository : public vix::orm::BaseRepository<User>
 {
 public:
-  using vix::orm::Repository<User>::Repository;
+  using vix::orm::BaseRepository<User>::BaseRepository;
 
   std::optional<User> findByEmail(const std::string &email)
   {
-    auto conn = this->pool().acquire();
+    vix::db::PooledConn conn(this->pool());
     auto st = conn->prepare("SELECT id, name, email FROM users WHERE email = ? LIMIT 1");
     st->bind(1, email);
 
@@ -68,15 +68,11 @@ int main()
   {
     auto db = vix::db::Database::sqlite("orm_custom_repo.db");
 
-    {
-      auto conn = db.pool().acquire();
-      conn->prepare(
-              "CREATE TABLE IF NOT EXISTS users ("
-              "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-              "name TEXT NOT NULL, "
-              "email TEXT NOT NULL)")
-          ->exec();
-    }
+    db.exec(
+        "CREATE TABLE IF NOT EXISTS users ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "name TEXT NOT NULL, "
+        "email TEXT NOT NULL)");
 
     UserRepository repo(db.pool(), "users");
     repo.create(User{0, "Alice", "alice@example.com"});

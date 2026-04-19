@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -8,9 +9,9 @@ void worker(vix::db::ConnectionPool &pool, int id)
 {
   vix::db::PooledConn conn(pool);
 
-  conn->prepare(
-          "INSERT INTO users (name) VALUES (?)")
-      ->bind(1, std::string("worker_" + std::to_string(id)));
+  auto stmt = conn->prepare("INSERT INTO users (name) VALUES (?)");
+  stmt->bind(1, std::string("worker_" + std::to_string(id)));
+  stmt->exec();
 
   std::cout << "[thread] inserted " << id << "\n";
 }
@@ -25,10 +26,11 @@ int main()
 
     {
       vix::db::PooledConn conn(pool);
+
       conn->prepare(
               "CREATE TABLE IF NOT EXISTS users ("
               "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-              "name TEXT)")
+              "name TEXT NOT NULL)")
           ->exec();
     }
 
@@ -45,7 +47,6 @@ int main()
     }
 
     std::cout << "[OK] done\n";
-
     return 0;
   }
   catch (const std::exception &e)

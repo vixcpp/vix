@@ -34,14 +34,14 @@ static void runCodeMigrations(vix::db::Database &db)
 {
   std::cout << "[migrations] running code migrations...\n";
 
-  vix::db::Transaction tx(db.pool());
+  db.transaction([&](vix::db::Connection &conn)
+                 {
+    CreateUsersTable migration;
 
-  CreateUsersTable migration;
-  vix::db::MigrationsRunner runner(tx.conn());
-  runner.add(&migration);
-  runner.runAll();
+    vix::db::MigrationsRunner runner(conn);
+    runner.add(&migration);
+    runner.runAll(); });
 
-  tx.commit();
   std::cout << "[migrations] done (code)\n";
 }
 
@@ -51,13 +51,12 @@ static void runFileMigrations(vix::db::Database &db,
   std::cout << "[migrations] running file migrations from: "
             << dir.string() << "\n";
 
-  vix::db::Transaction tx(db.pool());
+  db.transaction([&](vix::db::Connection &conn)
+                 {
+    vix::db::FileMigrationsRunner runner(conn, std::move(dir));
+    runner.setTable("schema_migrations");
+    runner.applyAll(); });
 
-  vix::db::FileMigrationsRunner runner(tx.conn(), std::move(dir));
-  runner.setTable("schema_migrations");
-  runner.applyAll();
-
-  tx.commit();
   std::cout << "[migrations] done (files)\n";
 }
 
