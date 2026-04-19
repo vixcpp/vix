@@ -26,6 +26,6 @@
 #ifndef VIX_CACHE_HPP
 #define VIX_CACHE_HPP
 
-#include <vix/cache/cache.hpp>
+#include <vix/cache/all.hpp>
 
 #endif // VIX_CACHE_HPP

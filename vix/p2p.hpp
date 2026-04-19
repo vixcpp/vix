@@ -27,6 +27,6 @@
 #ifndef VIX_P2P_HPP
 #define VIX_P2P_HPP
 
-#include <vix/p2p/p2p.hpp>
+#include <vix/p2p/all.hpp>
 
 #endif // VIX_P2P_HPP
