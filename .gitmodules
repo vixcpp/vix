@@ -127,3 +127,7 @@
 	path = modules/tests
 	url = https://github.com/vixcpp/tests.git
 	branch = dev
+[submodule "modules/process"]
+	path = modules/process
+	url = https://github.com/vixcpp/process.git
+	branch = dev
