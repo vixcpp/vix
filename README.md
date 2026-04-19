@@ -52,7 +52,7 @@ Install the Vix runtime on your system using one of the commands below.
 
 ```bash
 curl -fsSL https://vixcpp.com/install.sh | bash
-
+```
 ## Install
 
 ## <a href="https://vixcpp.com/install">Shell (Linux, macOS)</a>
