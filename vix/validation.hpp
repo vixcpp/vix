@@ -27,6 +27,6 @@
 #ifndef VIX_VALIDATION_HPP
 #define VIX_VALIDATION_HPP
 
-#include <vix/validation/validation.hpp>
+#include <vix/validation/all.hpp>
 
 #endif // VIX_VALIDATION_HPP

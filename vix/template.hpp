@@ -26,6 +26,6 @@
 #ifndef VIX_TEMPLATE_HPP
 #define VIX_TEMPLATE_HPP
 
-#include <vix/template/template.hpp>
+#include <vix/template/all.hpp>
 
 #endif // VIX_TEMPLATE_HPP
