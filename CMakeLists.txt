@@ -213,6 +213,7 @@ option(VIX_ENABLE_TEMPLATE         "Build Vix Template module"                  
 option(VIX_TEMPLATE_BUILD_TESTS    "Build vix::template tests"                                    OFF)
 option(VIX_TEMPLATE_BUILD_EXAMPLES "Build vix::template examples"                                 OFF)
 option(VIX_TEMPLATE_BUILD_BENCH    "Build vix::template benchmarks"                               OFF)
+option(VIX_ENABLE_PROCESS          "Build Vix Process module"                                      ON)
 
 # ----------------------------------------------------
 # Tooling / Static analysis
@@ -671,6 +672,24 @@ else()
   message(STATUS "Async: disabled or not present.")
 endif()
 
+# --- Process (optional) ---
+set(VIX_HAS_PROCESS OFF)
+if (VIX_ENABLE_PROCESS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/process/CMakeLists.txt")
+  message(STATUS "Adding 'modules/process'...")
+  add_subdirectory(modules/process process_build)
+
+  if (TARGET vix::process OR TARGET vix_process)
+    set(VIX_HAS_PROCESS ON)
+    if (TARGET vix_process AND NOT TARGET vix::process)
+      add_library(vix::process ALIAS vix_process)
+    endif()
+  else()
+    message(WARNING "Process module added but no vix::process target was exported.")
+  endif()
+else()
+  message(STATUS "Process: disabled or not present.")
+endif()
+
 # --- Core ---
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/core/CMakeLists.txt")
   message(STATUS "Adding 'modules/core'...")
@@ -1012,6 +1031,10 @@ if (TARGET vix::async)
   target_link_libraries(vix INTERFACE vix::async)
 endif()
 
+if (TARGET vix::process)
+  target_link_libraries(vix INTERFACE vix::process)
+endif()
+
 if (TARGET vix::p2p)
   target_link_libraries(vix INTERFACE vix::p2p)
 endif()
@@ -1262,7 +1285,7 @@ endif()
 
 if (VIX_ENABLE_INSTALL)
 
-  foreach(_m error path fs io env os log tests core utils json websocket webrpc crypto time conversion validation async net cache sync p2p p2p_http middleware db orm template)
+  foreach(_m error path fs io env os log tests core utils json websocket webrpc crypto time conversion validation async process net cache sync p2p p2p_http middleware db orm template)
     if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/${_m}/include")
       install(DIRECTORY "modules/${_m}/include/"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
@@ -1423,6 +1446,7 @@ message(STATUS "JSON backend      : ${_VIX_JSON_BACKEND}")
 message(STATUS "Time module       : ${VIX_HAS_TIME}")
 message(STATUS "WebRPC built      : ${VIX_HAS_WEBRPC}")
 message(STATUS "WebSocket built   : ${VIX_HAS_WEBSOCKET}")
+message(STATUS "Process built     : ${VIX_HAS_PROCESS}")
 message(STATUS "ORM packaged      : ${VIX_HAS_ORM}")
 message(STATUS "DB built          : ${VIX_HAS_DB}")
 message(STATUS "P2P built         : ${VIX_HAS_P2P}")

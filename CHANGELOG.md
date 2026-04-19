@@ -37,6 +37,7 @@ The following modules are now fully integrated into the Vix ecosystem:
 - `log`
 - `os`
 - `path`
+- `process`
 - `tests`
 
 These modules follow the Vix philosophy:
@@ -68,6 +69,7 @@ All modules now expose a single entry point:
 - `vix/p2p.hpp`
 - `vix/p2p_http.hpp`
 - `vix/path.hpp`
+- `vix/process.hpp`
 - `vix/sync.hpp`
 - `vix/template.hpp`
 - `vix/tests.hpp`
@@ -129,23 +131,6 @@ New examples included for:
 - websocket configuration
 
 ---
-
-## Build System & Packaging
-
-- Fix CMake export issues caused by `vix_warnings` leaking into public interfaces
-- All modules now correctly use `PRIVATE` for build-only helpers (`vix_warnings`, `vix_sanitizers`)
-- Removed invalid `INTERFACE` linkage of internal build targets
-- Fixed header-only modules incorrectly exporting build dependencies
-- Cleaned up `install(EXPORT ...)` usage (now only defined at umbrella level)
-- Standardized export behavior across all modules
-- Improved compatibility between standalone modules and umbrella builds
-
-### This ensures
-
-- reliable `install(EXPORT VixTargets)` generation
-- clean public API for consumers
-- no hidden or invalid dependencies in exported packages
-- consistent behavior across all modules
 
 ## Database Integration Improvements
 
@@ -279,7 +264,6 @@ A large set of new examples has been added across modules.
 ---
 
 > Vix.cpp continues to evolve toward a production-ready C++ runtime with a strong focus on clarity, reliability, and real-world usability.
-
 ## [v2.3.1] - 2026-04-13
 
 ### Fixed
