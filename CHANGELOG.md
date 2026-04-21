@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+# v2.5.1
+
+## Fixes
+
+- core: close HTTP sessions on EOF instead of looping (prevents infinite loops and improves connection handling)
+- async: suppress false-positive `-Wnull-dereference` warning around Asio headers using diagnostic push/pop
+
+## Improvements
+
+- websocket: remove unused `set_affinity` placeholder function (code cleanup)
+
+## Notes
+
+This release focuses on stability and code quality:
+
+- Fixes a critical issue in HTTP session lifecycle that could cause infinite loops on EOF
+- Cleans up compiler warnings to ensure a stricter and cleaner build
+- Removes dead code in the websocket module for better maintainability
+
 # v2.5.0
 
 ## Highlights
