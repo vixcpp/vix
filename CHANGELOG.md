@@ -8,6 +8,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+# v2.5.0
+
+## Highlights
+
+This release focuses on runtime stability, cleaner shutdown behavior, and better reliability in HTTP + WebSocket applications.
+
+A major part of this work came from debugging real issues inside a large production-style C++ application.
+The result is a much stronger Vix runtime, especially around shutdown flow, async cleanup, and WebSocket session writes.
+
+## Fixed
+
+### Core
+- Stabilized `App::close()` shutdown flow
+- Improved HTTP server stop and join behavior
+- Fixed thread shutdown ordering in `HTTPServer`
+- Restored multi-threaded HTTP I/O workers after temporary debugging constraints
+- Removed temporary debug traces from core shutdown paths
+
+### Async
+- Improved scheduler shutdown behavior
+- Stabilized async runtime stop flow
+- Improved `asio_net_service` lifecycle management
+- Added safer stop/join handling for the async network service
+
+### WebSocket
+- Fixed complex shutdown issues in mixed HTTP + WebSocket runtimes
+- Improved `AttachedRuntime` shutdown coordination
+- Stabilized low-level WebSocket server stop and join flow
+- Fixed WebSocket session write flush lifecycle issues
+- Fixed session lifetime issues during detached async write operations
+- Restored missing write path pieces and cleaned up write queue handling
+- Removed temporary debug traces from WebSocket runtime code
+
+## Reliability improvements
+
+This release significantly improves behavior in scenarios involving:
+- repeated browser refreshes
+- multiple WebSocket clients
+- server shutdown with active connections
+- async cancellation during shutdown
+- thread join ordering
+- WebSocket write flush safety
+
+## Performance
+
+- Restored multi-threaded HTTP I/O performance after debugging
+- Kept the runtime stable while removing temporary bottlenecks introduced during bug isolation
+
+## Internal notes
+
+This version was heavily validated through real debugging sessions on a large C++ codebase with complex concurrency behavior.
+Several difficult bugs were tracked down, including shutdown ordering problems, deadlocks, invalid session lifetime handling, and async cleanup issues.
+
+## Upgrade notes
+
+If you use Vix for HTTP + WebSocket applications, this release is recommended.
+
+It contains important fixes for:
+- shutdown stability
+- session write handling
+- async runtime cleanup
+- mixed HTTP + WebSocket server lifecycle behavior
+
+## Additional improvements
+
+### Performance
+- Added a dedicated `/bench` fast path for benchmark builds
+- Improved the HTTP benchmark path in `VIX_BENCH_MODE`
+- Benchmarked at ~98k req/s on the `/bench` route in release benchmark mode
+- Kept benchmark-specific optimizations isolated from the standard HTTP runtime path
+
+### Build and module reliability
+- Fixed public Asio propagation from `vix::async` to dependent modules
+- Improved umbrella build consistency for modules using async networking headers
+- Cleaned up conditional compilation paths for benchmark-only helpers
+- Reduced warning noise in core and platform-specific sources
+
+### Process module
+- Fixed POSIX platform warnings
+- Improved non-Linux helper isolation in process spawning internals
+- Cleaned up `noreturn`, unused parameter, and unused helper issues
+
 # Vix.cpp v2.4.0
 
 A major step forward for the Vix ecosystem.

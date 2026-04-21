@@ -53,13 +53,6 @@ Install Vix using the official installer:
 ```bash
 curl -fsSL https://vixcpp.com/install.sh | bash
 ```
-## Install
-
-## <a href="https://vixcpp.com/install">Shell (Linux, macOS)</a>
-
-```bash
-curl -fsSL https://vixcpp.com/install.sh | bash
-```
 
 ## <a href="https://vixcpp.com/install">PowerShell (Windows)</a>
 
@@ -109,8 +102,6 @@ vix run server.cpp
 ```
 
 → http://localhost:8080
-
----
 
 ## Install a framework in 1 command
 
@@ -186,12 +177,23 @@ Vix removes that.
 ## Performance
 
 Stable under sustained load.
+Vix v2.5.0 delivers a major performance improvement over v2.4.0 on the `/bench` route.
 
-| Metric        | Value          |
-|--------------|----------------|
-| Requests/sec | ~66k – 68k     |
-| Avg Latency  | ~13–20 ms      |
-| P99 Latency  | ~17–50 ms      |
+### v2.4.0
+
+| Metric        | Value        |
+|---------------|--------------|
+| Requests/sec  | ~66k to 68k  |
+| Avg Latency   | ~13 to 20 ms |
+| P99 Latency   | ~17 to 50 ms |
+
+### v2.5.0
+
+| Metric        | Value        |
+|---------------|--------------|
+| Requests/sec  | ~98k         |
+| Avg Latency   | ~8.47 ms     |
+| P99 Latency   | ~14.01 ms    |
 
 ## Learn more
 
