@@ -44,6 +44,24 @@ Vix.cpp is a modern C++ runtime for building and running real-world applications
 
 Learn more about the Vix runtime in the [documentation](https://vixcpp.com/docs).
 
+## Production Proof
+
+Vix is not a concept. It runs real systems.
+
+### Softadastra PulseGrid
+
+A real-time monitoring system built and running in production with Vix.cpp.
+
+- HTTP monitoring
+- uptime tracking
+- real-time WebSocket streaming
+- production deployment
+
+🔗 https://pulsegrid.softadastra.com
+🔗 https://github.com/GaspardKirira/PulseGrid
+
+Used to build production systems like PulseGrid.
+
 ## Installation
 
 Install Vix using the official installer:
@@ -130,6 +148,7 @@ vix run main.cpp
 
 ## WebSocket
 
+
 ```cpp
 #include <memory>
 #include <vix/executor/RuntimeExecutor.hpp>
@@ -138,20 +157,65 @@ vix run main.cpp
 int main(){
   auto exec = std::make_shared<vix::executor::RuntimeExecutor>();
 
-  vix::websocket::App app{"config/config.json", exec};
+  vix::websocket::App app{".env", exec};
   auto &ws = app.server();
 
   ws.on_typed_message([](auto &,
                          const std::string &type,
                          const vix::json::kvs &payload)
   {
-    if (type == "chat.message")
-      return payload;
+    if (type == "chat.message") {
+      // echo / broadcast
+    }
   });
 
   app.run_blocking();
 }
 ```
+
+## API Documentation (HTTP + WebSocket)
+
+Vix automatically exposes a full API documentation.
+
+Start your app, then open:
+
+```
+http://localhost:8080/docs
+```
+
+You get:
+
+- HTTP API documentation
+- WebSocket endpoints
+- Interactive testing UI
+- No external dependencies (offline Swagger UI)
+
+The OpenAPI spec is available at:
+
+```
+http://localhost:8080/openapi.json
+```
+
+### Control docs with `vix run`
+
+Documentation can be enabled or disabled at runtime:
+
+```bash
+# Enable docs
+vix run app.cpp --docs
+
+# Disable docs
+vix run app.cpp --no-docs
+```
+
+### Why this matters
+
+Most systems treat documentation as an afterthought. Vix does not.
+
+- Docs are generated from the runtime
+- Always reflect the real system
+- Work offline
+- Include HTTP and WebSocket
 
 ## What Vix.cpp gives you
 

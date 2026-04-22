@@ -59,7 +59,7 @@ int main()
 
   auto exec = std::make_shared<vix::executor::RuntimeExecutor>();
 
-  App wsApp{"config/config.json", exec};
+  App wsApp{".env", exec};
   auto &ws = wsApp.server();
 
   WebSocketMetrics metrics;

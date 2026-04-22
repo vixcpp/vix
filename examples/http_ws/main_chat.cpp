@@ -12,82 +12,108 @@
  *
  */
 
+#include <string>
+
 #include <vix.hpp>
 #include <vix/websocket/AttachedRuntime.hpp>
-
-using namespace vix;
 
 int main()
 {
   vix::serve_http_and_ws(
-      "config/config.json", 8080,
-      [](App &app, auto &ws)
+      ".env",
+      8080,
+      [](vix::App &app, auto &ws)
       {
-        // HTTP: basic API for client bootstrapping
-        app.get("/", [](Request &, Response &res)
-                { res.json({"name", "Vix Chat Example",
-                            "description", "HTTP + WebSocket powered chat server",
-                            "framework", "Vix.cpp"}); });
+        app.get(
+            "/",
+            [](vix::Request &, vix::Response &res)
+            {
+              res.json({
+                  {"name", "Vix Chat Example"},
+                  {"description", "HTTP + WebSocket powered chat server"},
+                  {"framework", "Vix.cpp"},
+              });
+            });
 
-        app.get("/health", [](auto &, auto &res)
-                { res.json({"status", "ok",
-                            "service", "chat",
-                            "version", "1.0.0"}); });
+        app.get(
+            "/health",
+            [](auto &, auto &res)
+            {
+              res.json({
+                  {"status", "ok"},
+                  {"service", "chat"},
+                  {"version", "1.0.0"},
+              });
+            });
 
-        // WebSocket: chat protocol
+        // WebSocket protocol:
         //
-        // Client messages are expected as:
         // {
         //   "type": "chat.join" | "chat.message" | "chat.typing",
         //   "payload": {
-        //       "user": "Alice",
-        //       "text": "...",        // for chat.message
-        //       "room": "general"    // optional
+        //     "user": "Alice",
+        //     "text": "...",
+        //     "room": "general"
         //   }
         // }
-        ws.on_open([&ws](auto &session)
-                   {
-                (void)session;
 
-                // Notify everybody that a new connection is here
-                ws.broadcast_json("chat.system", {
-                    "user", "server",
-                    "text", "A new user connected to the chat 👋"
-                }); });
+        ws.on_open(
+            [&ws](auto &session)
+            {
+              (void)session;
+
+              ws.broadcast_json(
+                  "chat.system",
+                  {
+                      "user",
+                      "server",
+                      "text",
+                      "A new user connected to the chat",
+                  });
+            });
 
         ws.on_typed_message(
-            [&ws](auto &session,
-                  const std::string &type,
-                  const vix::json::kvs &payload)
+            [&ws](
+                auto &session,
+                const std::string &type,
+                const vix::json::kvs &payload)
             {
               (void)session;
 
               if (type == "chat.join")
               {
-                nlohmann::json j = vix::websocket::detail::ws_kvs_to_nlohmann(payload);
-                std::string user = j.at("user");
+                const nlohmann::json json_payload =
+                    vix::websocket::detail::ws_kvs_to_nlohmann(payload);
 
-                // Example: { "user": "Alice", "room": "general" }
-                ws.broadcast_json("chat.system",
-                                  {"user", user,
-                                   "text", user + " joined the chat 🚀"});
+                const std::string user = json_payload.value("user", "anonymous");
+
+                ws.broadcast_json(
+                    "chat.system",
+                    {
+                        "user",
+                        user,
+                        "text",
+                        user + " joined the chat",
+                    });
               }
               else if (type == "chat.message")
               {
-                // Example: { "user": "Alice", "text": "Hello!" }
                 ws.broadcast_json("chat.message", payload);
               }
               else if (type == "chat.typing")
               {
-                // Example: { "user": "Alice" }
                 ws.broadcast_json("chat.typing", payload);
               }
               else
               {
-                // Unknown type → optional debug
-                ws.broadcast_json("chat.unknown",
-                                  {"info", "Unknown message type",
-                                   "type", type});
+                ws.broadcast_json(
+                    "chat.unknown",
+                    {
+                        "info",
+                        "Unknown message type",
+                        "type",
+                        type,
+                    });
               }
             });
       });

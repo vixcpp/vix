@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Vix Realtime Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <main class="dashboard">
+      <header class="hero">
+        <h1>Vix Realtime Dashboard</h1>
+        <p>HTTP + WebSocket live status</p>
+      </header>
+
+      <section class="grid">
+        <article class="card">
+          <h2>Status</h2>
+          <p id="status-value">loading</p>
+        </article>
+
+        <article class="card">
+          <h2>Message</h2>
+          <p id="message-value">loading</p>
+        </article>
+
+        <article class="card">
+          <h2>Uptime</h2>
+          <p id="uptime-value">0s</p>
+        </article>
+
+        <article class="card">
+          <h2>Tick</h2>
+          <p id="tick-value">0</p>
+        </article>
+
+        <article class="card">
+          <h2>Active Clients</h2>
+          <p id="clients-value">0</p>
+        </article>
+      </section>
+
+      <section class="card">
+        <div class="actions">
+          <button id="refresh-btn">Refresh Snapshot</button>
+          <button id="status-btn">Check Status</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Event Log</h2>
+        <pre id="log-box"></pre>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
