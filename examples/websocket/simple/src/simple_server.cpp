@@ -77,8 +77,8 @@ int main()
 {
   using vix::websocket::Server;
 
-  // Load configuration from config/config.json
-  vix::config::Config cfg{"config/config.json"};
+  // Load configuration from .env
+  vix::config::Config cfg{".env"};
 
   // Runtime executor for async work
   auto exec = std::make_shared<vix::executor::RuntimeExecutor>();
@@ -97,7 +97,7 @@ int main()
                 "user",
                 "server",
                 "text",
-                "welcome to Softadastra Chat 👋",
+                "welcome to Softadastra Chat",
             });
       });
 

@@ -71,7 +71,6 @@ cmake/*
 *.bak
 db.sql
 revoir.md
-main.cpp
 .vix-scripts
 create-labels.sh
 *.key

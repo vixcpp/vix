@@ -8,6 +8,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+# v2.5.1
+
+## Fixes
+
+- core: close HTTP sessions on EOF instead of looping (prevents infinite loops and improves connection handling)
+- async: suppress false-positive `-Wnull-dereference` warning around Asio headers using diagnostic push/pop
+
+## Improvements
+
+- websocket: remove unused `set_affinity` placeholder function (code cleanup)
+
+## Examples
+
+- migrate all examples from `config/config.json` to `.env` configuration
+- remove legacy JSON config files across HTTP and WebSocket examples
+- update existing examples to use `RuntimeExecutor` instead of legacy threadpool API
+- align all examples with current Vix runtime architecture
+
+### New WebSocket examples (production-oriented)
+
+Added a complete set of real-world examples:
+
+- `01_minimal_ws` — minimal WebSocket server
+- `02_http_ws_basic` — HTTP + WebSocket integration
+- `03_chat_rooms` — room-based messaging
+- `04_chat_persistent` — persistent chat with SQLite
+- `05_chat_long_polling` — long-polling fallback bridge
+- `06_metrics_runtime` — runtime metrics + Prometheus endpoint
+- `07_client_runtime` — native WebSocket client
+- `08_realtime_dashboard` — full realtime dashboard (HTTP + WS + UI)
+
+These examples replace simple demos with **production-style implementations**.
+
+## Documentation
+
+- core: add OpenAPI + `/docs` section in README
+- websocket: improve README with clearer runtime usage and examples
+- highlight built-in API documentation:
+  - `/docs` → interactive Swagger UI
+  - `/openapi.json` → generated specification
+- emphasize offline-first documentation (no external CDN)
+
+## Configuration
+
+- standardize configuration system to `.env`
+- remove all references to `config/config.json`
+- add `.env.example` files across examples
+
+## Notes
+
+This release focuses on stability, consistency, and developer experience:
+
+- fixes a critical HTTP lifecycle issue that could cause infinite loops
+- cleans up compiler warnings for stricter builds
+- removes legacy code paths and outdated APIs
+- introduces a complete set of production-ready examples
+- unifies configuration around `.env`
+- improves documentation and API discoverability
+
+Vix continues to evolve from a runtime into a **complete backend system**:
+HTTP, WebSocket, API docs, and tooling — all integrated.
+
 # v2.5.0
 
 ## Highlights
