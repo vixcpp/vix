@@ -57,7 +57,7 @@ A real-time monitoring system built and running in production with Vix.cpp.
 - real-time WebSocket streaming
 - production deployment
 
-🔗 https://pulsegrid.softadastra.com
+🔗 https://pulsegrid.softadastra.com \
 🔗 https://github.com/GaspardKirira/PulseGrid
 
 Used to build production systems like PulseGrid.

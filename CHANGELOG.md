@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## v2.5.2
+
+### Added
+- Added a stable options-based `vix::print(...)` API.
+- Added `vix::print(vix::options{...}, ...)` for Python-like print customization.
+- Added dedicated `print_v2` examples for the new print API.
+
+### Changed
+- Preserved backward compatibility with the existing print API.
+- Started aligning internal print wrappers with the new stable print entry point.
+
+### Compatibility
+- No breaking changes.
+
 # v2.5.1
 
 ## Fixes
