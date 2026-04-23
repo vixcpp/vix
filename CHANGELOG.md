@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a stable options-based `vix::print(...)` API.
 - Added `vix::print(vix::options{...}, ...)` for Python-like print customization.
 - Added dedicated `print_v2` examples for the new print API.
+- Added a simple interactive `vix::input(...)` API for console applications.
+- Added dedicated `input` examples.
 - Added modular runtime error rules in the CLI for clearer diagnostics.
 - Added dedicated runtime handling for:
   - joinable thread destruction
@@ -38,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved runtime error prioritization so specialized concurrency diagnostics are shown before generic uncaught exception messages.
 - Improved template error reporting with clearer explanations and focused code frames.
 - Improved `vix run` interactive passthrough so console applications now forward stdin correctly and display runtime prompts immediately without delayed buffering.
+- Improved interactive PTY behavior in `vix run` by disabling local echo for forwarded runtime input.
+- Improved single-file script probing so lightweight headers such as `vix::print` and `vix::input` no longer force unnecessary CMake fallback.
 
 ### Compatibility
 - No breaking changes.
