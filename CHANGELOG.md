@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved CLI diagnostic formatting so only `error:`, `hint:`, and `at:` labels are colorized.
 - Improved runtime error prioritization so specialized concurrency diagnostics are shown before generic uncaught exception messages.
 - Improved template error reporting with clearer explanations and focused code frames.
+- Improved `vix run` interactive passthrough so console applications now forward stdin correctly and display runtime prompts immediately without delayed buffering.
 
 ### Compatibility
 - No breaking changes.
