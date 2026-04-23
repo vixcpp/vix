@@ -14,10 +14,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a stable options-based `vix::print(...)` API.
 - Added `vix::print(vix::options{...}, ...)` for Python-like print customization.
 - Added dedicated `print_v2` examples for the new print API.
+- Added modular runtime error rules in the CLI for clearer diagnostics.
+- Added dedicated runtime handling for:
+  - joinable thread destruction
+  - data race
+  - deadlock
+  - mutex misuse
+  - condition variable misuse
+  - future/promise misuse
+  - thread creation failure
+  - detached thread lifetime issues
+- Added modular template error rules for clearer compile-time diagnostics.
+- Added dedicated template handling for:
+  - missing `typename` before dependent types
+  - missing nested types / type aliases
+  - template argument mismatch
+  - template substitution failure
 
 ### Changed
 - Preserved backward compatibility with the existing print API.
 - Started aligning internal print wrappers with the new stable print entry point.
+- Improved CLI diagnostic formatting so only `error:`, `hint:`, and `at:` labels are colorized.
+- Improved runtime error prioritization so specialized concurrency diagnostics are shown before generic uncaught exception messages.
+- Improved template error reporting with clearer explanations and focused code frames.
 
 ### Compatibility
 - No breaking changes.
