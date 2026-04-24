@@ -67,6 +67,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved interactive PTY behavior in `vix run` by disabling local echo for forwarded runtime input.
 - Improved single-file script probing so lightweight headers such as `vix::print` and `vix::input` no longer force unnecessary CMake fallback.
 
+fix(cli): generalize vix include detection in ScriptProbe
+
+Replace the hardcoded list of known sub-module prefixes with a generic
+check: any #include <vix/...> or "vix/..." is now recognized as a Vix
+runtime header, and any use of the vix:: namespace is recognized as a
+Vix runtime symbol.
+
+This fixes CMake fallback not triggering for modules that were missing
+from the list (fs, env, error, path, utils, time, validation, ...).
+New modules are picked up automatically without any maintenance.
+
 ### Compatibility
 - No breaking changes.
 
