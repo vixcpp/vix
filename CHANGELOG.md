@@ -49,6 +49,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - missing `await_ready()`
   - missing `await_suspend()`
   - missing `await_resume()`
+  - deleting through a base class with a non-virtual destructor
+  - object slicing
+  - invalid `override`
+  - invalid downcast
 
 ### Changed
 - Preserved backward compatibility with the existing print API.
@@ -58,6 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved runtime rule ordering so more specific diagnostics match before broader fallback categories.
 - Improved template error reporting with clearer explanations and focused code frames.
 - Improved coroutine-related compile diagnostics with dedicated friendly messages for common coroutine protocol failures.
+- Improved polymorphism and inheritance diagnostics with dedicated friendly messages for common slicing, override, destructor, and downcast issues.
 - Improved `vix run` interactive passthrough so console applications now forward stdin correctly and display runtime prompts immediately without delayed buffering.
 - Improved interactive PTY behavior in `vix run` by disabling local echo for forwarded runtime input.
 - Improved single-file script probing so lightweight headers such as `vix::print` and `vix::input` no longer force unnecessary CMake fallback.
