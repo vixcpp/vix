@@ -26,18 +26,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - future/promise misuse
   - thread creation failure
   - detached thread lifetime issues
+  - empty container `front()` / `back()` access
+  - out-of-range container access
+  - invalid iterator dereference
+  - iterator invalidation
+  - dangling `std::string_view`
+  - dangling `std::span`
 - Added modular template error rules for clearer compile-time diagnostics.
 - Added dedicated template handling for:
   - missing `typename` before dependent types
   - missing nested types / type aliases
   - template argument mismatch
   - template substitution failure
+  - requires-expression failure
+  - concept constraint failure
+  - no matching constrained overload
+  - lambda capture lifetime issues
 
 ### Changed
 - Preserved backward compatibility with the existing print API.
 - Started aligning internal print wrappers with the new stable print entry point.
 - Improved CLI diagnostic formatting so only `error:`, `hint:`, and `at:` labels are colorized.
 - Improved runtime error prioritization so specialized concurrency diagnostics are shown before generic uncaught exception messages.
+- Improved runtime rule ordering so more specific diagnostics match before broader fallback categories.
 - Improved template error reporting with clearer explanations and focused code frames.
 - Improved `vix run` interactive passthrough so console applications now forward stdin correctly and display runtime prompts immediately without delayed buffering.
 - Improved interactive PTY behavior in `vix run` by disabling local echo for forwarded runtime input.
