@@ -42,6 +42,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - concept constraint failure
   - no matching constrained overload
   - lambda capture lifetime issues
+  - invalid coroutine return type
+  - missing `co_return` in coroutines
+  - invalid awaitable usage with `co_await`
+  - invalid coroutine `promise_type`
+  - missing `await_ready()`
+  - missing `await_suspend()`
+  - missing `await_resume()`
 
 ### Changed
 - Preserved backward compatibility with the existing print API.
@@ -50,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved runtime error prioritization so specialized concurrency diagnostics are shown before generic uncaught exception messages.
 - Improved runtime rule ordering so more specific diagnostics match before broader fallback categories.
 - Improved template error reporting with clearer explanations and focused code frames.
+- Improved coroutine-related compile diagnostics with dedicated friendly messages for common coroutine protocol failures.
 - Improved `vix run` interactive passthrough so console applications now forward stdin correctly and display runtime prompts immediately without delayed buffering.
 - Improved interactive PTY behavior in `vix run` by disabling local echo for forwarded runtime input.
 - Improved single-file script probing so lightweight headers such as `vix::print` and `vix::input` no longer force unnecessary CMake fallback.
