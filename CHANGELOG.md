@@ -78,6 +78,15 @@ This fixes CMake fallback not triggering for modules that were missing
 from the list (fs, env, error, path, utils, time, validation, ...).
 New modules are picked up automatically without any maintenance.
 
+Scripts using vix::io (or any stdin-reading API) were not receiving
+keyboard input because passthroughRuntime was set to false whenever
+useVixRuntime was true.
+
+- RunScript.cpp: pass passthroughRuntime=true unless --force-server
+- DirectScriptRunner.cpp: same fix in make_direct_script_plan
+- ScriptProbe.cpp: exclude vix/* headers from include_path_requires_fallback
+  to avoid redundant fallback path when usesVix already covers it
+
 ### Compatibility
 - No breaking changes.
 
