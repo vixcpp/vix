@@ -57,6 +57,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Support for `--bin` and `--out` to directly produce executables.
 - Added cross-compilation support for single-file builds via `--target`.
 - Added new CLI examples for single-file builds and binary export.
+- Added runtime target support in `vix run`:
+  - `docker://image` to run containers via Docker
+  - `container://image` alias for Docker runtime
+  - `ssh://user@host` to execute remote commands via SSH
+  - `http://` / `https://` to fetch URLs via curl
+- Added automatic runtime argument forwarding:
+  - All arguments after the target are now passed directly to the runtime
+  - No need for `--run` when using runtime targets
+  - Example: `vix run docker://nginx -p 8080:80`
+- Added direct binary execution support:
+  - `vix run ./app` runs a local executable
+- Added smart target resolution in `vix run`:
+  - Automatically resolves between script, binary, project, and runtime targets
 
 ### Changed
 - Preserved backward compatibility with the existing print API.
@@ -73,6 +86,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved `vix build` to reuse the script execution engine from `vix run` for single-file builds.
 - Improved CLI output by removing debug logs and ensuring clean production behavior.
 - Improved direct script runner performance and caching behavior.
+- Improved CLI argument parsing:
+  - Fixed positional argument overriding after target
+  - Ensured correct separation between CLI options and runtime arguments
+  - Runtime arguments are now reliably forwarded after the target
+- Improved container execution pipeline:
+  - Correct ordering of Docker arguments and image name
+  - Stable behavior for commands like `vix run docker://nginx -p 8080:80`
 
 ### Fixed
 - Fixed missing friendly compile-time error reporting in direct script mode.
@@ -82,6 +102,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed incorrect fallback behavior for DB and ORM scripts.
 - Fixed include detection by generalizing Vix header recognition (no more hardcoded module list).
 - Fixed scripts using `vix::io` not receiving stdin due to incorrect passthrough configuration.
+- Fixed CLI parsing bug where runtime arguments (e.g. `-p 8080:80`) could override the target
+- Fixed container execution failure due to missing image argument
+- Fixed inconsistent behavior between script mode and runtime targets
 
 ### Internal
 - Generalized Vix include detection in `ScriptProbe`:
@@ -91,6 +114,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated script execution pipeline:
   - `RunScript.cpp` and `DirectScriptRunner.cpp` now correctly enable passthrough runtime.
   - `ScriptProbe.cpp` avoids redundant fallback when Vix usage is already detected.
+- Introduced runtime dispatch layer in `RunCommand`:
+  - Unified execution flow for script, binary, project, and runtime targets
+  - Prepared foundation for future `vix deploy` and multi-runtime orchestration
 
 ### Compatibility
 - No breaking changes.
