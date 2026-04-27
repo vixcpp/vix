@@ -53,6 +53,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - object slicing
   - invalid `override`
   - invalid downcast
+- Added single-file binary export in `vix build`.
+  - Support for `--bin` and `--out` to directly produce executables.
+- Added cross-compilation support for single-file builds via `--target`.
+- Added new CLI examples for single-file builds and binary export.
 
 ### Changed
 - Preserved backward compatibility with the existing print API.
@@ -66,26 +70,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved `vix run` interactive passthrough so console applications now forward stdin correctly and display runtime prompts immediately without delayed buffering.
 - Improved interactive PTY behavior in `vix run` by disabling local echo for forwarded runtime input.
 - Improved single-file script probing so lightweight headers such as `vix::print` and `vix::input` no longer force unnecessary CMake fallback.
+- Improved `vix build` to reuse the script execution engine from `vix run` for single-file builds.
+- Improved CLI output by removing debug logs and ensuring clean production behavior.
+- Improved direct script runner performance and caching behavior.
 
-fix(cli): generalize vix include detection in ScriptProbe
+### Fixed
+- Fixed missing friendly compile-time error reporting in direct script mode.
+- Fixed runtime abort noise (`terminate`, `abort`) leaking into CLI output.
+- Fixed stdin not being forwarded correctly in direct script execution.
+- Fixed interactive prompt corruption in passthrough mode.
+- Fixed incorrect fallback behavior for DB and ORM scripts.
+- Fixed include detection by generalizing Vix header recognition (no more hardcoded module list).
+- Fixed scripts using `vix::io` not receiving stdin due to incorrect passthrough configuration.
 
-Replace the hardcoded list of known sub-module prefixes with a generic
-check: any #include <vix/...> or "vix/..." is now recognized as a Vix
-runtime header, and any use of the vix:: namespace is recognized as a
-Vix runtime symbol.
-
-This fixes CMake fallback not triggering for modules that were missing
-from the list (fs, env, error, path, utils, time, validation, ...).
-New modules are picked up automatically without any maintenance.
-
-Scripts using vix::io (or any stdin-reading API) were not receiving
-keyboard input because passthroughRuntime was set to false whenever
-useVixRuntime was true.
-
-- RunScript.cpp: pass passthroughRuntime=true unless --force-server
-- DirectScriptRunner.cpp: same fix in make_direct_script_plan
-- ScriptProbe.cpp: exclude vix/* headers from include_path_requires_fallback
-  to avoid redundant fallback path when usesVix already covers it
+### Internal
+- Generalized Vix include detection in `ScriptProbe`:
+  - Any `#include <vix/...>` or `"vix/..."` is now recognized automatically.
+  - Any usage of `vix::` namespace is detected as Vix runtime usage.
+  - New modules are supported without maintenance.
+- Updated script execution pipeline:
+  - `RunScript.cpp` and `DirectScriptRunner.cpp` now correctly enable passthrough runtime.
+  - `ScriptProbe.cpp` avoids redundant fallback when Vix usage is already detected.
 
 ### Compatibility
 - No breaking changes.
