@@ -8,6 +8,141 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [Unreleased]
+## v2.5.2
+
+### Added
+- Added a stable options-based `vix::print(...)` API.
+- Added `vix::print(vix::options{...}, ...)` for Python-like print customization.
+- Added dedicated `print_v2` examples for the new print API.
+- Added a simple interactive `vix::input(...)` API for console applications.
+- Added dedicated `input` examples.
+- Added modular runtime error rules in the CLI for clearer diagnostics.
+- Added dedicated runtime handling for:
+  - joinable thread destruction
+  - data race
+  - deadlock
+  - mutex misuse
+  - condition variable misuse
+  - future/promise misuse
+  - thread creation failure
+  - detached thread lifetime issues
+  - empty container `front()` / `back()` access
+  - out-of-range container access
+  - invalid iterator dereference
+  - iterator invalidation
+  - dangling `std::string_view`
+  - dangling `std::span`
+- Added modular template error rules for clearer compile-time diagnostics.
+- Added dedicated template handling for:
+  - missing `typename` before dependent types
+  - missing nested types / type aliases
+  - template argument mismatch
+  - template substitution failure
+  - requires-expression failure
+  - concept constraint failure
+  - no matching constrained overload
+  - lambda capture lifetime issues
+  - invalid coroutine return type
+  - missing `co_return` in coroutines
+  - invalid awaitable usage with `co_await`
+  - invalid coroutine `promise_type`
+  - missing `await_ready()`
+  - missing `await_suspend()`
+  - missing `await_resume()`
+  - deleting through a base class with a non-virtual destructor
+  - object slicing
+  - invalid `override`
+  - invalid downcast
+- Added single-file binary export in `vix build`.
+  - Support for `--bin` and `--out` to directly produce executables.
+- Added cross-compilation support for single-file builds via `--target`.
+- Added new CLI examples for single-file builds and binary export.
+- Added runtime target support in `vix run`:
+  - `docker://image` to run containers via Docker
+  - `container://image` alias for Docker runtime
+  - `ssh://user@host` to execute remote commands via SSH
+  - `http://` / `https://` to fetch URLs via curl
+- Added automatic runtime argument forwarding:
+  - All arguments after the target are now passed directly to the runtime
+  - No need for `--run` when using runtime targets
+  - Example: `vix run docker://nginx -p 8080:80`
+- Added direct binary execution support:
+  - `vix run ./app` runs a local executable
+- Added smart target resolution in `vix run`:
+  - Automatically resolves between script, binary, project, and runtime targets
+- Added optional HTTPS support in `vix::core`.
+  - TLS can be enabled from configuration using `SERVER_TLS_ENABLED`.
+  - Certificate and private key files can be configured with `SERVER_TLS_CERT_FILE` and `SERVER_TLS_KEY_FILE`.
+- Added a generic session transport abstraction for HTTP sessions.
+  - Plain TCP sessions now use `PlainTransport`.
+  - HTTPS sessions use `TlsTransport`.
+- Added `TlsConfig`, `TlsSession`, and `TlsTransport` for built-in HTTPS support.
+- Added `App::run(const vix::config::Config&)` and `App::listen(const vix::config::Config&, ...)`.
+- Added native TCP socket handle access in `vix::async::net::tcp_stream` for transport adapters.
+
+### Changed
+- Preserved backward compatibility with the existing print API.
+- Started aligning internal print wrappers with the new stable print entry point.
+- Improved CLI diagnostic formatting so only `error:`, `hint:`, and `at:` labels are colorized.
+- Improved runtime error prioritization so specialized concurrency diagnostics are shown before generic uncaught exception messages.
+- Improved runtime rule ordering so more specific diagnostics match before broader fallback categories.
+- Improved template error reporting with clearer explanations and focused code frames.
+- Improved coroutine-related compile diagnostics with dedicated friendly messages for common coroutine protocol failures.
+- Improved polymorphism and inheritance diagnostics with dedicated friendly messages for common slicing, override, destructor, and downcast issues.
+- Improved `vix run` interactive passthrough so console applications now forward stdin correctly and display runtime prompts immediately without delayed buffering.
+- Improved interactive PTY behavior in `vix run` by disabling local echo for forwarded runtime input.
+- Improved single-file script probing so lightweight headers such as `vix::print` and `vix::input` no longer force unnecessary CMake fallback.
+- Improved `vix build` to reuse the script execution engine from `vix run` for single-file builds.
+- Improved CLI output by removing debug logs and ensuring clean production behavior.
+- Improved direct script runner performance and caching behavior.
+- Improved CLI argument parsing:
+  - Fixed positional argument overriding after target
+  - Ensured correct separation between CLI options and runtime arguments
+  - Runtime arguments are now reliably forwarded after the target
+- Improved container execution pipeline:
+  - Correct ordering of Docker arguments and image name
+  - Stable behavior for commands like `vix run docker://nginx -p 8080:80`
+- Updated `Session` to run over a generic transport instead of being tied directly to plain TCP streams.
+- Updated `HTTPServer` to start plain HTTP or HTTPS sessions depending on TLS configuration.
+- Updated the server ready banner to display `HTTPS:` when TLS is enabled.
+- Documented the recommended production deployment model:
+  - Vix HTTP core behind a TLS-terminating reverse proxy such as Nginx, Caddy, or Traefik.
+  - Built-in HTTPS for local development, internal tools, and simple self-hosted deployments.
+
+### Fixed
+- Fixed missing friendly compile-time error reporting in direct script mode.
+- Fixed runtime abort noise (`terminate`, `abort`) leaking into CLI output.
+- Fixed stdin not being forwarded correctly in direct script execution.
+- Fixed interactive prompt corruption in passthrough mode.
+- Fixed incorrect fallback behavior for DB and ORM scripts.
+- Fixed include detection by generalizing Vix header recognition (no more hardcoded module list).
+- Fixed scripts using `vix::io` not receiving stdin due to incorrect passthrough configuration.
+- Fixed CLI parsing bug where runtime arguments (e.g. `-p 8080:80`) could override the target
+- Fixed container execution failure due to missing image argument
+- Fixed inconsistent behavior between script mode and runtime targets
+- Fixed `vix run` treating user-initiated `SIGINT` shutdowns as runtime failures.
+- Fixed TLS shutdown handling for clients that close connections during or after HTTPS benchmarks.
+- Fixed TLS peer disconnects being reported as server-side errors.
+- Fixed potential `SIGPIPE` termination when HTTPS clients close connections abruptly.
+
+### Internal
+- Generalized Vix include detection in `ScriptProbe`:
+  - Any `#include <vix/...>` or `"vix/..."` is now recognized automatically.
+  - Any usage of `vix::` namespace is detected as Vix runtime usage.
+  - New modules are supported without maintenance.
+- Updated script execution pipeline:
+  - `RunScript.cpp` and `DirectScriptRunner.cpp` now correctly enable passthrough runtime.
+  - `ScriptProbe.cpp` avoids redundant fallback when Vix usage is already detected.
+- Introduced runtime dispatch layer in `RunCommand`:
+  - Unified execution flow for script, binary, project, and runtime targets
+  - Prepared foundation for future `vix deploy` and multi-runtime orchestration
+- Introduced a transport boundary between the HTTP parser/session layer and the underlying connection type.
+- Added OpenSSL-backed TLS transport wiring while keeping the plain HTTP path available.
+- Added graceful fallback behavior when core is built without OpenSSL support.
+
+### Compatibility
+- No breaking changes.
+
 # v2.5.1
 
 ## Fixes

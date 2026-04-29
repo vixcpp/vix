@@ -1,6 +1,6 @@
 /**
  *
- * @file 01_server_port.cpp
+ * @file 02_https_with_config.cpp
  * @author Gaspard Kirira
  *
  * Copyright 2026, Gaspard Kirira. All rights reserved.
@@ -28,7 +28,14 @@ int main()
   App app;
 
   app.get("/", [](Request &, Response &res)
-          { res.send("Hello from config example"); });
+  {
+    res.send("Hello from Vix HTTPS config example");
+  });
+
+  app.get("/health", [](Request &, Response &res)
+  {
+    res.send("OK");
+  });
 
   app.run(cfg);
 

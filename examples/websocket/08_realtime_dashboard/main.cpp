@@ -225,7 +225,13 @@ namespace
 
   void stop_background_publisher(DashboardRuntime &runtime)
   {
-    runtime.publisher_running.store(false, std::memory_order_release);
+    const bool was_running =
+        runtime.publisher_running.exchange(false, std::memory_order_acq_rel);
+
+    if (!was_running)
+    {
+      return;
+    }
 
     if (runtime.publisher_thread.joinable())
     {
@@ -336,7 +342,51 @@ namespace
   void run(DashboardRuntime &runtime)
   {
     const int http_port = runtime.config.getServerPort();
-    vix::run_http_and_ws(runtime.app, runtime.ws, runtime.executor, http_port);
+
+    vix::register_ws_openapi_docs_once();
+
+    if (auto r = runtime.app.router())
+    {
+      vix::openapi::register_openapi_and_docs(*r, "Vix API", "1.33.0");
+    }
+
+    vix::websocket::AttachedRuntime attached{
+        runtime.app,
+        runtime.ws,
+        runtime.executor};
+
+    runtime.app.set_shutdown_callback(
+        [&runtime, &attached]()
+        {
+          stop_background_publisher(runtime);
+          attached.request_stop();
+        });
+
+    runtime.app.listen(
+        http_port,
+        [&]()
+        {
+          if (!runtime.app.has_server_ready_info())
+          {
+            vix::console.warn("server ready info not available");
+            return;
+          }
+
+          auto info = runtime.app.server_ready_info();
+          info.show_ws = true;
+          info.ws_scheme = "ws";
+          info.ws_host = "localhost";
+          info.ws_port = runtime.ws.port();
+          info.ws_path = "/";
+
+          vix::utils::RuntimeBanner::emit_server_ready(info);
+        });
+
+    runtime.app.wait();
+    runtime.app.close();
+
+    stop_background_publisher(runtime);
+    attached.finalize_shutdown();
   }
 } // namespace
 

@@ -1,6 +1,6 @@
 /**
  *
- * @file 01_server_port.cpp
+ * @file 01_https_basic.cpp
  * @author Gaspard Kirira
  *
  * Copyright 2026, Gaspard Kirira. All rights reserved.
@@ -12,7 +12,6 @@
  *
  */
 
-#include <iostream>
 #include <vix.hpp>
 
 using namespace vix;
@@ -21,14 +20,17 @@ int main()
 {
   config::Config cfg{".env"};
 
-  std::cout << "SERVER_PORT=" << cfg.getServerPort() << '\n';
-  std::cout << "SERVER_TLS_ENABLED="
-            << (cfg.isTlsEnabled() ? "true" : "false") << '\n';
-
   App app;
 
   app.get("/", [](Request &, Response &res)
-          { res.send("Hello from config example"); });
+  {
+    res.send("Hello from Vix HTTPS");
+  });
+
+  app.get("/bench", [](Request &, Response &res)
+  {
+    res.send("OK");
+  });
 
   app.run(cfg);
 
