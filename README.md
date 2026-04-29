@@ -21,9 +21,8 @@
 
 <p>
   <a href="https://vixcpp.com"><b>Website</b></a> ·
-  <a href="https://vixcpp.com/docs"><b>Docs</b></a> ·
-  <a href="https://vixcpp.com/install"><b>Install</b></a> ·
-  <a href="https://github.com/vixcpp/vix/releases"><b>Download</b></a>
+  <a href="https://docs.vixcpp.com"><b>Docs</b></a> ·
+  <a href="https://registry.vixcpp.com"><b>Registry</b></a>
 </p>
 
 </td>
@@ -42,7 +41,7 @@
 
 Vix.cpp is a modern C++ runtime for building and running real-world applications with predictable performance and minimal friction.
 
-Learn more about the Vix runtime in the [documentation](https://vixcpp.com/docs).
+Learn more about the Vix runtime in the [documentation](https://docs.vixcpp.com).
 
 ## Production Proof
 
@@ -121,6 +120,8 @@ vix run server.cpp
 
 → http://localhost:8080
 
+For production deployments, Vix is optimized to run behind a TLS-terminating reverse proxy such as Nginx, Caddy or Traefik, while built-in HTTPS is available for local development, internal tools and simple self-hosted deployments.
+
 ## Install a framework in 1 command
 
 ```bash
@@ -148,7 +149,6 @@ vix run main.cpp
 
 ## WebSocket
 
-
 ```cpp
 #include <memory>
 #include <vix/executor/RuntimeExecutor.hpp>
@@ -160,10 +160,7 @@ int main(){
   vix::websocket::App app{".env", exec};
   auto &ws = app.server();
 
-  ws.on_typed_message([](auto &,
-                         const std::string &type,
-                         const vix::json::kvs &payload)
-  {
+  ws.on_typed_message([](auto &, const std::string &type, const vix::json::kvs &payload){
     if (type == "chat.message") {
       // echo / broadcast
     }
@@ -241,9 +238,9 @@ Vix removes that.
 ## Performance
 
 Stable under sustained load.
-Vix v2.5.0 delivers a major performance improvement over v2.4.0 on the `/bench` route.
+Vix v2.5 delivers a major performance improvement over v2.4 on the `/bench` route.
 
-### v2.4.0
+### v2.4
 
 | Metric        | Value        |
 |---------------|--------------|
@@ -251,7 +248,7 @@ Vix v2.5.0 delivers a major performance improvement over v2.4.0 on the `/bench` 
 | Avg Latency   | ~13 to 20 ms |
 | P99 Latency   | ~17 to 50 ms |
 
-### v2.5.0
+### v2.5
 
 | Metric        | Value        |
 |---------------|--------------|
@@ -261,9 +258,9 @@ Vix v2.5.0 delivers a major performance improvement over v2.4.0 on the `/bench` 
 
 ## Learn more
 
-- Docs: https://vixcpp.com/docs
-- Registry: https://vixcpp.com/registry
-- Examples: https://vixcpp.com/docs/examples
+- Docs: https://docs.vixcpp.com
+- Registry: https://registry.vixcpp.com
+- Examples: https://docs.vixcpp.com/examples
 
 ## Contributing
 

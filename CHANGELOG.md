@@ -70,6 +70,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `vix run ./app` runs a local executable
 - Added smart target resolution in `vix run`:
   - Automatically resolves between script, binary, project, and runtime targets
+- Added optional HTTPS support in `vix::core`.
+  - TLS can be enabled from configuration using `SERVER_TLS_ENABLED`.
+  - Certificate and private key files can be configured with `SERVER_TLS_CERT_FILE` and `SERVER_TLS_KEY_FILE`.
+- Added a generic session transport abstraction for HTTP sessions.
+  - Plain TCP sessions now use `PlainTransport`.
+  - HTTPS sessions use `TlsTransport`.
+- Added `TlsConfig`, `TlsSession`, and `TlsTransport` for built-in HTTPS support.
+- Added `App::run(const vix::config::Config&)` and `App::listen(const vix::config::Config&, ...)`.
+- Added native TCP socket handle access in `vix::async::net::tcp_stream` for transport adapters.
 
 ### Changed
 - Preserved backward compatibility with the existing print API.
@@ -93,6 +102,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved container execution pipeline:
   - Correct ordering of Docker arguments and image name
   - Stable behavior for commands like `vix run docker://nginx -p 8080:80`
+- Updated `Session` to run over a generic transport instead of being tied directly to plain TCP streams.
+- Updated `HTTPServer` to start plain HTTP or HTTPS sessions depending on TLS configuration.
+- Updated the server ready banner to display `HTTPS:` when TLS is enabled.
+- Documented the recommended production deployment model:
+  - Vix HTTP core behind a TLS-terminating reverse proxy such as Nginx, Caddy, or Traefik.
+  - Built-in HTTPS for local development, internal tools, and simple self-hosted deployments.
 
 ### Fixed
 - Fixed missing friendly compile-time error reporting in direct script mode.
@@ -105,6 +120,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed CLI parsing bug where runtime arguments (e.g. `-p 8080:80`) could override the target
 - Fixed container execution failure due to missing image argument
 - Fixed inconsistent behavior between script mode and runtime targets
+- Fixed `vix run` treating user-initiated `SIGINT` shutdowns as runtime failures.
+- Fixed TLS shutdown handling for clients that close connections during or after HTTPS benchmarks.
+- Fixed TLS peer disconnects being reported as server-side errors.
+- Fixed potential `SIGPIPE` termination when HTTPS clients close connections abruptly.
 
 ### Internal
 - Generalized Vix include detection in `ScriptProbe`:
@@ -117,6 +136,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Introduced runtime dispatch layer in `RunCommand`:
   - Unified execution flow for script, binary, project, and runtime targets
   - Prepared foundation for future `vix deploy` and multi-runtime orchestration
+- Introduced a transport boundary between the HTTP parser/session layer and the underlying connection type.
+- Added OpenSSL-backed TLS transport wiring while keeping the plain HTTP path available.
+- Added graceful fallback behavior when core is built without OpenSSL support.
 
 ### Compatibility
 - No breaking changes.
