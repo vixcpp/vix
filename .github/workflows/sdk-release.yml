@@ -120,6 +120,7 @@ jobs:
             cmake "${COMMON_ARGS[@]}" \
               -DVIX_ENABLE_DB=OFF \
               -DVIX_ENABLE_ORM=OFF \
+              -DVIX_ENABLE_WEBSOCKET=OFF \
               -DVIX_DB_USE_SQLITE=OFF \
               -DVIX_DB_USE_MYSQL=OFF \
               -DVIX_DB_USE_POSTGRES=OFF \
