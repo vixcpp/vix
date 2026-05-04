@@ -1250,8 +1250,8 @@ find_package(OpenSSL QUIET)
 if (OpenSSL_FOUND AND TARGET OpenSSL::Crypto)
   set(VIX_WITH_OPENSSL ON)
 endif()
-set(VIX_WITH_MYSQL    OFF)    # do NOT require MySQL for consumers by default
-set(VIX_WITH_SQLITE   OFF)    # will be set ON only if websocket exists
+set(VIX_WITH_MYSQL    OFF)
+set(VIX_WITH_SQLITE   OFF)
 set(VIX_WITH_BOOST_FS OFF)
 
 set(VIX_WITH_ZLIB OFF)
@@ -1279,7 +1279,7 @@ if (VIX_HAS_P2P_HTTP)
   set(VIX_WITH_P2P_HTTP ON)
 endif()
 
-if (TARGET vix::websocket OR TARGET vix_websocket)
+if (VIX_HAS_DB AND VIX_DB_USE_SQLITE)
   set(VIX_WITH_SQLITE ON)
 endif()
 

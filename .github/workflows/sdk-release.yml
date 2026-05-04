@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Optional tag to build/release (e.g. v2.1.10). If empty, uses the current ref."
+        description: "Optional tag to build/release (e.g. v2.5.3). If empty, uses the current ref."
         required: false
         default: ""
 
@@ -20,22 +20,35 @@ concurrency:
 
 jobs:
   build-sdk:
-    name: build-sdk (${{ matrix.sdkos }} / ${{ matrix.arch }})
+    name: build-sdk (${{ matrix.variant }} / linux / x86_64)
+
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-24.04
+          - variant: core
+            os: ubuntu-24.04
             sdkos: linux
             arch: x86_64
+            asset: vix-sdk-linux-x86_64.tar.gz
+            install_dir: install-core
+            build_dir: build-core
 
-          - os: macos-14
-            sdkos: macos
-            arch: aarch64
-
-          - os: windows-2022
-            sdkos: windows
+          - variant: db
+            os: ubuntu-24.04
+            sdkos: linux
             arch: x86_64
+            asset: vix-sdk-db-linux-x86_64.tar.gz
+            install_dir: install-db
+            build_dir: build-db
+
+          - variant: full
+            os: ubuntu-24.04
+            sdkos: linux
+            arch: x86_64
+            asset: vix-sdk-full-linux-x86_64.tar.gz
+            install_dir: install-full
+            build_dir: build-full
 
     runs-on: ${{ matrix.os }}
 
@@ -58,10 +71,10 @@ jobs:
         uses: lukka/get-cmake@latest
 
       - name: Install deps (Linux)
-        if: runner.os == 'Linux'
         shell: bash
         run: |
           set -euxo pipefail
+
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential \
@@ -72,151 +85,172 @@ jobs:
             curl \
             unzip \
             zip \
+            tar \
             nlohmann-json3-dev \
             libssl-dev \
             zlib1g-dev \
             libsqlite3-dev \
             libbrotli-dev \
             libspdlog-dev \
-            libfmt-dev
+            libfmt-dev \
+            libmysqlcppconn-dev
 
-      - name: Install deps (macOS)
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          set -euxo pipefail
-          brew update
-          brew install cmake ninja pkg-config openssl@3 spdlog fmt nlohmann-json sqlite brotli
-
-      - name: Setup vcpkg (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          git clone https://github.com/microsoft/vcpkg $env:GITHUB_WORKSPACE\vcpkg
-          "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Append
-          cd $env:GITHUB_WORKSPACE\vcpkg
-          .\bootstrap-vcpkg.bat
-
-      - name: Vcpkg install (manifest, Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          Write-Host "VCPKG_ROOT=$env:VCPKG_ROOT"
-          cd $env:GITHUB_WORKSPACE
-
-          & "$env:VCPKG_ROOT\vcpkg.exe" install --triplet x64-windows --x-manifest-root "$env:GITHUB_WORKSPACE"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Configure (Unix)
-        if: runner.os != 'Windows'
+      - name: Configure SDK
         shell: bash
         run: |
           set -euxo pipefail
 
-          CMAKE_ARGS=(
-            -S . -B build -G Ninja
+          COMMON_ARGS=(
+            -S .
+            -B "${{ matrix.build_dir }}"
+            -G Ninja
             -DCMAKE_BUILD_TYPE=Release
             -DVIX_ENABLE_INSTALL=ON
-            -DVIX_DB_USE_MYSQL=OFF
-            -DVIX_CORE_WITH_MYSQL=OFF
-            -DVIX_ENABLE_HTTP_COMPRESSION=OFF
-            -DCMAKE_INSTALL_PREFIX="${GITHUB_WORKSPACE}/install"
+            -DVIX_BUILD_EXAMPLES=OFF
+            -DVIX_BUILD_TESTS=OFF
+            -DVIX_TIME_BUILD_TESTS=OFF
+            -DVIX_TIME_BUILD_BENCH=OFF
+            -DVIX_TEMPLATE_BUILD_TESTS=OFF
+            -DVIX_TEMPLATE_BUILD_EXAMPLES=OFF
+            -DVIX_TEMPLATE_BUILD_BENCH=OFF
+            -DCMAKE_INSTALL_PREFIX="${GITHUB_WORKSPACE}/${{ matrix.install_dir }}"
           )
 
-          if [ "${{ runner.os }}" = "macOS" ]; then
-            if command -v brew >/dev/null 2>&1; then
-              BREW_SSL="$(brew --prefix openssl@3 2>/dev/null || true)"
-              if [ -n "$BREW_SSL" ] && [ -d "$BREW_SSL" ]; then
-                CMAKE_ARGS+=(-DOPENSSL_ROOT_DIR="$BREW_SSL")
-                CMAKE_ARGS+=(-DCMAKE_PREFIX_PATH="$(brew --prefix)")
-              fi
-            fi
+          if [ "${{ matrix.variant }}" = "core" ]; then
+            cmake "${COMMON_ARGS[@]}" \
+              -DVIX_ENABLE_DB=OFF \
+              -DVIX_ENABLE_ORM=OFF \
+              -DVIX_DB_USE_SQLITE=OFF \
+              -DVIX_DB_USE_MYSQL=OFF \
+              -DVIX_DB_USE_POSTGRES=OFF \
+              -DVIX_DB_USE_REDIS=OFF \
+              -DVIX_CORE_WITH_MYSQL=OFF \
+              -DVIX_ENABLE_HTTP_COMPRESSION=OFF
           fi
 
-          cmake "${CMAKE_ARGS[@]}"
+          if [ "${{ matrix.variant }}" = "db" ]; then
+            cmake "${COMMON_ARGS[@]}" \
+              -DVIX_ENABLE_DB=ON \
+              -DVIX_ENABLE_ORM=OFF \
+              -DVIX_DB_USE_SQLITE=ON \
+              -DVIX_DB_USE_MYSQL=ON \
+              -DVIX_DB_USE_POSTGRES=OFF \
+              -DVIX_DB_USE_REDIS=OFF \
+              -DVIX_CORE_WITH_MYSQL=OFF \
+              -DVIX_ENABLE_HTTP_COMPRESSION=OFF
+          fi
 
-      - name: Build (Unix)
-        if: runner.os != 'Windows'
+          if [ "${{ matrix.variant }}" = "full" ]; then
+            cmake "${COMMON_ARGS[@]}" \
+              -DVIX_ENABLE_DB=ON \
+              -DVIX_ENABLE_ORM=ON \
+              -DVIX_DB_USE_SQLITE=ON \
+              -DVIX_DB_USE_MYSQL=ON \
+              -DVIX_DB_USE_POSTGRES=OFF \
+              -DVIX_DB_USE_REDIS=OFF \
+              -DVIX_CORE_WITH_MYSQL=OFF \
+              -DVIX_ENABLE_HTTP_COMPRESSION=ON \
+              -DVIX_ENABLE_WEBSOCKET=ON \
+              -DVIX_ENABLE_CLI=ON \
+              -DVIX_ENABLE_MIDDLEWARE=ON \
+              -DVIX_ENABLE_P2P=ON \
+              -DVIX_ENABLE_P2P_HTTP=ON \
+              -DVIX_ENABLE_CACHE=ON \
+              -DVIX_ENABLE_ASYNC=ON \
+              -DVIX_ENABLE_VALIDATION=ON \
+              -DVIX_ENABLE_CRYPTO=ON \
+              -DVIX_ENABLE_WEBRPC=ON \
+              -DVIX_ENABLE_TIME=ON \
+              -DVIX_ENABLE_TESTS_MODULE=ON \
+              -DVIX_ENABLE_TEMPLATE=ON \
+              -DVIX_ENABLE_PROCESS=ON
+          fi
+
+      - name: Build SDK
         shell: bash
         run: |
           set -euxo pipefail
-          cmake --build build -j2
+          cmake --build "${{ matrix.build_dir }}" -j2
 
-      - name: Install (Unix)
-        if: runner.os != 'Windows'
+      - name: Install SDK
         shell: bash
         run: |
           set -euxo pipefail
-          cmake --install build
+          cmake --install "${{ matrix.build_dir }}"
 
-      - name: Configure (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          cmake -S . -B build -A x64 `
-            -DVIX_ENABLE_INSTALL=ON `
-            -DVIX_DB_USE_MYSQL=OFF `
-            -DVIX_CORE_WITH_MYSQL=OFF `
-            -DVIX_ENABLE_HTTP_COMPRESSION=OFF `
-            -DCMAKE_INSTALL_PREFIX="$env:GITHUB_WORKSPACE\install" `
-            -DVCPKG_TARGET_TRIPLET=x64-windows `
-            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
-
-      - name: Build (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          cmake --build build --config Release
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Install (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          cmake --install build --config Release
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Package SDK (Unix)
-        if: runner.os != 'Windows'
+      - name: Package SDK
         shell: bash
         run: |
           set -euxo pipefail
+
           mkdir -p dist
-          ASSET="vix-sdk-${{ matrix.sdkos }}-${{ matrix.arch }}.tar.gz"
-          tar -C install -czf "dist/$ASSET" .
 
-      - name: Validate packaged SDK (Linux)
-        if: runner.os == 'Linux'
+          test -d "${{ matrix.install_dir }}"
+          tar -C "${{ matrix.install_dir }}" -czf "dist/${{ matrix.asset }}" .
+
+          ls -lah dist
+
+      - name: Validate packaged SDK binary
         shell: bash
         run: |
           set -euxo pipefail
 
-          mkdir -p smoke
-          tar -xzf "dist/vix-sdk-${{ matrix.sdkos }}-${{ matrix.arch }}.tar.gz" -C smoke
+          rm -rf smoke-bin
+          mkdir -p smoke-bin
 
-          test -f smoke/bin/vix
-          file smoke/bin/vix
-          ldd smoke/bin/vix || true
-          smoke/bin/vix --version
+          tar -xzf "dist/${{ matrix.asset }}" -C smoke-bin
 
-      - name: Package SDK (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
+          test -f smoke-bin/bin/vix
+          file smoke-bin/bin/vix
+          ldd smoke-bin/bin/vix || true
+          smoke-bin/bin/vix --version
+
+      - name: Validate packaged SDK with consumer project
+        shell: bash
         run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          $asset = "vix-sdk-windows-${{ matrix.arch }}.zip"
+          set -euxo pipefail
 
-          if (!(Test-Path "install")) {
-            Write-Host "install directory not found"
-            exit 1
+          rm -rf smoke-sdk consumer
+          mkdir -p smoke-sdk consumer
+
+          tar -xzf "dist/${{ matrix.asset }}" -C smoke-sdk
+
+          cat > consumer/CMakeLists.txt <<'EOF'
+          cmake_minimum_required(VERSION 3.20)
+          project(vix_sdk_consumer LANGUAGES CXX)
+
+          set(CMAKE_CXX_STANDARD 20)
+          set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+          find_package(Vix CONFIG REQUIRED)
+
+          add_executable(app main.cpp)
+          target_link_libraries(app PRIVATE vix::vix)
+          EOF
+
+          cat > consumer/main.cpp <<'EOF'
+          #include <vix.hpp>
+
+          #include <iostream>
+
+          int main()
+          {
+            std::cout << "Vix SDK consumer build works\n";
+            return 0;
           }
+          EOF
 
-          Compress-Archive -Path "install\*" -DestinationPath "dist\$asset" -Force
+          cmake -S consumer -B consumer/build \
+            -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/smoke-sdk"
+
+          cmake --build consumer/build -j2
+
+          ./consumer/build/app
 
       - name: Upload dist
         uses: actions/upload-artifact@v4
         with:
-          name: sdk-dist-${{ matrix.sdkos }}-${{ matrix.arch }}
+          name: sdk-dist-${{ matrix.variant }}-${{ matrix.sdkos }}-${{ matrix.arch }}
           path: dist/*
           if-no-files-found: error
 
@@ -235,26 +269,37 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
+
           mkdir -p dist
-          find dist-all -type f -name "vix-sdk-*" -exec cp -f {} dist/ \;
-          ls -la dist
+
+          find dist-all -type f -name "vix-sdk-*.tar.gz" -exec cp -f {} dist/ \;
+
+          test -f dist/vix-sdk-linux-x86_64.tar.gz
+          test -f dist/vix-sdk-db-linux-x86_64.tar.gz
+          test -f dist/vix-sdk-full-linux-x86_64.tar.gz
+
+          ls -lah dist
 
       - name: Generate sha256 files
         shell: bash
         run: |
           set -euxo pipefail
+
           cd dist
-          for f in vix-sdk-*; do
+
+          for f in vix-sdk-*.tar.gz; do
             [ -f "$f" ] || continue
             sha256sum "$f" > "$f.sha256"
           done
-          ls -la
+
+          ls -lah
 
       - name: Determine tag
         id: tag
         shell: bash
         run: |
           set -euxo pipefail
+
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.tag }}" ]; then
             echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
           else
