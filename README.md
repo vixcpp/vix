@@ -96,6 +96,27 @@ vix run main.cpp
 
 Done.
 
+## Replay a previous run
+
+Vix can record a run and replay it later.
+
+```bash
+vix run main.cpp
+vix replay
+```
+
+Replay the latest failed or interrupted run:
+```bash
+vix replay failed
+```
+
+Inspect a recorded run before replaying it:
+```bash
+vix replay show last
+```
+
+Vix stores replay data locally under .vix/runs/, including the command, working directory, exit status, and captured logs.
+
 ## Build a server
 
 ```cpp
@@ -120,9 +141,9 @@ vix run server.cpp
 
 → http://localhost:8080
 
-For production deployments, Vix is optimized to run behind a TLS-terminating reverse proxy such as Nginx, Caddy or Traefik, while built-in HTTPS is available for local development, internal tools and simple self-hosted deployments.
-
 ## Install a framework in 1 command
+
+Framework: https://cnerium.dev
 
 ```bash
 vix install -g cnerium/app

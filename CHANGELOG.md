@@ -5,9 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
----
+## v2.5.3
 
-## [Unreleased]
+### Added
+- Added `vix replay` to record, inspect, list, clean, and replay previous Vix executions.
+- Added replay support for project runs and single-file script runs.
+- Added local replay storage under `.vix/runs/` with `run.json`, `stdout.log`, `stderr.log`, and `combined.log`.
+- Added `vix replay last`, `vix replay failed`, `vix replay show`, `vix replay list`, and `vix replay clean`.
+
+### Changed
+- Improved `vix run` so executions can be recorded for replay.
+- Improved `vix replay` to use the same process execution behavior as `vix run`.
+- Improved `Ctrl+C` handling consistency between `vix run` and `vix replay`.
+- Improved `vix new` internals and output rendering with a dedicated `NewOutput` renderer.
+- Improved CLI help output to stay aligned with registered commands.
+- Improved direct script cache fingerprinting and single-file run output handling.
+
+### Fixed
+- Fixed replay recording for `vix run main.cpp`.
+- Fixed replay recording for project mode `vix run`.
+- Fixed replay recording for interrupted runs.
+- Fixed replay recording for CMake fallback script runs.
+- Fixed `vix replay` missing-run errors to show a clearer message.
+- Fixed `vix replay --help` and `vix help replay` routing.
+- Fixed script `SIGINT` handling so user interruptions are treated as normal shutdowns.
+- Fixed build metadata storage location in the Vix home cache.
+- Fixed compiler warnings and removed dead CLI code.
+
+### Internal
+- Added the internal replay subsystem:
+  - `ReplayTypes`
+  - `ReplayRecord`
+  - `ReplayPaths`
+  - `ReplayId`
+  - `ReplayClock`
+  - `ReplayJson`
+  - `ReplayStore`
+  - `ReplayPrinter`
+  - `ReplayRecorder`
+  - `ReplayCapture`
+  - `ReplayProcess`
+  - `ReplayRunner`
+  - `ReplayList`
+  - `ReplayCommand`
+- Refactored `NewCommand` and `ModulesCommand` internals into dedicated command modules.
+- Updated `RunProcess`, `RunCommand`, `RunScript`, and `DirectScriptRunner` to support replay capture.
+
+### Compatibility
+- No breaking changes.
+
 ## v2.5.2
 
 ### Added
