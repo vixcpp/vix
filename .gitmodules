@@ -131,3 +131,6 @@
 	path = modules/process
 	url = https://github.com/vixcpp/process.git
 	branch = dev
+[submodule "modules/threadpool"]
+	path = modules/threadpool
+	url = https://github.com/vixcpp/threadpool.git

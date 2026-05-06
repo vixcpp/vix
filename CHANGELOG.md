@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added local build graph state storage under the build directory to prepare faster no-op and incremental build decisions.
 - Added shared runtime error location helpers for extracting `file:line:column` locations and printing runtime code frames.
 - Added source-based fallback location hints for runtime errors when logs do not provide an exact user frame.
+- Added `threadpool` as a dedicated Vix module.
 
 ### Changed
 - Improved `vix run` so executions can be recorded for replay.
@@ -35,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved raw log detection for linker errors, sanitizer reports, CMake failures, uncaught exceptions, and common runtime crashes.
 - Aligned core HTTP JSON handling around the stable `vix::json::Json` API.
 - Updated request parsing, response serialization, request handlers, and configuration storage to use the Vix JSON API consistently.
+- Moved the thread pool implementation out of `core` into the dedicated `threadpool` module.
 
 ### Fixed
 - Fixed replay recording for `vix run main.cpp`.
@@ -84,6 +86,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `BuildGraph`
   - `BuildScheduler`
 - Wired `BuildCommand` to initialize and persist the new build graph state during `vix build`.
+- Registered `modules/threadpool` as a standalone submodule.
+- Removed the old core-owned thread pool sources and experimental executor wiring.
 
 ### Compatibility
 - No breaking changes.
