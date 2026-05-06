@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed `vix replay` missing-run errors to show a clearer message.
 - Fixed `vix replay --help` and `vix help replay` routing.
 - Fixed script `SIGINT` handling so user interruptions are treated as normal shutdowns.
+- Fixed script sanitizer runtime diagnostics so `vix run file.cpp --san` and CMake fallback scripts show precise code frames for crashes such as double free.
 - Fixed build metadata storage location in the Vix home cache.
 - Fixed compiler warnings and removed dead CLI code.
 
