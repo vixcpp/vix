@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added local replay storage under `.vix/runs/` with `run.json`, `stdout.log`, `stderr.log`, and `combined.log`.
 - Added `vix replay last`, `vix replay failed`, `vix replay show`, `vix replay list`, and `vix replay clean`.
 - Added `--tsan` support for ThreadSanitizer-based script runs.
+- Added a new incremental build graph foundation for `vix build`, including build nodes, build tasks, dependency file parsing, object cache metadata, and a parallel build scheduler.
+- Added local build graph state storage under the build directory to prepare faster no-op and incremental build decisions.
 - Added shared runtime error location helpers for extracting `file:line:column` locations and printing runtime code frames.
 - Added source-based fallback location hints for runtime errors when logs do not provide an exact user frame.
 
@@ -28,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved compile-time error rules with shorter messages, one focused hint, code frames, and consistent `at:` output.
 - Improved template error rules with cleaner diagnostics for concepts, coroutine awaiters, invalid overrides, object slicing, downcasts, and template substitution failures.
 - Improved CMake/build error diagnostics with shorter messages and focused hints.
+- Improved `vix build` internals with a build state cache that can skip unnecessary work when the project inputs have not changed.
+- Improved `vix build` preparation for deeper parallel and incremental compilation by wiring the new build graph into the build command flow.
 - Improved raw log detection for linker errors, sanitizer reports, CMake failures, uncaught exceptions, and common runtime crashes.
 - Aligned core HTTP JSON handling around the stable `vix::json::Json` API.
 - Updated request parsing, response serialization, request handlers, and configuration storage to use the Vix JSON API consistently.
@@ -72,6 +76,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactored runtime error rules to share `RuntimeLocation`, `find_best_runtime_location(...)`, `find_best_runtime_location_or_source_hint(...)`, and `make_at_text(...)`.
 - Refactored raw log detection and CMake build detection for cleaner dispatch order and more consistent output.
 - Normalized compile-time, runtime, template, CMake, linker, and sanitizer diagnostics around the same output style.
+- Added the internal incremental build foundation:
+  - `BuildNode`
+  - `BuildTask`
+  - `DependencyFile`
+  - `ObjectCache`
+  - `BuildGraph`
+  - `BuildScheduler`
+- Wired `BuildCommand` to initialize and persist the new build graph state during `vix build`.
 
 ### Compatibility
 - No breaking changes.
