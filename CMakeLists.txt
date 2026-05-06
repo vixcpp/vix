@@ -351,13 +351,13 @@ else()
 
   include(FetchContent)
 
-  FetchContent_Declare(
+  fetchcontent_declare(
     asio
     GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
     GIT_TAG        asio-1-30-2
   )
 
-  FetchContent_MakeAvailable(asio)
+  fetchcontent_makeavailable(asio)
 
   target_include_directories(vix_thirdparty_asio SYSTEM INTERFACE
     $<BUILD_INTERFACE:${asio_SOURCE_DIR}/asio/include>
@@ -488,12 +488,12 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/json/CMakeLists.txt")
   set(_VIX_JSON_BACKEND "submodule")
 elseif (VIX_FORCE_FETCH_JSON)
   message(WARNING "modules/json missing — fetching nlohmann/json fallback")
-  FetchContent_Declare(
+  fetchcontent_declare(
     nlohmann_json
     GIT_REPOSITORY https://github.com/nlohmann/json.git
     GIT_TAG        v3.11.3
   )
-  FetchContent_MakeAvailable(nlohmann_json)
+  fetchcontent_makeavailable(nlohmann_json)
 
   add_library(vix_json INTERFACE)
   target_link_libraries(vix_json INTERFACE nlohmann_json::nlohmann_json)
@@ -1190,13 +1190,13 @@ if (VIX_BUILD_TESTS)
   find_package(GTest QUIET)
   if (NOT GTest_FOUND)
     message(STATUS "GTest not found, fetching googletest...")
-    FetchContent_Declare(
+    fetchcontent_declare(
       googletest
       GIT_REPOSITORY https://github.com/google/googletest.git
       GIT_TAG        v1.14.0
     )
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(googletest)
+    fetchcontent_makeavailable(googletest)
   endif()
 
   file(GLOB_RECURSE VIX_TEST_SOURCES CONFIGURE_DEPENDS
