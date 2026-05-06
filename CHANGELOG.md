@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved template error rules with cleaner diagnostics for concepts, coroutine awaiters, invalid overrides, object slicing, downcasts, and template substitution failures.
 - Improved CMake/build error diagnostics with shorter messages and focused hints.
 - Improved raw log detection for linker errors, sanitizer reports, CMake failures, uncaught exceptions, and common runtime crashes.
+- Aligned core HTTP JSON handling around the stable `vix::json::Json` API.
+- Updated request parsing, response serialization, request handlers, and configuration storage to use the Vix JSON API consistently.
 
 ### Fixed
 - Fixed replay recording for `vix run main.cpp`.
@@ -208,6 +210,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Compatibility
 - No breaking changes.
+- Preserved compatibility for existing `nlohmann::json` and `Simple.hpp` response helpers while routing core JSON handling through `vix::json::Json`.
 
 # v2.5.1
 
