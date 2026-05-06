@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added replay support for project runs and single-file script runs.
 - Added local replay storage under `.vix/runs/` with `run.json`, `stdout.log`, `stderr.log`, and `combined.log`.
 - Added `vix replay last`, `vix replay failed`, `vix replay show`, `vix replay list`, and `vix replay clean`.
+- Added `--tsan` support for ThreadSanitizer-based script runs.
+- Added shared runtime error location helpers for extracting `file:line:column` locations and printing runtime code frames.
+- Added source-based fallback location hints for runtime errors when logs do not provide an exact user frame.
 
 ### Changed
 - Improved `vix run` so executions can be recorded for replay.
@@ -20,6 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved `vix new` internals and output rendering with a dedicated `NewOutput` renderer.
 - Improved CLI help output to stay aligned with registered commands.
 - Improved direct script cache fingerprinting and single-file run output handling.
+- Improved runtime diagnostics for sanitizer and non-sanitizer crashes.
+- Improved `vix run` live output filtering to avoid printing raw allocator crash noise before friendly diagnostics.
+- Improved compile-time error rules with shorter messages, one focused hint, code frames, and consistent `at:` output.
+- Improved template error rules with cleaner diagnostics for concepts, coroutine awaiters, invalid overrides, object slicing, downcasts, and template substitution failures.
+- Improved CMake/build error diagnostics with shorter messages and focused hints.
+- Improved raw log detection for linker errors, sanitizer reports, CMake failures, uncaught exceptions, and common runtime crashes.
 
 ### Fixed
 - Fixed replay recording for `vix run main.cpp`.
@@ -30,6 +39,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed `vix replay --help` and `vix help replay` routing.
 - Fixed script `SIGINT` handling so user interruptions are treated as normal shutdowns.
 - Fixed script sanitizer runtime diagnostics so `vix run file.cpp --san` and CMake fallback scripts show precise code frames for crashes such as double free.
+- Fixed ThreadSanitizer diagnostics for script runs with `--tsan`.
+- Fixed double-free diagnostics without `--san` by pointing to suspicious `delete`, `delete[]`, or `free()` source lines when possible.
+- Fixed iterator invalidation diagnostics by reporting ASan use-after-free from invalidated iterators as iterator invalidation when detected.
+- Fixed STL debug iterator diagnostics to show a code frame when the log only reports a singular iterator without a source location.
+- Fixed segmentation fault, abort, out-of-range, mutex, condition variable, thread, span, and `std::string_view` runtime rules to use consistent code frame output.
+- Fixed uncaught exception diagnostics to show one clear hint and a guessed throw location when possible.
+- Fixed raw runtime logs being printed before friendly Vix diagnostics.
 - Fixed build metadata storage location in the Vix home cache.
 - Fixed compiler warnings and removed dead CLI code.
 
@@ -51,6 +67,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `ReplayCommand`
 - Refactored `NewCommand` and `ModulesCommand` internals into dedicated command modules.
 - Updated `RunProcess`, `RunCommand`, `RunScript`, and `DirectScriptRunner` to support replay capture.
+- Refactored runtime error rules to share `RuntimeLocation`, `find_best_runtime_location(...)`, `find_best_runtime_location_or_source_hint(...)`, and `make_at_text(...)`.
+- Refactored raw log detection and CMake build detection for cleaner dispatch order and more consistent output.
+- Normalized compile-time, runtime, template, CMake, linker, and sanitizer diagnostics around the same output style.
 
 ### Compatibility
 - No breaking changes.
