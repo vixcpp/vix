@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added shared runtime error location helpers for extracting `file:line:column` locations and printing runtime code frames.
 - Added source-based fallback location hints for runtime errors when logs do not provide an exact user frame.
 - Added `threadpool` as a dedicated Vix module.
+- Added compile database import for `vix build` so the build graph can use real CMake/Ninja compile commands from `compile_commands.json`.
+- Added Ninja build edge import for `vix build` so the build graph can understand archive, link, copy, install, and utility edges from `build.ninja`.
+- Added a guarded target-aware graph executor for experimental graph-based target builds.
+- Added a reusable `BuildStyle` renderer for consistent build output, progress, and diagnostics.
 
 ### Changed
 - Improved `vix run` so executions can be recorded for replay.
@@ -33,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved CMake/build error diagnostics with shorter messages and focused hints.
 - Improved `vix build` internals with a build state cache that can skip unnecessary work when the project inputs have not changed.
 - Improved `vix build` preparation for deeper parallel and incremental compilation by wiring the new build graph into the build command flow.
+- Improved `vix build` to build the main project target by default instead of the full `all` target, making no-op and focused rebuilds much faster.
+- Improved `vix build -v` output by hiding internal graph, cache, project path, and CMake variable details unless debug logging is enabled.
+- Improved `vix build` diagnostics with a cleaner unified build error style, including location, error, code frame, and focused hints.
+- Improved `vix build --build-target all` to preserve the full build behavior explicitly when examples, tests, and auxiliary targets need to be rebuilt.
 - Improved raw log detection for linker errors, sanitizer reports, CMake failures, uncaught exceptions, and common runtime crashes.
 - Aligned core HTTP JSON handling around the stable `vix::json::Json` API.
 - Updated request parsing, response serialization, request handlers, and configuration storage to use the Vix JSON API consistently.
@@ -78,14 +86,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactored runtime error rules to share `RuntimeLocation`, `find_best_runtime_location(...)`, `find_best_runtime_location_or_source_hint(...)`, and `make_at_text(...)`.
 - Refactored raw log detection and CMake build detection for cleaner dispatch order and more consistent output.
 - Normalized compile-time, runtime, template, CMake, linker, and sanitizer diagnostics around the same output style.
-- Added the internal incremental build foundation:
+- Expanded the internal incremental build foundation:
   - `BuildNode`
   - `BuildTask`
   - `DependencyFile`
+  - `CompileCommands`
+  - `BuildNinja`
   - `ObjectCache`
   - `BuildGraph`
+  - `BuildGraphExecutor`
   - `BuildScheduler`
-- Wired `BuildCommand` to initialize and persist the new build graph state during `vix build`.
+  - `BuildStyle`
+- Wired `BuildCommand` to initialize, import, and persist build graph state during `vix build`.
+- Wired `BuildCommand` to import `compile_commands.json` and `build.ninja` as the source of truth for future target-aware graph execution.
+- Guarded the experimental graph executor behind `VIX_GRAPH_EXECUTOR` while keeping CMake/Ninja as the default stable execution path.
+- Moved detailed build graph, artifact cache, build state, and CMake variable output behind debug logging.
 - Registered `modules/threadpool` as a standalone submodule.
 - Removed the old core-owned thread pool sources and experimental executor wiring.
 
