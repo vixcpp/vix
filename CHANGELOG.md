@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Ninja build edge import for `vix build` so the build graph can understand archive, link, copy, install, and utility edges from `build.ninja`.
 - Added a guarded target-aware graph executor for experimental graph-based target builds.
 - Added a reusable `BuildStyle` renderer for consistent build output, progress, and diagnostics.
+- Added a dedicated `vix dev` session engine with target-aware rebuild orchestration.
+- Added a `DevFileIndex` for faster dev-mode file watching using filtered file indexing, `mtime`, and file size comparisons.
 
 ### Changed
 - Improved `vix run` so executions can be recorded for replay.
@@ -41,6 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved `vix build -v` output by hiding internal graph, cache, project path, and CMake variable details unless debug logging is enabled.
 - Improved `vix build` diagnostics with a cleaner unified build error style, including location, error, code frame, and focused hints.
 - Improved `vix build --build-target all` to preserve the full build behavior explicitly when examples, tests, and auxiliary targets need to be rebuilt.
+- Improved `vix dev` output to align with the cleaner `vix build` style.
+- Improved `vix dev` rebuild flow to use real Ninja progress instead of a fake spinner animation.
+- Improved `vix dev` reload behavior by clearing the terminal before restarting the application.
+- Improved `vix dev` file watching to ignore build folders, `.git`, `.vix`, docs, generated output, and unrelated files.
+- Improved `vix dev` startup output to reduce noise while keeping detailed information available through verbose/debug mode.
 - Improved raw log detection for linker errors, sanitizer reports, CMake failures, uncaught exceptions, and common runtime crashes.
 - Aligned core HTTP JSON handling around the stable `vix::json::Json` API.
 - Updated request parsing, response serialization, request handlers, and configuration storage to use the Vix JSON API consistently.
@@ -64,6 +71,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed raw runtime logs being printed before friendly Vix diagnostics.
 - Fixed build metadata storage location in the Vix home cache.
 - Fixed compiler warnings and removed dead CLI code.
+- Fixed `vix dev` reload detection after file saves by keeping a stable file index instead of comparing fresh snapshots only.
+- Fixed duplicate `Compiling <target> (dev)` output during dev reloads.
+- Fixed dev-mode progress output so rebuilds no longer show misleading animated progress.
+- Fixed dev-mode restart rendering to avoid stale application output mixing with rebuild output.
 
 ### Internal
 - Added the internal replay subsystem:
@@ -103,6 +114,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved detailed build graph, artifact cache, build state, and CMake variable output behind debug logging.
 - Registered `modules/threadpool` as a standalone submodule.
 - Removed the old core-owned thread pool sources and experimental executor wiring.
+- Refactored dev-mode rebuild handling into `DevSession`, `DevRebuilder`, and `DevFileIndex`.
+- Reworked dev-mode change classification so source/header changes trigger rebuilds while CMake and Vix config changes trigger reconfigure plus rebuild.
 
 ### Compatibility
 - No breaking changes.
