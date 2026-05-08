@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added replay support for project runs and single-file script runs.
 - Added local replay storage under `.vix/runs/` with `run.json`, `stdout.log`, `stderr.log`, and `combined.log`.
 - Added `vix replay last`, `vix replay failed`, `vix replay show`, `vix replay list`, and `vix replay clean`.
+- Added `--replay` for `vix run` to explicitly record executions under `.vix/runs/`.
+- Added opt-in OpenAPI/docs mode for `vix run` through `--docs`.
 - Added `--tsan` support for ThreadSanitizer-based script runs.
 - Added a new incremental build graph foundation for `vix build`, including build nodes, build tasks, dependency file parsing, object cache metadata, and a parallel build scheduler.
 - Added local build graph state storage under the build directory to prepare faster no-op and incremental build decisions.
@@ -27,7 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a `DevFileIndex` for faster dev-mode file watching using filtered file indexing, `mtime`, and file size comparisons.
 
 ### Changed
-- Improved `vix run` so executions can be recorded for replay.
+- Changed `vix run` replay recording to be opt-in through `--replay`, so normal runs no longer create `.vix/runs/`.
+- Changed `vix run` OpenAPI/docs behavior to be opt-in through `--docs`, so docs are disabled by default.
 - Improved `vix replay` to use the same process execution behavior as `vix run`.
 - Improved `Ctrl+C` handling consistency between `vix run` and `vix replay`.
 - Improved `vix new` internals and output rendering with a dedicated `NewOutput` renderer.
@@ -55,10 +58,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved the thread pool implementation out of `core` into the dedicated `threadpool` module.
 
 ### Fixed
-- Fixed replay recording for `vix run main.cpp`.
-- Fixed replay recording for project mode `vix run`.
-- Fixed replay recording for interrupted runs.
-- Fixed replay recording for CMake fallback script runs.
+- Fixed opt-in replay recording for `vix run main.cpp --replay`.
+- Fixed opt-in replay recording for project mode `vix run --replay`.
+- Fixed opt-in replay recording for interrupted runs.
+- Fixed opt-in replay recording for CMake fallback script runs.
+- Fixed `vix run` so normal runs no longer create replay data unless `--replay` is passed.
+- Fixed `vix run` so OpenAPI/docs are disabled by default unless `--docs` is passed.
 - Fixed `vix replay` missing-run errors to show a clearer message.
 - Fixed `vix replay --help` and `vix help replay` routing.
 - Fixed script `SIGINT` handling so user interruptions are treated as normal shutdowns.
