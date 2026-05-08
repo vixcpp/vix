@@ -28,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Vix-native test output styling for `vix tests`, aligned with the `vix build` progress style.
 - Added `vix tests --raw` to show raw internal test runner output when needed.
 - Added `vix tests --test <name|pattern>` and `vix tests -R <name|pattern>` to run one test or a filtered group of tests.
+- Added Vix-native output styling for `vix check`, aligned with `vix build` and `vix tests`.
+- Added clean script-mode check output for `vix check file.cpp`.
+- Added structured progress lines for `vix check` configure, build, tests, and runtime steps.
 - Added a dedicated `vix dev` session engine with target-aware rebuild orchestration.
 - Added a `DevFileIndex` for faster dev-mode file watching using filtered file indexing, `mtime`, and file size comparisons.
 
@@ -54,6 +57,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved `vix tests` failure reporting by extracting failed test names and useful error messages instead of dumping raw runner output by default.
 - Improved `vix tests -v` to show detailed Vix-formatted failure details while keeping raw runner output behind `--raw`.
 - Improved `vix tests` to run supported backends in parallel by default and report the active job count.
+- Improved `vix check` output with a cleaner Vix-native header, progress lines, timing summary, and reduced default noise.
+- Improved `vix check --tests` to reuse the `vix tests` experience instead of exposing raw CTest output directly.
+- Improved `vix check` project mode so sanitizer checks validate the sanitizer build by default without forcing runtime execution.
+- Improved `vix check --san --run` behavior so runtime validation remains explicit for project checks.
+- Improved `vix check file.cpp` script mode with cleaner build, configure, runtime, and sanitizer progress output.
+- Improved `vix check --verbose` to keep detailed project, script, build directory, and cache information available without showing it by default.
+- Improved `vix check` build execution to hide internal CMake and Ninja output during normal successful checks.
 - Improved `vix dev` output to align with the cleaner `vix build` style.
 - Improved `vix dev` rebuild flow to use real Ninja progress instead of a fake spinner animation.
 - Improved `vix dev` reload behavior by clearing the terminal before restarting the application.
@@ -88,6 +98,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed `vix tests` output so internal runner details no longer leak into the default interface.
 - Fixed `vix tests` failure progress styling so failed test progress is shown in red.
 - Fixed `vix tests` summaries to report counts such as `Passed 23 tests` or `Failed 1 of 23 tests`.
+- Fixed `vix check` default output so successful CMake and Ninja logs no longer leak into normal output.
+- Fixed `vix check --tests` so test execution uses the Vix test runner output style.
+- Fixed `vix check --san` for library projects so sanitizer checks no longer assume a runnable executable exists.
+- Fixed `vix check file.cpp` script builds so they no longer force an invalid target name such as `main`.
+- Fixed `vix check file.cpp --san` output so runtime validation is shown as a clean progress step.
 - Fixed duplicate `Compiling <target> (dev)` output during dev reloads.
 - Fixed dev-mode progress output so rebuilds no longer show misleading animated progress.
 - Fixed dev-mode restart rendering to avoid stale application output mixing with rebuild output.
