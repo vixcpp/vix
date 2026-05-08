@@ -135,3 +135,7 @@
 	path = modules/threadpool
 	url = https://github.com/vixcpp/threadpool.git
 	branch = dev
+[submodule "modules/kv"]
+	path = modules/kv
+	url = https://github.com/vixcpp/kv.git
+	branch = dev
