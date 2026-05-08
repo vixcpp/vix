@@ -215,6 +215,7 @@ option(VIX_TEMPLATE_BUILD_EXAMPLES "Build vix::template examples"               
 option(VIX_TEMPLATE_BUILD_BENCH    "Build vix::template benchmarks"                               OFF)
 option(VIX_ENABLE_PROCESS          "Build Vix Process module"                                      ON)
 option(VIX_ENABLE_THREADPOOL       "Build Vix ThreadPool module"                                  ON)
+option(VIX_ENABLE_KV               "Build Vix KV module"                                         ON)
 
 # ----------------------------------------------------
 # Tooling / Static analysis
@@ -716,6 +717,31 @@ else()
   message(STATUS "ThreadPool: disabled or not present.")
 endif()
 
+# --- KV (optional) ---
+set(VIX_HAS_KV OFF)
+
+if (VIX_ENABLE_KV AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/kv/CMakeLists.txt")
+  message(STATUS "Adding 'modules/kv'...")
+
+  set(VIX_KV_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+  set(VIX_KV_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(VIX_KV_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
+
+  add_subdirectory(modules/kv kv_build)
+
+  if (TARGET vix::kv OR TARGET vix_kv)
+    set(VIX_HAS_KV ON)
+
+    if (TARGET vix_kv AND NOT TARGET vix::kv)
+      add_library(vix::kv ALIAS vix_kv)
+    endif()
+  else()
+    message(WARNING "KV module added but no vix::kv target was exported.")
+  endif()
+else()
+  message(STATUS "KV: disabled or not present.")
+endif()
+
 # --- Core ---
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/core/CMakeLists.txt")
   message(STATUS "Adding 'modules/core'...")
@@ -1065,6 +1091,10 @@ if (TARGET vix::threadpool)
   target_link_libraries(vix INTERFACE vix::threadpool)
 endif()
 
+if (TARGET vix::kv)
+  target_link_libraries(vix INTERFACE vix::kv)
+endif()
+
 if (TARGET vix::p2p)
   target_link_libraries(vix INTERFACE vix::p2p)
 endif()
@@ -1315,7 +1345,7 @@ endif()
 
 if (VIX_ENABLE_INSTALL)
 
-   foreach(_m error path fs io env os log tests core utils json websocket webrpc crypto time conversion validation async process threadpool net cache sync p2p p2p_http middleware db orm template)
+   foreach(_m error path fs io env os log tests core utils json websocket webrpc crypto time conversion validation async process threadpool kv net cache sync p2p p2p_http middleware db orm template)
     if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/${_m}/include")
       install(DIRECTORY "modules/${_m}/include/"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
@@ -1404,6 +1434,14 @@ if (VIX_ENABLE_INSTALL)
     set(VIX_WITH_THREADPOOL ON)
   endif()
 
+  set(VIX_WITH_KV OFF)
+  if (VIX_HAS_KV)
+    set(VIX_WITH_KV ON)
+  endif()
+
+set(VIX_HAS_KV  ${VIX_HAS_KV})
+set(VIX_WITH_KV ${VIX_WITH_KV})
+
   set(VIX_WITH_CONVERSION OFF)
   if (VIX_HAS_CONVERSION)
     set(VIX_WITH_CONVERSION ON)
@@ -1483,6 +1521,7 @@ message(STATUS "WebRPC built      : ${VIX_HAS_WEBRPC}")
 message(STATUS "WebSocket built   : ${VIX_HAS_WEBSOCKET}")
 message(STATUS "Process built     : ${VIX_HAS_PROCESS}")
 message(STATUS "ThreadPool built  : ${VIX_HAS_THREADPOOL}")
+message(STATUS "KV built          : ${VIX_HAS_KV}")
 message(STATUS "ORM packaged      : ${VIX_HAS_ORM}")
 message(STATUS "DB built          : ${VIX_HAS_DB}")
 message(STATUS "P2P built         : ${VIX_HAS_P2P}")
@@ -1496,5 +1535,5 @@ message(STATUS "Sanitizers        : ${VIX_ENABLE_SANITIZERS}")
 message(STATUS "Coverage          : ${VIX_ENABLE_COVERAGE}")
 message(STATUS "LTO               : ${VIX_ENABLE_LTO}")
 message(STATUS "Install/Export    : ${VIX_ENABLE_INSTALL}")
-message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} WEBRPC=${VIX_WITH_WEBRPC} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P} TEMPLATE=${VIX_WITH_TEMPLATE} THREADPOOL=${VIX_WITH_THREADPOOL}")
+message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} WEBRPC=${VIX_WITH_WEBRPC} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P} TEMPLATE=${VIX_WITH_TEMPLATE} THREADPOOL=${VIX_WITH_THREADPOOL} KV=${VIX_WITH_KV}")
 message(STATUS "------------------------------------------------------")
