@@ -25,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Ninja build edge import for `vix build` so the build graph can understand archive, link, copy, install, and utility edges from `build.ninja`.
 - Added a guarded target-aware graph executor for experimental graph-based target builds.
 - Added a reusable `BuildStyle` renderer for consistent build output, progress, and diagnostics.
+- Added Vix-native test output styling for `vix tests`, aligned with the `vix build` progress style.
+- Added `vix tests --raw` to show raw internal test runner output when needed.
+- Added `vix tests --test <name|pattern>` and `vix tests -R <name|pattern>` to run one test or a filtered group of tests.
 - Added a dedicated `vix dev` session engine with target-aware rebuild orchestration.
 - Added a `DevFileIndex` for faster dev-mode file watching using filtered file indexing, `mtime`, and file size comparisons.
 
@@ -47,6 +50,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved `vix build -v` output by hiding internal graph, cache, project path, and CMake variable details unless debug logging is enabled.
 - Improved `vix build` diagnostics with a cleaner unified build error style, including location, error, code frame, and focused hints.
 - Improved `vix build --build-target all` to preserve the full build behavior explicitly when examples, tests, and auxiliary targets need to be rebuilt.
+- Improved `vix tests` output with a cleaner Vix-native header, progress line, success summary, and failure diagnostics.
+- Improved `vix tests` failure reporting by extracting failed test names and useful error messages instead of dumping raw runner output by default.
+- Improved `vix tests -v` to show detailed Vix-formatted failure details while keeping raw runner output behind `--raw`.
+- Improved `vix tests` to run supported backends in parallel by default and report the active job count.
 - Improved `vix dev` output to align with the cleaner `vix build` style.
 - Improved `vix dev` rebuild flow to use real Ninja progress instead of a fake spinner animation.
 - Improved `vix dev` reload behavior by clearing the terminal before restarting the application.
@@ -78,6 +85,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed build metadata storage location in the Vix home cache.
 - Fixed compiler warnings and removed dead CLI code.
 - Fixed `vix dev` reload detection after file saves by keeping a stable file index instead of comparing fresh snapshots only.
+- Fixed `vix tests` output so internal runner details no longer leak into the default interface.
+- Fixed `vix tests` failure progress styling so failed test progress is shown in red.
+- Fixed `vix tests` summaries to report counts such as `Passed 23 tests` or `Failed 1 of 23 tests`.
 - Fixed duplicate `Compiling <target> (dev)` output during dev reloads.
 - Fixed dev-mode progress output so rebuilds no longer show misleading animated progress.
 - Fixed dev-mode restart rendering to avoid stale application output mixing with rebuild output.
