@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added shared runtime error location helpers for extracting `file:line:column` locations and printing runtime code frames.
 - Added source-based fallback location hints for runtime errors when logs do not provide an exact user frame.
 - Added `threadpool` as a dedicated Vix module.
+- Added `kv` as a dedicated Vix module for durable local-first key-value storage.
 - Added compile database import for `vix build` so the build graph can use real CMake/Ninja compile commands from `compile_commands.json`.
 - Added Ninja build edge import for `vix build` so the build graph can understand archive, link, copy, install, and utility edges from `build.ninja`.
 - Added a guarded target-aware graph executor for experimental graph-based target builds.
@@ -113,6 +114,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Guarded the experimental graph executor behind `VIX_GRAPH_EXECUTOR` while keeping CMake/Ninja as the default stable execution path.
 - Moved detailed build graph, artifact cache, build state, and CMake variable output behind debug logging.
 - Registered `modules/threadpool` as a standalone submodule.
+- Registered `modules/kv` as a standalone submodule.
+- Integrated `kv` into the umbrella CMake build and Vix package export flow.
 - Removed the old core-owned thread pool sources and experimental executor wiring.
 - Refactored dev-mode rebuild handling into `DevSession`, `DevRebuilder`, and `DevFileIndex`.
 - Reworked dev-mode change classification so source/header changes trigger rebuilds while CMake and Vix config changes trigger reconfigure plus rebuild.
