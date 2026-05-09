@@ -1,227 +1,306 @@
 # Middleware API
 
-This page documents the middleware system in Vix.
+Middleware is code that runs around your routes.
 
-Vix supports two middleware styles:
-
-1)  Context-based middleware (recommended)
-2)  Legacy HTTP middleware (Request/Response based)
-
-Both can be adapted and chained.
-
-------------------------------------------------------------------------
-
-# Headers
-
-Context middleware:
-
-``` cpp
-#include <vix/middleware/Middleware.hpp>
+```txt
+request → middleware → route handler → response
 ```
 
-Legacy middleware:
+## Public header
 
-``` cpp
-#include <vix/http/HttpMiddleware.hpp>
-```
-
-------------------------------------------------------------------------
-
-# 1) Context Middleware (Recommended)
-
-Type:
-
-``` cpp
-vix::middleware::MiddlewareFn
-```
-
-Signature:
-
-``` cpp
-(Context& ctx, Next next)
-```
-
-------------------------------------------------------------------------
-
-## Minimal Example
-
-``` cpp
+```cpp
 #include <vix.hpp>
-#include <vix/middleware/Middleware.hpp>
+#include <vix/middleware.hpp>
+```
 
+## Middleware shape
+
+```cpp
+app.use([](Request &req, Response &res, App::Next next){
+  res.header("X-Powered-By", "Vix.cpp");
+  next();  // continue to next middleware or route
+});
+```
+
+Call `next()` to continue. Do not call `next()` if you've already sent the final response.
+
+## Middleware order
+
+```cpp
+app.use(cors_middleware);       // 1st
+app.use(rate_limit_middleware); // 2nd
+app.use(auth_middleware);       // 3rd
+register_routes(app);           // always configure middleware before routes
+```
+
+Recommended order: CORS → rate limit → security headers → body limit → authentication → routes.
+
+## Global middleware
+
+```cpp
+app.use([](Request &, Response &res, App::Next next){
+  res.header("X-App", "Vix");
+  next();
+});
+```
+
+## Prefix middleware
+
+```cpp
+app.use("/api", [](Request &, Response &res, App::Next next){
+  res.header("X-API", "true");
+  next();
+});
+```
+
+Only applies to routes under `/api`.
+
+## Route protection
+
+```cpp
+app.use("/admin", [](Request &req, Response &res, App::Next next){
+  if (req.header("x-admin-token") != "secret")
+  {
+    res.status(401).json({
+      "ok", false,
+      "error", "unauthorized"
+    });
+    return;  // do not call next()
+  }
+  next();
+});
+
+// Convenience APIs
+app.protect("/admin", middleware);               // prefix
+app.protect_exact("/admin/hook", middleware);    // exact path
+```
+
+## CORS middleware
+
+```cpp
+// Development
+app.use(vix::middleware::app::cors_dev({
+    "http://localhost:5173",
+    "http://127.0.0.1:5173"
+}));
+
+// Production with explicit options
+#include <vix/middleware.hpp>
+
+vix::middleware::security::CorsOptions options;
+options.allowed_origins = {"https://app.example.com"};
+options.allow_any_origin = false;
+options.allow_credentials = true;
+options.allow_methods = {"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"};
+options.allow_headers = {"Content-Type", "Authorization", "Accept"};
+options.expose_headers = {"X-Request-Id"};
+
+app.use(vix::middleware::app::adapt_ctx(
+    vix::middleware::security::cors(std::move(options))));
+```
+
+CORS is not authentication — it is a browser rule about which origins can call your API.
+
+## Rate limiting middleware
+
+```cpp
+// Global limit
+app.use(vix::middleware::app::rate_limit({
+    .max_requests = 60,
+    .window_seconds = 60
+}));
+
+// Stricter limit for auth routes
+vix::middleware::app::use_on_prefix(
+    app, "/auth",
+    vix::middleware::app::rate_limit({
+        .max_requests = 5,
+        .window_seconds = 60
+    }));
+```
+
+When exceeded, returns `429 Too Many Requests`.
+
+## Static files middleware
+
+```cpp
+// Simple
+app.static_dir("public");
+
+// Advanced
+#include <filesystem>
+app.use(vix::middleware::app::adapt_ctx(
+    vix::middleware::performance::static_files(
+        std::filesystem::path{"public"},
+        {
+            .mount = "/",
+            .index_file = "index.html",
+            .add_cache_control = true,
+            .cache_control = "public, max-age=3600",
+            .fallthrough = true,
+        })));
+```
+
+## Request logging middleware
+
+```cpp
+app.use([](Request &req, Response &, App::Next next){
+  std::cout << "[request] " << req.method() << " " << req.path() << "\n";
+  next();
+});
+```
+
+## Security headers middleware
+
+```cpp
+app.use([](Request &, Response &res, App::Next next){
+  res.header("X-Content-Type-Options", "nosniff");
+  res.header("X-Frame-Options", "DENY");
+  res.header("Referrer-Policy", "no-referrer");
+  next();
+});
+```
+
+## Middleware with groups
+
+```cpp
+auto api = app.group("/api");
+
+api.use([](Request &, Response &res, App::Next next){
+  res.header("X-API", "true"); next();
+});
+
+api.get("/health", [](Request &, Response &res) {
+  res.json({"ok", true});
+});
+```
+
+## Complete example
+
+```cpp
+#include <iostream>
+#include <vix.hpp>
+#include <vix/middleware.hpp>
 using namespace vix;
+
+static void respond_error(Response &res, int status,
+                           const std::string &code, const std::string &message)
+{
+  res.status(status).json({
+    "ok", false,
+    "error", code,
+    "message", message
+  });
+}
+
+static void configure_middlewares(App &app)
+{
+  app.use(vix::middleware::app::cors_dev({
+      "http://localhost:5173", "http://127.0.0.1:5173"
+  }));
+
+  app.use(vix::middleware::app::rate_limit({.max_requests = 60, .window_seconds = 60}));
+
+  app.use([](Request &req, Response &, App::Next next){
+    std::cout << req.method() << " " << req.path() << "\n"; next();
+  });
+
+  app.use([](Request &, Response &res, App::Next next){
+    res.header("X-Powered-By", "Vix.cpp"); next();
+  });
+
+  app.protect("/admin", [](Request &req, Response &res, App::Next next){
+    if (req.header("x-admin-token") != "secret"){
+      respond_error(res, 401, "unauthorized", "Invalid admin token");
+      return;
+    }
+    next();
+  });
+}
+
+static void register_routes(App &app)
+{
+  app.get("/api/health", [](Request &, Response &res) {
+    res.json({"ok", true});
+  });
+
+  app.get("/admin/stats", [](Request &, Response &res){
+    res.json({
+      "ok", true,
+      "message", "private admin stats"
+    });
+  });
+}
 
 int main()
 {
   App app;
 
-  vix::middleware::MiddlewareFn mw =
-    [](vix::middleware::Context& ctx, vix::middleware::Next next)
-    {
-      // pre logic
-      next();
-      // post logic
-    };
-
-  app.use(mw);
-
-  app.get("/", [](Request&, Response& res)
-  {
-    res.send("Hello");
-  });
+  configure_middlewares(app);
+  register_routes(app);
 
   app.run(8080);
+
+  return 0;
 }
 ```
 
-------------------------------------------------------------------------
+## When to use middleware
 
-# Registering Middleware
+Use middleware when a behavior applies to many routes: headers, auth checks, rate limiting, logging, CORS, static files, route group protection.
 
-## Global
+Avoid middleware when logic belongs to one route only — keep it in the route or service layer.
 
-``` cpp
-app.use(mw);
+## Common mistakes
+
+### Forgetting next()
+
+```cpp
+// Wrong — request is silently dropped
+app.use([](Request &, Response &res, App::Next next) {
+  res.header("X-App", "Vix");
+});
+
+// Correct
+app.use([](Request &, Response &res, App::Next next) {
+  res.header("X-App", "Vix");
+  next();
+});
 ```
 
-Applies to all routes.
+### Calling next() after an error
 
-------------------------------------------------------------------------
-
-## Prefix
-
-``` cpp
-app.use("/api/", mw);
-```
-
-Applies only to routes under `/api/`.
-
-------------------------------------------------------------------------
-
-## Exact Path
-
-``` cpp
-app.use_exact("/ping", mw);
-```
-
-Applies only to the exact path.
-
-------------------------------------------------------------------------
-
-# Chaining Middleware
-
-Multiple middleware can be chained:
-
-``` cpp
-auto chained = vix::middleware::chain(mw1, mw2, mw3);
-
-app.use(chained);
-```
-
-Execution order:
-
--   mw1 pre
--   mw2 pre
--   mw3 pre
--   handler
--   mw3 post
--   mw2 post
--   mw1 post
-
-------------------------------------------------------------------------
-
-# Request State Storage
-
-Context allows storing typed state per request.
-
-``` cpp
-ctx.emplace_state<int>(42);
-
-int& value = ctx.state<int>();
-```
-
-Safe access:
-
-``` cpp
-if (auto* v = ctx.try_state<int>())
-{
-  // state exists
+```cpp
+// Wrong
+if (!authorized) {
+  res.status(401).json({"ok", false});
 }
-```
+next();
 
-------------------------------------------------------------------------
-
-# 2) Legacy HTTP Middleware
-
-Type:
-
-``` cpp
-vix::HttpMiddleware
-```
-
-Signature:
-
-``` cpp
-(Request&, Response&, Next)
-```
-
-Example:
-
-``` cpp
-#include <vix.hpp>
-#include <vix/http/HttpMiddleware.hpp>
-
-using namespace vix;
-
-int main()
-{
-  App app;
-
-  HttpMiddleware mw =
-    [](Request& req, Response& res, auto next)
-    {
-      (void)req;
-      (void)res;
-      next();
-    };
-
-  app.use(mw);
-
-  app.get("/", [](Request&, Response& res)
-  {
-    res.send("Hello");
-  });
-
-  app.run(8080);
+// Correct
+if (!authorized) {
+  res.status(401).json({"ok", false});
+  return;
 }
+next();
 ```
 
-------------------------------------------------------------------------
+### Wrong CORS origin
 
-# Adapters
+```cpp
+// Wrong — that's the API, not the frontend
+app.use(vix::middleware::app::cors_dev({"http://localhost:8080"}));
 
-Adapt legacy to context:
-
-``` cpp
-auto adapted = vix::middleware::adapt(mw);
-app.use(adapted);
+// Correct
+app.use(vix::middleware::app::cors_dev({"http://localhost:5173"}));
 ```
 
-Adapt context to legacy:
+## What you should remember
 
-``` cpp
-auto adapted = vix::middleware::adapt_ctx(ctx_mw);
-app.use(adapted);
+```txt
+request → middleware → route handler → response
 ```
 
-------------------------------------------------------------------------
+Call `next()` only when the request should continue. Use middleware for shared behavior: CORS, rate limiting, security headers, authentication, logging, static files.
 
-# Behavior Notes
-
--   Middleware executes in registration order.
--   If `next()` is not called, the chain stops.
--   Middleware can modify request state before handler execution.
--   Middleware should not block for long operations.
-
-The middleware system is explicit and composable by design.
-
+Next: [Config API](/api/config)

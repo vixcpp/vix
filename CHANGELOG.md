@@ -5,9 +5,154 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
----
+## v2.5.3
 
-## [Unreleased]
+### Added
+- Added `vix replay` to record, inspect, list, clean, and replay previous Vix executions.
+- Added replay support for project runs and single-file script runs.
+- Added local replay storage under `.vix/runs/` with `run.json`, `stdout.log`, `stderr.log`, and `combined.log`.
+- Added `vix replay last`, `vix replay failed`, `vix replay show`, `vix replay list`, and `vix replay clean`.
+- Added `--replay` for `vix run` to explicitly record executions under `.vix/runs/`.
+- Added opt-in OpenAPI/docs mode for `vix run` through `--docs`.
+- Added `--tsan` support for ThreadSanitizer-based script runs.
+- Added a new incremental build graph foundation for `vix build`, including build nodes, build tasks, dependency file parsing, object cache metadata, and a parallel build scheduler.
+- Added local build graph state storage under the build directory to prepare faster no-op and incremental build decisions.
+- Added shared runtime error location helpers for extracting `file:line:column` locations and printing runtime code frames.
+- Added source-based fallback location hints for runtime errors when logs do not provide an exact user frame.
+- Added `threadpool` as a dedicated Vix module.
+- Added `kv` as a dedicated Vix module for durable local-first key-value storage.
+- Added compile database import for `vix build` so the build graph can use real CMake/Ninja compile commands from `compile_commands.json`.
+- Added Ninja build edge import for `vix build` so the build graph can understand archive, link, copy, install, and utility edges from `build.ninja`.
+- Added a guarded target-aware graph executor for experimental graph-based target builds.
+- Added a reusable `BuildStyle` renderer for consistent build output, progress, and diagnostics.
+- Added Vix-native test output styling for `vix tests`, aligned with the `vix build` progress style.
+- Added `vix tests --raw` to show raw internal test runner output when needed.
+- Added `vix tests --test <name|pattern>` and `vix tests -R <name|pattern>` to run one test or a filtered group of tests.
+- Added Vix-native output styling for `vix check`, aligned with `vix build` and `vix tests`.
+- Added clean script-mode check output for `vix check file.cpp`.
+- Added structured progress lines for `vix check` configure, build, tests, and runtime steps.
+- Added a dedicated `vix dev` session engine with target-aware rebuild orchestration.
+- Added a `DevFileIndex` for faster dev-mode file watching using filtered file indexing, `mtime`, and file size comparisons.
+
+### Changed
+- Changed `vix run` replay recording to be opt-in through `--replay`, so normal runs no longer create `.vix/runs/`.
+- Changed `vix run` OpenAPI/docs behavior to be opt-in through `--docs`, so docs are disabled by default.
+- Improved `vix replay` to use the same process execution behavior as `vix run`.
+- Improved `Ctrl+C` handling consistency between `vix run` and `vix replay`.
+- Improved `vix new` internals and output rendering with a dedicated `NewOutput` renderer.
+- Improved CLI help output to stay aligned with registered commands.
+- Improved direct script cache fingerprinting and single-file run output handling.
+- Improved runtime diagnostics for sanitizer and non-sanitizer crashes.
+- Improved `vix run` live output filtering to avoid printing raw allocator crash noise before friendly diagnostics.
+- Improved compile-time error rules with shorter messages, one focused hint, code frames, and consistent `at:` output.
+- Improved template error rules with cleaner diagnostics for concepts, coroutine awaiters, invalid overrides, object slicing, downcasts, and template substitution failures.
+- Improved CMake/build error diagnostics with shorter messages and focused hints.
+- Improved `vix build` internals with a build state cache that can skip unnecessary work when the project inputs have not changed.
+- Improved `vix build` preparation for deeper parallel and incremental compilation by wiring the new build graph into the build command flow.
+- Improved `vix build` to build the main project target by default instead of the full `all` target, making no-op and focused rebuilds much faster.
+- Improved `vix build -v` output by hiding internal graph, cache, project path, and CMake variable details unless debug logging is enabled.
+- Improved `vix build` diagnostics with a cleaner unified build error style, including location, error, code frame, and focused hints.
+- Improved `vix build --build-target all` to preserve the full build behavior explicitly when examples, tests, and auxiliary targets need to be rebuilt.
+- Improved `vix tests` output with a cleaner Vix-native header, progress line, success summary, and failure diagnostics.
+- Improved `vix tests` failure reporting by extracting failed test names and useful error messages instead of dumping raw runner output by default.
+- Improved `vix tests -v` to show detailed Vix-formatted failure details while keeping raw runner output behind `--raw`.
+- Improved `vix tests` to run supported backends in parallel by default and report the active job count.
+- Improved `vix check` output with a cleaner Vix-native header, progress lines, timing summary, and reduced default noise.
+- Improved `vix check --tests` to reuse the `vix tests` experience instead of exposing raw CTest output directly.
+- Improved `vix check` project mode so sanitizer checks validate the sanitizer build by default without forcing runtime execution.
+- Improved `vix check --san --run` behavior so runtime validation remains explicit for project checks.
+- Improved `vix check file.cpp` script mode with cleaner build, configure, runtime, and sanitizer progress output.
+- Improved `vix check --verbose` to keep detailed project, script, build directory, and cache information available without showing it by default.
+- Improved `vix check` build execution to hide internal CMake and Ninja output during normal successful checks.
+- Improved `vix dev` output to align with the cleaner `vix build` style.
+- Improved `vix dev` rebuild flow to use real Ninja progress instead of a fake spinner animation.
+- Improved `vix dev` reload behavior by clearing the terminal before restarting the application.
+- Improved `vix dev` file watching to ignore build folders, `.git`, `.vix`, docs, generated output, and unrelated files.
+- Improved `vix dev` startup output to reduce noise while keeping detailed information available through verbose/debug mode.
+- Improved raw log detection for linker errors, sanitizer reports, CMake failures, uncaught exceptions, and common runtime crashes.
+- Aligned core HTTP JSON handling around the stable `vix::json::Json` API.
+- Updated request parsing, response serialization, request handlers, and configuration storage to use the Vix JSON API consistently.
+- Moved the thread pool implementation out of `core` into the dedicated `threadpool` module.
+
+### Fixed
+- Fixed opt-in replay recording for `vix run main.cpp --replay`.
+- Fixed opt-in replay recording for project mode `vix run --replay`.
+- Fixed opt-in replay recording for interrupted runs.
+- Fixed opt-in replay recording for CMake fallback script runs.
+- Fixed `vix run` so normal runs no longer create replay data unless `--replay` is passed.
+- Fixed `vix run` so OpenAPI/docs are disabled by default unless `--docs` is passed.
+- Fixed `vix replay` missing-run errors to show a clearer message.
+- Fixed `vix replay --help` and `vix help replay` routing.
+- Fixed script `SIGINT` handling so user interruptions are treated as normal shutdowns.
+- Fixed script sanitizer runtime diagnostics so `vix run file.cpp --san` and CMake fallback scripts show precise code frames for crashes such as double free.
+- Fixed ThreadSanitizer diagnostics for script runs with `--tsan`.
+- Fixed double-free diagnostics without `--san` by pointing to suspicious `delete`, `delete[]`, or `free()` source lines when possible.
+- Fixed iterator invalidation diagnostics by reporting ASan use-after-free from invalidated iterators as iterator invalidation when detected.
+- Fixed STL debug iterator diagnostics to show a code frame when the log only reports a singular iterator without a source location.
+- Fixed segmentation fault, abort, out-of-range, mutex, condition variable, thread, span, and `std::string_view` runtime rules to use consistent code frame output.
+- Fixed uncaught exception diagnostics to show one clear hint and a guessed throw location when possible.
+- Fixed raw runtime logs being printed before friendly Vix diagnostics.
+- Fixed build metadata storage location in the Vix home cache.
+- Fixed compiler warnings and removed dead CLI code.
+- Fixed `vix dev` reload detection after file saves by keeping a stable file index instead of comparing fresh snapshots only.
+- Fixed `vix tests` output so internal runner details no longer leak into the default interface.
+- Fixed `vix tests` failure progress styling so failed test progress is shown in red.
+- Fixed `vix tests` summaries to report counts such as `Passed 23 tests` or `Failed 1 of 23 tests`.
+- Fixed `vix check` default output so successful CMake and Ninja logs no longer leak into normal output.
+- Fixed `vix check --tests` so test execution uses the Vix test runner output style.
+- Fixed `vix check --san` for library projects so sanitizer checks no longer assume a runnable executable exists.
+- Fixed `vix check file.cpp` script builds so they no longer force an invalid target name such as `main`.
+- Fixed `vix check file.cpp --san` output so runtime validation is shown as a clean progress step.
+- Fixed duplicate `Compiling <target> (dev)` output during dev reloads.
+- Fixed dev-mode progress output so rebuilds no longer show misleading animated progress.
+- Fixed dev-mode restart rendering to avoid stale application output mixing with rebuild output.
+
+### Internal
+- Added the internal replay subsystem:
+  - `ReplayTypes`
+  - `ReplayRecord`
+  - `ReplayPaths`
+  - `ReplayId`
+  - `ReplayClock`
+  - `ReplayJson`
+  - `ReplayStore`
+  - `ReplayPrinter`
+  - `ReplayRecorder`
+  - `ReplayCapture`
+  - `ReplayProcess`
+  - `ReplayRunner`
+  - `ReplayList`
+  - `ReplayCommand`
+- Refactored `NewCommand` and `ModulesCommand` internals into dedicated command modules.
+- Updated `RunProcess`, `RunCommand`, `RunScript`, and `DirectScriptRunner` to support replay capture.
+- Refactored runtime error rules to share `RuntimeLocation`, `find_best_runtime_location(...)`, `find_best_runtime_location_or_source_hint(...)`, and `make_at_text(...)`.
+- Refactored raw log detection and CMake build detection for cleaner dispatch order and more consistent output.
+- Normalized compile-time, runtime, template, CMake, linker, and sanitizer diagnostics around the same output style.
+- Expanded the internal incremental build foundation:
+  - `BuildNode`
+  - `BuildTask`
+  - `DependencyFile`
+  - `CompileCommands`
+  - `BuildNinja`
+  - `ObjectCache`
+  - `BuildGraph`
+  - `BuildGraphExecutor`
+  - `BuildScheduler`
+  - `BuildStyle`
+- Wired `BuildCommand` to initialize, import, and persist build graph state during `vix build`.
+- Wired `BuildCommand` to import `compile_commands.json` and `build.ninja` as the source of truth for future target-aware graph execution.
+- Guarded the experimental graph executor behind `VIX_GRAPH_EXECUTOR` while keeping CMake/Ninja as the default stable execution path.
+- Moved detailed build graph, artifact cache, build state, and CMake variable output behind debug logging.
+- Registered `modules/threadpool` as a standalone submodule.
+- Registered `modules/kv` as a standalone submodule.
+- Integrated `kv` into the umbrella CMake build and Vix package export flow.
+- Removed the old core-owned thread pool sources and experimental executor wiring.
+- Refactored dev-mode rebuild handling into `DevSession`, `DevRebuilder`, and `DevFileIndex`.
+- Reworked dev-mode change classification so source/header changes trigger rebuilds while CMake and Vix config changes trigger reconfigure plus rebuild.
+
+### Compatibility
+- No breaking changes.
+
 ## v2.5.2
 
 ### Added
@@ -142,6 +287,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Compatibility
 - No breaking changes.
+- Preserved compatibility for existing `nlohmann::json` and `Simple.hpp` response helpers while routing core JSON handling through `vix::json::Json`.
 
 # v2.5.1
 

@@ -1,206 +1,211 @@
 # Middleware
 
-This section demonstrates how middleware works in Vix.cpp.
+Add shared logic around routes: logging, headers, CORS, rate limiting, route protection.
 
-Each example is minimal and self-contained.
+```txt
+request → middleware → route handler → response
+```
 
----
+## What you will build
 
-## 1. Global Middleware
+```txt
+GET /            → public route
+GET /api/health  → API route with headers
+GET /admin/stats → protected admin route
+```
 
-Runs before every route.
+## Create a workspace
+
+```bash
+mkdir -p ~/tmp/vix-examples/middleware
+cd ~/tmp/vix-examples/middleware
+touch main.cpp
+```
+
+## Full code
 
 ```cpp
+#include <iostream>
+#include <string>
 #include <vix.hpp>
-#include <vix/middleware/app/adapter.hpp>
-
 using namespace vix;
+
+static void respond_error(Response &res, int status,
+                           const std::string &code, const std::string &message)
+{
+  res.status(status).json({"ok", false, "error", code, "message", message});
+}
 
 int main()
 {
   App app;
 
-  app.use(vix::middleware::app::adapt(
-    [](Request& req, Response& res, vix::middleware::Next next)
-    {
-      res.header("x-powered-by", "Vix");
-      next();
-    }
-  ));
+  // Request logging — global
+  app.use([](Request &req, Response &, App::Next next){
+    std::cout << "[request] " << req.method() << " " << req.path() << "\n";
+    next();
+  });
 
-  app.get("/", [](Request&, Response& res)
-  {
-    res.send("Hello with middleware");
+  // Security headers — global
+  app.use([](Request &, Response &res, App::Next next){
+    res.header("X-Powered-By", "Vix.cpp"); res.header("X-Content-Type-Options", "nosniff");
+    next();
+  });
+
+  // API prefix headers
+  app.use("/api", [](Request &, Response &res, App::Next next){
+    res.header("X-API", "true");
+    next();
+  });
+
+  // Admin protection
+  app.protect("/admin", [](Request &req, Response &res, App::Next next){
+    if (req.header("x-admin-token") != "secret"){
+      respond_error(res, 401, "unauthorized", "Missing or invalid admin token");
+      return;
+    }
+    next();
+  });
+
+  app.get("/", [](Request &, Response &res) {
+    res.text("Public page");
+  });
+
+  app.get("/api/health", [](Request &, Response &res){
+    res.json({
+      "ok", true,
+      "service", "middleware-example"
+    });
+  });
+
+  app.get("/admin/stats", [](Request &, Response &res){
+    res.json({
+      "ok", true,
+      "message", "private admin stats",
+      "users", 42
+    });
   });
 
   app.run(8080);
+
   return 0;
 }
 ```
 
----
+## Run and test
 
-## 2. Prefix Middleware
+```bash
+vix run main.cpp
+```
 
-Middleware only applied to a path prefix.
+```bash
+curl -i http://127.0.0.1:8080/
+curl -i http://127.0.0.1:8080/api/health          # includes X-API: true
+curl -i http://127.0.0.1:8080/admin/stats         # 401
+curl -i http://127.0.0.1:8080/admin/stats -H "x-admin-token: secret"  # 200
+```
+
+## Key middleware patterns
 
 ```cpp
-#include <vix.hpp>
+// Global middleware
+app.use([](Request &, Response &res, App::Next next){
+  res.header("X-App", "Vix");
+  next();
+});
+
+// Prefix middleware
+app.use("/api", [](Request &, Response &res, App::Next next){
+  res.header("X-API", "true");
+  next();
+});
+
+// Route protection (prefix)
+app.protect("/admin", middleware);
+
+// Route protection (exact path)
+app.protect_exact("/admin/hook", middleware);
+```
+
+## Add CORS
+
+```cpp
 #include <vix/middleware/app/presets.hpp>
 
-using namespace vix;
-
-int main()
-{
-  App app;
-
-  using namespace vix::middleware::app;
-
-  install(app, "/api/",
-    rate_limit_dev(60, std::chrono::minutes(1))
-  );
-
-  app.get("/api/ping", [](Request&, Response& res)
-  {
-    res.json({"ok", true});
-  });
-
-  app.get("/", [](Request&, Response& res)
-  {
-    res.send("Public route");
-  });
-
-  app.run(8080);
-  return 0;
-}
+app.use(vix::middleware::app::cors_dev({
+    "http://localhost:5173",
+    "http://127.0.0.1:5173"
+}));
 ```
 
----
-
-## 3. Simple Auth Middleware
-
-Protect a route with a header check.
+## Add rate limiting
 
 ```cpp
-#include <vix.hpp>
-#include <vix/middleware/app/adapter.hpp>
+#include <vix/middleware/app/presets.hpp>
 
-using namespace vix;
+app.use(vix::middleware::app::rate_limit({.max_requests = 60, .window_seconds = 60}));
 
-int main()
-{
-  App app;
-
-  app.use(vix::middleware::app::adapt(
-    [](Request& req, Response& res, vix::middleware::Next next)
-    {
-      if (req.header("x-api-key") != "secret")
-      {
-        res.status(401).json({
-          "ok", false,
-          "error", "Unauthorized"
-        });
-        return;
-      }
-      next();
-    }
-  ));
-
-  app.get("/secure", [](Request&, Response& res)
-  {
-    res.json({"ok", true});
-  });
-
-  app.run(8080);
-  return 0;
-}
+// Stricter for auth routes
+vix::middleware::app::use_on_prefix(app, "/auth",
+    vix::middleware::app::rate_limit({.max_requests = 5, .window_seconds = 60}));
 ```
 
 Test:
 
-    curl -H "x-api-key: secret" http://localhost:8080/secure
-
----
-
-## 4. Chaining Middlewares
-
-```cpp
-#include <vix.hpp>
-#include <vix/middleware/app/adapter.hpp>
-
-using namespace vix;
-
-int main()
-{
-  App app;
-
-  app.use(vix::middleware::app::adapt(
-    [](Request&, Response& res, vix::middleware::Next next)
-    {
-      res.header("x-a", "1");
-      next();
-    }
-  ));
-
-  app.use(vix::middleware::app::adapt(
-    [](Request&, Response& res, vix::middleware::Next next)
-    {
-      res.header("x-b", "2");
-      next();
-    }
-  ));
-
-  app.get("/", [](Request&, Response& res)
-  {
-    res.send("Check headers");
-  });
-
-  app.run(8080);
-  return 0;
-}
+```bash
+for i in $(seq 1 8); do
+  curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8080/api/health
+done
 ```
 
----
+## Recommended middleware order
 
-## 5. Context-Based Middleware
-
-Using adapt_ctx with Context API.
-
-```cpp
-#include <vix.hpp>
-#include <vix/middleware/app/adapter.hpp>
-
-using namespace vix;
-
-int main()
-{
-  App app;
-
-  app.use(vix::middleware::app::adapt_ctx(
-    [](vix::middleware::Context& ctx, vix::middleware::Next next)
-    {
-      ctx.res().header("x-context", "true");
-      next();
-    }
-  ));
-
-  app.get("/", [](Request&, Response& res)
-  {
-    res.send("Context middleware");
-  });
-
-  app.run(8080);
-  return 0;
-}
+```txt
+CORS → rate limit → request logging → security headers → body limits → auth → routes
 ```
 
----
+## Common mistakes
 
-## What this teaches
+```cpp
+// Forgetting next()
+// Wrong
+app.use([](Request &, Response &res, App::Next next) {
+  res.header("X-App", "Vix");
+});
 
-- Global middleware
-- Prefix-based middleware
-- Route protection
-- Middleware chaining
-- Context-based middleware
+// Correct
+app.use([](Request &, Response &res, App::Next next) {
+  res.header("X-App", "Vix");
+  next();
+});
 
+// Calling next() after error
+// Wrong — still calls next()
+if (!authorized) {
+  respond_error(res, 401, "...", "...");
+}
+next();
+
+// Correct
+if (!authorized) {
+  respond_error(res, 401, "...", "...");
+  return;
+}
+next();
+
+// Wrong CORS origin
+
+// That's the API, not the frontend
+cors_dev({"http://localhost:8080"});
+
+// Correct
+cors_dev({"http://localhost:5173"});
+```
+
+## What you should remember
+
+Call `next()` when the request should continue. Return without `next()` when you've already sent the response.
+
+The core idea: **middleware keeps repeated route behavior in one place.**
+
+Next: [Authentication](/examples/auth)

@@ -43,6 +43,8 @@ Vix.cpp is a modern C++ runtime for building and running real-world applications
 
 Learn more about the Vix runtime in the [documentation](https://docs.vixcpp.com).
 
+Vix is also the runtime foundation used by [Softadastra](https://docs.softadastra.com), a local-first and offline-first system for building reliable applications that continue working when the network is slow, unstable, or unavailable.
+
 ## Production Proof
 
 Vix is not a concept. It runs real systems.
@@ -96,6 +98,27 @@ vix run main.cpp
 
 Done.
 
+## Replay a previous run
+
+Vix can record a run and replay it later.
+
+```bash
+vix run main.cpp
+vix replay
+```
+
+Replay the latest failed or interrupted run:
+```bash
+vix replay failed
+```
+
+Inspect a recorded run before replaying it:
+```bash
+vix replay show last
+```
+
+Vix stores replay data locally under .vix/runs/, including the command, working directory, exit status, and captured logs.
+
 ## Build a server
 
 ```cpp
@@ -120,9 +143,9 @@ vix run server.cpp
 
 → http://localhost:8080
 
-For production deployments, Vix is optimized to run behind a TLS-terminating reverse proxy such as Nginx, Caddy or Traefik, while built-in HTTPS is available for local development, internal tools and simple self-hosted deployments.
-
 ## Install a framework in 1 command
+
+Framework: https://cnerium.dev
 
 ```bash
 vix install -g cnerium/app

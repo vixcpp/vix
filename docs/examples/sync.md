@@ -1,140 +1,193 @@
-# Offline-first Sync
+# Sync
 
-This page is a practical, beginner-friendly guide for the Vix.cpp offline-first sync engine.
+Build an offline-first flow: persist operations locally, sync when possible.
 
-Goal: You can enqueue operations locally, stay offline, crash/restart, then safely converge when the network comes back.
-
-You will learn:
-
-- What the SyncEngine does
-- How Outbox makes writes durable before any network attempt
-- How RetryPolicy schedules retries
-- How to test your setup quickly (copy-paste + run)
-- How to simulate failures (offline, retryable errors, permanent errors, crash)
-
----
-
-## 0) Mental model (what happens at runtime)
-
-When you call `outbox.enqueue(op)`:
-
-1. The operation is persisted to disk (OutboxStore).
-2. The engine can try to deliver it later (now or when online).
-
-When the engine ticks:
-
-1. It asks Outbox for ready operations.
-2. It claims them (InFlight).
-3. It sends them through a transport (HTTP, WS, P2P, edge).
-4. It marks them Done or Failed (and schedules retry).
-
-Key offline-first rule:
-
-- No network attempt happens unless the operation was persisted first.
-
----
-
-## Headers
-
-Engine:
-
-```cpp
-#include <vix/sync/engine/SyncEngine.hpp>
-#include <vix/sync/engine/SyncWorker.hpp>
+```txt
+local operation → persist first → sync later
 ```
 
-Outbox:
+## What you will build
 
-```cpp
-#include <vix/sync/outbox/Outbox.hpp>
-#include <vix/sync/outbox/OutboxStore.hpp>
-#include <vix/sync/outbox/FileOutboxStore.hpp>
+```txt
+WAL      → records what happened
+Outbox   → stores pending operations
+Worker   → sends ready operations
+Retry    → retries temporary failures
+Done     → marks successful operations
 ```
 
-Network:
+## Create a workspace
 
-```cpp
-#include <vix/net/NetworkProbe.hpp>
+```bash
+mkdir -p ~/tmp/vix-examples/sync
+cd ~/tmp/vix-examples/sync
+touch main.cpp
 ```
 
----
+## Full code
 
-## How to run these examples
+```cpp
+#include <chrono>
+#include <filesystem>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
+#include <vix/sync.hpp>
 
-You have two common ways:
+static std::int64_t now_ms()
+{
+  using namespace std::chrono;
+  return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
+}
 
-### Option A) Use Vix CLI (fastest)
+static void reset_dir(const std::filesystem::path &dir)
+{
+  std::error_code ec;
+  std::filesystem::remove_all(dir, ec);
+  std::filesystem::create_directories(dir, ec);
+}
 
-If you already use `vix run`:
+namespace
+{
+  class ExampleTransport final : public vix::sync::engine::ISyncTransport
+  {
+  public:
+    explicit ExampleTransport(bool online) : online_(online) {}
+    void set_online(bool online) { online_ = online; }
+
+    vix::sync::engine::SendResult send(const vix::sync::Operation &op) override
+    {
+      std::cout << "[transport] sending: " << op.id << " -> " << op.target << "\n";
+      if (!online_)
+        return {.ok = false, .retryable = true, .error = "network offline"};
+      return {.ok = true};
+    }
+  private:
+    bool online_{false};
+  };
+}
+
+int main()
+{
+  using namespace vix::sync;
+  using namespace vix::sync::outbox;
+  using namespace vix::sync::engine;
+
+  const std::filesystem::path dir = "./build/sync-example";
+  reset_dir(dir);
+
+  auto store = std::make_shared<FileOutboxStore>(FileOutboxStore::Config{
+      .file_path = dir / "outbox.json", .pretty_json = true});
+
+  RetryPolicy retry;
+  retry.max_attempts = 3;
+  retry.base_delay_ms = 500;
+  retry.factor = 2.0;
+
+  auto outbox = std::make_shared<Outbox>(
+      Outbox::Config{.owner = "sync-example", .retry = retry}, store);
+
+  auto probe = std::make_shared<vix::net::NetworkProbe>(
+      vix::net::NetworkProbe::Config{}, [] { return true; });
+
+  auto transport = std::make_shared<ExampleTransport>(false);  // start offline
+
+  SyncWorker worker(SyncWorker::Config{.batch_limit = 10}, outbox, probe, transport);
+
+  const auto t0 = now_ms();
+
+  // 1. Persist the operation BEFORE any network call
+  Operation op;
+  op.kind = "message.send";
+  op.target = "/api/messages";
+  op.payload = R"({"text":"hello offline-first"})";
+  const std::string id = outbox->enqueue(op, t0);
+  std::cout << "[app] operation saved: " << id << "\n";
+
+  // 2. First tick — offline, fails with retryable error
+  std::cout << "\n[app] first sync attempt (offline)\n";
+  const auto processed_offline = worker.tick(t0 + 1);
+  std::cout << "[worker] processed: " << processed_offline << "\n";
+
+  auto after_offline = store->get(id);
+  if (after_offline)
+  {
+    std::cout << "[outbox] attempt: " << after_offline->attempt << "\n";
+    std::cout << "[outbox] last_error: " << after_offline->last_error << "\n";
+    std::cout << "[outbox] next_retry_at_ms: " << after_offline->next_retry_at_ms << "\n";
+  }
+
+  // 3. Network recovers — second tick succeeds
+  std::cout << "\n[app] network recovers\n";
+  transport->set_online(true);
+  const auto retry_time = after_offline ? after_offline->next_retry_at_ms + 1 : t0 + 1000;
+  const auto processed_online = worker.tick(retry_time);
+  std::cout << "[worker] processed: " << processed_online << "\n";
+
+  auto final = store->get(id);
+  if (final)
+  {
+    std::cout << "[outbox] final status: " << static_cast<int>(final->status) << "\n";
+    if (final->status == OperationStatus::Done)
+      std::cout << "[outbox] operation completed\n";
+  }
+
+  std::cout << "\n[files] outbox saved at: " << (dir / "outbox.json") << "\n";
+  return 0;
+}
+```
+
+## Run
 
 ```bash
 vix run main.cpp
 ```
 
-This compiles and runs the file.
-
-### Option B) Build with CMake
-
-If your project is a normal CMake project, create a small target and link Vix. Then:
+Check the durable outbox file:
 
 ```bash
-cmake -S . -B build
-cmake --build build -j
-./build/sync_example
+cat ./build/sync-example/outbox.json
 ```
 
-Notes for beginners:
+## Operation lifecycle
 
-- These examples write files under `./.vix_test_*`. You can delete that folder anytime.
-- They use `assert(...)` to keep checks minimal.
+```txt
+Pending → Inflight → Done
+               ↓ (retryable failure)
+             Retry → Pending again
+               ↓ (permanent failure)
+             Failed
+```
 
----
+## Retryable vs permanent failure
 
-## Helper: now_ms() (used by all examples)
+```cpp
+// Retryable — try again later
+return SendResult{.ok = false, .retryable = true, .error = "network offline"};
 
-The sync engine uses millisecond timestamps.
+// Permanent — do not retry
+return SendResult{.ok = false, .retryable = false, .error = "bad request"};
+```
+
+| Failure | Retry? | Example |
+|---------|--------|---------|
+| Network timeout | Yes | temporary connection issue |
+| Server unavailable | Yes | 503 |
+| Bad request | No | invalid payload |
+| Unauthorized | Usually no | invalid token |
+
+## WAL mini example
+
+```bash
+touch wal_demo.cpp
+```
 
 ```cpp
 #include <chrono>
-#include <cstdint>
-
-static std::int64_t now_ms()
-{
-  using namespace std::chrono;
-  return duration_cast<milliseconds>(
-           steady_clock::now().time_since_epoch()
-         ).count();
-}
-```
-
----
-
-## Example 1: Minimal smoke test (enqueue + tick + Done)
-
-This is the smallest complete setup: file-backed outbox + always-online probe + transport + engine.
-
-What you should see:
-
-- The engine processes at least 1 operation.
-- The operation ends as `Done`.
-
-```cpp
-#include <cassert>
-#include <chrono>
-#include <cstdint>
 #include <filesystem>
 #include <iostream>
-#include <memory>
-#include <string>
-
-#include <vix/net/NetworkProbe.hpp>
-#include <vix/sync/Operation.hpp>
-#include <vix/sync/engine/SyncEngine.hpp>
-#include <vix/sync/outbox/FileOutboxStore.hpp>
-#include <vix/sync/outbox/Outbox.hpp>
-
-// Copy from Appendix at the end of this file
-#include "fake_http_transport.hpp"
+#include <vix/sync.hpp>
 
 static std::int64_t now_ms()
 {
@@ -142,507 +195,69 @@ static std::int64_t now_ms()
   return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
 }
 
-static void reset_dir(const std::filesystem::path& dir)
+static std::vector<std::uint8_t> bytes(std::string s)
 {
-  std::error_code ec;
-  std::filesystem::remove_all(dir, ec);
-  std::filesystem::create_directories(dir, ec);
-}
-
-static void run_example_1()
-{
-  using namespace vix::sync;
-  using namespace vix::sync::engine;
-  using namespace vix::sync::outbox;
-
-  const std::filesystem::path dir = "./.vix_test_smoke";
-  reset_dir(dir);
-
-  auto store = std::make_shared<FileOutboxStore>(FileOutboxStore::Config{
-    .file_path = dir / "outbox.json",
-    .pretty_json = true,
-    .fsync_on_write = false
-  });
-
-  auto outbox = std::make_shared<Outbox>(
-    Outbox::Config{ .owner = "example-1" },
-    store
-  );
-
-  auto probe = std::make_shared<vix::net::NetworkProbe>(
-    vix::net::NetworkProbe::Config{},
-    [] { return true; } // always online
-  );
-
-  auto transport = std::make_shared<FakeHttpTransport>();
-  transport->setDefault({ .ok = true });
-
-  SyncEngine engine(
-    SyncEngine::Config{ .worker_count = 1, .batch_limit = 10 },
-    outbox, probe, transport
-  );
-
-  Operation op;
-  op.kind = "http.post";
-  op.target = "/api/messages";
-  op.payload = R"({"text":"hello offline"})";
-
-  const auto id = outbox->enqueue(op, now_ms());
-
-  const auto processed = engine.tick(now_ms());
-  assert(processed >= 1);
-
-  auto saved = store->get(id);
-  assert(saved.has_value());
-  assert(saved->status == OperationStatus::Done);
-
-  std::cout << "[example-1] OK: operation is Done\n";
+  return std::vector<std::uint8_t>(s.begin(), s.end());
 }
 
 int main()
 {
-  run_example_1();
-  return 0;
-}
-```
+  using namespace vix::sync::wal;
+  std::filesystem::create_directories("./build/wal-demo");
 
-Beginner tip:
-
-- Open `./.vix_test_smoke/outbox.json` to see the durable state.
-
----
-
-## Example 2: Retryable failure (fails first, succeeds later)
-
-This simulates a flaky network or a temporary server error.
-
-What you should see:
-
-- First tick: operation becomes Failed and a retry is scheduled.
-- Later tick: operation becomes Done.
-
-```cpp
-#include <cassert>
-#include <chrono>
-#include <cstdint>
-#include <filesystem>
-#include <iostream>
-#include <memory>
-#include <string>
-
-#include <vix/net/NetworkProbe.hpp>
-#include <vix/sync/Operation.hpp>
-#include <vix/sync/engine/SyncEngine.hpp>
-#include <vix/sync/outbox/FileOutboxStore.hpp>
-#include <vix/sync/outbox/Outbox.hpp>
-
-#include "fake_http_transport.hpp"
-
-static std::int64_t now_ms()
-{
-  using namespace std::chrono;
-  return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
-}
-
-static void reset_dir(const std::filesystem::path& dir)
-{
-  std::error_code ec;
-  std::filesystem::remove_all(dir, ec);
-  std::filesystem::create_directories(dir, ec);
-}
-
-static void run_example_2()
-{
-  using namespace vix::sync;
-  using namespace vix::sync::engine;
-  using namespace vix::sync::outbox;
-
-  const std::filesystem::path dir = "./.vix_test_retry";
-  reset_dir(dir);
-
-  auto store = std::make_shared<FileOutboxStore>(FileOutboxStore::Config{
-    .file_path = dir / "outbox.json",
-    .pretty_json = true,
-    .fsync_on_write = false
-  });
-
-  auto outbox = std::make_shared<Outbox>(
-    Outbox::Config{ .owner = "example-2" },
-    store
-  );
-
-  auto probe = std::make_shared<vix::net::NetworkProbe>(
-    vix::net::NetworkProbe::Config{},
-    [] { return true; }
-  );
-
-  auto transport = std::make_shared<FakeHttpTransport>();
-
-  // First attempt fails (retryable), then succeed.
-  transport->setRuleForTarget("/api/messages", FakeHttpTransport::Rule{
-    .ok = false,
-    .retryable = true,
-    .error = "temporary error (retryable)"
-  });
-
-  SyncEngine engine(
-    SyncEngine::Config{ .worker_count = 1, .batch_limit = 10 },
-    outbox, probe, transport
-  );
-
-  Operation op;
-  op.kind = "http.post";
-  op.target = "/api/messages";
-  op.payload = R"({"text":"retry me"})";
-
+  Wal wal(Wal::Config{.file_path = "./build/wal-demo/wal.log", .fsync_on_write = false});
   const auto t0 = now_ms();
-  const auto id = outbox->enqueue(op, t0);
 
-  // Tick 1: should fail (retryable)
-  engine.tick(t0);
+  wal.append(WalRecord{.id = "op_1", .type = RecordType::PutOperation, .ts_ms = t0,
+                        .payload = bytes(R"({"kind":"message.send","target":"/api/messages"})")});
 
-  {
-    auto saved = store->get(id);
-    assert(saved.has_value());
-    assert(saved->status == OperationStatus::Failed || saved->status == OperationStatus::Pending);
-  }
+  wal.append(WalRecord{.id = "op_1", .type = RecordType::MarkDone, .ts_ms = t0 + 1});
 
-  // Switch transport to success for next attempt
-  transport->setRuleForTarget("/api/messages", FakeHttpTransport::Rule{ .ok = true });
-
-  // Tick 2: run in the future so retry window can pass.
-  const auto t1 = t0 + 10'000;
-  engine.tick(t1);
-
-  auto final = store->get(id);
-  assert(final.has_value());
-  assert(final->status == OperationStatus::Done);
-
-  std::cout << "[example-2] OK: retryable failure eventually becomes Done\n";
-}
-
-int main()
-{
-  run_example_2();
+  std::cout << "replay:\n";
+  wal.replay(0, [](const WalRecord &r){
+    std::cout << "  id=" << r.id << " type=" << static_cast<int>(r.type) << " ts=" << r.ts_ms << "\n";
+  });
   return 0;
 }
 ```
 
-Beginner tip:
-
-- Retry scheduling is computed using RetryPolicy.
-- You can tune delays and max attempts in `Outbox::Config{ .retry = ... }`.
-
----
-
-## Example 3: Permanent failure (do not retry)
-
-This simulates a permanent error such as invalid request data.
-
-What you should see:
-
-- The operation becomes PermanentFailed.
-- The transport is not called again for that operation.
-
-```cpp
-#include <cassert>
-#include <chrono>
-#include <cstdint>
-#include <filesystem>
-#include <iostream>
-#include <memory>
-#include <string>
-
-#include <vix/net/NetworkProbe.hpp>
-#include <vix/sync/Operation.hpp>
-#include <vix/sync/engine/SyncEngine.hpp>
-#include <vix/sync/outbox/FileOutboxStore.hpp>
-#include <vix/sync/outbox/Outbox.hpp>
-
-#include "fake_http_transport.hpp"
-
-static std::int64_t now_ms()
-{
-  using namespace std::chrono;
-  return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
-}
-
-static void reset_dir(const std::filesystem::path& dir)
-{
-  std::error_code ec;
-  std::filesystem::remove_all(dir, ec);
-  std::filesystem::create_directories(dir, ec);
-}
-
-static void run_example_3()
-{
-  using namespace vix::sync;
-  using namespace vix::sync::engine;
-  using namespace vix::sync::outbox;
-
-  const std::filesystem::path dir = "./.vix_test_perm";
-  reset_dir(dir);
-
-  auto store = std::make_shared<FileOutboxStore>(FileOutboxStore::Config{
-    .file_path = dir / "outbox.json",
-    .pretty_json = true,
-    .fsync_on_write = false
-  });
-
-  auto outbox = std::make_shared<Outbox>(
-    Outbox::Config{ .owner = "example-3" },
-    store
-  );
-
-  auto probe = std::make_shared<vix::net::NetworkProbe>(
-    vix::net::NetworkProbe::Config{},
-    [] { return true; }
-  );
-
-  auto transport = std::make_shared<FakeHttpTransport>();
-  transport->setRuleForTarget("/api/messages", FakeHttpTransport::Rule{
-    .ok = false,
-    .retryable = false,
-    .error = "bad request (permanent)"
-  });
-
-  SyncEngine engine(
-    SyncEngine::Config{ .worker_count = 1, .batch_limit = 10 },
-    outbox, probe, transport
-  );
-
-  Operation op;
-  op.kind = "http.post";
-  op.target = "/api/messages";
-  op.payload = R"({"text":"invalid data"})";
-
-  const auto t0 = now_ms();
-  const auto id = outbox->enqueue(op, t0);
-
-  engine.tick(t0);
-
-  {
-    auto saved = store->get(id);
-    assert(saved.has_value());
-    assert(saved->status == OperationStatus::PermanentFailed);
-  }
-
-  const auto calls_after_first = transport->callCount();
-  engine.tick(t0 + 10'000);
-  assert(transport->callCount() == calls_after_first);
-
-  std::cout << "[example-3] OK: permanent failure is not retried\n";
-}
-
-int main()
-{
-  run_example_3();
-  return 0;
-}
+```bash
+vix run wal_demo.cpp
 ```
 
----
+## Complete offline-first flow
 
-## Example 4: Crash simulation (InFlight timeout requeue)
-
-This simulates a crash after claiming an operation but before completing it.
-
-What you should see:
-
-- The operation is InFlight.
-- After inflight_timeout_ms, the engine requeues it.
-- Next tick delivers it and marks Done.
-
-```cpp
-#include <cassert>
-#include <chrono>
-#include <cstdint>
-#include <filesystem>
-#include <iostream>
-#include <memory>
-#include <string>
-
-#include <vix/net/NetworkProbe.hpp>
-#include <vix/sync/Operation.hpp>
-#include <vix/sync/engine/SyncEngine.hpp>
-#include <vix/sync/outbox/FileOutboxStore.hpp>
-#include <vix/sync/outbox/Outbox.hpp>
-
-#include "fake_http_transport.hpp"
-
-static std::int64_t now_ms()
-{
-  using namespace std::chrono;
-  return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
-}
-
-static void reset_dir(const std::filesystem::path& dir)
-{
-  std::error_code ec;
-  std::filesystem::remove_all(dir, ec);
-  std::filesystem::create_directories(dir, ec);
-}
-
-static void run_example_4()
-{
-  using namespace vix::sync;
-  using namespace vix::sync::engine;
-  using namespace vix::sync::outbox;
-
-  const std::filesystem::path dir = "./.vix_test_inflight";
-  reset_dir(dir);
-
-  auto store = std::make_shared<FileOutboxStore>(FileOutboxStore::Config{
-    .file_path = dir / "outbox.json",
-    .pretty_json = true,
-    .fsync_on_write = false
-  });
-
-  auto outbox = std::make_shared<Outbox>(
-    Outbox::Config{ .owner = "example-4" },
-    store
-  );
-
-  auto probe = std::make_shared<vix::net::NetworkProbe>(
-    vix::net::NetworkProbe::Config{},
-    [] { return true; }
-  );
-
-  auto transport = std::make_shared<FakeHttpTransport>();
-  transport->setDefault({ .ok = true });
-
-  SyncEngine::Config cfg;
-  cfg.worker_count = 1;
-  cfg.batch_limit = 10;
-  cfg.idle_sleep_ms = 0;
-  cfg.offline_sleep_ms = 0;
-  cfg.inflight_timeout_ms = 50;
-
-  SyncEngine engine(cfg, outbox, probe, transport);
-
-  Operation op;
-  op.kind = "http.post";
-  op.target = "/api/messages";
-  op.payload = R"({"text":"recover me"})";
-
-  const auto t0 = now_ms();
-  const auto id = outbox->enqueue(op, t0);
-
-  // Simulate crash: claim without completing.
-  const bool claimed = outbox->claim(id, t0);
-  assert(claimed);
-
-  {
-    auto saved = store->get(id);
-    assert(saved.has_value());
-    assert(saved->status == OperationStatus::InFlight);
-  }
-
-  // Engine sees inflight timeout and requeues
-  const auto t1 = t0 + 60;
-  engine.tick(t1);
-
-  // Next tick should deliver
-  engine.tick(t1 + 1);
-
-  auto final = store->get(id);
-  assert(final.has_value());
-  assert(final->status == OperationStatus::Done);
-
-  std::cout << "[example-4] OK: inflight timeout requeues and completes\n";
-}
-
-int main()
-{
-  run_example_4();
-  return 0;
-}
+```txt
+local write → WAL append → outbox enqueue → sync worker → transport → ack
 ```
 
----
+## Common mistakes
 
-## Beginner debugging checklist
+```txt
+Wrong: send request → store if success
+Correct: store operation → send request
 
-If an operation does not become Done:
+Wrong: retry bad request forever
+Correct: retryable=false for validation/auth errors
 
-1. Open your outbox file (example: `./.vix_test_smoke/outbox.json`).
-2. Check status, attempt, last_error, and next_retry_at_ms.
-3. Confirm your NetworkProbe returns true (online).
-4. Confirm your transport returns { ok=true }.
-5. Confirm your engine tick uses a now_ms that is increasing.
-
----
-
-## Appendix: Minimal Fake Transport (copy-paste)
-
-Save this as `fake_http_transport.hpp` next to your `main.cpp`.
-
-```cpp
-#ifndef VIX_FAKE_HTTP_TRANSPORT_HPP
-#define VIX_FAKE_HTTP_TRANSPORT_HPP
-
-#include <string>
-#include <unordered_map>
-
-#include <vix/sync/engine/SyncWorker.hpp>
-
-namespace vix::sync::engine
-{
-  class FakeHttpTransport final : public ISyncTransport
-  {
-  public:
-    struct Rule
-    {
-      bool ok{true};
-      bool retryable{true};
-      std::string error{"simulated failure"};
-    };
-
-    void setDefault(Rule r) { def_ = std::move(r); }
-
-    void setRuleForKind(std::string kind, Rule r)
-    {
-      by_kind_[std::move(kind)] = std::move(r);
-    }
-
-    void setRuleForTarget(std::string target, Rule r)
-    {
-      by_target_[std::move(target)] = std::move(r);
-    }
-
-    std::size_t callCount() const noexcept { return calls_; }
-
-    SendResult send(const vix::sync::Operation& op) override
-    {
-      ++calls_;
-
-      if (auto it = by_target_.find(op.target); it != by_target_.end())
-        return toResult(it->second);
-
-      if (auto it = by_kind_.find(op.kind); it != by_kind_.end())
-        return toResult(it->second);
-
-      return toResult(def_);
-    }
-
-  private:
-    static SendResult toResult(const Rule& r)
-    {
-      SendResult res;
-      res.ok = r.ok;
-      res.retryable = r.retryable;
-      res.error = r.ok ? "" : r.error;
-      return res;
-    }
-
-  private:
-    Rule def_{};
-    std::unordered_map<std::string, Rule> by_kind_;
-    std::unordered_map<std::string, Rule> by_target_;
-    std::size_t calls_{0};
-  };
-} // namespace vix::sync::engine
-
-#endif
+Wrong: payload={"action":"save"}
+Correct: payload={"id":"msg_1","text":"hello","created_at":1710000000000}
 ```
 
+## What you should remember
+
+```cpp
+#include <vix/sync.hpp>
+
+// local operation → outbox → worker → transport → done
+Operation op;
+op.kind = "message.send";
+op.target = "/api/messages";
+op.payload = R"({"text":"hello"})";
+outbox->enqueue(op, t0);
+worker.tick(t0 + 1);
+```
+
+The core idea: **if the network fails, the operation must still exist locally.**
+
+Next: [P2P](/examples/p2p)

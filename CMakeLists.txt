@@ -214,6 +214,8 @@ option(VIX_TEMPLATE_BUILD_TESTS    "Build vix::template tests"                  
 option(VIX_TEMPLATE_BUILD_EXAMPLES "Build vix::template examples"                                 OFF)
 option(VIX_TEMPLATE_BUILD_BENCH    "Build vix::template benchmarks"                               OFF)
 option(VIX_ENABLE_PROCESS          "Build Vix Process module"                                      ON)
+option(VIX_ENABLE_THREADPOOL       "Build Vix ThreadPool module"                                  ON)
+option(VIX_ENABLE_KV               "Build Vix KV module"                                         ON)
 
 # ----------------------------------------------------
 # Tooling / Static analysis
@@ -351,13 +353,13 @@ else()
 
   include(FetchContent)
 
-  FetchContent_Declare(
+  fetchcontent_declare(
     asio
     GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
     GIT_TAG        asio-1-30-2
   )
 
-  FetchContent_MakeAvailable(asio)
+  fetchcontent_makeavailable(asio)
 
   target_include_directories(vix_thirdparty_asio SYSTEM INTERFACE
     $<BUILD_INTERFACE:${asio_SOURCE_DIR}/asio/include>
@@ -488,12 +490,12 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/json/CMakeLists.txt")
   set(_VIX_JSON_BACKEND "submodule")
 elseif (VIX_FORCE_FETCH_JSON)
   message(WARNING "modules/json missing — fetching nlohmann/json fallback")
-  FetchContent_Declare(
+  fetchcontent_declare(
     nlohmann_json
     GIT_REPOSITORY https://github.com/nlohmann/json.git
     GIT_TAG        v3.11.3
   )
-  FetchContent_MakeAvailable(nlohmann_json)
+  fetchcontent_makeavailable(nlohmann_json)
 
   add_library(vix_json INTERFACE)
   target_link_libraries(vix_json INTERFACE nlohmann_json::nlohmann_json)
@@ -688,6 +690,56 @@ if (VIX_ENABLE_PROCESS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/process/C
   endif()
 else()
   message(STATUS "Process: disabled or not present.")
+endif()
+
+# --- ThreadPool (optional) ---
+set(VIX_HAS_THREADPOOL OFF)
+
+if (VIX_ENABLE_THREADPOOL AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/threadpool/CMakeLists.txt")
+  message(STATUS "Adding 'modules/threadpool'...")
+
+  set(VIX_THREADPOOL_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+  set(VIX_THREADPOOL_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(VIX_THREADPOOL_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
+
+  add_subdirectory(modules/threadpool threadpool_build)
+
+  if (TARGET vix::threadpool OR TARGET vix_threadpool)
+    set(VIX_HAS_THREADPOOL ON)
+
+    if (TARGET vix_threadpool AND NOT TARGET vix::threadpool)
+      add_library(vix::threadpool ALIAS vix_threadpool)
+    endif()
+  else()
+    message(WARNING "ThreadPool module added but no vix::threadpool target was exported.")
+  endif()
+else()
+  message(STATUS "ThreadPool: disabled or not present.")
+endif()
+
+# --- KV (optional) ---
+set(VIX_HAS_KV OFF)
+
+if (VIX_ENABLE_KV AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/kv/CMakeLists.txt")
+  message(STATUS "Adding 'modules/kv'...")
+
+  set(VIX_KV_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+  set(VIX_KV_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(VIX_KV_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
+
+  add_subdirectory(modules/kv kv_build)
+
+  if (TARGET vix::kv OR TARGET vix_kv)
+    set(VIX_HAS_KV ON)
+
+    if (TARGET vix_kv AND NOT TARGET vix::kv)
+      add_library(vix::kv ALIAS vix_kv)
+    endif()
+  else()
+    message(WARNING "KV module added but no vix::kv target was exported.")
+  endif()
+else()
+  message(STATUS "KV: disabled or not present.")
 endif()
 
 # --- Core ---
@@ -1035,6 +1087,14 @@ if (TARGET vix::process)
   target_link_libraries(vix INTERFACE vix::process)
 endif()
 
+if (TARGET vix::threadpool)
+  target_link_libraries(vix INTERFACE vix::threadpool)
+endif()
+
+if (TARGET vix::kv)
+  target_link_libraries(vix INTERFACE vix::kv)
+endif()
+
 if (TARGET vix::p2p)
   target_link_libraries(vix INTERFACE vix::p2p)
 endif()
@@ -1190,13 +1250,13 @@ if (VIX_BUILD_TESTS)
   find_package(GTest QUIET)
   if (NOT GTest_FOUND)
     message(STATUS "GTest not found, fetching googletest...")
-    FetchContent_Declare(
+    fetchcontent_declare(
       googletest
       GIT_REPOSITORY https://github.com/google/googletest.git
       GIT_TAG        v1.14.0
     )
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(googletest)
+    fetchcontent_makeavailable(googletest)
   endif()
 
   file(GLOB_RECURSE VIX_TEST_SOURCES CONFIGURE_DEPENDS
@@ -1250,8 +1310,8 @@ find_package(OpenSSL QUIET)
 if (OpenSSL_FOUND AND TARGET OpenSSL::Crypto)
   set(VIX_WITH_OPENSSL ON)
 endif()
-set(VIX_WITH_MYSQL    OFF)    # do NOT require MySQL for consumers by default
-set(VIX_WITH_SQLITE   OFF)    # will be set ON only if websocket exists
+set(VIX_WITH_MYSQL    OFF)
+set(VIX_WITH_SQLITE   OFF)
 set(VIX_WITH_BOOST_FS OFF)
 
 set(VIX_WITH_ZLIB OFF)
@@ -1279,13 +1339,13 @@ if (VIX_HAS_P2P_HTTP)
   set(VIX_WITH_P2P_HTTP ON)
 endif()
 
-if (TARGET vix::websocket OR TARGET vix_websocket)
+if ((VIX_HAS_DB AND VIX_DB_USE_SQLITE) OR VIX_HAS_WEBSOCKET)
   set(VIX_WITH_SQLITE ON)
 endif()
 
 if (VIX_ENABLE_INSTALL)
 
-  foreach(_m error path fs io env os log tests core utils json websocket webrpc crypto time conversion validation async process net cache sync p2p p2p_http middleware db orm template)
+   foreach(_m error path fs io env os log tests core utils json websocket webrpc crypto time conversion validation async process threadpool kv net cache sync p2p p2p_http middleware db orm template)
     if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/${_m}/include")
       install(DIRECTORY "modules/${_m}/include/"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
@@ -1369,6 +1429,19 @@ if (VIX_ENABLE_INSTALL)
   set(VIX_HAS_TIME ${VIX_HAS_TIME})
   set(VIX_HAS_TEMPLATE ${VIX_HAS_TEMPLATE})
 
+  set(VIX_WITH_THREADPOOL OFF)
+  if (VIX_HAS_THREADPOOL)
+    set(VIX_WITH_THREADPOOL ON)
+  endif()
+
+  set(VIX_WITH_KV OFF)
+  if (VIX_HAS_KV)
+    set(VIX_WITH_KV ON)
+  endif()
+
+set(VIX_HAS_KV  ${VIX_HAS_KV})
+set(VIX_WITH_KV ${VIX_WITH_KV})
+
   set(VIX_WITH_CONVERSION OFF)
   if (VIX_HAS_CONVERSION)
     set(VIX_WITH_CONVERSION ON)
@@ -1447,6 +1520,8 @@ message(STATUS "Time module       : ${VIX_HAS_TIME}")
 message(STATUS "WebRPC built      : ${VIX_HAS_WEBRPC}")
 message(STATUS "WebSocket built   : ${VIX_HAS_WEBSOCKET}")
 message(STATUS "Process built     : ${VIX_HAS_PROCESS}")
+message(STATUS "ThreadPool built  : ${VIX_HAS_THREADPOOL}")
+message(STATUS "KV built          : ${VIX_HAS_KV}")
 message(STATUS "ORM packaged      : ${VIX_HAS_ORM}")
 message(STATUS "DB built          : ${VIX_HAS_DB}")
 message(STATUS "P2P built         : ${VIX_HAS_P2P}")
@@ -1460,5 +1535,5 @@ message(STATUS "Sanitizers        : ${VIX_ENABLE_SANITIZERS}")
 message(STATUS "Coverage          : ${VIX_ENABLE_COVERAGE}")
 message(STATUS "LTO               : ${VIX_ENABLE_LTO}")
 message(STATUS "Install/Export    : ${VIX_ENABLE_INSTALL}")
-message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} WEBRPC=${VIX_WITH_WEBRPC} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P} TEMPLATE=${VIX_WITH_TEMPLATE}")
+message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} WEBRPC=${VIX_WITH_WEBRPC} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P} TEMPLATE=${VIX_WITH_TEMPLATE} THREADPOOL=${VIX_WITH_THREADPOOL} KV=${VIX_WITH_KV}")
 message(STATUS "------------------------------------------------------")
