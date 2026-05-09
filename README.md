@@ -43,6 +43,8 @@ Vix.cpp is a modern C++ runtime for building and running real-world applications
 
 Learn more about the Vix runtime in the [documentation](https://docs.vixcpp.com).
 
+Vix is also the runtime foundation used by [Softadastra](https://docs.softadastra.com), a local-first and offline-first system for building reliable applications that continue working when the network is slow, unstable, or unavailable.
+
 ## Production Proof
 
 Vix is not a concept. It runs real systems.
