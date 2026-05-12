@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.5.5
+
+### Fixed
+- Fixed `vix run` auto-linking for installed registry dependencies.
+- Fixed script builds using compiled modules such as `kv`.
+- Fixed package export cleanup to avoid duplicate CMake targets in `VixTargets`.
+- Fixed installed module consistency for `threadpool` and `kv`.
+
+### Added
+- Added threadpool examples for validating script and module usage.
+
+### Internal
+- Updated the CLI module with the latest `vix run` dependency linking fixes.
+- Cleaned umbrella CMake install/export behavior.
+
+### Compatibility
+- No breaking changes.
+
 ## v2.5.3
 
 ### Added
