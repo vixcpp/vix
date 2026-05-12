@@ -30,7 +30,7 @@
 <td valign="middle" width="25%" align="right">
 
 <img
-  src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1774966011/vix_logo_yqjne1.png"
+  src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1778607554/vix_logo_ms5lne.png"
   width="260"
   style="border-radius:50%; object-fit:cover;"
 />
@@ -42,8 +42,6 @@
 Vix.cpp is a modern C++ runtime for building and running real-world applications with predictable performance and minimal friction.
 
 Learn more about the Vix runtime in the [documentation](https://docs.vixcpp.com).
-
-Vix is also the runtime foundation used by [Softadastra](https://docs.softadastra.com), a local-first and offline-first system for building reliable applications that continue working when the network is slow, unstable, or unavailable.
 
 ## Production Proof
 
@@ -58,8 +56,9 @@ A real-time monitoring system built and running in production with Vix.cpp.
 - real-time WebSocket streaming
 - production deployment
 
-🔗 https://pulsegrid.softadastra.com \
-🔗 https://github.com/GaspardKirira/PulseGrid
+Website: 🔗 https://pulsegrid.softadastra.com \
+
+Github: 🔗 https://github.com/GaspardKirira/PulseGrid
 
 Used to build production systems like PulseGrid.
 
@@ -97,27 +96,6 @@ vix run main.cpp
 ```
 
 Done.
-
-## Replay a previous run
-
-Vix can record a run and replay it later.
-
-```bash
-vix run main.cpp
-vix replay
-```
-
-Replay the latest failed or interrupted run:
-```bash
-vix replay failed
-```
-
-Inspect a recorded run before replaying it:
-```bash
-vix replay show last
-```
-
-Vix stores replay data locally under .vix/runs/, including the command, working directory, exit status, and captured logs.
 
 ## Build a server
 
@@ -192,50 +170,6 @@ int main(){
   app.run_blocking();
 }
 ```
-
-## API Documentation (HTTP + WebSocket)
-
-Vix automatically exposes a full API documentation.
-
-Start your app, then open:
-
-```
-http://localhost:8080/docs
-```
-
-You get:
-
-- HTTP API documentation
-- WebSocket endpoints
-- Interactive testing UI
-- No external dependencies (offline Swagger UI)
-
-The OpenAPI spec is available at:
-
-```
-http://localhost:8080/openapi.json
-```
-
-### Control docs with `vix run`
-
-Documentation can be enabled or disabled at runtime:
-
-```bash
-# Enable docs
-vix run app.cpp --docs
-
-# Disable docs
-vix run app.cpp --no-docs
-```
-
-### Why this matters
-
-Most systems treat documentation as an afterthought. Vix does not.
-
-- Docs are generated from the runtime
-- Always reflect the real system
-- Work offline
-- Include HTTP and WebSocket
 
 ## What Vix.cpp gives you
 
