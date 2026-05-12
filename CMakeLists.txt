@@ -1395,7 +1395,6 @@ if (VIX_ENABLE_INSTALL)
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/vix/third_party/asio"
   )
 
-  # ---- Export umbrella and helper interface targets ----
   install(TARGETS vix EXPORT VixTargets)
 
   if (TARGET vix_thirdparty_asio)
