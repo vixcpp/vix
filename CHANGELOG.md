@@ -15,13 +15,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added threadpool examples for validating script and module usage.
+- Added experimental `vix.app` support for simple C++ applications without a visible `CMakeLists.txt`.
+- Added generated CMake project support for `vix.app` based builds and runs.
+- Added experimental documentation for the current `vix.app` design.
 
 ### Internal
 - Updated the CLI module with the latest `vix run` dependency linking fixes.
+- Added shared app project resolution for CMake and `vix.app` projects.
+- Added internal CMake generation from `vix.app`.
 - Cleaned umbrella CMake install/export behavior.
 
 ### Compatibility
 - No breaking changes.
+- Existing CMake projects keep the current build and run behavior.
+- `vix.app` is experimental and only used when no `CMakeLists.txt` is present.
 
 ## v2.5.3
 
