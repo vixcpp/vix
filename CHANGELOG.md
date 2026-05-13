@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.5.6
+
+### Fixed
+- Fixed `vix new --lib` next steps for header-only libraries.
+- Fixed header-only library build guidance by using `vix build --build-target all`.
+- Fixed generated library test workflow by documenting the required CMake test option.
+- Fixed unknown Ninja target diagnostics to avoid showing raw `ninja: error: unknown target` output.
+- Fixed extra spacing in `vix new` and `vix modules` command output.
+
+### Improved
+- Improved `vix new` help output for application and header-only library workflows.
+- Improved generated library README instructions for building and running tests.
+- Improved `vix modules init` output with a cleaner `vix new` style layout.
+- Improved `vix modules add` output with clearer file, target, and next-step sections.
+- Improved modules command section separators for more readable terminal output.
+
+### Internal
+- Updated the CLI module with the latest `vix new` library workflow fixes.
+- Updated modules command output formatting.
+- Added a focused diagnostic for missing CMake/Ninja build targets.
+- Aligned CLI help text with the current `vix build` target behavior.
+
+### Compatibility
+- No breaking changes.
+- Existing application projects keep the same `vix build`, `vix run`, and `vix dev` behavior.
+- Header-only library projects should use `vix build --build-target all` when building generated library scaffolds.
+
 ## v2.5.5
 
 ### Fixed
