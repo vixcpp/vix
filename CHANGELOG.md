@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.6.0
+
+### Added
+- Added the new `vix::ai_agent` module.
+- Integrated `modules/agent` into the Vix umbrella build.
+- Added optional AI agent build flags through `VIX_ENABLE_AGENT`, `VIX_AGENT_BUILD_TESTS`, and `VIX_AGENT_BUILD_EXAMPLES`.
+
+### Internal
+- Exported AI agent availability through `VIX_HAS_AGENT` and `VIX_WITH_AGENT`.
+- Linked `vix::ai_agent` into `vix::vix` when the module is enabled.
+
+### Compatibility
+- No breaking changes.
+- The AI agent module is optional and can be disabled with `-DVIX_ENABLE_AGENT=OFF`.
+
 ## v2.5.6
 
 ### Fixed

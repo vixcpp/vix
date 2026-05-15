@@ -213,9 +213,12 @@ option(VIX_ENABLE_TEMPLATE         "Build Vix Template module"                  
 option(VIX_TEMPLATE_BUILD_TESTS    "Build vix::template tests"                                    OFF)
 option(VIX_TEMPLATE_BUILD_EXAMPLES "Build vix::template examples"                                 OFF)
 option(VIX_TEMPLATE_BUILD_BENCH    "Build vix::template benchmarks"                               OFF)
-option(VIX_ENABLE_PROCESS          "Build Vix Process module"                                      ON)
+option(VIX_ENABLE_PROCESS          "Build Vix Process module"                                     ON)
 option(VIX_ENABLE_THREADPOOL       "Build Vix ThreadPool module"                                  ON)
-option(VIX_ENABLE_KV               "Build Vix KV module"                                         ON)
+option(VIX_ENABLE_KV               "Build Vix KV module"                                          ON)
+option(VIX_ENABLE_AGENT            "Build Vix AI Agent module"                                    ON)
+option(VIX_AGENT_BUILD_TESTS       "Build vix::ai_agent tests"                                    OFF)
+option(VIX_AGENT_BUILD_EXAMPLES    "Build vix::ai_agent examples"                                 OFF)
 
 # ----------------------------------------------------
 # Tooling / Static analysis
@@ -750,6 +753,32 @@ else()
   message(FATAL_ERROR "Missing 'modules/core'. Run: git submodule update --init --recursive")
 endif()
 
+# --- AI Agent (optional) ---
+set(VIX_HAS_AGENT OFF)
+
+if (VIX_ENABLE_AGENT AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/agent/CMakeLists.txt")
+  message(STATUS "Adding 'modules/agent'...")
+
+  set(VIX_AI_AGENT_BUILD_TESTS ${VIX_AGENT_BUILD_TESTS} CACHE BOOL "Build vix ai agent tests" FORCE)
+  set(VIX_AI_AGENT_BUILD_EXAMPLES ${VIX_AGENT_BUILD_EXAMPLES} CACHE BOOL "Build vix ai agent examples" FORCE)
+
+  set(VIX_AI_AGENT_ENABLE_INSTALL ON CACHE BOOL "Enable install/export rules for vix ai agent" FORCE)
+
+  add_subdirectory(modules/agent agent_build)
+
+  if (TARGET vix::ai_agent OR TARGET vix_ai_agent)
+    set(VIX_HAS_AGENT ON)
+
+    if (TARGET vix_ai_agent AND NOT TARGET vix::ai_agent)
+      add_library(vix::ai_agent ALIAS vix_ai_agent)
+    endif()
+  else()
+    message(WARNING "AI Agent module added but no vix::ai_agent target was exported.")
+  endif()
+else()
+  message(STATUS "AI Agent: disabled or not present.")
+endif()
+
 # --- Conversion (required by Validation) ---
 set(VIX_HAS_CONVERSION OFF)
 
@@ -1095,6 +1124,10 @@ if (TARGET vix::kv)
   target_link_libraries(vix INTERFACE vix::kv)
 endif()
 
+if (TARGET vix::ai_agent)
+  target_link_libraries(vix INTERFACE vix::ai_agent)
+endif()
+
 if (TARGET vix::p2p)
   target_link_libraries(vix INTERFACE vix::p2p)
 endif()
@@ -1345,7 +1378,7 @@ endif()
 
 if (VIX_ENABLE_INSTALL)
 
-   foreach(_m error path fs io env os log tests core utils json websocket webrpc crypto time conversion validation async process threadpool kv net cache sync p2p p2p_http middleware db orm template)
+   foreach(_m error path fs io env os log tests core utils json websocket webrpc crypto time conversion validation async process threadpool kv agent net cache sync p2p p2p_http middleware db orm template)
     if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/${_m}/include")
       install(DIRECTORY "modules/${_m}/include/"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
@@ -1438,8 +1471,8 @@ if (VIX_ENABLE_INSTALL)
     set(VIX_WITH_KV ON)
   endif()
 
-set(VIX_HAS_KV  ${VIX_HAS_KV})
-set(VIX_WITH_KV ${VIX_WITH_KV})
+  set(VIX_HAS_KV  ${VIX_HAS_KV})
+  set(VIX_WITH_KV ${VIX_WITH_KV})
 
   set(VIX_WITH_CONVERSION OFF)
   if (VIX_HAS_CONVERSION)
@@ -1468,6 +1501,14 @@ set(VIX_WITH_KV ${VIX_WITH_KV})
   if (VIX_HAS_TEMPLATE)
     set(VIX_WITH_TEMPLATE ON)
   endif()
+
+  set(VIX_WITH_AGENT OFF)
+  if (VIX_HAS_AGENT)
+    set(VIX_WITH_AGENT ON)
+  endif()
+
+  set(VIX_HAS_AGENT ${VIX_HAS_AGENT})
+  set(VIX_WITH_AGENT ${VIX_WITH_AGENT})
 
   set(VIX_HAS_VALIDATION  ${VIX_HAS_VALIDATION})
   set(VIX_WITH_VALIDATION ${VIX_WITH_VALIDATION})
@@ -1521,6 +1562,7 @@ message(STATUS "WebSocket built   : ${VIX_HAS_WEBSOCKET}")
 message(STATUS "Process built     : ${VIX_HAS_PROCESS}")
 message(STATUS "ThreadPool built  : ${VIX_HAS_THREADPOOL}")
 message(STATUS "KV built          : ${VIX_HAS_KV}")
+message(STATUS "AI Agent built    : ${VIX_HAS_AGENT}")
 message(STATUS "ORM packaged      : ${VIX_HAS_ORM}")
 message(STATUS "DB built          : ${VIX_HAS_DB}")
 message(STATUS "P2P built         : ${VIX_HAS_P2P}")
@@ -1534,5 +1576,5 @@ message(STATUS "Sanitizers        : ${VIX_ENABLE_SANITIZERS}")
 message(STATUS "Coverage          : ${VIX_ENABLE_COVERAGE}")
 message(STATUS "LTO               : ${VIX_ENABLE_LTO}")
 message(STATUS "Install/Export    : ${VIX_ENABLE_INSTALL}")
-message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} WEBRPC=${VIX_WITH_WEBRPC} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P} TEMPLATE=${VIX_WITH_TEMPLATE} THREADPOOL=${VIX_WITH_THREADPOOL} KV=${VIX_WITH_KV}")
+message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} WEBRPC=${VIX_WITH_WEBRPC} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P} TEMPLATE=${VIX_WITH_TEMPLATE} THREADPOOL=${VIX_WITH_THREADPOOL} KV=${VIX_WITH_KV} AGENT=${VIX_WITH_AGENT}")
 message(STATUS "------------------------------------------------------")
