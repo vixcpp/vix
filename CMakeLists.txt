@@ -753,32 +753,6 @@ else()
   message(FATAL_ERROR "Missing 'modules/core'. Run: git submodule update --init --recursive")
 endif()
 
-# --- AI Agent (optional) ---
-set(VIX_HAS_AGENT OFF)
-
-if (VIX_ENABLE_AGENT AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/agent/CMakeLists.txt")
-  message(STATUS "Adding 'modules/agent'...")
-
-  set(VIX_AI_AGENT_BUILD_TESTS ${VIX_AGENT_BUILD_TESTS} CACHE BOOL "Build vix ai agent tests" FORCE)
-  set(VIX_AI_AGENT_BUILD_EXAMPLES ${VIX_AGENT_BUILD_EXAMPLES} CACHE BOOL "Build vix ai agent examples" FORCE)
-
-  set(VIX_AI_AGENT_ENABLE_INSTALL ON CACHE BOOL "Enable install/export rules for vix ai agent" FORCE)
-
-  add_subdirectory(modules/agent agent_build)
-
-  if (TARGET vix::ai_agent OR TARGET vix_ai_agent)
-    set(VIX_HAS_AGENT ON)
-
-    if (TARGET vix_ai_agent AND NOT TARGET vix::ai_agent)
-      add_library(vix::ai_agent ALIAS vix_ai_agent)
-    endif()
-  else()
-    message(WARNING "AI Agent module added but no vix::ai_agent target was exported.")
-  endif()
-else()
-  message(STATUS "AI Agent: disabled or not present.")
-endif()
-
 # --- Conversion (required by Validation) ---
 set(VIX_HAS_CONVERSION OFF)
 
@@ -860,6 +834,32 @@ if (VIX_ENABLE_CACHE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/cache/CMake
   endif()
 else()
   message(STATUS "Cache: disabled or not present.")
+endif()
+
+# --- AI Agent (optional) ---
+set(VIX_HAS_AGENT OFF)
+
+if (VIX_ENABLE_AGENT AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/agent/CMakeLists.txt")
+  message(STATUS "Adding 'modules/agent'...")
+
+  set(VIX_AI_AGENT_BUILD_TESTS ${VIX_AGENT_BUILD_TESTS} CACHE BOOL "Build vix ai agent tests" FORCE)
+  set(VIX_AI_AGENT_BUILD_EXAMPLES ${VIX_AGENT_BUILD_EXAMPLES} CACHE BOOL "Build vix ai agent examples" FORCE)
+
+  set(VIX_AI_AGENT_ENABLE_INSTALL ON CACHE BOOL "Enable install/export rules for vix ai agent" FORCE)
+
+  add_subdirectory(modules/agent agent_build)
+
+  if (TARGET vix::ai_agent OR TARGET vix_ai_agent)
+    set(VIX_HAS_AGENT ON)
+
+    if (TARGET vix_ai_agent AND NOT TARGET vix::ai_agent)
+      add_library(vix::ai_agent ALIAS vix_ai_agent)
+    endif()
+  else()
+    message(WARNING "AI Agent module added but no vix::ai_agent target was exported.")
+  endif()
+else()
+  message(STATUS "AI Agent: disabled or not present.")
 endif()
 
 # --- Sync (optional, used by P2P) ---

@@ -8,17 +8,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## v2.6.0
 
 ### Added
-- Added the new `vix::ai_agent` module.
-- Integrated `modules/agent` into the Vix umbrella build.
+- Added the new `vix::ai_agent` module as the foundation for local-first AI workflows in Vix.cpp.
+- Added the high-level public AI facade with `#include <vix/ai.hpp>` and `vix::ai::Agent`.
+- Added a simple AI API for users:
+  - `agent.set_model(...)`
+  - `agent.set_workspace(...)`
+  - `agent.add_tool(...)`
+  - `agent.add_memory(...)`
+  - `agent.run(...)`
+- Added local Ollama support through the AI agent provider layer.
+- Added support for AI agent tools:
+  - `file.read`
+  - `command.run`
+- Added safe workspace scanning and file reading policies for AI workflows.
+- Added run history storage under `.vix/agent/runs/<run_id>/`.
+- Added conservative model response caching through the `vix::cache` module.
+- Added `vix agent` CLI command with:
+  - `vix agent ask`
+  - `vix agent analyze`
+  - `vix agent scan`
+- Added public AI examples under `examples/agent/`.
 - Added optional AI agent build flags through `VIX_ENABLE_AGENT`, `VIX_AGENT_BUILD_TESTS`, and `VIX_AGENT_BUILD_EXAMPLES`.
+
+### Changed
+- Integrated `modules/agent` into the Vix umbrella build.
+- Integrated `modules/cache`, `modules/net`, and `modules/agent` in the required order for AI support.
+- Updated the CLI to link with `vix::ai_agent` when the AI agent module is enabled.
+- Updated the public umbrella header `vix/ai.hpp` to expose the new AI API.
+- Improved `OllamaProvider` to use the Vix HTTP client abstraction instead of being tied directly to shell-level HTTP execution.
+- Improved AI agent examples to use `vix::print(...)` and the new public API style.
 
 ### Internal
 - Exported AI agent availability through `VIX_HAS_AGENT` and `VIX_WITH_AGENT`.
 - Linked `vix::ai_agent` into `vix::vix` when the module is enabled.
+- Added `AgentConfigValidator` for strict configuration validation.
+- Added `AgentRunStore` for local run history persistence.
+- Added a production-oriented tool loop:
+  - model request
+  - tool call detection
+  - controlled tool execution
+  - tool result injection
+  - final model response
+- Added safe command allowlist behavior for `command.run`.
+- Added tests for:
+  - agent config validation
+  - workspace safety
+  - file scan policy
+  - file reader
+  - command tool
+  - run history
+  - cache
+  - public API
 
 ### Compatibility
 - No breaking changes.
 - The AI agent module is optional and can be disabled with `-DVIX_ENABLE_AGENT=OFF`.
+- The lower-level API remains available under `vix::ai::agent`.
+- The new recommended public API is available through `#include <vix/ai.hpp>`.
 
 ## v2.5.6
 
