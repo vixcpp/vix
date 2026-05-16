@@ -839,6 +839,11 @@ endif()
 # --- AI Agent (optional) ---
 set(VIX_HAS_AGENT OFF)
 
+if (VIX_ENABLE_AGENT AND NOT VIX_HAS_CACHE)
+  message(WARNING "AI Agent requested but Cache module is missing -> disabling AI Agent in umbrella")
+  set(VIX_ENABLE_AGENT OFF CACHE BOOL "Build Vix AI Agent module" FORCE)
+endif()
+
 if (VIX_ENABLE_AGENT AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/agent/CMakeLists.txt")
   message(STATUS "Adding 'modules/agent'...")
 
