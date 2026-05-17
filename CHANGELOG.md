@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added official `vix.app` support for building simple C++ projects without writing CMake manually.
 - Added internal CMake generation for `vix.app` projects.
 - Added extended `vix.app` fields for compile options, link options, compile features, packages, resources, and output directories.
+- Added the graph target executor as the default path for target-aware `vix build` builds.
+- Added a `--fast` build-state path for very fast no-op builds.
 
 ### Changed
 - Integrated `modules/cache`, `modules/net`, and `modules/agent` into the umbrella build for AI support.
@@ -32,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved `vix build` project resolution to support both `CMakeLists.txt` and `vix.app`.
 - Improved build planning by separating the user project directory, generated CMake source directory, and default target name.
 - Improved default target detection for `vix.app` projects using the manifest `name`.
+- Improved `vix build` to use target-aware graph execution by default for real build targets.
+- Improved no-op target builds by skipping Ninja when the graph target output is already up to date.
+- Improved graph build diagnostics by hiding internal graph logs unless `VIX_LOG_LEVEL=debug` or `VIX_LOG_LEVEL=trace` is set.
 
 ### Internal
 - Added strict agent configuration validation.
@@ -39,12 +44,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added safer workspace, file-read, command, cache, and public API tests.
 - Added a safer `vix.app` manifest parser and CMake generator.
 - Added cleaner handling for generated CMake projects under `.vix/generated/app`.
+- Improved build graph dirty detection for compile tasks.
+- Improved graph target execution fallback behavior for large dirty build closures.
+- Improved build graph persistence after successful target-aware builds.
 
 ### Compatibility
 - No breaking changes.
 - Existing CMake projects continue to use `CMakeLists.txt` directly.
 - `vix.app` is used only when no `CMakeLists.txt` exists.
 - The AI agent module is optional and can be disabled with `-DVIX_ENABLE_AGENT=OFF`.
+- `vix build --build-target all` continues to use the CMake/Ninja build path.
+- The graph executor can be disabled with `VIX_GRAPH_EXECUTOR=0`.
+
 ## v2.5.6
 
 ### Fixed
