@@ -143,3 +143,7 @@
 	path = modules/agent
 	url = https://github.com/vixcpp/agent.git
 	branch = dev
+[submodule "modules/reply"]
+	path = modules/reply
+	url = https://github.com/vixcpp/reply.git
+	branch = dev
