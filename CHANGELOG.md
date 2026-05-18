@@ -11,79 +11,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the new `vix::ai_agent` module for local-first AI workflows.
 - Added the public AI API through `#include <vix/ai.hpp>` and `vix::ai::Agent`.
 - Added Ollama support for local model execution.
-- Added `vix agent` CLI commands:
+- Added `vix agent` commands:
   - `vix agent ask`
   - `vix agent analyze`
   - `vix agent scan`
-- Added AI agent tools for safe file reading and command execution.
-- Added local agent run history under `.vix/agent/runs/`.
-- Added conservative AI response caching through `vix::cache`.
-- Added public AI examples under `examples/agent/`.
 - Added official `vix.app` support for building simple C++ projects without writing CMake manually.
-- Added internal CMake generation for `vix.app` projects.
-- Added extended `vix.app` fields for compile options, link options, compile features, packages, resources, and output directories.
-- Added the graph target executor for target-aware `vix build` builds.
-- Added production-safe fallback from the graph executor to Ninja when a target is unsupported, ambiguous, or unsafe.
-- Added a `--fast` build-state path for very fast no-op builds.
-- Added fast no-op validation for normal target builds when Vix can prove the target is already up to date.
-- Added target ArtifactCache restore support for complete build outputs.
+- Added target-aware `vix build` execution with safe fallback to CMake/Ninja.
+- Added fast no-op build detection and target ArtifactCache restore support.
 - Added human-readable compiler warning summaries after successful builds.
-- Added compiler warning classification for common C++ warnings such as unused functions, shadowed variables, conversions, reorder warnings, and missing field initializers.
-- Added `vix build --explain` output for source changes and safe dependency-change fallback explanations.
-- Added generic `vix dev` build-only mode for library projects without runnable executables.
-- Added automatic test preparation in `vix tests` when test sources exist but tests have not been configured yet.
-- Added styled `vix tests --list` output that hides raw CTest build paths.
-- Added build safety tests for target routing, fast paths, missing binaries, changed sources, changed headers, CMake changes, compiler flags, and target changes.
-- Added build benchmark scripts and CI workflow for reproducible `vix build` performance checks.
+- Added `vix build --warnings` with pagination through `--page` and `--limit`.
+- Added `vix build --warning-check` to build with stronger compiler warning flags automatically.
+- Added `vix build --explain` to explain why files or targets rebuild.
+- Added automatic test preparation in `vix tests` when test sources exist but tests are not configured yet.
+- Added styled `vix tests --list` output.
 
 ### Changed
-- Integrated `modules/cache`, `modules/net`, and `modules/agent` into the umbrella build for AI support.
-- Updated the CLI to link with `vix::ai_agent` when enabled.
-- Improved Ollama integration to use the Vix HTTP client abstraction.
-- Improved `vix run` for interactive CLI programs using `vix::input(...)`.
+- Improved `vix run` so project execution now uses the same build path as `vix build`.
 - Improved `vix run` so normal non-zero exits are no longer treated as runtime crashes.
-- Improved `vix run` so project execution now uses the same build path as `vix build` before launching the executable.
-- Improved `vix dev` so it reuses the `vix build` workflow instead of maintaining a separate CMake build path.
+- Improved `vix dev` so it reuses the `vix build` workflow.
 - Improved `vix dev` so application projects run normally and library projects stay in watch/build-only mode.
 - Improved `vix dev` output by removing noisy `.env not found` messages from the default flow.
-- Improved `vix build` project resolution to support both `CMakeLists.txt` and `vix.app`.
-- Improved `vix build` default target behavior so `vix build` now builds `all` by default instead of assuming the folder name is a CMake target.
+- Improved `vix build` so the default target is now `all` instead of assuming the folder name is a CMake target.
 - Improved `vix build --build-target all` so it stays on the CMake/Ninja path.
-- Improved build planning by separating the user project directory, generated CMake source directory, and default target name.
-- Improved default target detection for `vix.app` projects using the manifest `name`.
-- Improved `vix build` target execution by using the graph executor only for safe real targets.
-- Improved no-op target builds by skipping Ninja when the graph target output is already up to date.
-- Improved normal no-op target builds so `vix build --build-target <target>` can return quickly without requiring `--fast`.
-- Improved `--fast` behavior to restore complete targets from ArtifactCache when possible.
-- Improved target rebuild explanations for changed source files.
-- Improved header-change safety by delegating to Ninja when Vix detects a changed project input but cannot yet prove the exact selected compile tasks.
-- Improved graph build diagnostics by hiding internal graph logs unless `VIX_LOG_LEVEL=debug` or `VIX_LOG_LEVEL=trace` is set.
-- Improved warning reporting by grouping and simplifying compiler warnings after successful builds.
-- Improved warning output so internal cache-store failures are hidden from normal user output.
-- Improved ambiguous target routing so `all`, `install`, `clean`, and unsafe targets stay on the CMake/Ninja path.
-- Improved `vix tests` so test listing is displayed in a clean Vix style instead of raw CTest output.
+- Improved graph executor safety by delegating to Ninja when a target is unsupported, ambiguous, or unsafe.
+- Improved compiler warning output by keeping normal build output short and moving full warning exploration to `vix build --warnings`.
+- Improved command help output for `vix build`, `vix run`, `vix dev`, and `vix tests`.
 - Improved `vix tests` so projects with a `tests/` directory can configure and run tests automatically when possible.
 
 ### Internal
-- Added strict agent configuration validation.
-- Added local agent run storage.
-- Added safer workspace, file-read, command, cache, and public API tests.
-- Added a safer `vix.app` manifest parser and CMake generator.
-- Added cleaner handling for generated CMake projects under `.vix/generated/app`.
-- Improved build graph dirty detection for compile tasks.
-- Improved graph target execution fallback behavior for large dirty build closures.
-- Improved build graph persistence after successful target-aware builds.
-- Improved graph executor safety when dirty project inputs are detected outside the selected dirty compile task set.
-- Improved build-state validation for safe no-op target builds.
-- Improved ArtifactCache layout usage for restoring complete target binaries.
-- Disabled unsafe generic graph linking for default project builds so Vix no longer links unrelated CMake objects together.
+- Added safer `vix.app` manifest parsing and internal CMake generation.
+- Improved build graph dirty detection, persistence, and fallback behavior.
+- Disabled unsafe generic graph linking for default project builds.
 - Improved CMake build argv generation so default builds do not force a guessed target name.
-- Improved dev-mode rebuild orchestration by routing project rebuilds through `vix build`.
-- Improved dev-mode behavior for projects without executables by keeping watch mode active after successful library builds.
-- Improved test discovery by detecting test sources and preparing tests when CTest metadata is missing.
-- Improved CTest list parsing to display only test names in normal output.
-- Moved build safety and benchmark scripts to the repository root so they test the full Vix project instead of only the CLI module.
-- Added root-level build safety CI for the full project.
+- Added root-level build safety tests, benchmark scripts, and CI workflow.
 
 ### Compatibility
 - No breaking changes.
@@ -91,8 +51,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `vix.app` is used only when no `CMakeLists.txt` exists.
 - The AI agent module is optional and can be disabled with `-DVIX_ENABLE_AGENT=OFF`.
 - `vix build` without `--build-target` now builds the generic CMake `all` target.
-- `vix build --build-target all` continues to use the CMake/Ninja build path.
-- `vix build --build-target install` and `vix build --build-target clean` continue to use the CMake/Ninja path.
 - `vix dev` supports both runnable applications and library-only projects.
 - `vix tests` can prepare tests automatically when test sources are present.
 - The graph executor can be disabled with `VIX_GRAPH_EXECUTOR=0`.
