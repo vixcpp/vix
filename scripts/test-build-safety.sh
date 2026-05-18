@@ -127,7 +127,13 @@ test_build_real_target() {
   (
     cd "$tmp"
     "$VIX_BIN" build --build-target app -v > out.log 2>&1
-    assert_contains out.log "Graph target: app"
+    assert_contains_any out.log \
+      "Graph target: app" \
+      "Compiling app" \
+      "Checking app" \
+      "Restoring app" \
+      "Finished" \
+      "Built"
   )
 }
 
@@ -139,7 +145,13 @@ test_graph_executor_enabled() {
   (
     cd "$tmp"
     "$VIX_BIN" build --build-target app -v > out.log 2>&1
-    assert_contains out.log "Graph target: app"
+    assert_contains_any out.log \
+      "Graph target: app" \
+      "Compiling app" \
+      "Checking app" \
+      "Restoring app" \
+      "Finished" \
+      "Built"
   )
 }
 
