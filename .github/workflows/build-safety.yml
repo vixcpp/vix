@@ -26,13 +26,23 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get install -y --no-install-recommends \
             build-essential \
             cmake \
             ninja-build \
             ccache \
             mold \
-            hyperfine
+            hyperfine \
+            pkg-config \
+            git \
+            curl \
+            ca-certificates \
+            nlohmann-json3-dev \
+            libssl-dev \
+            zlib1g-dev \
+            libsqlite3-dev \
+            libspdlog-dev \
+            libfmt-dev
 
       - name: Configure Vix CLI
         run: |
