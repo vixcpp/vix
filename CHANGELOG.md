@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `vix agent ask`
   - `vix agent analyze`
   - `vix agent scan`
+- Added the new standalone `vix::reply` module as the foundation for the Vix REPL engine.
 - Added official `vix.app` support for building simple C++ projects without writing CMake manually.
 - Added target-aware `vix build` execution with safe fallback to CMake/Ninja.
 - Added fast no-op build detection and target ArtifactCache restore support.
@@ -26,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added styled `vix tests --list` output.
 
 ### Changed
+- Improved `vix repl` so the REPL engine now uses the standalone `vix::reply` module.
 - Improved `vix run` so project execution now uses the same build path as `vix build`.
 - Improved `vix run` so normal non-zero exits are no longer treated as runtime crashes.
 - Improved `vix dev` so it reuses the `vix build` workflow.
@@ -35,10 +37,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved `vix build --build-target all` so it stays on the CMake/Ninja path.
 - Improved graph executor safety by delegating to Ninja when a target is unsupported, ambiguous, or unsafe.
 - Improved compiler warning output by keeping normal build output short and moving full warning exploration to `vix build --warnings`.
-- Improved command help output for `vix build`, `vix run`, `vix dev`, and `vix tests`.
+- Improved command help output for `vix build`, `vix run`, `vix dev`, `vix repl`, and `vix tests`.
 - Improved `vix tests` so projects with a `tests/` directory can configure and run tests automatically when possible.
 
 ### Internal
+- Moved the REPL engine out of the CLI module into the standalone `reply` module.
+- Removed the old internal `cli/commands/repl` implementation from the CLI module.
 - Added safer `vix.app` manifest parsing and internal CMake generation.
 - Improved build graph dirty detection, persistence, and fallback behavior.
 - Disabled unsafe generic graph linking for default project builds.
@@ -50,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Existing CMake projects continue to use `CMakeLists.txt` directly.
 - `vix.app` is used only when no `CMakeLists.txt` exists.
 - The AI agent module is optional and can be disabled with `-DVIX_ENABLE_AGENT=OFF`.
+- The Reply module is used internally by `vix repl`.
 - `vix build` without `--build-target` now builds the generic CMake `all` target.
 - `vix dev` supports both runnable applications and library-only projects.
 - `vix tests` can prepare tests automatically when test sources are present.
