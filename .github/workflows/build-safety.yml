@@ -1,0 +1,60 @@
+name: Build safety
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - release/**
+  pull_request:
+    branches:
+      - main
+      - dev
+      - release/**
+
+jobs:
+  build-safety:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            ccache \
+            mold \
+            hyperfine
+
+      - name: Configure Vix CLI
+        run: |
+          cmake -S . -B build-ci -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      - name: Build Vix CLI
+        run: |
+          cmake --build build-ci --target vix -- -j"$(nproc)"
+
+      - name: Show Vix version
+        run: |
+          ./build-ci/vix --version || ./build-ci/vix version || true
+
+      - name: Run build safety tests
+        run: |
+          VIX_BIN="$PWD/build-ci/vix" scripts/test-build-safety.sh
+
+      - name: Run build benchmark smoke test
+        run: |
+          VIX_BIN="$PWD/build-ci/vix" RUNS=3 WARMUP=1 TARGET=vix scripts/bench-build.sh
+
+      - name: Upload benchmark report
+        uses: actions/upload-artifact@v4
+        with:
+          name: vix-build-benchmark
+          path: .vix/bench/reports/

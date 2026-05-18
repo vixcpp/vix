@@ -24,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added extended `vix.app` fields for compile options, link options, compile features, packages, resources, and output directories.
 - Added the graph target executor as the default path for target-aware `vix build` builds.
 - Added a `--fast` build-state path for very fast no-op builds.
+- Added fast no-op validation for normal target builds when Vix can prove the target is already up to date.
+- Added target ArtifactCache restore support for complete build outputs.
+- Added `vix build --explain` output for source changes and safe dependency-change fallback explanations.
+- Added build safety tests for target routing, fast paths, missing binaries, changed sources, changed headers, CMake changes, compiler flags, and target changes.
+- Added build benchmark scripts and CI workflow for reproducible `vix build` performance checks.
 
 ### Changed
 - Integrated `modules/cache`, `modules/net`, and `modules/agent` into the umbrella build for AI support.
@@ -36,7 +41,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved default target detection for `vix.app` projects using the manifest `name`.
 - Improved `vix build` to use target-aware graph execution by default for real build targets.
 - Improved no-op target builds by skipping Ninja when the graph target output is already up to date.
+- Improved normal no-op target builds so `vix build --build-target <target>` can return quickly without requiring `--fast`.
+- Improved `--fast` behavior to restore complete targets from ArtifactCache when possible.
+- Improved target rebuild explanations for changed source files.
+- Improved header-change safety by delegating to Ninja when Vix detects a changed project input but cannot yet prove the exact selected compile tasks.
 - Improved graph build diagnostics by hiding internal graph logs unless `VIX_LOG_LEVEL=debug` or `VIX_LOG_LEVEL=trace` is set.
+- Improved warning reporting by grouping compiler warnings after successful builds.
+- Improved ambiguous target routing so `all`, `install`, `clean`, and unsafe targets stay on the CMake/Ninja path.
 
 ### Internal
 - Added strict agent configuration validation.
@@ -47,6 +58,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved build graph dirty detection for compile tasks.
 - Improved graph target execution fallback behavior for large dirty build closures.
 - Improved build graph persistence after successful target-aware builds.
+- Improved graph executor safety when dirty project inputs are detected outside the selected dirty compile task set.
+- Improved build-state validation for safe no-op target builds.
+- Improved ArtifactCache layout usage for restoring complete target binaries.
+- Moved build safety and benchmark scripts to the repository root so they test the full Vix project instead of only the CLI module.
+- Added root-level build safety CI for the full project.
 
 ### Compatibility
 - No breaking changes.
@@ -54,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `vix.app` is used only when no `CMakeLists.txt` exists.
 - The AI agent module is optional and can be disabled with `-DVIX_ENABLE_AGENT=OFF`.
 - `vix build --build-target all` continues to use the CMake/Ninja build path.
+- `vix build --build-target install` and `vix build --build-target clean` continue to use the CMake/Ninja path.
 - The graph executor can be disabled with `VIX_GRAPH_EXECUTOR=0`.
 
 ## v2.5.6
