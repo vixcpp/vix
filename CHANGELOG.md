@@ -16,7 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `vix agent analyze`
   - `vix agent scan`
 - Added the new standalone `vix::reply` module as the foundation for the Vix REPL engine.
-- Added official `vix.app` support for building simple C++ projects without writing CMake manually.
+- Added official `vix.app` support for building simple C++ applications without writing CMake manually.
+- Added `vix.app` scaffolding for application projects generated with `vix new --app`.
+- Added `vix.app` support in `vix build`, `vix run`, `vix check`, and `vix tests`.
 - Added target-aware `vix build` execution with safe fallback to CMake/Ninja.
 - Added fast no-op build detection and target ArtifactCache restore support.
 - Added human-readable compiler warning summaries after successful builds.
@@ -33,17 +35,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved `vix dev` so it reuses the `vix build` workflow.
 - Improved `vix dev` so application projects run normally and library projects stay in watch/build-only mode.
 - Improved `vix dev` output by removing noisy `.env not found` messages from the default flow.
+- Improved `vix new --app` so generated applications now use `vix.app` instead of a visible `CMakeLists.txt`.
 - Improved `vix build` so the default target is now `all` instead of assuming the folder name is a CMake target.
 - Improved `vix build --build-target all` so it stays on the CMake/Ninja path.
 - Improved graph executor safety by delegating to Ninja when a target is unsupported, ambiguous, or unsafe.
 - Improved compiler warning output by keeping normal build output short and moving full warning exploration to `vix build --warnings`.
 - Improved command help output for `vix build`, `vix run`, `vix dev`, `vix repl`, and `vix tests`.
 - Improved `vix tests` so projects with a `tests/` directory can configure and run tests automatically when possible.
+- Improved `vix tests` output with cleaner CTest-based test listing and per-test status display.
 
 ### Internal
 - Moved the REPL engine out of the CLI module into the standalone `reply` module.
 - Removed the old internal `cli/commands/repl` implementation from the CLI module.
 - Added safer `vix.app` manifest parsing and internal CMake generation.
+- Added internal CMake generation for `vix.app` application projects under `.vix/generated/app/`.
+- Improved generated `vix.app` CMake output with proper Vix package resolution and test target generation.
 - Improved build graph dirty detection, persistence, and fallback behavior.
 - Disabled unsafe generic graph linking for default project builds.
 - Improved CMake build argv generation so default builds do not force a guessed target name.
@@ -52,6 +58,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Compatibility
 - No breaking changes.
 - Existing CMake projects continue to use `CMakeLists.txt` directly.
+- `vix.app` is currently supported only for simple application/executable projects.
+- Library projects continue to use `CMakeLists.txt` for now.
 - `vix.app` is used only when no `CMakeLists.txt` exists.
 - The AI agent module is optional and can be disabled with `-DVIX_ENABLE_AGENT=OFF`.
 - The Reply module is used internally by `vix repl`.
