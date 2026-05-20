@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added official `vix.app` support for building simple C++ applications without writing CMake manually.
 - Added `vix.app` scaffolding for application projects generated with `vix new --app`.
 - Added `vix.app` support in `vix build`, `vix run`, `vix check`, and `vix tests`.
+- Added Vue application scaffolding with `vix new <name> --template vue`.
+- Added generated Vue + Vix full-stack project structure with a Vue frontend and a Vix C++ backend.
+- Added Vue frontend templates for `package.json`, `index.html`, `vite.config.js`, `src/main.js`, and `src/App.vue`.
+- Added Vue-aware `vix dev` support to start the Vue/Vite frontend alongside the Vix C++ backend.
 - Added target-aware `vix build` execution with safe fallback to CMake/Ninja.
 - Added fast no-op build detection and target ArtifactCache restore support.
 - Added human-readable compiler warning summaries after successful builds.
@@ -35,6 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved `vix dev` so it reuses the `vix build` workflow.
 - Improved `vix dev` so application projects run normally and library projects stay in watch/build-only mode.
 - Improved `vix dev` output by removing noisy `.env not found` messages from the default flow.
+- Improved `vix dev` so Vue + Vix projects can run a full development workflow with the Vue frontend and Vix backend together.
+- Improved `vix new` with template-aware project generation through `--template vue`.
 - Improved `vix new --app` so generated applications now use `vix.app` instead of a visible `CMakeLists.txt`.
 - Improved `vix build` so the default target is now `all` instead of assuming the folder name is a CMake target.
 - Improved `vix build --build-target all` so it stays on the CMake/Ninja path.
@@ -61,6 +67,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed the `core` runtime benchmark by removing the obsolete threadpool dependency.
 - Fixed middleware JWT linkage by linking `OpenSSL::Crypto` for JWT support.
 - Improved the umbrella CMake dependency graph for `template`, `core`, `middleware`, `p2p`, and `p2p_http`.
+- Added Vue template generation support in the CLI scaffolding system.
+- Added Vue frontend detection from `vix.json` for development workflows.
+- Added frontend process management in the dev session for Vue/Vite projects.
 
 ### Compatibility
 - No breaking changes.
@@ -74,6 +83,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `vix dev` supports both runnable applications and library-only projects.
 - `vix tests` can prepare tests automatically when test sources are present.
 - The graph executor can be disabled with `VIX_GRAPH_EXECUTOR=0`.
+- Vue support is currently focused on development workflows through `vix dev`.
+- `vix run` continues to run the Vix application/backend only.
+- Vue projects use Vite for the frontend dev server and proxy `/api` requests to the Vix backend.
 
 ## v2.5.6
 
