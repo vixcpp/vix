@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved command help output for `vix build`, `vix run`, `vix dev`, `vix repl`, and `vix tests`.
 - Improved `vix tests` so projects with a `tests/` directory can configure and run tests automatically when possible.
 - Improved `vix tests` output with cleaner CTest-based test listing and per-test status display.
+- Improved the umbrella CMake module order so dependencies are configured before the modules that consume them.
 
 ### Internal
 - Moved the REPL engine out of the CLI module into the standalone `reply` module.
@@ -54,6 +55,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Disabled unsafe generic graph linking for default project builds.
 - Improved CMake build argv generation so default builds do not force a guessed target name.
 - Added root-level build safety tests, benchmark scripts, and CI workflow.
+- Added standalone CI workflows for the `cli`, `core`, `reply`, `websocket`, `middleware`, `db`, `orm`, `net`, `p2p`, and `p2p_http` modules.
+- Fixed standalone module CI dependency layouts so each module receives the sibling modules it needs during isolated builds.
+- Improved standalone CMake configuration for modules that depend on `core` by preloading `json`, `template`, and `env` before configuring `core`.
+- Fixed the `core` runtime benchmark by removing the obsolete threadpool dependency.
+- Fixed middleware JWT linkage by linking `OpenSSL::Crypto` for JWT support.
+- Improved the umbrella CMake dependency graph for `template`, `core`, `middleware`, `p2p`, and `p2p_http`.
 
 ### Compatibility
 - No breaking changes.

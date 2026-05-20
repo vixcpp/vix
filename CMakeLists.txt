@@ -745,6 +745,30 @@ else()
   message(STATUS "KV: disabled or not present.")
 endif()
 
+# --- Template (optional) ---
+set(VIX_HAS_TEMPLATE OFF)
+
+if (VIX_ENABLE_TEMPLATE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/template/CMakeLists.txt")
+  message(STATUS "Adding 'modules/template'...")
+
+  set(TEMPLATE_BUILD_TESTS ${VIX_TEMPLATE_BUILD_TESTS} CACHE BOOL "" FORCE)
+  set(TEMPLATE_BUILD_EXAMPLES ${VIX_TEMPLATE_BUILD_EXAMPLES} CACHE BOOL "" FORCE)
+  set(TEMPLATE_BUILD_BENCHMARKS ${VIX_TEMPLATE_BUILD_BENCH} CACHE BOOL "" FORCE)
+  set(TEMPLATE_INSTALL OFF CACHE BOOL "" FORCE)
+
+  add_subdirectory(modules/template template_build)
+
+  if (TARGET vix::template)
+    set(VIX_HAS_TEMPLATE ON)
+  elseif (TARGET template)
+    set(VIX_HAS_TEMPLATE ON)
+  else()
+    message(WARNING "Template module added but no template target was exported.")
+  endif()
+else()
+  message(STATUS "Template: disabled or not present.")
+endif()
+
 # --- Core ---
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/core/CMakeLists.txt")
   message(STATUS "Adding 'modules/core'...")
@@ -908,26 +932,6 @@ else()
   message(STATUS "P2P: disabled or not present.")
 endif()
 
-# --- P2P HTTP Adapter (optional) ---
-set(VIX_HAS_P2P_HTTP OFF)
-
-# Guard: p2p_http requires both core + p2p
-if (VIX_ENABLE_P2P_HTTP AND VIX_HAS_P2P AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/p2p_http/CMakeLists.txt")
-  message(STATUS "Adding 'modules/p2p_http'...")
-  add_subdirectory(modules/p2p_http p2p_http_build)
-
-  if (TARGET vix::p2p_http OR TARGET vix_p2p_http)
-    set(VIX_HAS_P2P_HTTP ON)
-    if (TARGET vix_p2p_http AND NOT TARGET vix::p2p_http)
-      add_library(vix::p2p_http ALIAS vix_p2p_http)
-    endif()
-  else()
-    message(WARNING "p2p_http module added but no vix::p2p_http target was exported.")
-  endif()
-else()
-  message(STATUS "P2P HTTP: disabled, missing, or P2P not built.")
-endif()
-
 # --- Middleware (optional) ---
 set(VIX_HAS_MIDDLEWARE OFF)
 if (VIX_ENABLE_MIDDLEWARE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/middleware/CMakeLists.txt")
@@ -947,28 +951,24 @@ else()
   message(STATUS "Middleware: disabled or not present.")
 endif()
 
-# --- Template (optional) ---
-set(VIX_HAS_TEMPLATE OFF)
+# --- P2P HTTP Adapter (optional) ---
+set(VIX_HAS_P2P_HTTP OFF)
 
-if (VIX_ENABLE_TEMPLATE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/template/CMakeLists.txt")
-  message(STATUS "Adding 'modules/template'...")
+# Guard: p2p_http requires both core + p2p
+if (VIX_ENABLE_P2P_HTTP AND VIX_HAS_P2P AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/p2p_http/CMakeLists.txt")
+  message(STATUS "Adding 'modules/p2p_http'...")
+  add_subdirectory(modules/p2p_http p2p_http_build)
 
-  set(TEMPLATE_BUILD_TESTS ${VIX_TEMPLATE_BUILD_TESTS} CACHE BOOL "" FORCE)
-  set(TEMPLATE_BUILD_EXAMPLES ${VIX_TEMPLATE_BUILD_EXAMPLES} CACHE BOOL "" FORCE)
-  set(TEMPLATE_BUILD_BENCHMARKS ${VIX_TEMPLATE_BUILD_BENCH} CACHE BOOL "" FORCE)
-  set(TEMPLATE_INSTALL OFF CACHE BOOL "" FORCE)
-
-  add_subdirectory(modules/template template_build)
-
-  if (TARGET vix::template)
-    set(VIX_HAS_TEMPLATE ON)
-  elseif (TARGET template)
-    set(VIX_HAS_TEMPLATE ON)
+  if (TARGET vix::p2p_http OR TARGET vix_p2p_http)
+    set(VIX_HAS_P2P_HTTP ON)
+    if (TARGET vix_p2p_http AND NOT TARGET vix::p2p_http)
+      add_library(vix::p2p_http ALIAS vix_p2p_http)
+    endif()
   else()
-    message(WARNING "Template module added but no template target was exported.")
+    message(WARNING "p2p_http module added but no vix::p2p_http target was exported.")
   endif()
 else()
-  message(STATUS "Template: disabled or not present.")
+  message(STATUS "P2P HTTP: disabled, missing, or P2P not built.")
 endif()
 
 # Bench mode (compile-time flags)
