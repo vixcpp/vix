@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `vix agent analyze`
   - `vix agent scan`
 - Added the new standalone `vix::reply` module as the foundation for the Vix REPL engine.
+- Added the new `vix::game` module as the foundation for game loops, scenes, events, entities, assets, and background jobs.
+- Added `vix/game` examples for app lifecycle, game loop, scenes, asset loading, and jobs.
+- Added `vix/game` unit tests for app lifecycle, time steps, game loop, events, scenes, registry, assets, and jobs.
+- Added lightweight developer helper APIs to `vix::io`, including `vix::print`, `vix::format`, `vix::inspect`, `vix::input`, and `vix::console`.
 - Added official `vix.app` support for building simple C++ applications without writing CMake manually.
 - Added `vix.app` scaffolding for application projects generated with `vix new --app`.
 - Added `vix.app` support in `vix build`, `vix run`, `vix check`, and `vix tests`.
@@ -50,6 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved `vix tests` so projects with a `tests/` directory can configure and run tests automatically when possible.
 - Improved `vix tests` output with cleaner CTest-based test listing and per-test status display.
 - Improved the umbrella CMake module order so dependencies are configured before the modules that consume them.
+- Improved `vix::core` by moving lightweight developer helper APIs out of core and into `vix::io`.
+- Improved `vix::game` examples so they depend on `vix::io` instead of `vix::core` for `vix::print`.
 
 ### Internal
 - Moved the REPL engine out of the CLI module into the standalone `reply` module.
@@ -70,6 +76,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Vue template generation support in the CLI scaffolding system.
 - Added Vue frontend detection from `vix.json` for development workflows.
 - Added frontend process management in the dev session for Vue/Vite projects.
+- Added standalone CMake support for the `game` module with separated tests and examples.
+- Improved `vix::io` CMake packaging so top-level helper headers such as `<vix/print.hpp>` and `<vix/console.hpp>` are exported from the IO module.
+- Updated `vix::core` to depend on `vix::io` for developer-facing IO helpers.
+- Integrated `vix::game` into the umbrella CMake build and Vix package export.
+- Updated `vix::cache` to align `CacheContextMapper` with the current `NetworkProbe` API.
 
 ### Compatibility
 - No breaking changes.
@@ -86,6 +97,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Vue support is currently focused on development workflows through `vix dev`.
 - `vix run` continues to run the Vix application/backend only.
 - Vue projects use Vite for the frontend dev server and proxy `/api` requests to the Vix backend.
+- `vix::game` is optional and can be disabled with `-DVIX_ENABLE_GAME=OFF`.
+- `vix::io` now owns lightweight helper headers such as `<vix/print.hpp>`, but umbrella consumers can continue to include them through the installed Vix SDK.
 
 ## v2.5.6
 
