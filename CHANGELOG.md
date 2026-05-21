@@ -35,6 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `vix build --explain` to explain why files or targets rebuild.
 - Added automatic test preparation in `vix tests` when test sources exist but tests are not configured yet.
 - Added styled `vix tests --list` output.
+- Added V3 runtime foundations to `vix::game`, including `GameContext`, `GameRuntime`, `EditorContext`, `EditorRuntime`, `SceneRuntime`, `ScriptRuntime`, `AudioRuntime`, `PhysicsRuntime`, and `GamePackage`.
+- Added `vix new <name> --game` and `vix new <name> --template game` to generate Vix game projects.
+- Added generated game project structure with `assets/`, `game.package.json`, `src/main.cpp`, `vix.app`, and `vix.json`.
+- Added a V3 runtime smoke example for the `vix::game` module.
 
 ### Changed
 - Improved `vix repl` so the REPL engine now uses the standalone `vix::reply` module.
@@ -56,6 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved the umbrella CMake module order so dependencies are configured before the modules that consume them.
 - Improved `vix::core` by moving lightweight developer helper APIs out of core and into `vix::io`.
 - Improved `vix::game` examples so they depend on `vix::io` instead of `vix::core` for `vix::print`.
+- Improved `vix::game` with a professional runtime/editor foundation for future scripting, audio, physics, editor tooling, and packaging workflows.
+- Improved `vix new` with game-aware project generation.
 
 ### Internal
 - Moved the REPL engine out of the CLI module into the standalone `reply` module.
@@ -81,6 +87,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated `vix::core` to depend on `vix::io` for developer-facing IO helpers.
 - Integrated `vix::game` into the umbrella CMake build and Vix package export.
 - Updated `vix::cache` to align `CacheContextMapper` with the current `NetworkProbe` API.
+- Added game project scaffolding templates to the CLI new-command system.
+- Added `GamePackage` metadata support for future game packaging and export workflows.
+- Added `handle_with_id` support to `vix::threadpool` for game job lifecycle integration.
 
 ### Compatibility
 - No breaking changes.
@@ -99,6 +108,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Vue projects use Vite for the frontend dev server and proxy `/api` requests to the Vix backend.
 - `vix::game` is optional and can be disabled with `-DVIX_ENABLE_GAME=OFF`.
 - `vix::io` now owns lightweight helper headers such as `<vix/print.hpp>`, but umbrella consumers can continue to include them through the installed Vix SDK.
+- Game projects generated with `vix new --game` use `vix.app` and do not require a visible `CMakeLists.txt`.
+- The `vix::game` V3 runtime foundations are additive and do not break V1/V2 APIs.
 
 ## v2.5.6
 
