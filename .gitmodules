@@ -147,3 +147,7 @@
 	path = modules/reply
 	url = https://github.com/vixcpp/reply.git
 	branch = dev
+[submodule "modules/game"]
+	path = modules/game
+	url = https://github.com/vixcpp/game.git
+	branch = dev
