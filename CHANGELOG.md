@@ -73,7 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved `vix new` with game-aware project generation.
 - Improved `vix new --game` so generated projects now use a V5 `Scene + GameRuntime` example.
 - Improved `vix new --game` so generated projects include a clean `game.package.json`, `assets/`, README, `vix.app`, and `vix.json`.
-- Improved `vix dev` so short-lived game applications that exit cleanly wait for file changes instead of restarting in a loop.
+- Improved `vix dev` by running the dev session on the Vix async runtime for rebuilds, polling, debounce timers, child-process monitoring, and Ctrl+C shutdown.
+- Improved `vix dev` so applications that exit cleanly stop the dev session instead of restarting in a loop.
 - Improved Vix package export so umbrella builds can expose `vix::game` and optional SDL game backend support correctly.
 - Improved `VixConfig.cmake` so umbrella consumers load exported Vix targets without requiring internal modules such as `vix_io` as separate packages.
 
@@ -112,6 +113,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `VIX_WITH_GAME_SDL_OPENGL` package configuration support.
 - Added dedicated CMake support for `VIX_GAME_ENABLE_SDL_OPENGL` in the standalone and umbrella `vix::game` builds.
 - Added game export tests covering package loading, package saving, validation, manifest generation, asset scanning, asset type detection, temporary/cache filtering, and exported asset metadata.
+- Migrated the internal `vix dev` session orchestration to `vix::async` with async rebuild tasks, timer-based polling/debounce, signal-aware cancellation, and graceful child-process termination.
 
 ### Compatibility
 - No breaking changes.
