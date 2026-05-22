@@ -39,6 +39,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `vix new <name> --game` and `vix new <name> --template game` to generate Vix game projects.
 - Added generated game project structure with `assets/`, `game.package.json`, `src/main.cpp`, `vix.app`, and `vix.json`.
 - Added a V3 runtime smoke example for the `vix::game` module.
+- Added V4 `vix::game` runtime and backend foundation with `GameRuntime`, `GameContext`, `NullWindow`, `NullRenderer`, SDL window backend, SDL renderer backend, SDL input mapping, texture upload, sprite rendering, runtime diagnostics, and architecture tests.
+- Added V5 `vix::game` export workflow with `GameExportConfig`, `GameExporter`, `GameExportManifest`, `GameExportAsset`, and `GameAssetPipeline`.
+- Added `vix game export` to export Vix game projects from `game.package.json`.
+- Added generated `export.json` manifests for exported game projects.
+- Added exported asset metadata with asset path, type, and size.
+- Added asset scanning and asset type detection for image, text, and binary assets.
+- Added `export_project` example for the `vix::game` module.
 
 ### Changed
 - Improved `vix repl` so the REPL engine now uses the standalone `vix::reply` module.
@@ -62,6 +69,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved `vix::game` examples so they depend on `vix::io` instead of `vix::core` for `vix::print`.
 - Improved `vix::game` with a professional runtime/editor foundation for future scripting, audio, physics, editor tooling, and packaging workflows.
 - Improved `vix new` with game-aware project generation.
+- Improved `vix new --game` so generated projects now use a V5 `Scene + GameRuntime` example.
+- Improved `vix new --game` so generated projects include a clean `game.package.json`, `assets/`, README, `vix.app`, and `vix.json`.
+- Improved `vix dev` so short-lived game applications that exit cleanly wait for file changes instead of restarting in a loop.
+- Improved Vix package export so umbrella builds can expose `vix::game` and optional SDL game backend support correctly.
+- Improved `VixConfig.cmake` so umbrella consumers load exported Vix targets without requiring internal modules such as `vix_io` as separate packages.
 
 ### Internal
 - Moved the REPL engine out of the CLI module into the standalone `reply` module.
@@ -90,6 +102,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added game project scaffolding templates to the CLI new-command system.
 - Added `GamePackage` metadata support for future game packaging and export workflows.
 - Added `handle_with_id` support to `vix::threadpool` for game job lifecycle integration.
+- Added CLI integration for the `game` command group.
+- Added CMake support for `VIX_CLI_HAS_GAME` so the CLI enables `vix game export` only when `vix::game` is available.
+- Added umbrella CMake flags for optional game SDL package export.
+- Added `VIX_WITH_GAME_SDL` package configuration support.
+- Added game export tests covering package loading, package saving, validation, manifest generation, asset scanning, asset type detection, temporary/cache filtering, and exported asset metadata.
 
 ### Compatibility
 - No breaking changes.
@@ -110,6 +127,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `vix::io` now owns lightweight helper headers such as `<vix/print.hpp>`, but umbrella consumers can continue to include them through the installed Vix SDK.
 - Game projects generated with `vix new --game` use `vix.app` and do not require a visible `CMakeLists.txt`.
 - The `vix::game` V3 runtime foundations are additive and do not break V1/V2 APIs.
+- `vix game export` is available when the CLI is built with `vix::game`.
+- If the CLI is built without game support, `vix game export` reports that game support is not enabled.
+- Game export is additive and does not change existing `vix run`, `vix build`, or `vix new --game` behavior.
+- Game projects generated with `vix new --game` can now use `vix build`, `vix run`, `vix dev`, and `vix game export`.
 
 ## v2.5.6
 

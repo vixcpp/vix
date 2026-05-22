@@ -162,6 +162,12 @@ if (VIX_DB_WITH_MYSQL)
   endif()
 endif()
 
+# ---- Vix module packages ----
+if (@VIX_WITH_GAME_SDL@)
+  find_dependency(SDL2 REQUIRED)
+  find_dependency(SDL2_image REQUIRED)
+endif()
+
 # ---- load exported targets ----
 include("${CMAKE_CURRENT_LIST_DIR}/VixTargets.cmake")
 
