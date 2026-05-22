@@ -168,6 +168,10 @@ if (@VIX_WITH_GAME_SDL@)
   find_dependency(SDL2_image REQUIRED)
 endif()
 
+if (@VIX_WITH_GAME_SDL_OPENGL@)
+  find_dependency(OpenGL REQUIRED)
+endif()
+
 # ---- load exported targets ----
 include("${CMAKE_CURRENT_LIST_DIR}/VixTargets.cmake")
 

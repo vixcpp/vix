@@ -222,6 +222,8 @@ option(VIX_AGENT_BUILD_EXAMPLES    "Build vix::ai_agent examples"               
 option(VIX_ENABLE_GAME             "Build Vix Game module"                                        ON)
 option(VIX_GAME_BUILD_TESTS        "Build vix::game tests"                                        OFF)
 option(VIX_GAME_BUILD_EXAMPLES     "Build vix::game examples"                                     OFF)
+option(VIX_GAME_ENABLE_SDL         "Enable SDL backend for vix::game"                              OFF)
+option(VIX_GAME_ENABLE_SDL_OPENGL  "Enable SDL OpenGL renderer backend for vix::game"              OFF)
 
 # ----------------------------------------------------
 # Tooling / Static analysis
@@ -824,6 +826,8 @@ if (VIX_ENABLE_GAME AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/game/CMakeLi
 
   set(VIX_GAME_BUILD_TESTS ${VIX_GAME_BUILD_TESTS} CACHE BOOL "Build vix::game tests" FORCE)
   set(VIX_GAME_BUILD_EXAMPLES ${VIX_GAME_BUILD_EXAMPLES} CACHE BOOL "Build vix::game examples" FORCE)
+  set(VIX_GAME_ENABLE_SDL ${VIX_GAME_ENABLE_SDL} CACHE BOOL "Enable SDL backend for vix::game" FORCE)
+  set(VIX_GAME_ENABLE_SDL_OPENGL ${VIX_GAME_ENABLE_SDL_OPENGL} CACHE BOOL "Enable SDL OpenGL renderer backend for vix::game" FORCE)
 
   add_subdirectory(modules/game game_build)
 
@@ -1605,6 +1609,13 @@ if (VIX_ENABLE_INSTALL)
 
   set(VIX_WITH_GAME_SDL ${VIX_WITH_GAME_SDL})
 
+  set(VIX_WITH_GAME_SDL_OPENGL OFF)
+  if (VIX_HAS_GAME AND VIX_GAME_ENABLE_SDL_OPENGL)
+    set(VIX_WITH_GAME_SDL_OPENGL ON)
+  endif()
+
+  set(VIX_WITH_GAME_SDL_OPENGL ${VIX_WITH_GAME_SDL_OPENGL})
+
   set(VIX_HAS_VALIDATION  ${VIX_HAS_VALIDATION})
   set(VIX_WITH_VALIDATION ${VIX_WITH_VALIDATION})
 
@@ -1663,6 +1674,8 @@ message(STATUS "DB built          : ${VIX_HAS_DB}")
 message(STATUS "P2P built         : ${VIX_HAS_P2P}")
 message(STATUS "Conversion built  : ${VIX_HAS_CONVERSION}")
 message(STATUS "Game built        : ${VIX_HAS_GAME}")
+message(STATUS "Game SDL          : ${VIX_GAME_ENABLE_SDL}")
+message(STATUS "Game SDL OpenGL   : ${VIX_GAME_ENABLE_SDL_OPENGL}")
 message(STATUS "Validation built  : ${VIX_HAS_VALIDATION}")
 message(STATUS "Middleware built  : ${VIX_HAS_MIDDLEWARE}")
 message(STATUS "Template built    : ${VIX_HAS_TEMPLATE}")
@@ -1672,5 +1685,5 @@ message(STATUS "Sanitizers        : ${VIX_ENABLE_SANITIZERS}")
 message(STATUS "Coverage          : ${VIX_ENABLE_COVERAGE}")
 message(STATUS "LTO               : ${VIX_ENABLE_LTO}")
 message(STATUS "Install/Export    : ${VIX_ENABLE_INSTALL}")
-message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} WEBRPC=${VIX_WITH_WEBRPC} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P} TEMPLATE=${VIX_WITH_TEMPLATE} THREADPOOL=${VIX_WITH_THREADPOOL} KV=${VIX_WITH_KV} AGENT=${VIX_WITH_AGENT} GAME=${VIX_WITH_GAME}")
+message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} WEBRPC=${VIX_WITH_WEBRPC} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P} TEMPLATE=${VIX_WITH_TEMPLATE} THREADPOOL=${VIX_WITH_THREADPOOL} KV=${VIX_WITH_KV} AGENT=${VIX_WITH_AGENT} GAME=${VIX_WITH_GAME} GAME_SDL=${VIX_WITH_GAME_SDL} GAME_SDL_OPENGL=${VIX_WITH_GAME_SDL_OPENGL}")
 message(STATUS "------------------------------------------------------")

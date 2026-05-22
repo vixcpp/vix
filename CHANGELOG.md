@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added generated game project structure with `assets/`, `game.package.json`, `src/main.cpp`, `vix.app`, and `vix.json`.
 - Added a V3 runtime smoke example for the `vix::game` module.
 - Added V4 `vix::game` runtime and backend foundation with `GameRuntime`, `GameContext`, `NullWindow`, `NullRenderer`, SDL window backend, SDL renderer backend, SDL input mapping, texture upload, sprite rendering, runtime diagnostics, and architecture tests.
+- Added the SDL OpenGL renderer backend for `vix::game` with OpenGL context creation through SDL, shader compilation, VAO/VBO/EBO setup, texture upload, sprite rendering, and `glDrawElements` rendering.
+- Added `tiny_adventure`, a complete `vix::game` example using SDL windowing, SDL OpenGL rendering, input, asset loading, texture upload, sprite drawing, movement, and simple collision logic.
 - Added V5 `vix::game` export workflow with `GameExportConfig`, `GameExporter`, `GameExportManifest`, `GameExportAsset`, and `GameAssetPipeline`.
 - Added `vix game export` to export Vix game projects from `game.package.json`.
 - Added generated `export.json` manifests for exported game projects.
@@ -106,6 +108,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added CMake support for `VIX_CLI_HAS_GAME` so the CLI enables `vix game export` only when `vix::game` is available.
 - Added umbrella CMake flags for optional game SDL package export.
 - Added `VIX_WITH_GAME_SDL` package configuration support.
+- Added umbrella CMake flags for optional game SDL OpenGL package export.
+- Added `VIX_WITH_GAME_SDL_OPENGL` package configuration support.
+- Added dedicated CMake support for `VIX_GAME_ENABLE_SDL_OPENGL` in the standalone and umbrella `vix::game` builds.
 - Added game export tests covering package loading, package saving, validation, manifest generation, asset scanning, asset type detection, temporary/cache filtering, and exported asset metadata.
 
 ### Compatibility
@@ -124,6 +129,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `vix run` continues to run the Vix application/backend only.
 - Vue projects use Vite for the frontend dev server and proxy `/api` requests to the Vix backend.
 - `vix::game` is optional and can be disabled with `-DVIX_ENABLE_GAME=OFF`.
+- The SDL backend can be enabled with `-DVIX_GAME_ENABLE_SDL=ON`.
+- The SDL OpenGL renderer backend can be enabled with `-DVIX_GAME_ENABLE_SDL_OPENGL=ON` and requires SDL support to be enabled.
 - `vix::io` now owns lightweight helper headers such as `<vix/print.hpp>`, but umbrella consumers can continue to include them through the installed Vix SDK.
 - Game projects generated with `vix new --game` use `vix.app` and do not require a visible `CMakeLists.txt`.
 - The `vix::game` V3 runtime foundations are additive and do not break V1/V2 APIs.
