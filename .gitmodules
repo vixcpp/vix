@@ -139,3 +139,15 @@
 	path = modules/kv
 	url = https://github.com/vixcpp/kv.git
 	branch = dev
+[submodule "modules/agent"]
+	path = modules/agent
+	url = https://github.com/vixcpp/agent.git
+	branch = dev
+[submodule "modules/reply"]
+	path = modules/reply
+	url = https://github.com/vixcpp/reply.git
+	branch = dev
+[submodule "modules/game"]
+	path = modules/game
+	url = https://github.com/vixcpp/game.git
+	branch = dev

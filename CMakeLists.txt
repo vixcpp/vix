@@ -213,9 +213,17 @@ option(VIX_ENABLE_TEMPLATE         "Build Vix Template module"                  
 option(VIX_TEMPLATE_BUILD_TESTS    "Build vix::template tests"                                    OFF)
 option(VIX_TEMPLATE_BUILD_EXAMPLES "Build vix::template examples"                                 OFF)
 option(VIX_TEMPLATE_BUILD_BENCH    "Build vix::template benchmarks"                               OFF)
-option(VIX_ENABLE_PROCESS          "Build Vix Process module"                                      ON)
+option(VIX_ENABLE_PROCESS          "Build Vix Process module"                                     ON)
 option(VIX_ENABLE_THREADPOOL       "Build Vix ThreadPool module"                                  ON)
-option(VIX_ENABLE_KV               "Build Vix KV module"                                         ON)
+option(VIX_ENABLE_KV               "Build Vix KV module"                                          ON)
+option(VIX_ENABLE_AGENT            "Build Vix AI Agent module"                                    ON)
+option(VIX_AGENT_BUILD_TESTS       "Build vix::ai_agent tests"                                    OFF)
+option(VIX_AGENT_BUILD_EXAMPLES    "Build vix::ai_agent examples"                                 OFF)
+option(VIX_ENABLE_GAME             "Build Vix Game module"                                        ON)
+option(VIX_GAME_BUILD_TESTS        "Build vix::game tests"                                        OFF)
+option(VIX_GAME_BUILD_EXAMPLES     "Build vix::game examples"                                     OFF)
+option(VIX_GAME_ENABLE_SDL         "Enable SDL backend for vix::game"                             OFF)
+option(VIX_GAME_ENABLE_SDL_OPENGL  "Enable SDL OpenGL renderer backend for vix::game"             OFF)
 
 # ----------------------------------------------------
 # Tooling / Static analysis
@@ -742,12 +750,98 @@ else()
   message(STATUS "KV: disabled or not present.")
 endif()
 
+# --- Template (optional) ---
+set(VIX_HAS_TEMPLATE OFF)
+
+if (VIX_ENABLE_TEMPLATE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/template/CMakeLists.txt")
+  message(STATUS "Adding 'modules/template'...")
+
+  set(TEMPLATE_BUILD_TESTS ${VIX_TEMPLATE_BUILD_TESTS} CACHE BOOL "" FORCE)
+  set(TEMPLATE_BUILD_EXAMPLES ${VIX_TEMPLATE_BUILD_EXAMPLES} CACHE BOOL "" FORCE)
+  set(TEMPLATE_BUILD_BENCHMARKS ${VIX_TEMPLATE_BUILD_BENCH} CACHE BOOL "" FORCE)
+  set(TEMPLATE_INSTALL OFF CACHE BOOL "" FORCE)
+
+  add_subdirectory(modules/template template_build)
+
+  if (TARGET vix::template)
+    set(VIX_HAS_TEMPLATE ON)
+  elseif (TARGET template)
+    set(VIX_HAS_TEMPLATE ON)
+  else()
+    message(WARNING "Template module added but no template target was exported.")
+  endif()
+else()
+  message(STATUS "Template: disabled or not present.")
+endif()
+
 # --- Core ---
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/core/CMakeLists.txt")
   message(STATUS "Adding 'modules/core'...")
   add_subdirectory(modules/core core_build)
 else()
   message(FATAL_ERROR "Missing 'modules/core'. Run: git submodule update --init --recursive")
+endif()
+
+# --- Game (optional) ---
+set(VIX_HAS_GAME OFF)
+
+if (VIX_ENABLE_GAME AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/game/CMakeLists.txt")
+  if (NOT TARGET vix::error)
+    message(FATAL_ERROR "Game requires vix::error. Ensure error is added before game.")
+  endif()
+
+  if (NOT TARGET vix::time)
+    message(FATAL_ERROR "Game requires vix::time. Ensure time is added before game.")
+  endif()
+
+  if (NOT TARGET vix::fs)
+    message(FATAL_ERROR "Game requires vix::fs. Ensure fs is added before game.")
+  endif()
+
+  if (NOT TARGET vix::path)
+    message(FATAL_ERROR "Game requires vix::path. Ensure path is added before game.")
+  endif()
+
+  if (NOT TARGET vix::json)
+    message(FATAL_ERROR "Game requires vix::json. Ensure json is added before game.")
+  endif()
+
+  if (NOT TARGET vix::log)
+    message(FATAL_ERROR "Game requires vix::log. Ensure log is added before game.")
+  endif()
+
+  if (NOT TARGET vix::threadpool)
+    message(FATAL_ERROR "Game requires vix::threadpool. Ensure threadpool is added before game.")
+  endif()
+
+  if (NOT TARGET vix::async)
+    message(FATAL_ERROR "Game requires vix::async. Ensure async is added before game.")
+  endif()
+
+  if (VIX_GAME_BUILD_EXAMPLES AND NOT TARGET vix::core)
+    message(FATAL_ERROR "Game examples require vix::core because they use vix::print.")
+  endif()
+
+  message(STATUS "Adding 'modules/game'...")
+
+  set(VIX_GAME_BUILD_TESTS ${VIX_GAME_BUILD_TESTS} CACHE BOOL "Build vix::game tests" FORCE)
+  set(VIX_GAME_BUILD_EXAMPLES ${VIX_GAME_BUILD_EXAMPLES} CACHE BOOL "Build vix::game examples" FORCE)
+  set(VIX_GAME_ENABLE_SDL ${VIX_GAME_ENABLE_SDL} CACHE BOOL "Enable SDL backend for vix::game" FORCE)
+  set(VIX_GAME_ENABLE_SDL_OPENGL ${VIX_GAME_ENABLE_SDL_OPENGL} CACHE BOOL "Enable SDL OpenGL renderer backend for vix::game" FORCE)
+
+  add_subdirectory(modules/game game_build)
+
+  if (TARGET vix::game OR TARGET vix_game)
+    set(VIX_HAS_GAME ON)
+
+    if (TARGET vix_game AND NOT TARGET vix::game)
+      add_library(vix::game ALIAS vix_game)
+    endif()
+  else()
+    message(WARNING "Game module added but no vix::game target was exported.")
+  endif()
+else()
+  message(STATUS "Game: disabled or not present.")
 endif()
 
 # --- Conversion (required by Validation) ---
@@ -833,6 +927,37 @@ else()
   message(STATUS "Cache: disabled or not present.")
 endif()
 
+# --- AI Agent (optional) ---
+set(VIX_HAS_AGENT OFF)
+
+if (VIX_ENABLE_AGENT AND NOT VIX_HAS_CACHE)
+  message(WARNING "AI Agent requested but Cache module is missing -> disabling AI Agent in umbrella")
+  set(VIX_ENABLE_AGENT OFF CACHE BOOL "Build Vix AI Agent module" FORCE)
+endif()
+
+if (VIX_ENABLE_AGENT AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/agent/CMakeLists.txt")
+  message(STATUS "Adding 'modules/agent'...")
+
+  set(VIX_AI_AGENT_BUILD_TESTS ${VIX_AGENT_BUILD_TESTS} CACHE BOOL "Build vix ai agent tests" FORCE)
+  set(VIX_AI_AGENT_BUILD_EXAMPLES ${VIX_AGENT_BUILD_EXAMPLES} CACHE BOOL "Build vix ai agent examples" FORCE)
+
+  set(VIX_AI_AGENT_ENABLE_INSTALL ON CACHE BOOL "Enable install/export rules for vix ai agent" FORCE)
+
+  add_subdirectory(modules/agent agent_build)
+
+  if (TARGET vix::ai_agent OR TARGET vix_ai_agent)
+    set(VIX_HAS_AGENT ON)
+
+    if (TARGET vix_ai_agent AND NOT TARGET vix::ai_agent)
+      add_library(vix::ai_agent ALIAS vix_ai_agent)
+    endif()
+  else()
+    message(WARNING "AI Agent module added but no vix::ai_agent target was exported.")
+  endif()
+else()
+  message(STATUS "AI Agent: disabled or not present.")
+endif()
+
 # --- Sync (optional, used by P2P) ---
 set(VIX_HAS_SYNC OFF)
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/sync/CMakeLists.txt")
@@ -874,26 +999,6 @@ else()
   message(STATUS "P2P: disabled or not present.")
 endif()
 
-# --- P2P HTTP Adapter (optional) ---
-set(VIX_HAS_P2P_HTTP OFF)
-
-# Guard: p2p_http requires both core + p2p
-if (VIX_ENABLE_P2P_HTTP AND VIX_HAS_P2P AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/p2p_http/CMakeLists.txt")
-  message(STATUS "Adding 'modules/p2p_http'...")
-  add_subdirectory(modules/p2p_http p2p_http_build)
-
-  if (TARGET vix::p2p_http OR TARGET vix_p2p_http)
-    set(VIX_HAS_P2P_HTTP ON)
-    if (TARGET vix_p2p_http AND NOT TARGET vix::p2p_http)
-      add_library(vix::p2p_http ALIAS vix_p2p_http)
-    endif()
-  else()
-    message(WARNING "p2p_http module added but no vix::p2p_http target was exported.")
-  endif()
-else()
-  message(STATUS "P2P HTTP: disabled, missing, or P2P not built.")
-endif()
-
 # --- Middleware (optional) ---
 set(VIX_HAS_MIDDLEWARE OFF)
 if (VIX_ENABLE_MIDDLEWARE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/middleware/CMakeLists.txt")
@@ -913,28 +1018,24 @@ else()
   message(STATUS "Middleware: disabled or not present.")
 endif()
 
-# --- Template (optional) ---
-set(VIX_HAS_TEMPLATE OFF)
+# --- P2P HTTP Adapter (optional) ---
+set(VIX_HAS_P2P_HTTP OFF)
 
-if (VIX_ENABLE_TEMPLATE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/template/CMakeLists.txt")
-  message(STATUS "Adding 'modules/template'...")
+# Guard: p2p_http requires both core + p2p
+if (VIX_ENABLE_P2P_HTTP AND VIX_HAS_P2P AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/p2p_http/CMakeLists.txt")
+  message(STATUS "Adding 'modules/p2p_http'...")
+  add_subdirectory(modules/p2p_http p2p_http_build)
 
-  set(TEMPLATE_BUILD_TESTS ${VIX_TEMPLATE_BUILD_TESTS} CACHE BOOL "" FORCE)
-  set(TEMPLATE_BUILD_EXAMPLES ${VIX_TEMPLATE_BUILD_EXAMPLES} CACHE BOOL "" FORCE)
-  set(TEMPLATE_BUILD_BENCHMARKS ${VIX_TEMPLATE_BUILD_BENCH} CACHE BOOL "" FORCE)
-  set(TEMPLATE_INSTALL OFF CACHE BOOL "" FORCE)
-
-  add_subdirectory(modules/template template_build)
-
-  if (TARGET vix::template)
-    set(VIX_HAS_TEMPLATE ON)
-  elseif (TARGET template)
-    set(VIX_HAS_TEMPLATE ON)
+  if (TARGET vix::p2p_http OR TARGET vix_p2p_http)
+    set(VIX_HAS_P2P_HTTP ON)
+    if (TARGET vix_p2p_http AND NOT TARGET vix::p2p_http)
+      add_library(vix::p2p_http ALIAS vix_p2p_http)
+    endif()
   else()
-    message(WARNING "Template module added but no template target was exported.")
+    message(WARNING "p2p_http module added but no vix::p2p_http target was exported.")
   endif()
 else()
-  message(STATUS "Template: disabled or not present.")
+  message(STATUS "P2P HTTP: disabled, missing, or P2P not built.")
 endif()
 
 # Bench mode (compile-time flags)
@@ -1091,8 +1192,16 @@ if (TARGET vix::threadpool)
   target_link_libraries(vix INTERFACE vix::threadpool)
 endif()
 
+if (TARGET vix::game)
+  target_link_libraries(vix INTERFACE vix::game)
+endif()
+
 if (TARGET vix::kv)
   target_link_libraries(vix INTERFACE vix::kv)
+endif()
+
+if (TARGET vix::ai_agent)
+  target_link_libraries(vix INTERFACE vix::ai_agent)
 endif()
 
 if (TARGET vix::p2p)
@@ -1345,7 +1454,7 @@ endif()
 
 if (VIX_ENABLE_INSTALL)
 
-   foreach(_m error path fs io env os log tests core utils json websocket webrpc crypto time conversion validation async process threadpool kv net cache sync p2p p2p_http middleware db orm template)
+   foreach(_m error path fs io env os log tests core utils json websocket webrpc crypto time conversion validation async process threadpool kv agent game net cache sync p2p p2p_http middleware db orm template)
     if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/${_m}/include")
       install(DIRECTORY "modules/${_m}/include/"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
@@ -1433,13 +1542,21 @@ if (VIX_ENABLE_INSTALL)
     set(VIX_WITH_THREADPOOL ON)
   endif()
 
+  set(VIX_WITH_ASYNC OFF)
+  if (VIX_HAS_ASYNC)
+    set(VIX_WITH_ASYNC ON)
+  endif()
+
+  set(VIX_HAS_ASYNC ${VIX_HAS_ASYNC})
+  set(VIX_WITH_ASYNC ${VIX_WITH_ASYNC})
+
   set(VIX_WITH_KV OFF)
   if (VIX_HAS_KV)
     set(VIX_WITH_KV ON)
   endif()
 
-set(VIX_HAS_KV  ${VIX_HAS_KV})
-set(VIX_WITH_KV ${VIX_WITH_KV})
+  set(VIX_HAS_KV  ${VIX_HAS_KV})
+  set(VIX_WITH_KV ${VIX_WITH_KV})
 
   set(VIX_WITH_CONVERSION OFF)
   if (VIX_HAS_CONVERSION)
@@ -1468,6 +1585,36 @@ set(VIX_WITH_KV ${VIX_WITH_KV})
   if (VIX_HAS_TEMPLATE)
     set(VIX_WITH_TEMPLATE ON)
   endif()
+
+  set(VIX_WITH_AGENT OFF)
+  if (VIX_HAS_AGENT)
+    set(VIX_WITH_AGENT ON)
+  endif()
+
+  set(VIX_HAS_AGENT ${VIX_HAS_AGENT})
+  set(VIX_WITH_AGENT ${VIX_WITH_AGENT})
+
+  set(VIX_WITH_GAME OFF)
+  if (VIX_HAS_GAME)
+    set(VIX_WITH_GAME ON)
+  endif()
+
+  set(VIX_HAS_GAME ${VIX_HAS_GAME})
+  set(VIX_WITH_GAME ${VIX_WITH_GAME})
+
+  set(VIX_WITH_GAME_SDL OFF)
+  if (VIX_HAS_GAME AND VIX_GAME_ENABLE_SDL)
+    set(VIX_WITH_GAME_SDL ON)
+  endif()
+
+  set(VIX_WITH_GAME_SDL ${VIX_WITH_GAME_SDL})
+
+  set(VIX_WITH_GAME_SDL_OPENGL OFF)
+  if (VIX_HAS_GAME AND VIX_GAME_ENABLE_SDL_OPENGL)
+    set(VIX_WITH_GAME_SDL_OPENGL ON)
+  endif()
+
+  set(VIX_WITH_GAME_SDL_OPENGL ${VIX_WITH_GAME_SDL_OPENGL})
 
   set(VIX_HAS_VALIDATION  ${VIX_HAS_VALIDATION})
   set(VIX_WITH_VALIDATION ${VIX_WITH_VALIDATION})
@@ -1521,10 +1668,14 @@ message(STATUS "WebSocket built   : ${VIX_HAS_WEBSOCKET}")
 message(STATUS "Process built     : ${VIX_HAS_PROCESS}")
 message(STATUS "ThreadPool built  : ${VIX_HAS_THREADPOOL}")
 message(STATUS "KV built          : ${VIX_HAS_KV}")
+message(STATUS "AI Agent built    : ${VIX_HAS_AGENT}")
 message(STATUS "ORM packaged      : ${VIX_HAS_ORM}")
 message(STATUS "DB built          : ${VIX_HAS_DB}")
 message(STATUS "P2P built         : ${VIX_HAS_P2P}")
 message(STATUS "Conversion built  : ${VIX_HAS_CONVERSION}")
+message(STATUS "Game built        : ${VIX_HAS_GAME}")
+message(STATUS "Game SDL          : ${VIX_GAME_ENABLE_SDL}")
+message(STATUS "Game SDL OpenGL   : ${VIX_GAME_ENABLE_SDL_OPENGL}")
 message(STATUS "Validation built  : ${VIX_HAS_VALIDATION}")
 message(STATUS "Middleware built  : ${VIX_HAS_MIDDLEWARE}")
 message(STATUS "Template built    : ${VIX_HAS_TEMPLATE}")
@@ -1534,5 +1685,5 @@ message(STATUS "Sanitizers        : ${VIX_ENABLE_SANITIZERS}")
 message(STATUS "Coverage          : ${VIX_ENABLE_COVERAGE}")
 message(STATUS "LTO               : ${VIX_ENABLE_LTO}")
 message(STATUS "Install/Export    : ${VIX_ENABLE_INSTALL}")
-message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} WEBRPC=${VIX_WITH_WEBRPC} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P} TEMPLATE=${VIX_WITH_TEMPLATE} THREADPOOL=${VIX_WITH_THREADPOOL} KV=${VIX_WITH_KV}")
+message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} WEBRPC=${VIX_WITH_WEBRPC} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P} TEMPLATE=${VIX_WITH_TEMPLATE} THREADPOOL=${VIX_WITH_THREADPOOL} KV=${VIX_WITH_KV} AGENT=${VIX_WITH_AGENT} GAME=${VIX_WITH_GAME} GAME_SDL=${VIX_WITH_GAME_SDL} GAME_SDL_OPENGL=${VIX_WITH_GAME_SDL_OPENGL}")
 message(STATUS "------------------------------------------------------")

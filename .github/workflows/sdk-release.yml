@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Optional tag to build/release (e.g. v2.5.3). If empty, uses the current ref."
+        description: "Optional tag to build/release (e.g. v2.6.0). If empty, uses the current ref."
         required: false
         default: ""
 
@@ -20,37 +20,13 @@ concurrency:
 
 jobs:
   build-sdk:
-    name: build-sdk (${{ matrix.variant }} / linux / x86_64)
+    name: build-sdk-full (linux / x86_64)
+    runs-on: ubuntu-24.04
 
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - variant: core
-            os: ubuntu-24.04
-            sdkos: linux
-            arch: x86_64
-            asset: vix-sdk-linux-x86_64.tar.gz
-            install_dir: install-core
-            build_dir: build-core
-
-          - variant: db
-            os: ubuntu-24.04
-            sdkos: linux
-            arch: x86_64
-            asset: vix-sdk-db-linux-x86_64.tar.gz
-            install_dir: install-db
-            build_dir: build-db
-
-          - variant: full
-            os: ubuntu-24.04
-            sdkos: linux
-            arch: x86_64
-            asset: vix-sdk-full-linux-x86_64.tar.gz
-            install_dir: install-full
-            build_dir: build-full
-
-    runs-on: ${{ matrix.os }}
+    env:
+      BUILD_DIR: build-sdk-full
+      INSTALL_DIR: install-sdk-full
+      ASSET: vix-sdk-linux-x86_64.tar.gz
 
     steps:
       - name: Checkout
@@ -93,91 +69,84 @@ jobs:
             libbrotli-dev \
             libspdlog-dev \
             libfmt-dev \
-            libmysqlcppconn-dev
+            libmysqlcppconn-dev \
+            libsdl2-dev \
+            libsdl2-image-dev \
+            libgl1-mesa-dev
 
-      - name: Configure SDK
+      - name: Configure SDK full
         shell: bash
         run: |
           set -euxo pipefail
 
-          COMMON_ARGS=(
-            -S .
-            -B "${{ matrix.build_dir }}"
-            -G Ninja
-            -DCMAKE_BUILD_TYPE=Release
-            -DVIX_ENABLE_INSTALL=ON
-            -DVIX_BUILD_EXAMPLES=OFF
-            -DVIX_BUILD_TESTS=OFF
-            -DVIX_TIME_BUILD_TESTS=OFF
-            -DVIX_TIME_BUILD_BENCH=OFF
-            -DVIX_TEMPLATE_BUILD_TESTS=OFF
-            -DVIX_TEMPLATE_BUILD_EXAMPLES=OFF
-            -DVIX_TEMPLATE_BUILD_BENCH=OFF
-            -DCMAKE_INSTALL_PREFIX="${GITHUB_WORKSPACE}/${{ matrix.install_dir }}"
-          )
-
-          if [ "${{ matrix.variant }}" = "core" ]; then
-            cmake "${COMMON_ARGS[@]}" \
-              -DVIX_ENABLE_DB=OFF \
-              -DVIX_ENABLE_ORM=OFF \
-              -DVIX_ENABLE_WEBSOCKET=OFF \
-              -DVIX_DB_USE_SQLITE=OFF \
-              -DVIX_DB_USE_MYSQL=OFF \
-              -DVIX_DB_USE_POSTGRES=OFF \
-              -DVIX_DB_USE_REDIS=OFF \
-              -DVIX_CORE_WITH_MYSQL=OFF \
-              -DVIX_ENABLE_HTTP_COMPRESSION=OFF
-          fi
-
-          if [ "${{ matrix.variant }}" = "db" ]; then
-            cmake "${COMMON_ARGS[@]}" \
-              -DVIX_ENABLE_DB=ON \
-              -DVIX_ENABLE_ORM=OFF \
-              -DVIX_DB_USE_SQLITE=ON \
-              -DVIX_DB_USE_MYSQL=ON \
-              -DVIX_DB_USE_POSTGRES=OFF \
-              -DVIX_DB_USE_REDIS=OFF \
-              -DVIX_CORE_WITH_MYSQL=OFF \
-              -DVIX_ENABLE_HTTP_COMPRESSION=OFF
-          fi
-
-          if [ "${{ matrix.variant }}" = "full" ]; then
-            cmake "${COMMON_ARGS[@]}" \
-              -DVIX_ENABLE_DB=ON \
-              -DVIX_ENABLE_ORM=ON \
-              -DVIX_DB_USE_SQLITE=ON \
-              -DVIX_DB_USE_MYSQL=ON \
-              -DVIX_DB_USE_POSTGRES=OFF \
-              -DVIX_DB_USE_REDIS=OFF \
-              -DVIX_CORE_WITH_MYSQL=OFF \
-              -DVIX_ENABLE_HTTP_COMPRESSION=ON \
-              -DVIX_ENABLE_WEBSOCKET=ON \
-              -DVIX_ENABLE_CLI=ON \
-              -DVIX_ENABLE_MIDDLEWARE=ON \
-              -DVIX_ENABLE_P2P=ON \
-              -DVIX_ENABLE_P2P_HTTP=ON \
-              -DVIX_ENABLE_CACHE=ON \
-              -DVIX_ENABLE_ASYNC=ON \
-              -DVIX_ENABLE_VALIDATION=ON \
-              -DVIX_ENABLE_CRYPTO=ON \
-              -DVIX_ENABLE_WEBRPC=ON \
-              -DVIX_ENABLE_TIME=ON \
-              -DVIX_ENABLE_TESTS_MODULE=ON \
-              -DVIX_ENABLE_TEMPLATE=ON \
-              -DVIX_ENABLE_PROCESS=ON
-          fi
+          cmake -S . -B "$BUILD_DIR" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="${GITHUB_WORKSPACE}/${INSTALL_DIR}" \
+            -DVIX_ENABLE_INSTALL=ON \
+            -DVIX_BUILD_EXAMPLES=OFF \
+            -DVIX_BUILD_TESTS=OFF \
+            -DVIX_ENABLE_HTTP_COMPRESSION=ON \
+            -DVIX_ENABLE_DB=ON \
+            -DVIX_DB_USE_SQLITE=ON \
+            -DVIX_DB_USE_MYSQL=ON \
+            -DVIX_DB_USE_POSTGRES=OFF \
+            -DVIX_DB_USE_REDIS=OFF \
+            -DVIX_CORE_WITH_MYSQL=OFF \
+            -DVIX_ENABLE_ORM=ON \
+            -DVIX_ENABLE_WEBSOCKET=ON \
+            -DVIX_ENABLE_CLI=ON \
+            -DVIX_ENABLE_MIDDLEWARE=ON \
+            -DVIX_ENABLE_P2P=ON \
+            -DVIX_ENABLE_P2P_HTTP=ON \
+            -DVIX_ENABLE_CACHE=ON \
+            -DVIX_ENABLE_ASYNC=ON \
+            -DVIX_ENABLE_VALIDATION=ON \
+            -DVIX_ENABLE_CRYPTO=ON \
+            -DVIX_ENABLE_WEBRPC=ON \
+            -DVIX_ENABLE_TIME=ON \
+            -DVIX_ENABLE_TESTS_MODULE=ON \
+            -DVIX_ENABLE_TEMPLATE=ON \
+            -DVIX_ENABLE_PROCESS=ON \
+            -DVIX_ENABLE_THREADPOOL=ON \
+            -DVIX_ENABLE_KV=ON \
+            -DVIX_ENABLE_AGENT=ON \
+            -DVIX_ENABLE_GAME=ON \
+            -DVIX_GAME_ENABLE_SDL=ON \
+            -DVIX_GAME_ENABLE_SDL_OPENGL=ON \
+            -DVIX_TIME_BUILD_TESTS=OFF \
+            -DVIX_TIME_BUILD_BENCH=OFF \
+            -DVIX_TEMPLATE_BUILD_TESTS=OFF \
+            -DVIX_TEMPLATE_BUILD_EXAMPLES=OFF \
+            -DVIX_TEMPLATE_BUILD_BENCH=OFF \
+            -DVIX_AGENT_BUILD_TESTS=OFF \
+            -DVIX_AGENT_BUILD_EXAMPLES=OFF \
+            -DVIX_GAME_BUILD_TESTS=OFF \
+            -DVIX_GAME_BUILD_EXAMPLES=OFF
 
       - name: Build SDK
         shell: bash
         run: |
           set -euxo pipefail
-          cmake --build "${{ matrix.build_dir }}" -j2
+          cmake --build "$BUILD_DIR" -j2
 
       - name: Install SDK
         shell: bash
         run: |
           set -euxo pipefail
-          cmake --install "${{ matrix.build_dir }}"
+          cmake --install "$BUILD_DIR"
+
+      - name: Verify installed SDK tree
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          test -d "$INSTALL_DIR"
+          test -f "$INSTALL_DIR/bin/vix"
+          test -f "$INSTALL_DIR/lib/cmake/Vix/VixConfig.cmake"
+          test -f "$INSTALL_DIR/lib/cmake/Vix/VixTargets.cmake"
+
+          find "$INSTALL_DIR/include" -maxdepth 4 -type f | sort | head -n 80
+          find "$INSTALL_DIR/lib/cmake" -maxdepth 4 -type f | sort
 
       - name: Package SDK
         shell: bash
@@ -185,9 +154,7 @@ jobs:
           set -euxo pipefail
 
           mkdir -p dist
-
-          test -d "${{ matrix.install_dir }}"
-          tar -C "${{ matrix.install_dir }}" -czf "dist/${{ matrix.asset }}" .
+          tar -C "$INSTALL_DIR" -czf "dist/$ASSET" .
 
           ls -lah dist
 
@@ -199,14 +166,14 @@ jobs:
           rm -rf smoke-bin
           mkdir -p smoke-bin
 
-          tar -xzf "dist/${{ matrix.asset }}" -C smoke-bin
+          tar -xzf "dist/$ASSET" -C smoke-bin
 
           test -f smoke-bin/bin/vix
           file smoke-bin/bin/vix
           ldd smoke-bin/bin/vix || true
           smoke-bin/bin/vix --version
 
-      - name: Validate packaged SDK with consumer project
+      - name: Validate packaged SDK with full consumer project
         shell: bash
         run: |
           set -euxo pipefail
@@ -214,7 +181,7 @@ jobs:
           rm -rf smoke-sdk consumer
           mkdir -p smoke-sdk consumer
 
-          tar -xzf "dist/${{ matrix.asset }}" -C smoke-sdk
+          tar -xzf "dist/$ASSET" -C smoke-sdk
 
           cat > consumer/CMakeLists.txt <<'EOF'
           cmake_minimum_required(VERSION 3.20)
@@ -232,11 +199,37 @@ jobs:
           cat > consumer/main.cpp <<'EOF'
           #include <vix.hpp>
 
+          #include <vix/json/Simple.hpp>
+          #include <vix/error/Error.hpp>
+          #include <vix/path/Path.hpp>
+          #include <vix/fs.hpp>
+          #include <vix/console.hpp>
+          #include <vix/env.hpp>
+          #include <vix/log.hpp>
+          #include <vix/core.hpp>
+          #include <vix/async.hpp>
+          #include <vix/time.hpp>
+          #include <vix/crypto.hpp>
+          #include <vix/cache.hpp>
+          #include <vix/db.hpp>
+          #include <vix/orm.hpp>
+          #include <vix/websocket.hpp>
+          #include <vix/validation.hpp>
+          #include <vix/process.hpp>
+          #include <vix/threadpool.hpp>
+          #include <vix/kv.hpp>
+          #include <vix/template.hpp>
+          #include <vix/p2p.hpp>
+          #include <vix/p2p_http.hpp>
+          #include <vix/webrpc.hpp>
+          #include <vix/game.hpp>
+          #include <vix/ai.hpp>
+
           #include <iostream>
 
           int main()
           {
-            std::cout << "Vix SDK consumer build works\n";
+            std::cout << "Vix full SDK consumer build works\n";
             return 0;
           }
           EOF
@@ -251,7 +244,7 @@ jobs:
       - name: Upload dist
         uses: actions/upload-artifact@v4
         with:
-          name: sdk-dist-${{ matrix.variant }}-${{ matrix.sdkos }}-${{ matrix.arch }}
+          name: sdk-dist-linux-x86_64
           path: dist/*
           if-no-files-found: error
 
@@ -261,7 +254,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: Download all artifacts
+      - name: Download SDK artifact
         uses: actions/download-artifact@v4
         with:
           path: dist-all
@@ -273,11 +266,9 @@ jobs:
 
           mkdir -p dist
 
-          find dist-all -type f -name "vix-sdk-*.tar.gz" -exec cp -f {} dist/ \;
+          find dist-all -type f -name "vix-sdk-linux-x86_64.tar.gz" -exec cp -f {} dist/ \;
 
           test -f dist/vix-sdk-linux-x86_64.tar.gz
-          test -f dist/vix-sdk-db-linux-x86_64.tar.gz
-          test -f dist/vix-sdk-full-linux-x86_64.tar.gz
 
           ls -lah dist
 

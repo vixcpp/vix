@@ -162,6 +162,16 @@ if (VIX_DB_WITH_MYSQL)
   endif()
 endif()
 
+# ---- Vix module packages ----
+if (@VIX_WITH_GAME_SDL@)
+  find_dependency(SDL2 REQUIRED)
+  find_dependency(SDL2_image REQUIRED)
+endif()
+
+if (@VIX_WITH_GAME_SDL_OPENGL@)
+  find_dependency(OpenGL REQUIRED)
+endif()
+
 # ---- load exported targets ----
 include("${CMAKE_CURRENT_LIST_DIR}/VixTargets.cmake")
 
@@ -235,6 +245,16 @@ if (VIX_WITH_KV AND NOT TARGET vix::kv)
   set(VIX_WITH_KV OFF)
 endif()
 
+set(VIX_HAS_AGENT @VIX_HAS_AGENT@)
+if (VIX_HAS_AGENT AND NOT TARGET vix::ai_agent)
+  set(VIX_HAS_AGENT OFF)
+endif()
+
+set(VIX_WITH_AGENT @VIX_WITH_AGENT@)
+if (VIX_WITH_AGENT AND NOT TARGET vix::ai_agent)
+  set(VIX_WITH_AGENT OFF)
+endif()
+
 set(VIX_WITH_VALIDATION @VIX_WITH_VALIDATION@)
 if (VIX_WITH_VALIDATION AND NOT TARGET vix::validation)
   set(VIX_WITH_VALIDATION OFF)
@@ -248,4 +268,14 @@ endif()
 set(VIX_WITH_CONVERSION @VIX_WITH_CONVERSION@)
 if (VIX_WITH_CONVERSION AND NOT TARGET vix::conversion)
   set(VIX_WITH_CONVERSION OFF)
+endif()
+
+set(VIX_HAS_GAME @VIX_HAS_GAME@)
+if (VIX_HAS_GAME AND NOT TARGET vix::game)
+  set(VIX_HAS_GAME OFF)
+endif()
+
+set(VIX_WITH_GAME @VIX_WITH_GAME@)
+if (VIX_WITH_GAME AND NOT TARGET vix::game)
+  set(VIX_WITH_GAME OFF)
 endif()

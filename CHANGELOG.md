@@ -5,6 +5,142 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.6.0
+
+### Added
+- Added the new `vix::ai_agent` module for local-first AI workflows.
+- Added the public AI API through `#include <vix/ai.hpp>` and `vix::ai::Agent`.
+- Added Ollama support for local model execution.
+- Added `vix agent` commands:
+  - `vix agent ask`
+  - `vix agent analyze`
+  - `vix agent scan`
+- Added the new standalone `vix::reply` module as the foundation for the Vix REPL engine.
+- Added the new `vix::game` module as the foundation for game loops, scenes, events, entities, assets, and background jobs.
+- Added `vix/game` examples for app lifecycle, game loop, scenes, asset loading, and jobs.
+- Added `vix/game` unit tests for app lifecycle, time steps, game loop, events, scenes, registry, assets, and jobs.
+- Added lightweight developer helper APIs to `vix::io`, including `vix::print`, `vix::format`, `vix::inspect`, `vix::input`, and `vix::console`.
+- Added official `vix.app` support for building simple C++ applications without writing CMake manually.
+- Added `vix.app` scaffolding for application projects generated with `vix new --app`.
+- Added `vix.app` support in `vix build`, `vix run`, `vix check`, and `vix tests`.
+- Added Vue application scaffolding with `vix new <name> --template vue`.
+- Added generated Vue + Vix full-stack project structure with a Vue frontend and a Vix C++ backend.
+- Added Vue frontend templates for `package.json`, `index.html`, `vite.config.js`, `src/main.js`, and `src/App.vue`.
+- Added Vue-aware `vix dev` support to start the Vue/Vite frontend alongside the Vix C++ backend.
+- Added target-aware `vix build` execution with safe fallback to CMake/Ninja.
+- Added fast no-op build detection and target ArtifactCache restore support.
+- Added human-readable compiler warning summaries after successful builds.
+- Added `vix build --warnings` with pagination through `--page` and `--limit`.
+- Added `vix build --warning-check` to build with stronger compiler warning flags automatically.
+- Added `vix build --explain` to explain why files or targets rebuild.
+- Added automatic test preparation in `vix tests` when test sources exist but tests are not configured yet.
+- Added styled `vix tests --list` output.
+- Added V3 runtime foundations to `vix::game`, including `GameContext`, `GameRuntime`, `EditorContext`, `EditorRuntime`, `SceneRuntime`, `ScriptRuntime`, `AudioRuntime`, `PhysicsRuntime`, and `GamePackage`.
+- Added `vix new <name> --game` and `vix new <name> --template game` to generate Vix game projects.
+- Added generated game project structure with `assets/`, `game.package.json`, `src/main.cpp`, `vix.app`, and `vix.json`.
+- Added a V3 runtime smoke example for the `vix::game` module.
+- Added V4 `vix::game` runtime and backend foundation with `GameRuntime`, `GameContext`, `NullWindow`, `NullRenderer`, SDL window backend, SDL renderer backend, SDL input mapping, texture upload, sprite rendering, runtime diagnostics, and architecture tests.
+- Added the SDL OpenGL renderer backend for `vix::game` with OpenGL context creation through SDL, shader compilation, VAO/VBO/EBO setup, texture upload, sprite rendering, and `glDrawElements` rendering.
+- Added `tiny_adventure`, a complete `vix::game` example using SDL windowing, SDL OpenGL rendering, input, asset loading, texture upload, sprite drawing, movement, and simple collision logic.
+- Added V5 `vix::game` export workflow with `GameExportConfig`, `GameExporter`, `GameExportManifest`, `GameExportAsset`, and `GameAssetPipeline`.
+- Added `vix game export` to export Vix game projects from `game.package.json`.
+- Added generated `export.json` manifests for exported game projects.
+- Added exported asset metadata with asset path, type, and size.
+- Added asset scanning and asset type detection for image, text, and binary assets.
+- Added `export_project` example for the `vix::game` module.
+
+### Changed
+- Improved `vix repl` so the REPL engine now uses the standalone `vix::reply` module.
+- Improved `vix run` so project execution now uses the same build path as `vix build`.
+- Improved `vix run` so normal non-zero exits are no longer treated as runtime crashes.
+- Improved `vix dev` so it reuses the `vix build` workflow.
+- Improved `vix dev` so application projects run normally and library projects stay in watch/build-only mode.
+- Improved `vix dev` output by removing noisy `.env not found` messages from the default flow.
+- Improved `vix dev` so Vue + Vix projects can run a full development workflow with the Vue frontend and Vix backend together.
+- Improved `vix new` with template-aware project generation through `--template vue`.
+- Improved `vix new --app` so generated applications now use `vix.app` instead of a visible `CMakeLists.txt`.
+- Improved `vix build` so the default target is now `all` instead of assuming the folder name is a CMake target.
+- Improved `vix build --build-target all` so it stays on the CMake/Ninja path.
+- Improved graph executor safety by delegating to Ninja when a target is unsupported, ambiguous, or unsafe.
+- Improved compiler warning output by keeping normal build output short and moving full warning exploration to `vix build --warnings`.
+- Improved command help output for `vix build`, `vix run`, `vix dev`, `vix repl`, and `vix tests`.
+- Improved `vix tests` so projects with a `tests/` directory can configure and run tests automatically when possible.
+- Improved `vix tests` output with cleaner CTest-based test listing and per-test status display.
+- Improved the umbrella CMake module order so dependencies are configured before the modules that consume them.
+- Improved `vix::core` by moving lightweight developer helper APIs out of core and into `vix::io`.
+- Improved `vix::game` examples so they depend on `vix::io` instead of `vix::core` for `vix::print`.
+- Improved `vix::game` with a professional runtime/editor foundation for future scripting, audio, physics, editor tooling, and packaging workflows.
+- Improved `vix new` with game-aware project generation.
+- Improved `vix new --game` so generated projects now use a V5 `Scene + GameRuntime` example.
+- Improved `vix new --game` so generated projects include a clean `game.package.json`, `assets/`, README, `vix.app`, and `vix.json`.
+- Improved `vix dev` by running the dev session on the Vix async runtime for rebuilds, polling, debounce timers, child-process monitoring, and Ctrl+C shutdown.
+- Improved `vix dev` so applications that exit cleanly stop the dev session instead of restarting in a loop.
+- Improved Vix package export so umbrella builds can expose `vix::game` and optional SDL game backend support correctly.
+- Improved `VixConfig.cmake` so umbrella consumers load exported Vix targets without requiring internal modules such as `vix_io` as separate packages.
+
+### Internal
+- Moved the REPL engine out of the CLI module into the standalone `reply` module.
+- Removed the old internal `cli/commands/repl` implementation from the CLI module.
+- Added safer `vix.app` manifest parsing and internal CMake generation.
+- Added internal CMake generation for `vix.app` application projects under `.vix/generated/app/`.
+- Improved generated `vix.app` CMake output with proper Vix package resolution and test target generation.
+- Improved build graph dirty detection, persistence, and fallback behavior.
+- Disabled unsafe generic graph linking for default project builds.
+- Improved CMake build argv generation so default builds do not force a guessed target name.
+- Added root-level build safety tests, benchmark scripts, and CI workflow.
+- Added standalone CI workflows for the `cli`, `core`, `reply`, `websocket`, `middleware`, `db`, `orm`, `net`, `p2p`, and `p2p_http` modules.
+- Fixed standalone module CI dependency layouts so each module receives the sibling modules it needs during isolated builds.
+- Improved standalone CMake configuration for modules that depend on `core` by preloading `json`, `template`, and `env` before configuring `core`.
+- Fixed the `core` runtime benchmark by removing the obsolete threadpool dependency.
+- Fixed middleware JWT linkage by linking `OpenSSL::Crypto` for JWT support.
+- Improved the umbrella CMake dependency graph for `template`, `core`, `middleware`, `p2p`, and `p2p_http`.
+- Added Vue template generation support in the CLI scaffolding system.
+- Added Vue frontend detection from `vix.json` for development workflows.
+- Added frontend process management in the dev session for Vue/Vite projects.
+- Added standalone CMake support for the `game` module with separated tests and examples.
+- Improved `vix::io` CMake packaging so top-level helper headers such as `<vix/print.hpp>` and `<vix/console.hpp>` are exported from the IO module.
+- Updated `vix::core` to depend on `vix::io` for developer-facing IO helpers.
+- Integrated `vix::game` into the umbrella CMake build and Vix package export.
+- Updated `vix::cache` to align `CacheContextMapper` with the current `NetworkProbe` API.
+- Added game project scaffolding templates to the CLI new-command system.
+- Added `GamePackage` metadata support for future game packaging and export workflows.
+- Added `handle_with_id` support to `vix::threadpool` for game job lifecycle integration.
+- Added CLI integration for the `game` command group.
+- Added CMake support for `VIX_CLI_HAS_GAME` so the CLI enables `vix game export` only when `vix::game` is available.
+- Added umbrella CMake flags for optional game SDL package export.
+- Added `VIX_WITH_GAME_SDL` package configuration support.
+- Added umbrella CMake flags for optional game SDL OpenGL package export.
+- Added `VIX_WITH_GAME_SDL_OPENGL` package configuration support.
+- Added dedicated CMake support for `VIX_GAME_ENABLE_SDL_OPENGL` in the standalone and umbrella `vix::game` builds.
+- Added game export tests covering package loading, package saving, validation, manifest generation, asset scanning, asset type detection, temporary/cache filtering, and exported asset metadata.
+- Migrated the internal `vix dev` session orchestration to `vix::async` with async rebuild tasks, timer-based polling/debounce, signal-aware cancellation, and graceful child-process termination.
+
+### Compatibility
+- No breaking changes.
+- Existing CMake projects continue to use `CMakeLists.txt` directly.
+- `vix.app` is currently supported only for simple application/executable projects.
+- Library projects continue to use `CMakeLists.txt` for now.
+- `vix.app` is used only when no `CMakeLists.txt` exists.
+- The AI agent module is optional and can be disabled with `-DVIX_ENABLE_AGENT=OFF`.
+- The Reply module is used internally by `vix repl`.
+- `vix build` without `--build-target` now builds the generic CMake `all` target.
+- `vix dev` supports both runnable applications and library-only projects.
+- `vix tests` can prepare tests automatically when test sources are present.
+- The graph executor can be disabled with `VIX_GRAPH_EXECUTOR=0`.
+- Vue support is currently focused on development workflows through `vix dev`.
+- `vix run` continues to run the Vix application/backend only.
+- Vue projects use Vite for the frontend dev server and proxy `/api` requests to the Vix backend.
+- `vix::game` is optional and can be disabled with `-DVIX_ENABLE_GAME=OFF`.
+- The SDL backend can be enabled with `-DVIX_GAME_ENABLE_SDL=ON`.
+- The SDL OpenGL renderer backend can be enabled with `-DVIX_GAME_ENABLE_SDL_OPENGL=ON` and requires SDL support to be enabled.
+- `vix::io` now owns lightweight helper headers such as `<vix/print.hpp>`, but umbrella consumers can continue to include them through the installed Vix SDK.
+- Game projects generated with `vix new --game` use `vix.app` and do not require a visible `CMakeLists.txt`.
+- The `vix::game` V3 runtime foundations are additive and do not break V1/V2 APIs.
+- `vix game export` is available when the CLI is built with `vix::game`.
+- If the CLI is built without game support, `vix game export` reports that game support is not enabled.
+- Game export is additive and does not change existing `vix run`, `vix build`, or `vix new --game` behavior.
+- Game projects generated with `vix new --game` can now use `vix build`, `vix run`, `vix dev`, and `vix game export`.
+
 ## v2.5.6
 
 ### Fixed
