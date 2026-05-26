@@ -32,7 +32,6 @@
 #include <vix/agent.hpp>
 #include <vix/async.hpp>
 #include <vix/cache.hpp>
-#include <vix/cli.hpp>
 #include <vix/core.hpp>
 #include <vix/conversion.hpp>
 #include <vix/crypto.hpp>
