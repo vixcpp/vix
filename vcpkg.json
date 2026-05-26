@@ -2,9 +2,10 @@
   "name": "vix",
   "version-string": "2.1.9",
   "dependencies": [
-    "sqlite3",
+    "fmt",
+    "nlohmann-json",
     "openssl",
     "spdlog",
-    "fmt"
+    "sqlite3"
   ]
 }
