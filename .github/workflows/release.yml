@@ -281,7 +281,11 @@ jobs:
 
           cmake -S . -B build -A x64 `
             -DVIX_ENABLE_INSTALL=OFF `
+            -DVIX_REPLY_ENABLE_INSTALL=OFF `
+            -DVIX_BUILD_EXAMPLES=OFF `
+            -DVIX_BUILD_TESTS=OFF `
             -DVIX_DB_USE_MYSQL=OFF `
+            -DVIX_DB_USE_SQLITE=OFF `
             -DVIX_CORE_WITH_MYSQL=OFF `
             -DVIX_ENABLE_HTTP_COMPRESSION=OFF `
             -DVCPKG_TARGET_TRIPLET=x64-windows `
