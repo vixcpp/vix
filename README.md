@@ -149,7 +149,7 @@ https://github.com/softadastra/softadastra
 
 Real-time service monitoring built with Vix.cpp.
 
-https://github.com/GaspardKirira/PulseGrid
+https://github.com/softadastra/PulseGrid
 
 ### Vix Game
 

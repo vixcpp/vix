@@ -133,6 +133,25 @@ jobs:
           set -euxo pipefail
           cmake --install "$BUILD_DIR"
 
+      - name: Install vendored Asio headers into SDK
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          ASIO_INCLUDE_DIR="third_party/asio-src/asio/include"
+
+          test -d "$ASIO_INCLUDE_DIR/asio"
+
+          mkdir -p "$INSTALL_DIR/include"
+
+          cp -a "$ASIO_INCLUDE_DIR/asio" "$INSTALL_DIR/include/"
+
+          if [ -f "$ASIO_INCLUDE_DIR/asio.hpp" ]; then
+            cp -a "$ASIO_INCLUDE_DIR/asio.hpp" "$INSTALL_DIR/include/"
+          fi
+
+          test -f "$INSTALL_DIR/include/asio/io_context.hpp"
+
       - name: Verify installed SDK tree
         shell: bash
         run: |
@@ -142,6 +161,7 @@ jobs:
           test -f "$INSTALL_DIR/bin/vix"
           test -f "$INSTALL_DIR/lib/cmake/Vix/VixConfig.cmake"
           test -f "$INSTALL_DIR/lib/cmake/Vix/VixTargets.cmake"
+          test -f "$INSTALL_DIR/include/asio/io_context.hpp"
 
           find "$INSTALL_DIR/include" -maxdepth 4 -type f | sort > installed-headers.txt
           find "$INSTALL_DIR/lib/cmake" -maxdepth 4 -type f | sort > installed-cmake-files.txt
