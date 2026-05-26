@@ -244,7 +244,7 @@ jobs:
           #include <vix/p2p_http.hpp>
           #include <vix/webrpc.hpp>
           #include <vix/game.hpp>
-          #include <vix/ai.hpp>
+          #include <vix/agent.hpp>
 
           #include <iostream>
 
