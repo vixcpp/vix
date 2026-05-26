@@ -287,16 +287,19 @@ jobs:
             -DVCPKG_TARGET_TRIPLET=x64-windows `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" 2>&1 | Tee-Object -FilePath cmake_output.log -Append
 
-          "CMAKE_CONFIGURE_EXIT=$LASTEXITCODE" | Out-File -FilePath $env:GITHUB_ENV -Append
-          exit 0
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
 
       - name: Dump vcpkg manifest log (Windows)
-        if: runner.os == 'Windows'
+        if: failure() && runner.os == 'Windows'
         shell: pwsh
         run: |
-          if ($env:CMAKE_CONFIGURE_EXIT -eq "0") {
-            Write-Host "Configure succeeded. No vcpkg dump needed."
-            exit 0
+          Write-Host "=== cmake_output.log ==="
+          if (Test-Path "cmake_output.log") {
+            Get-Content "cmake_output.log" -Raw
+          } else {
+            Write-Host "missing cmake_output.log"
           }
 
           Write-Host "=== vcpkg-manifest-install.log ==="
@@ -324,14 +327,13 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          if ($env:CMAKE_CONFIGURE_EXIT -ne "0") {
-            Write-Host "Configure failed (exit=$env:CMAKE_CONFIGURE_EXIT). Skipping build."
-            exit 1
-          }
-
           "" | Out-File -FilePath build_output.log -Encoding utf8
+
           cmake --build build --config Release 2>&1 | Tee-Object -FilePath build_output.log -Append
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
 
       - name: Collect logs (Windows)
         if: always() && runner.os == 'Windows'

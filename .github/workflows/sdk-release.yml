@@ -143,8 +143,11 @@ jobs:
           test -f "$INSTALL_DIR/lib/cmake/Vix/VixConfig.cmake"
           test -f "$INSTALL_DIR/lib/cmake/Vix/VixTargets.cmake"
 
-          find "$INSTALL_DIR/include" -maxdepth 4 -type f | sort | head -n 80
-          find "$INSTALL_DIR/lib/cmake" -maxdepth 4 -type f | sort
+          find "$INSTALL_DIR/include" -maxdepth 4 -type f | sort > installed-headers.txt
+          find "$INSTALL_DIR/lib/cmake" -maxdepth 4 -type f | sort > installed-cmake-files.txt
+
+          sed -n '1,80p' installed-headers.txt
+          cat installed-cmake-files.txt
 
       - name: Package SDK
         shell: bash
