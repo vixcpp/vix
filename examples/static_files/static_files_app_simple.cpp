@@ -13,8 +13,7 @@
  */
 #include <vix.hpp>
 
-#include <vix/middleware/app/adapter.hpp>
-#include <vix/middleware/performance/static_files.hpp>
+#include <vix/middleware/static_dir_bridge.hpp>
 
 #include <filesystem>
 #include <fstream>
@@ -24,7 +23,6 @@ using namespace vix;
 
 static std::filesystem::path source_dir()
 {
-  // __FILE__ = /home/softadastra/dev/tmp/static_files_app_simple.cpp
   return std::filesystem::path(__FILE__).parent_path();
 }
 
@@ -36,22 +34,22 @@ int main()
   {
     std::ofstream(root / "index.html") << "<h1>OK</h1>";
   }
+
   {
     std::ofstream(root / "hello.txt") << "hello";
   }
 
+  vix::middleware::register_static_dir();
+
   App app;
 
-  app.use(vix::middleware::app::adapt_ctx(
-      vix::middleware::performance::static_files(
-          root,
-          {
-              .mount = "/",
-              .index_file = "index.html",
-              .add_cache_control = true,
-              .cache_control = "public, max-age=3600",
-              .fallthrough = true,
-          })));
+  app.static_dir(
+      root,
+      "/",
+      "index.html",
+      true,
+      "public, max-age=3600",
+      true);
 
   app.get("/api/ping", [](Request &, Response &res)
           { res.json({"ok", true}); });
