@@ -39,7 +39,7 @@
   </tr>
 </table>
 
-Vix.cpp is a modern C++ runtime for building and running real-world applications with predictable performance and minimal friction.
+Vix.cpp is a modern C++ runtimes for building and running real-world applications with predictable performance and minimal friction.
 
 Learn more about the Vix runtime in the [documentation](https://docs.vixcpp.com).
 
@@ -180,12 +180,12 @@ int main(){
 - Offline-first architecture support
 - Deterministic execution
 
-
 ## Why Vix exists
 
 C++ is powerful.
 
 But:
+
 - too much setup
 - too much friction
 - too slow to start
@@ -199,19 +199,19 @@ Vix v2.5 delivers a major performance improvement over v2.4 on the `/bench` rout
 
 ### v2.4
 
-| Metric        | Value        |
-|---------------|--------------|
-| Requests/sec  | ~66k to 68k  |
-| Avg Latency   | ~13 to 20 ms |
-| P99 Latency   | ~17 to 50 ms |
+| Metric       | Value        |
+| ------------ | ------------ |
+| Requests/sec | ~66k to 68k  |
+| Avg Latency  | ~13 to 20 ms |
+| P99 Latency  | ~17 to 50 ms |
 
 ### v2.5
 
-| Metric        | Value        |
-|---------------|--------------|
-| Requests/sec  | ~98k         |
-| Avg Latency   | ~8.47 ms     |
-| P99 Latency   | ~14.01 ms    |
+| Metric       | Value     |
+| ------------ | --------- |
+| Requests/sec | ~98k      |
+| Avg Latency  | ~8.47 ms  |
+| P99 Latency  | ~14.01 ms |
 
 ## Learn more
 
