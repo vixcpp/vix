@@ -41,14 +41,19 @@ jobs:
             libssl-dev \
             zlib1g-dev \
             libsqlite3-dev \
+            libbrotli-dev \
             libspdlog-dev \
-            libfmt-dev
+            libfmt-dev \
+            libmysqlcppconn-dev
 
       - name: Configure Vix CLI
         run: |
           cmake -S . -B build-ci -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DVIX_ENABLE_HTTP_COMPRESSION=OFF \
+            -DVIX_DB_USE_MYSQL=OFF \
+            -DVIX_CORE_WITH_MYSQL=OFF
 
       - name: Build Vix CLI
         run: |

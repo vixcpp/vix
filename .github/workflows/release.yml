@@ -62,9 +62,6 @@ jobs:
           git fetch --tags --force
           git checkout "tags/${{ github.event.inputs.tag }}"
 
-      - name: Setup CMake
-        uses: lukka/get-cmake@latest
-
       # -------------------------
       # Linux deps (native x86_64)
       # -------------------------
@@ -75,7 +72,11 @@ jobs:
           set -euxo pipefail
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            pkg-config ninja-build ca-certificates \
+            build-essential \
+            cmake \
+            pkg-config \
+            ninja-build \
+            ca-certificates \
             nlohmann-json3-dev \
             libssl-dev \
             zlib1g-dev \
@@ -97,6 +98,8 @@ jobs:
           sudo apt-get update
 
           sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
             gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
             pkg-config ninja-build ca-certificates \
             nlohmann-json3-dev:arm64 \
@@ -146,7 +149,14 @@ jobs:
         run: |
           set -euxo pipefail
           brew update
-          brew install pkg-config openssl@3 spdlog fmt
+          brew install \
+            cmake \
+            ninja \
+            pkg-config \
+            openssl@3 \
+            nlohmann-json \
+            spdlog \
+            fmt
 
       # -------------------------
       # Windows deps (OpenSSL via vcpkg)
@@ -185,15 +195,12 @@ jobs:
           fi
 
           if [ "${{ runner.os }}" = "macOS" ]; then
-            if command -v brew >/dev/null 2>&1; then
-              BREW_PREFIX="$(brew --prefix)"
-              BREW_SSL="$(brew --prefix openssl@3 2>/dev/null || true)"
+            BREW_PREFIX="$(brew --prefix)"
+            BREW_SSL="$(brew --prefix openssl@3)"
 
-              if [ -n "$BREW_SSL" ] && [ -d "$BREW_SSL" ]; then
-                CMAKE_ARGS+=(-DOPENSSL_ROOT_DIR="$BREW_SSL")
-                CMAKE_ARGS+=(-DCMAKE_PREFIX_PATH="$BREW_PREFIX")
-              fi
-            fi
+            CMAKE_ARGS+=(-DOPENSSL_ROOT_DIR="$BREW_SSL")
+            CMAKE_ARGS+=(-DCMAKE_PREFIX_PATH="$BREW_PREFIX")
+            CMAKE_ARGS+=(-Dnlohmann_json_DIR="$BREW_PREFIX/share/cmake/nlohmann_json")
           fi
 
           : > cmake_output.log
@@ -241,7 +248,7 @@ jobs:
           test -f build/CMakeFiles/CMakeError.log && cp -f build/CMakeFiles/CMakeError.log "$OUT/" || true
           test -f build/CMakeFiles/CMakeOutput.log && cp -f build/CMakeFiles/CMakeOutput.log "$OUT/" || true
           test -f build/CMakeFiles/CMakeConfigureLog.yaml && cp -f build/CMakeFiles/CMakeConfigureLog.yaml "$OUT/" || true
-          find logs -type f -maxdepth 3 -print || true
+          find logs -maxdepth 3 -type f -print || true
 
       - name: Upload logs (Unix)
         if: always() && runner.os != 'Windows'
@@ -279,7 +286,6 @@ jobs:
             -DVIX_ENABLE_HTTP_COMPRESSION=OFF `
             -DVCPKG_TARGET_TRIPLET=x64-windows `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" 2>&1 | Tee-Object -FilePath cmake_output.log -Append
-
 
           "CMAKE_CONFIGURE_EXIT=$LASTEXITCODE" | Out-File -FilePath $env:GITHUB_ENV -Append
           exit 0
@@ -436,6 +442,7 @@ jobs:
     name: publish (github release)
     needs: build-release
     runs-on: ubuntu-24.04
+
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
