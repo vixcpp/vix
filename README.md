@@ -120,11 +120,13 @@ Vix gives you that foundation:
 ## Runtime modules
 
 ```text
-agent        async        cache        cli          core
-crypto       db           error        fs           game
-json         kv           middleware   net          orm
-p2p          process      sync         template     threadpool
-validation   webrpc       websocket
+agent        async        cache        cli          conversion
+core         crypto       db           env          error
+fs           game         io           json         kv
+log          middleware   net          orm          os
+p2p          p2p_http     path         process      reply
+sync         template     tests        threadpool   time
+utils        validation   webrpc       websocket
 ```
 
 Vix.cpp is designed as an application runtime layer, not only as an HTTP server.
