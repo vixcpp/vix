@@ -1,4 +1,4 @@
-#include <vix/ai.hpp>
+#include <vix/agent.hpp>
 #include <vix/print.hpp>
 
 int main()

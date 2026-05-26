@@ -1,6 +1,6 @@
 /**
  *
- *  @file ai.hpp
+ *  @file agent.hpp
  *  @author Gaspard Kirira
  *
  *  @brief Public umbrella header for the Vix AI module.

@@ -222,8 +222,8 @@ option(VIX_AGENT_BUILD_EXAMPLES    "Build vix::ai_agent examples"               
 option(VIX_ENABLE_GAME             "Build Vix Game module"                                        ON)
 option(VIX_GAME_BUILD_TESTS        "Build vix::game tests"                                        OFF)
 option(VIX_GAME_BUILD_EXAMPLES     "Build vix::game examples"                                     OFF)
-option(VIX_GAME_ENABLE_SDL         "Enable SDL backend for vix::game"                              OFF)
-option(VIX_GAME_ENABLE_SDL_OPENGL  "Enable SDL OpenGL renderer backend for vix::game"              OFF)
+option(VIX_GAME_ENABLE_SDL         "Enable SDL backend for vix::game"                             OFF)
+option(VIX_GAME_ENABLE_SDL_OPENGL  "Enable SDL OpenGL renderer backend for vix::game"             OFF)
 
 # ----------------------------------------------------
 # Tooling / Static analysis
