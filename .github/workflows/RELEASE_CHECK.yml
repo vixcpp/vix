@@ -4,42 +4,12 @@ on:
   push:
     branches:
       - main
-      - dev
       - release/**
-    paths:
-      - ".github/workflows/RELEASE_CHECK.yml"
-      - ".github/workflows/release.yml"
-      - "CMakeLists.txt"
-      - "cmake/**"
-      - "config/**"
-      - "examples/**"
-      - "tests/**"
-      - "modules/**"
-      - "scripts/**"
-      - ".gitmodules"
-      - "vcpkg.json"
-      - "README.md"
-      - "CHANGELOG.md"
 
   pull_request:
     branches:
       - main
-      - dev
       - release/**
-    paths:
-      - ".github/workflows/RELEASE_CHECK.yml"
-      - ".github/workflows/release.yml"
-      - "CMakeLists.txt"
-      - "cmake/**"
-      - "config/**"
-      - "examples/**"
-      - "tests/**"
-      - "modules/**"
-      - "scripts/**"
-      - ".gitmodules"
-      - "vcpkg.json"
-      - "README.md"
-      - "CHANGELOG.md"
 
   workflow_dispatch:
 
