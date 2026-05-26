@@ -1,6 +1,6 @@
 <table>
   <tr>
-    <td valign="top" width="65%">
+    <td valign="top" width="70%">
 
 <h1>Vix.cpp</h1>
 
@@ -13,25 +13,26 @@
   </a>
 </p>
 
-<h3>Remove the friction from C++.</h3>
+<h3>Build real applications with modern C++.</h3>
 
 <p>
-  A modern runtime for building C++ applications.
+  Vix.cpp is a modern C++ runtime for building fast, reliable, production-ready applications.
 </p>
 
 <p>
   <a href="https://vixcpp.com"><b>Website</b></a> ·
   <a href="https://docs.vixcpp.com"><b>Docs</b></a> ·
-  <a href="https://registry.vixcpp.com"><b>Registry</b></a>
+  <a href="https://registry.vixcpp.com"><b>Registry</b></a> ·
+  <a href="https://blog.vixcpp.com"><b>Engineering notes</b></a>
 </p>
 
 </td>
 
-<td valign="middle" width="25%" align="right">
+<td valign="middle" width="13%" align="right">
 
 <img
   src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1778607554/vix_logo_ms5lne.png"
-  width="260"
+  width="150"
   style="border-radius:50%; object-fit:cover;"
 />
 
@@ -39,195 +40,136 @@
   </tr>
 </table>
 
-Vix.cpp is a modern C++ runtimes for building and running real-world applications with predictable performance and minimal friction.
+Vix.cpp removes friction from C++ application development.
+It gives C++ a modern application workflow while keeping native performance, explicit control, and production-oriented architecture.
 
-Learn more about the Vix runtime in the [documentation](https://docs.vixcpp.com).
+Vix is not just a web framework.
+It is a runtime foundation for backend services, AI agents, games, P2P systems, local-first applications, fast builds, templates, and production-ready C++ projects.
 
-## Production Proof
+## Install
 
-Vix is not a concept. It runs real systems.
-
-### Softadastra PulseGrid
-
-A real-time monitoring system built and running in production with Vix.cpp.
-
-- HTTP monitoring
-- uptime tracking
-- real-time WebSocket streaming
-- production deployment
-
-Website: 🔗 https://pulsegrid.softadastra.com \
-
-Github: 🔗 https://github.com/GaspardKirira/PulseGrid
-
-Used to build production systems like PulseGrid.
-
-## Installation
-
-Install Vix using the official installer:
-
-### <a href="https://vixcpp.com/install">Shell (Linux, macOS)</a>
+Shell, Linux and macOS:
 
 ```bash
 curl -fsSL https://vixcpp.com/install.sh | bash
 ```
 
-## <a href="https://vixcpp.com/install">PowerShell (Windows)</a>
+PowerShell, Windows:
 
 ```powershell
 irm https://vixcpp.com/install.ps1 | iex
 ```
 
-> ⚠️ To use `#include <vix.hpp>`, make sure you install the full SDK (default).
-> See the full installation guide: https://vixcpp.com/install
+More installation options:
 
-## Run C++ instantly
+https://vixcpp.com/install
 
-```cpp
-#include <iostream>
+## Quick start
 
-int main(){
-  std::cout << "Hello, world!" << std::endl;
-}
-```
-
-```bash
-vix run main.cpp
-```
-
-Done.
-
-## Build a server
+Create `server.cpp`:
 
 ```cpp
 #include <vix.hpp>
-
 using namespace vix;
 
-int main(){
-  App app;
+int main()
+{
+    vix::App app;
 
-  app.get("/", [](Request&, Response& res){
-    res.send("Hello, world!");
-  });
+    app.get("/", [](Request &req, Response &res) {
+        res.send("Hello from Vix.cpp");
+    });
 
-  app.run(8080);
+    app.run(8080);
+
+    return 0;
 }
 ```
+
+Run it:
 
 ```bash
 vix run server.cpp
 ```
 
-→ http://localhost:8080
+Open:
 
-## Install a framework in 1 command
-
-Framework: https://cnerium.dev
-
-```bash
-vix install -g cnerium/app
+```text
+http://localhost:8080
 ```
 
-```cpp
-#include <cnerium/app/app.hpp>
-using namespace cnerium::app;
+## Why Vix.cpp?
 
-int main(){
-  App app;
+C++ is powerful, but building real applications often means rebuilding the same foundation again and again.
 
-  app.get("/", [](AppContext &ctx){
-    ctx.text("Hello from Cnerium");
-  });
+Vix gives you that foundation:
 
-  app.listen("127.0.0.1", 8080);
-}
+- run C++ files with `vix run`
+- create projects with `vix new`
+- build fast with `vix build`
+- build backend services
+- build WebSocket applications
+- build P2P systems
+- build AI agents
+- build game-oriented projects
+- use threadpool and async runtime modules
+- use KV, cache, database, ORM, middleware, crypto, validation, and template modules
+- generate production-ready backend projects
+- integrate backend projects with frontend apps such as Vue.js
+
+## Runtime modules
+
+```text
+agent        async        cache        cli          core
+crypto       db           error        fs           game
+json         kv           middleware   net          orm
+p2p          process      sync         template     threadpool
+validation   webrpc       websocket
 ```
 
-```bash
-vix run main.cpp
-```
+Vix.cpp is designed as an application runtime layer, not only as an HTTP server.
 
-## WebSocket
+## Built with Vix.cpp
 
-```cpp
-#include <memory>
-#include <vix/executor/RuntimeExecutor.hpp>
-#include <vix/websocket.hpp>
+### Kordex
 
-int main(){
-  auto exec = std::make_shared<vix::executor::RuntimeExecutor>();
+A JavaScript and TypeScript runtime layer built on Vix and Softadastra.
 
-  vix::websocket::App app{".env", exec};
-  auto &ws = app.server();
+https://github.com/softadastra/kordex
 
-  ws.on_typed_message([](auto &, const std::string &type, const vix::json::kvs &payload){
-    if (type == "chat.message") {
-      // echo / broadcast
-    }
-  });
+### Softadastra
 
-  app.run_blocking();
-}
-```
+A local-first and offline-first runtime foundation for reliable applications.
 
-## What Vix.cpp gives you
+https://github.com/softadastra/softadastra
 
-- Run a single `.cpp` file instantly
-- No CMake required for simple apps
-- Native C++ performance
-- HTTP, WebSocket, P2P ready
-- Offline-first architecture support
-- Deterministic execution
+### PulseGrid
 
-## Why Vix exists
+Real-time service monitoring built with Vix.cpp.
 
-C++ is powerful.
+https://github.com/GaspardKirira/PulseGrid
 
-But:
+### Vix Game
 
-- too much setup
-- too much friction
-- too slow to start
+Game-oriented project built on the Vix.cpp runtime foundation.
 
-Vix removes that.
+https://github.com/vixcpp/vix-game
 
-## Performance
+## Links
 
-Stable under sustained load.
-Vix v2.5 delivers a major performance improvement over v2.4 on the `/bench` route.
-
-### v2.4
-
-| Metric       | Value        |
-| ------------ | ------------ |
-| Requests/sec | ~66k to 68k  |
-| Avg Latency  | ~13 to 20 ms |
-| P99 Latency  | ~17 to 50 ms |
-
-### v2.5
-
-| Metric       | Value     |
-| ------------ | --------- |
-| Requests/sec | ~98k      |
-| Avg Latency  | ~8.47 ms  |
-| P99 Latency  | ~14.01 ms |
-
-## Learn more
-
-- Docs: https://docs.vixcpp.com
+- Documentation: https://docs.vixcpp.com
 - Registry: https://registry.vixcpp.com
-- Examples: https://docs.vixcpp.com/examples
+- Engineering notes: https://blog.vixcpp.com
+- Website: https://vixcpp.com
 
 ## Contributing
 
 Contributions are welcome.
 
-### Focus areas
+Read the contribution guide:
 
-- performance
-- reliability
-- networking
-- offline-first systems
+https://docs.vixcpp.com/contributing
 
-MIT License
+## License
+
+MIT License.
