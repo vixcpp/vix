@@ -98,7 +98,7 @@ Open:
 http://localhost:8080
 ```
 
-## Why Vix.cpp?
+## Why Vix.cpp ?
 
 C++ is powerful, but building real applications often means rebuilding the same foundation again and again.
 

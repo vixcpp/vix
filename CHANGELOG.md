@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## v2.6.0
 
 ### Added
+
 - Added the new `vix::ai_agent` module for local-first AI workflows.
 - Added the public AI API through `#include <vix/ai.hpp>` and `vix::ai::Agent`.
 - Added Ollama support for local model execution.
@@ -48,8 +49,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added exported asset metadata with asset path, type, and size.
 - Added asset scanning and asset type detection for image, text, and binary assets.
 - Added `export_project` example for the `vix::game` module.
+- Added the [Vix v2.6 production readiness checklist](docs/releases/v2.6-production-readiness.md), covering production diagnostics, service management, Nginx proxy checks, health checks, deployment, logs, WebSocket support, SQLite storage, environment validation, and production readiness scoring.
 
 ### Changed
+
 - Improved `vix repl` so the REPL engine now uses the standalone `vix::reply` module.
 - Improved `vix run` so project execution now uses the same build path as `vix build`.
 - Improved `vix run` so normal non-zero exits are no longer treated as runtime crashes.
@@ -79,6 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved `VixConfig.cmake` so umbrella consumers load exported Vix targets without requiring internal modules such as `vix_io` as separate packages.
 
 ### Internal
+
 - Moved the REPL engine out of the CLI module into the standalone `reply` module.
 - Removed the old internal `cli/commands/repl` implementation from the CLI module.
 - Added safer `vix.app` manifest parsing and internal CMake generation.
@@ -116,6 +120,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrated the internal `vix dev` session orchestration to `vix::async` with async rebuild tasks, timer-based polling/debounce, signal-aware cancellation, and graceful child-process termination.
 
 ### Compatibility
+
 - No breaking changes.
 - Existing CMake projects continue to use `CMakeLists.txt` directly.
 - `vix.app` is currently supported only for simple application/executable projects.
@@ -144,6 +149,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## v2.5.6
 
 ### Fixed
+
 - Fixed `vix new --lib` next steps for header-only libraries.
 - Fixed header-only library build guidance by using `vix build --build-target all`.
 - Fixed generated library test workflow by documenting the required CMake test option.
@@ -151,6 +157,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed extra spacing in `vix new` and `vix modules` command output.
 
 ### Improved
+
 - Improved `vix new` help output for application and header-only library workflows.
 - Improved generated library README instructions for building and running tests.
 - Improved `vix modules init` output with a cleaner `vix new` style layout.
@@ -158,12 +165,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved modules command section separators for more readable terminal output.
 
 ### Internal
+
 - Updated the CLI module with the latest `vix new` library workflow fixes.
 - Updated modules command output formatting.
 - Added a focused diagnostic for missing CMake/Ninja build targets.
 - Aligned CLI help text with the current `vix build` target behavior.
 
 ### Compatibility
+
 - No breaking changes.
 - Existing application projects keep the same `vix build`, `vix run`, and `vix dev` behavior.
 - Header-only library projects should use `vix build --build-target all` when building generated library scaffolds.
@@ -171,24 +180,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## v2.5.5
 
 ### Fixed
+
 - Fixed `vix run` auto-linking for installed registry dependencies.
 - Fixed script builds using compiled modules such as `kv`.
 - Fixed package export cleanup to avoid duplicate CMake targets in `VixTargets`.
 - Fixed installed module consistency for `threadpool` and `kv`.
 
 ### Added
+
 - Added threadpool examples for validating script and module usage.
 - Added experimental `vix.app` support for simple C++ applications without a visible `CMakeLists.txt`.
 - Added generated CMake project support for `vix.app` based builds and runs.
 - Added experimental documentation for the current `vix.app` design.
 
 ### Internal
+
 - Updated the CLI module with the latest `vix run` dependency linking fixes.
 - Added shared app project resolution for CMake and `vix.app` projects.
 - Added internal CMake generation from `vix.app`.
 - Cleaned umbrella CMake install/export behavior.
 
 ### Compatibility
+
 - No breaking changes.
 - Existing CMake projects keep the current build and run behavior.
 - `vix.app` is experimental and only used when no `CMakeLists.txt` is present.
@@ -196,6 +209,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## v2.5.3
 
 ### Added
+
 - Added `vix replay` to record, inspect, list, clean, and replay previous Vix executions.
 - Added replay support for project runs and single-file script runs.
 - Added local replay storage under `.vix/runs/` with `run.json`, `stdout.log`, `stderr.log`, and `combined.log`.
@@ -223,6 +237,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a `DevFileIndex` for faster dev-mode file watching using filtered file indexing, `mtime`, and file size comparisons.
 
 ### Changed
+
 - Changed `vix run` replay recording to be opt-in through `--replay`, so normal runs no longer create `.vix/runs/`.
 - Changed `vix run` OpenAPI/docs behavior to be opt-in through `--docs`, so docs are disabled by default.
 - Improved `vix replay` to use the same process execution behavior as `vix run`.
@@ -263,6 +278,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved the thread pool implementation out of `core` into the dedicated `threadpool` module.
 
 ### Fixed
+
 - Fixed opt-in replay recording for `vix run main.cpp --replay`.
 - Fixed opt-in replay recording for project mode `vix run --replay`.
 - Fixed opt-in replay recording for interrupted runs.
@@ -296,6 +312,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed dev-mode restart rendering to avoid stale application output mixing with rebuild output.
 
 ### Internal
+
 - Added the internal replay subsystem:
   - `ReplayTypes`
   - `ReplayRecord`
@@ -339,11 +356,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reworked dev-mode change classification so source/header changes trigger rebuilds while CMake and Vix config changes trigger reconfigure plus rebuild.
 
 ### Compatibility
+
 - No breaking changes.
 
 ## v2.5.2
 
 ### Added
+
 - Added a stable options-based `vix::print(...)` API.
 - Added `vix::print(vix::options{...}, ...)` for Python-like print customization.
 - Added dedicated `print_v2` examples for the new print API.
@@ -414,6 +433,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added native TCP socket handle access in `vix::async::net::tcp_stream` for transport adapters.
 
 ### Changed
+
 - Preserved backward compatibility with the existing print API.
 - Started aligning internal print wrappers with the new stable print entry point.
 - Improved CLI diagnostic formatting so only `error:`, `hint:`, and `at:` labels are colorized.
@@ -443,6 +463,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Built-in HTTPS for local development, internal tools, and simple self-hosted deployments.
 
 ### Fixed
+
 - Fixed missing friendly compile-time error reporting in direct script mode.
 - Fixed runtime abort noise (`terminate`, `abort`) leaking into CLI output.
 - Fixed stdin not being forwarded correctly in direct script execution.
@@ -459,6 +480,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed potential `SIGPIPE` termination when HTTPS clients close connections abruptly.
 
 ### Internal
+
 - Generalized Vix include detection in `ScriptProbe`:
   - Any `#include <vix/...>` or `"vix/..."` is now recognized automatically.
   - Any usage of `vix::` namespace is detected as Vix runtime usage.
@@ -474,6 +496,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added graceful fallback behavior when core is built without OpenSSL support.
 
 ### Compatibility
+
 - No breaking changes.
 - Preserved compatibility for existing `nlohmann::json` and `Simple.hpp` response helpers while routing core JSON handling through `vix::json::Json`.
 
@@ -551,6 +574,7 @@ The result is a much stronger Vix runtime, especially around shutdown flow, asyn
 ## Fixed
 
 ### Core
+
 - Stabilized `App::close()` shutdown flow
 - Improved HTTP server stop and join behavior
 - Fixed thread shutdown ordering in `HTTPServer`
@@ -558,12 +582,14 @@ The result is a much stronger Vix runtime, especially around shutdown flow, asyn
 - Removed temporary debug traces from core shutdown paths
 
 ### Async
+
 - Improved scheduler shutdown behavior
 - Stabilized async runtime stop flow
 - Improved `asio_net_service` lifecycle management
 - Added safer stop/join handling for the async network service
 
 ### WebSocket
+
 - Fixed complex shutdown issues in mixed HTTP + WebSocket runtimes
 - Improved `AttachedRuntime` shutdown coordination
 - Stabilized low-level WebSocket server stop and join flow
@@ -575,6 +601,7 @@ The result is a much stronger Vix runtime, especially around shutdown flow, asyn
 ## Reliability improvements
 
 This release significantly improves behavior in scenarios involving:
+
 - repeated browser refreshes
 - multiple WebSocket clients
 - server shutdown with active connections
@@ -597,6 +624,7 @@ Several difficult bugs were tracked down, including shutdown ordering problems, 
 If you use Vix for HTTP + WebSocket applications, this release is recommended.
 
 It contains important fixes for:
+
 - shutdown stability
 - session write handling
 - async runtime cleanup
@@ -605,18 +633,21 @@ It contains important fixes for:
 ## Additional improvements
 
 ### Performance
+
 - Added a dedicated `/bench` fast path for benchmark builds
 - Improved the HTTP benchmark path in `VIX_BENCH_MODE`
 - Benchmarked at ~98k req/s on the `/bench` route in release benchmark mode
 - Kept benchmark-specific optimizations isolated from the standard HTTP runtime path
 
 ### Build and module reliability
+
 - Fixed public Asio propagation from `vix::async` to dependent modules
 - Improved umbrella build consistency for modules using async networking headers
 - Cleaned up conditional compilation paths for benchmark-only helpers
 - Reduced warning noise in core and platform-specific sources
 
 ### Process module
+
 - Fixed POSIX platform warnings
 - Improved non-Linux helper isolation in process spawning internals
 - Cleaned up `noreturn`, unused parameter, and unused helper issues
@@ -783,6 +814,7 @@ Features:
 A large set of new examples has been added across modules.
 
 #### Config
+
 - server port
 - database config
 - logging config
@@ -790,40 +822,47 @@ A large set of new examples has been added across modules.
 - layered env
 
 #### Env
+
 - basic usage
 - loading `.env` files
 - layered configuration
 - production setup
 
 #### Error
+
 - basic errors
 - chaining
 - exception handling
 - result pattern
 
 #### FS
+
 - filesystem operations
 - copy / move
 - read / write
 - directory listing
 
 #### IO
+
 - streams
 - buffers
 - stdin / stdout
 - copy utilities
 
 #### Log
+
 - basic logging
 - formatting
 - contextual logging
 
 #### OS
+
 - system info
 - user info
 - sleep utilities
 
 #### ORM
+
 - environment-based HTTP ORM showcase
 
 ---
@@ -877,13 +916,16 @@ A large set of new examples has been added across modules.
 ---
 
 > Vix.cpp continues to evolve toward a production-ready C++ runtime with a strong focus on clarity, reliability, and real-world usability.
+
 ## [v2.3.1] - 2026-04-13
 
 ### Fixed
+
 - Improve OpenSSL resolution in `VixConfig.cmake` for consumer projects (macOS / Homebrew)
 - Avoid build failures when OpenSSL is installed but not on default CMake search paths
 
 ### Notes
+
 - This is a patch release focused on packaging and cross-platform stability
 - No changes to `vix run` behavior or runtime features
 
@@ -1130,7 +1172,6 @@ A large set of new examples has been added across modules.
 - refactor(cache): align with umbrella build principles
   Ensures strict separation of responsibilities between modules and prevents accidental export of third-party targets.
 
-
 ## [v2.1.13]
 
 ### Fixes
@@ -1276,7 +1317,6 @@ A large set of new examples has been added across modules.
 
 - v2.1.8 introduced the fmt migration but missed proper linkage in CMake.
 - v2.1.9 completes the transition and provides fully stable builds on all platforms.
-
 
 ## [v2.1.8]
 
@@ -1494,7 +1534,6 @@ A large set of new examples has been added across modules.
 - improved reliability of runtime execution
 - no breaking changes
 
-
 ## [v2.1.2]
 
 ### Features
@@ -1578,6 +1617,7 @@ It is now structured, documented, and ready to be used in real projects.
 - removed redundant error handling in async layer
 
 Result:
+
 - lower latency
 - better throughput
 - more predictable execution under load
@@ -1591,6 +1631,7 @@ Result:
 - improved layout system (extends, includes, filters)
 
 New examples include:
+
 - shop dashboard
 - blog home and post pages
 - admin dashboards
@@ -1611,6 +1652,7 @@ New examples include:
 - detailed real-world examples (auth, JWT, caching, rate limit, etc.)
 
 Result:
+
 - significantly improved onboarding
 - clearer mental model of Vix architecture
 - easier adoption for new developers
@@ -1620,11 +1662,13 @@ Result:
 ### Examples
 
 #### Added
+
 - structured template examples (01 → 12 progression)
 - new real-world scenarios across modules
 - improved consistency across all example categories
 
 #### Removed
+
 - removed outdated and legacy template examples
 - cleaned old and unstructured demo files
 
@@ -1681,6 +1725,7 @@ This is the first official V2 release published through the release pipeline.
 ### Examples
 
 #### Added
+
 - new cache examples
 - new P2P examples
 - new sync examples
@@ -1688,11 +1733,13 @@ This is the first official V2 release published through the release pipeline.
 - new database and ORM examples
 
 #### Improved
+
 - updated HTTP examples
 - improved middleware demos
 - refined security-related examples
 
 #### Removed
+
 - removed outdated and legacy examples
 - cleaned older CRUD and deprecated demo layouts
 
@@ -1913,12 +1960,13 @@ Major release of **Vix.cpp** introducing a new native HTTP stack, full async run
   `target_link_libraries`, preventing build errors.
 
 - Fixed runtime error
+
 ```cmake
 target_link_libraries(... gk::pdf) target not found
 ```
+
 This restores full support for header-only packages while maintaining
 correct behavior for compiled dependencies.
-
 
 ## [v1.47.0]
 
@@ -1970,7 +2018,6 @@ correct behavior for compiled dependencies.
   improving onboarding and daily usage.
 
 - Improved overall CLI readability and developer experience
-
   - cleaner output
   - more consistent formatting
   - better command interactions
@@ -1998,6 +2045,7 @@ correct behavior for compiled dependencies.
 ```bash
 vix cache
 ```
+
 This introduces better control over cached packages and improves developer workflows.
 
 - General UX improvements across CLI commands
@@ -2017,16 +2065,16 @@ This introduces better control over cached packages and improves developer workf
   ensuring consistent builds across environments.
 
 - Improved registry integration
-
   - Better handling of dependency graphs
   - More reliable installs across machines and CI environments
 
 - Submodule synchronization improvements
-
   - Ensures correct versions are resolved and linked during installation
 
 ## [1.43.0] - 2026-03-14
+
 ### Added
+
 - Add `vix.json` for all modules, enabling registry and package management.
 - Introduce universal header-and-source support for core modules.
 - New CLI utilities for publishing, syncing, and displaying tips in registry workflows.
@@ -2039,6 +2087,7 @@ This introduces better control over cached packages and improves developer workf
 - Validation header-only improvements: schemas, rules, and error handling.
 
 ### Changed
+
 - CLI `Ui.hpp` improved tip display formatting.
 - Core printing and reflection system refined for runtime debugging.
 - JSON module: release v1.10.0 with registry integration.
@@ -2046,11 +2095,13 @@ This introduces better control over cached packages and improves developer workf
 - Bug fixes and header/source consistency across modules.
 
 ### Fixed
+
 - Registry publish errors: local registry tips added when `pull --ff-only` fails.
 - WebRPC and validation publishing conflicts resolved.
 - Various module header/source mismatches corrected.
 
 ### Notes
+
 - Version 1.43.0 consolidates registry, package management, and module release workflow.
 - All modules now include a `vix.json` for Vix package system integration.
 - Developers should run `vix registry sync` before publishing new versions to avoid pull conflicts.
@@ -2113,14 +2164,14 @@ examples/print/
 
 Interactive menus now support both arrow keys and Vim-style navigation.
 
-| Action | Keys |
-|------|------|
-| Up | `↑` or `k` |
-| Down | `↓` or `j` |
-| Confirm | `Enter` or `l` |
-| Cancel | `Esc`, `h`, `q` |
-| Toggle | `Space` |
-| Toggle all | `a` |
+| Action     | Keys            |
+| ---------- | --------------- |
+| Up         | `↑` or `k`      |
+| Down       | `↓` or `j`      |
+| Confirm    | `Enter` or `l`  |
+| Cancel     | `Esc`, `h`, `q` |
+| Toggle     | `Space`         |
+| Toggle all | `a`             |
 
 This improves usability on compact keyboards and Vim-style workflows.
 
@@ -2148,6 +2199,7 @@ This improves usability on compact keyboards and Vim-style workflows.
   ```
 
   This enables clearer ecosystem organization and registry namespaces.
+
 # [v1.39.0]
 
 ## CLI
@@ -2176,11 +2228,13 @@ This improves usability on compact keyboards and Vim-style workflows.
 # [v1.38.0]
 
 Vix now supports automatic version resolution when adding packages.
+
 ## You can run:
 
 ```bash
 vix add namespace/name
 ```
+
 and Vix will resolve the latest version automatically.
 This release also improves transitive dependency installation and ensures vix.lock correctly pins the resolved commit for deterministic builds.
 
@@ -2217,7 +2271,6 @@ Useful for nested layouts and running scripts from subfolders.
 - Improved `vix run --help` documentation
 - Cleaner separation between runtime args (`--args`) and compiler flags (`--`)
 
-
 ## [v1.36.3] - 2026-02-19
 
 ### Improved
@@ -2235,6 +2288,7 @@ Useful for nested layouts and running scripts from subfolders.
 ### Why this matters
 
 Registry entries are now:
+
 - More consistent
 - Self-describing
 - Future-proof for tooling and validation
@@ -2270,6 +2324,7 @@ This caused the `validate_registry_pr` workflow to fail before auto-merge.
 ### Impact
 
 Publishing a new library version is now fully automated and stable.
+
 ## v1.36.1
 
 ### Improvements
@@ -2287,6 +2342,7 @@ Publishing a new library version is now fully automated and stable.
 
 - Minor CLI output refinements
 - No breaking changes
+
 ## v1.36.0
 
 ### ✨ Added
@@ -2311,6 +2367,7 @@ Publishing a new library version is now fully automated and stable.
 ---
 
 This release strengthens the reliability of the Vix Registry and completes the tag-driven publication lifecycle.
+
 ## v1.35.3
 
 ### Changed
@@ -2328,18 +2385,21 @@ No runtime behavior changes.
 ## v1.35.2
 
 ### Fixed
+
 - CLI (Doctor): Fix MSVC build failure (`which_vix` not declared on Windows).
 - Removed duplicate `<vix/utils/Env.hpp>` include.
 - Added missing `<cstdio>` include for `_popen` / `popen` usage.
 - Minor MSVC compatibility adjustments.
 
 ### Notes
+
 This is a patch release focused on Windows/MSVC build stability.
 No runtime behavior changes.
 
 ## [v1.35.1] - 2026-02-14
 
 ### Fixed
+
 - Silenced MSVC warnings in CLI module:
   - C4505 (unreferenced static functions removed)
   - C4189 (unused local variable)
@@ -2347,11 +2407,13 @@ No runtime behavior changes.
 - Removed deprecated `std::getenv` usage in CLI commands in favor of `vix::utils::vix_getenv` (MSVC C4996 clean).
 
 ### Improved
+
 - Cleaner cross-platform compilation (Windows + Linux/macOS).
 - More deterministic Windows builds (no internal linkage noise).
 - Safer environment variable handling in `doctor`, `upgrade`, and `uninstall`.
 
 ### Internal
+
 - Minor CLI refactoring to ensure functions are only compiled where used.
 - No behavioral changes.
 
@@ -2369,18 +2431,18 @@ install metadata tracking.
 
 Environment and install health checker.
 
--   Detects OS and architecture
--   Detects current binary location
--   Reads `install.json` metadata
--   Checks PATH consistency
--   Verifies required tools (curl/wget, tar, sha256, etc.)
--   Optional GitHub latest release check (`--online`)
--   JSON output mode (`--json`)
--   Proper exit codes for CI usage
+- Detects OS and architecture
+- Detects current binary location
+- Reads `install.json` metadata
+- Checks PATH consistency
+- Verifies required tools (curl/wget, tar, sha256, etc.)
+- Optional GitHub latest release check (`--online`)
+- JSON output mode (`--json`)
+- Proper exit codes for CI usage
 
 Example:
 
-``` bash
+```bash
 vix doctor
 vix doctor --online
 vix doctor --json --online
@@ -2390,16 +2452,16 @@ vix doctor --json --online
 
 Secure binary upgrade mechanism.
 
--   Resolves latest tag from GitHub
--   Verifies sha256
--   Verifies minisign (when available)
--   Atomic install (tmp + move)
--   Writes structured `install.json` metadata
--   Preserves install directory
+- Resolves latest tag from GitHub
+- Verifies sha256
+- Verifies minisign (when available)
+- Atomic install (tmp + move)
+- Writes structured `install.json` metadata
+- Preserves install directory
 
 Example:
 
-``` bash
+```bash
 vix upgrade
 ```
 
@@ -2407,16 +2469,16 @@ vix upgrade
 
 Robust uninstall command.
 
--   Removes current binary
--   Supports `--all` to remove all detected binaries in PATH
--   Supports `--purge` to delete local store/cache
--   Gracefully handles permission errors
--   Provides sudo hint when required
--   Post-check detects remaining binaries in PATH
+- Removes current binary
+- Supports `--all` to remove all detected binaries in PATH
+- Supports `--purge` to delete local store/cache
+- Gracefully handles permission errors
+- Provides sudo hint when required
+- Post-check detects remaining binaries in PATH
 
 Example:
 
-``` bash
+```bash
 vix uninstall
 vix uninstall --all --purge
 ```
@@ -2425,7 +2487,7 @@ vix uninstall --all --purge
 
 Upgrades now generate structured metadata:
 
-``` json
+```json
 {
   "repo": "vixcpp/vix",
   "version": "v1.35.0",
@@ -2441,20 +2503,20 @@ Upgrades now generate structured metadata:
 
 This enables:
 
--   Reliable diagnostics (`doctor`)
--   PATH validation
--   Upgrade comparison
--   Future telemetry-safe tooling
+- Reliable diagnostics (`doctor`)
+- PATH validation
+- Upgrade comparison
+- Future telemetry-safe tooling
 
 ## 🎯 Help Output Improvements
 
 The CLI help output is now structured and linked:
 
--   Section-based layout
--   Quick start block
--   Install lifecycle commands surfaced
--   Documentation links included
--   Registry link added
+- Section-based layout
+- Quick start block
+- Install lifecycle commands surfaced
+- Documentation links included
+- Registry link added
 
 Improves discoverability and developer experience.
 
@@ -2477,15 +2539,18 @@ v1.22.13: sync cli/middleware/p2p and extend middleware example
 ## v1.22.4
 
 ### Fixed
+
 - Fixed release and CI failures caused by missing `spdlog::spdlog_header_only` on clean environments.
 - Added a robust FetchContent fallback for header-only spdlog to ensure reproducible builds.
 - Stabilized cross-compilation and GitHub Actions release workflows.
 
 ### Build
+
 - Utils module now auto-fetches spdlog in header-only mode when not provided by the system.
 - Preserved ABI safety by enforcing header-only logging dependencies.
 
 ### Notes
+
 - No runtime behavior changes.
 - No API breakage.
 - This release only improves build reliability and release stability.
@@ -2644,8 +2709,8 @@ Advanced debugging and observability belong to `vix::utils::Logger`.
 - `docs(core): document Vix Console contract and integrate core console module`
 - `docs(console): clarify scope, non-goals, and logger separation`
 
-
 ## v1.21.1
+
 - chore(cli): bump CLI submodule to v1.19.12 (cleaner sanitizer output, unified timeout logic, refined code frames)
 - docs/examples: add `examples/vix_routes_showcase.cpp` (HTTP routes + query params showcase)
 
@@ -2654,31 +2719,37 @@ Advanced debugging and observability belong to `vix::utils::Logger`.
 This release stabilizes the new DB core module, improves CLI runtime output, and fixes several build/link issues across modules.
 
 ## Highlights
+
 - DB/ORM separation is now fully aligned: `vix::db` is the low-level core layer, `vix::orm` remains optional sugar on top.
 - CLI runtime output and error UX were refined to be clearer and less noisy.
 - Improved reliability for MySQL detection/linking in diverse environments.
 
 ## CLI (modules/cli)
+
 - Fix: prevent duplicate runtime logs in some failure paths.
 - Improve: runtime error detectors and diagnostics formatting.
 - Improve: UX cleanup for run/dev flows (clearer output, less noise).
 
 ## DB Core (modules/db)
+
 - Fix: CMake/source/linkage issues across DB drivers.
 - Fix: MySQL Connector/C++ discovery via fallback alias target (more robust CI/local setups).
 - Improve: driver linkage consistency and feature flag reporting.
 
 ## Umbrella / Modules
+
 - Introduced `vix::db` as a core module and decoupled ORM tooling/drivers accordingly.
 - Synced submodules after DB/ORM compatibility fixes.
 
 ## Upgrade notes
+
 - If you enable `ORM`, it automatically implies `DB`.
 - If MySQL is enabled, ensure Connector/C++ is available (the fallback alias helps when CMake configs are missing).
 
 ## v1.20.1 — Improved CLI Error UX & Build Feedback
 
 ### ✨ CLI — Error reporting & diagnostics
+
 - Introduce **Python-like compiler error rendering** with code frames
   `(file:line:column + surrounding context)`
 - Highlight **only the faulty line** with a red caret (`^`) for instant readability
@@ -2689,6 +2760,7 @@ This release stabilizes the new DB core module, improves CLI runtime output, and
 - Improve `run` / script error reporting for clearer, actionable diagnostics
 
 ### 🔨 CLI — Build output & Ninja integration
+
 - Restore **live Ninja progress output** (`[x/y %]`) during builds
 - Filter noisy compiler command output in live mode
 - Keep **full raw build logs** in `build.log` for post-mortem diagnostics
@@ -2697,15 +2769,16 @@ This release stabilizes the new DB core module, improves CLI runtime output, and
 - Fix unused variables and header warnings in build pipeline
 
 ### 🧩 Internal
+
 - Minor internal cleanups to support improved error UX
 - No breaking changes
-
 
 ## v1.20.0 — Modules, Registry & Dependency Workflow (Latest)
 
 ### ✨ Nouveautés majeures
 
 #### CLI modules overhaul
+
 Introduction d’un **layout app-first** pour les modules Vix :
 
 - Includes explicites et sûrs
@@ -2804,7 +2877,6 @@ Clarification nette entre :
 - Suivi correct des vendored CMake deps
 - Correction des erreurs d’installation chez les développeurs
 - Bump CLI associé
-
 
 ## v1.18.0 — Modular networking & secure P2P foundation
 
@@ -2938,7 +3010,6 @@ CLI build/run pipeline.
 ### 🐛 Fixed
 
 - **CLI:** Fixed `--linker lld|mold` integration.
-
   - Fast linker flags are now applied via `CMAKE_*_LINKER_FLAGS`
     (`EXE`, `SHARED`, `MODULE`) to ensure the selected linker is reliably
     used at link time.
@@ -2991,14 +3062,12 @@ This release focuses on **runtime performance**, **log scalability**, and **CLI 
 ### 🔧 Fixed
 
 - **CMake / Packaging**
-
   - Fixed `find_package(Vix)` failures caused by missing `Boost::filesystem` / `Boost::system` targets.
   - Ensured all required dependencies are resolved **before** loading `VixTargets.cmake`.
   - Removed deprecated `FindBoost` behavior in exported configs (CMP0167-safe).
   - Stabilized consumer builds on macOS (AppleClang + Homebrew Boost) and Linux.
 
 - **Core**
-
   - Removed `Boost::filesystem` from `vix::core` public link interface.
   - Restricted Boost dependency to `Boost::system` only (Asio / Beast).
   - Updated HTTP server internals and headers accordingly.
@@ -3023,7 +3092,6 @@ This release focuses on **runtime performance**, **log scalability**, and **CLI 
 ### Added
 
 - `vix build --target <triple>`: cross-compilation support with auto-generated CMake toolchain.
-
   - Automatically generates `vix-toolchain.cmake`
   - Passes `CMAKE_TOOLCHAIN_FILE` and `VIX_TARGET_TRIPLE`
   - Cache-safe: reuses build directories when configuration is unchanged
