@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.6.1
+
+### Changed
+
+- Updated internal module references for the v2.6.1 patch release.
+- Improved runtime diagnostic formatting for clearer CLI output.
+
+### Fixed
+
+- Improved CLI runtime diagnostics for bad variant access errors.
+- Added clearer diagnostics for missing runtime resources.
+- Improved generic runtime failure handling by extracting useful error information from runtime logs.
+- Routed `vix dev` runtime failures through the same diagnostic pipeline used by `vix run`.
+- Reduced duplicated runtime log output when a clear diagnostic is already available.
+- Fixed issues discovered after the v2.6.0 release.
+
 ## v2.6.0
 
 ### Added
