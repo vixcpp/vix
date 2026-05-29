@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated internal module references for the v2.6.1 patch release.
 - Improved runtime diagnostic formatting for clearer CLI output.
+- Improved build diagnostic location selection to prefer user code over system headers.
 
 ### Fixed
 
@@ -19,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved generic runtime failure handling by extracting useful error information from runtime logs.
 - Routed `vix dev` runtime failures through the same diagnostic pipeline used by `vix run`.
 - Reduced duplicated runtime log output when a clear diagnostic is already available.
+- Fixed misleading build diagnostics that pointed to standard library headers instead of project files.
 - Fixed issues discovered after the v2.6.0 release.
 
 ## v2.6.0
