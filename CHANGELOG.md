@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved runtime diagnostic formatting for clearer CLI output.
 - Improved build diagnostic location selection to prefer user code over system headers.
 - Improved test failure output to render CTest assertion failures as clean Vix diagnostics.
+- Strengthened the SDK release workflow to validate a complete and faithful Vix SDK package.
+- Added stricter SDK release checks for installed headers, static libraries, CMake package files, and exported Vix targets.
+- Improved SDK release validation to ensure `vix::vix` can be used as the single consumer target for full SDK projects.
 
 ### Fixed
 
@@ -23,6 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reduced duplicated runtime log output when a clear diagnostic is already available.
 - Fixed misleading build diagnostics that pointed to standard library headers instead of project files.
 - Fixed `vix tests` output for failed C/C++ assertions by showing the failing source location, assertion message, and code frame.
+- Fixed incomplete SDK release validation that allowed missing module libraries to pass CI.
+- Fixed SDK packaging checks to catch missing WebSocket symbols such as `LowLevelServer::run`, `Session::shutdown_now`, and `LongPollingManager::push_to`.
+- Fixed SDK consumer validation so packaged releases now test real linking through `find_package(Vix CONFIG REQUIRED)` and `target_link_libraries(app PRIVATE vix::vix)`.
 - Fixed issues discovered after the v2.6.0 release.
 
 ## v2.6.0
