@@ -83,6 +83,7 @@ jobs:
             -DVIX_ENABLE_INSTALL=ON \
             -DVIX_BUILD_EXAMPLES=OFF \
             -DVIX_BUILD_TESTS=OFF \
+            -DVIX_ENABLE_WARNINGS=ON \
             -DVIX_ENABLE_HTTP_COMPRESSION=ON \
             -DVIX_ENABLE_DB=ON \
             -DVIX_DB_USE_SQLITE=ON \
@@ -119,7 +120,9 @@ jobs:
             -DVIX_AGENT_BUILD_TESTS=OFF \
             -DVIX_AGENT_BUILD_EXAMPLES=OFF \
             -DVIX_GAME_BUILD_TESTS=OFF \
-            -DVIX_GAME_BUILD_EXAMPLES=OFF
+            -DVIX_GAME_BUILD_EXAMPLES=OFF \
+            -DVIX_WEBSOCKET_BUILD_TESTS=OFF \
+            -DVIX_WEBSOCKET_BUILD_EXAMPLES=OFF
 
       - name: Build SDK
         shell: bash
@@ -133,7 +136,7 @@ jobs:
           set -euxo pipefail
           cmake --install "$BUILD_DIR"
 
-      - name: Install vendored Asio headers into SDK
+      - name: Normalize vendored Asio headers
         shell: bash
         run: |
           set -euxo pipefail
@@ -141,16 +144,21 @@ jobs:
           ASIO_INCLUDE_DIR="third_party/asio-src/asio/include"
 
           test -d "$ASIO_INCLUDE_DIR/asio"
+          test -f "$ASIO_INCLUDE_DIR/asio.hpp"
 
           mkdir -p "$INSTALL_DIR/include"
+          mkdir -p "$INSTALL_DIR/include/vix/third_party/asio"
 
           cp -a "$ASIO_INCLUDE_DIR/asio" "$INSTALL_DIR/include/"
+          cp -a "$ASIO_INCLUDE_DIR/asio.hpp" "$INSTALL_DIR/include/"
 
-          if [ -f "$ASIO_INCLUDE_DIR/asio.hpp" ]; then
-            cp -a "$ASIO_INCLUDE_DIR/asio.hpp" "$INSTALL_DIR/include/"
-          fi
+          cp -a "$ASIO_INCLUDE_DIR/asio" "$INSTALL_DIR/include/vix/third_party/asio/"
+          cp -a "$ASIO_INCLUDE_DIR/asio.hpp" "$INSTALL_DIR/include/vix/third_party/asio/"
 
           test -f "$INSTALL_DIR/include/asio/io_context.hpp"
+          test -f "$INSTALL_DIR/include/asio.hpp"
+          test -f "$INSTALL_DIR/include/vix/third_party/asio/asio/io_context.hpp"
+          test -f "$INSTALL_DIR/include/vix/third_party/asio/asio.hpp"
 
       - name: Verify installed SDK tree
         shell: bash
@@ -158,15 +166,80 @@ jobs:
           set -euxo pipefail
 
           test -d "$INSTALL_DIR"
+
           test -f "$INSTALL_DIR/bin/vix"
-          test -f "$INSTALL_DIR/lib/cmake/Vix/VixConfig.cmake"
-          test -f "$INSTALL_DIR/lib/cmake/Vix/VixTargets.cmake"
+
+          test -f "$INSTALL_DIR/include/vix.hpp"
+          test -f "$INSTALL_DIR/include/vix/core.hpp"
+          test -f "$INSTALL_DIR/include/vix/json/Simple.hpp"
+          test -f "$INSTALL_DIR/include/vix/error/Error.hpp"
+          test -f "$INSTALL_DIR/include/vix/path/Path.hpp"
+          test -f "$INSTALL_DIR/include/vix/fs.hpp"
+          test -f "$INSTALL_DIR/include/vix/console.hpp"
+          test -f "$INSTALL_DIR/include/vix/env.hpp"
+          test -f "$INSTALL_DIR/include/vix/log.hpp"
+          test -f "$INSTALL_DIR/include/vix/async.hpp"
+          test -f "$INSTALL_DIR/include/vix/time.hpp"
+          test -f "$INSTALL_DIR/include/vix/crypto.hpp"
+          test -f "$INSTALL_DIR/include/vix/cache.hpp"
+          test -f "$INSTALL_DIR/include/vix/db.hpp"
+          test -f "$INSTALL_DIR/include/vix/orm.hpp"
+          test -f "$INSTALL_DIR/include/vix/websocket.hpp"
+          test -f "$INSTALL_DIR/include/vix/validation.hpp"
+          test -f "$INSTALL_DIR/include/vix/process.hpp"
+          test -f "$INSTALL_DIR/include/vix/threadpool.hpp"
+          test -f "$INSTALL_DIR/include/vix/kv.hpp"
+          test -f "$INSTALL_DIR/include/vix/template.hpp"
+          test -f "$INSTALL_DIR/include/vix/p2p.hpp"
+          test -f "$INSTALL_DIR/include/vix/p2p_http.hpp"
+          test -f "$INSTALL_DIR/include/vix/webrpc.hpp"
+          test -f "$INSTALL_DIR/include/vix/game.hpp"
+          test -f "$INSTALL_DIR/include/vix/agent.hpp"
+
           test -f "$INSTALL_DIR/include/asio/io_context.hpp"
+          test -f "$INSTALL_DIR/include/asio.hpp"
+          test -f "$INSTALL_DIR/include/vix/third_party/asio/asio/io_context.hpp"
+          test -f "$INSTALL_DIR/include/vix/third_party/asio/asio.hpp"
 
-          find "$INSTALL_DIR/include" -maxdepth 4 -type f | sort > installed-headers.txt
-          find "$INSTALL_DIR/lib/cmake" -maxdepth 4 -type f | sort > installed-cmake-files.txt
+          test -f "$INSTALL_DIR/lib/cmake/Vix/VixConfig.cmake"
+          test -f "$INSTALL_DIR/lib/cmake/Vix/VixConfigVersion.cmake"
+          test -f "$INSTALL_DIR/lib/cmake/Vix/VixTargets.cmake"
 
-          sed -n '1,80p' installed-headers.txt
+          test -f "$INSTALL_DIR/lib/libvix_error.a"
+          test -f "$INSTALL_DIR/lib/libvix_path.a"
+          test -f "$INSTALL_DIR/lib/libvix_fs.a"
+          test -f "$INSTALL_DIR/lib/libvix_io.a"
+          test -f "$INSTALL_DIR/lib/libvix_env.a"
+          test -f "$INSTALL_DIR/lib/libvix_os.a"
+          test -f "$INSTALL_DIR/lib/libvix_utils.a"
+          test -f "$INSTALL_DIR/lib/libvix_log.a"
+          test -f "$INSTALL_DIR/lib/libvix_core.a"
+          test -f "$INSTALL_DIR/lib/libvix_websocket.a"
+          test -f "$INSTALL_DIR/lib/libvix_async.a"
+          test -f "$INSTALL_DIR/lib/libvix_threadpool.a"
+          test -f "$INSTALL_DIR/lib/libvix_kv.a"
+          test -f "$INSTALL_DIR/lib/libvix_cache.a"
+          test -f "$INSTALL_DIR/lib/libvix_process.a"
+          test -f "$INSTALL_DIR/lib/libvix_crypto.a"
+          test -f "$INSTALL_DIR/lib/libvix_net.a"
+          test -f "$INSTALL_DIR/lib/libvix_sync.a"
+          test -f "$INSTALL_DIR/lib/libvix_p2p.a"
+          test -f "$INSTALL_DIR/lib/libvix_p2p_http.a"
+          test -f "$INSTALL_DIR/lib/libvix_middleware.a"
+
+          nm -C "$INSTALL_DIR/lib/libvix_websocket.a" | grep "vix::websocket::LowLevelServer::run"
+          nm -C "$INSTALL_DIR/lib/libvix_websocket.a" | grep "vix::websocket::Session::shutdown_now"
+          nm -C "$INSTALL_DIR/lib/libvix_websocket.a" | grep "vix::websocket::LongPollingManager::push_to"
+
+          grep -R "vix::websocket" "$INSTALL_DIR/lib/cmake/Vix" -n
+          grep -R "libvix_websocket" "$INSTALL_DIR/lib/cmake/Vix" -n
+
+          find "$INSTALL_DIR/include" -maxdepth 5 -type f | sort > installed-headers.txt
+          find "$INSTALL_DIR/lib" -maxdepth 2 -type f | sort > installed-libs.txt
+          find "$INSTALL_DIR/lib/cmake" -maxdepth 5 -type f | sort > installed-cmake-files.txt
+
+          sed -n '1,160p' installed-headers.txt
+          cat installed-libs.txt
           cat installed-cmake-files.txt
 
       - name: Package SDK
@@ -194,6 +267,27 @@ jobs:
           ldd smoke-bin/bin/vix || true
           smoke-bin/bin/vix --version
 
+      - name: Validate packaged SDK tree
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          rm -rf smoke-sdk-tree
+          mkdir -p smoke-sdk-tree
+
+          tar -xzf "dist/$ASSET" -C smoke-sdk-tree
+
+          test -f smoke-sdk-tree/bin/vix
+          test -f smoke-sdk-tree/include/vix.hpp
+          test -f smoke-sdk-tree/include/vix/websocket.hpp
+          test -f smoke-sdk-tree/lib/libvix_websocket.a
+          test -f smoke-sdk-tree/lib/cmake/Vix/VixConfig.cmake
+          test -f smoke-sdk-tree/lib/cmake/Vix/VixTargets.cmake
+
+          nm -C smoke-sdk-tree/lib/libvix_websocket.a | grep "vix::websocket::LowLevelServer::run"
+          nm -C smoke-sdk-tree/lib/libvix_websocket.a | grep "vix::websocket::Session::shutdown_now"
+          nm -C smoke-sdk-tree/lib/libvix_websocket.a | grep "vix::websocket::LongPollingManager::push_to"
+
       - name: Validate packaged SDK with full consumer project
         shell: bash
         run: |
@@ -210,6 +304,7 @@ jobs:
 
           set(CMAKE_CXX_STANDARD 20)
           set(CMAKE_CXX_STANDARD_REQUIRED ON)
+          set(CMAKE_CXX_EXTENSIONS OFF)
 
           find_package(Vix CONFIG REQUIRED)
 
@@ -247,20 +342,78 @@ jobs:
           #include <vix/agent.hpp>
 
           #include <iostream>
+          #include <string>
 
           int main()
           {
-            std::cout << "Vix full SDK consumer build works\n";
+            vix::websocket::Config ws_config{};
+            vix::websocket::Router ws_router{};
+
+            (void)ws_config;
+            (void)ws_router;
+
+            std::cout << "Vix full SDK consumer build and link works\n";
             return 0;
           }
           EOF
 
           cmake -S consumer -B consumer/build \
+            -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/smoke-sdk"
 
           cmake --build consumer/build -j2
 
           ./consumer/build/app
+
+      - name: Validate packaged SDK with WebSocket link project
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          rm -rf smoke-sdk-ws consumer-ws
+          mkdir -p smoke-sdk-ws consumer-ws
+
+          tar -xzf "dist/$ASSET" -C smoke-sdk-ws
+
+          cat > consumer-ws/CMakeLists.txt <<'EOF'
+          cmake_minimum_required(VERSION 3.20)
+          project(vix_sdk_websocket_consumer LANGUAGES CXX)
+
+          set(CMAKE_CXX_STANDARD 20)
+          set(CMAKE_CXX_STANDARD_REQUIRED ON)
+          set(CMAKE_CXX_EXTENSIONS OFF)
+
+          find_package(Vix CONFIG REQUIRED)
+
+          add_executable(app main.cpp)
+          target_link_libraries(app PRIVATE vix::vix)
+          EOF
+
+          cat > consumer-ws/main.cpp <<'EOF'
+          #include <vix/websocket.hpp>
+
+          #include <iostream>
+
+          int main()
+          {
+            vix::websocket::Config config{};
+            vix::websocket::Router router{};
+
+            (void)config;
+            (void)router;
+
+            std::cout << "Vix WebSocket SDK link works\n";
+            return 0;
+          }
+          EOF
+
+          cmake -S consumer-ws -B consumer-ws/build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/smoke-sdk-ws"
+
+          cmake --build consumer-ws/build -j2
+
+          ./consumer-ws/build/app
 
       - name: Upload dist
         uses: actions/upload-artifact@v4
@@ -304,6 +457,44 @@ jobs:
             [ -f "$f" ] || continue
             sha256sum "$f" > "$f.sha256"
           done
+
+          ls -lah
+
+      - name: Sign SDK assets
+        shell: bash
+        env:
+          MINISIGN_PRIVATE_KEY_B64: ${{ secrets.MINISIGN_PRIVATE_KEY_B64 }}
+        run: |
+          set -euxo pipefail
+
+          if [ -z "${MINISIGN_PRIVATE_KEY_B64:-}" ]; then
+            echo "MINISIGN_PRIVATE_KEY_B64 is not configured; skipping minisign signing."
+            exit 0
+          fi
+
+          cd dist
+
+          MS_VER="0.11"
+          curl -fL --retry 10 --retry-delay 2 \
+            -o minisign-linux.tar.gz \
+            "https://github.com/jedisct1/minisign/releases/download/${MS_VER}/minisign-${MS_VER}-linux.tar.gz"
+
+          tar -xzf minisign-linux.tar.gz
+          chmod +x minisign-linux/x86_64/minisign
+          MS="./minisign-linux/x86_64/minisign"
+
+          keyfile="$(mktemp)"
+          chmod 600 "$keyfile"
+          printf "%s" "$MINISIGN_PRIVATE_KEY_B64" | base64 -d > "$keyfile"
+          test -s "$keyfile"
+
+          for f in vix-sdk-*.tar.gz; do
+            [ -f "$f" ] || continue
+            "$MS" -S -s "$keyfile" -m "$f"
+          done
+
+          rm -f "$keyfile"
+          rm -rf minisign-linux minisign-linux.tar.gz
 
           ls -lah
 
