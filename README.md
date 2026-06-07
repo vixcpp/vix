@@ -138,16 +138,10 @@ Vix.cpp is designed as an application runtime layer, not only as an HTTP server.
 | [Kordex](https://github.com/softadastra/kordex)           | JavaScript and TypeScript runtime layer built on Vix and Softadastra.         |
 | [Softadastra](https://github.com/softadastra/softadastra) | Local-first and offline-first runtime foundation for reliable applications.   |
 | [Cnerium](https://github.com/softadastra/cnerium)         | Reliability-first application framework built on Vix and the Softadastra SDK. |
-| [Softadastra Cloud](https://github.com/softadastra/cloud) | Reliability testing control plane for reports, scores, and dashboard results. |
+| [Cloud](https://github.com/softadastra/cloud)             | Reliability testing control plane for reports, scores, and dashboard results. |
 | [Converdict](https://github.com/softadastra/converdict)   | Reliability verification platform for distributed systems.                    |
 | [PulseGrid](https://github.com/softadastra/PulseGrid)     | Real-time service monitoring built with Vix.cpp.                              |
 | [Vix Game](https://github.com/vixcpp/vix-game)            | Game-oriented project built on the Vix.cpp runtime foundation.                |
-
-### Vix Game
-
-Game-oriented project built on the Vix.cpp runtime foundation.
-
-https://github.com/vixcpp/vix-game
 
 ## Links
 

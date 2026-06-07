@@ -26,10 +26,10 @@
 
 using namespace vix::middleware;
 
-static vix::http::RawRequest make_req()
+static vix::http::Request make_req()
 {
   namespace http = boost::beast::http;
-  vix::http::RawRequest req{http::verb::get, "/api/x", 11};
+  vix::http::Request req{http::verb::get, "/api/x", 11};
   req.set(http::field::host, "localhost");
   req.set("x-forwarded-for", "1.2.3.4");
   req.prepare_payload();
