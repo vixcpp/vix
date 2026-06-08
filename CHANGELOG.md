@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed `vix run` for generic CMake projects by detecting and running the executable produced by the build instead of assuming the folder name is the target name.
 - Kept default `vix run` output cleaner during normal execution.
+- Fixed `vix install` output to keep dependency installation messages shorter and cleaner.
+- Fixed project dependency installation by handling stale or broken `.vix/deps` links more reliably.
+- Fixed transitive registry dependency propagation so packages like `rix/rix` can expose dependencies such as `rix/csv` and `rix/debug` without requiring every app to list them manually.
+- Improved `vix.app` diagnostics when `.vix/vix_deps.cmake` is missing.
+- Improved `vix.app` resource validation so missing resources fail early with a clear error instead of a long post-build CMake command.
+- Made `vix build --verbose` show the expected CMake output by enabling CMake verbose mode.
 - Fixed build toolchain behavior by using absolute system archiver paths.
 - Exposed middleware app integration helpers through the public aggregate header.
 - Kept middleware aggregate header cache independent.
