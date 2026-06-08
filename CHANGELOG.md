@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v2.6.2
 
+### Added
+
+- Added constant-time byte comparison helpers to the crypto module for security-sensitive comparisons.
+- Added PBKDF2-HMAC-SHA256 password hashing and verification helpers to the crypto module.
+
 ### Fixed
 
 - Fixed `vix run` for generic CMake projects by detecting and running the executable produced by the build instead of assuming the folder name is the target name.
