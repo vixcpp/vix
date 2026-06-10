@@ -16,12 +16,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed `vix run` for generic CMake projects by detecting and running the executable produced by the build instead of assuming the folder name is the target name.
 - Kept default `vix run` output cleaner during normal execution.
+- Fixed `vix update` so it updates only dependencies with newer resolved versions instead of reprocessing every dependency in the project.
+- Improved `vix update` output so already-current dependencies are no longer repeated in the main update summary.
+- Fixed `vix install` output so it reports only dependencies that were actually installed or relinked instead of counting every dependency from `vix.lock` as newly installed.
 - Fixed `vix install` output to keep dependency installation messages shorter and cleaner.
 - Fixed project dependency installation by handling stale or broken `.vix/deps` links more reliably.
-- Fixed transitive registry dependency propagation so packages like `rix/rix` can expose dependencies such as `rix/csv` and `rix/debug` without requiring every app to list them manually.
+- Fixed transitive registry dependency propagation so packages like `rix/rix` can expose dependencies such as `rix/csv`, `rix/debug`, and `rix/auth` without requiring every app to list them manually.
+- Improved `vix publish` diagnostics when a tag exists locally but has not been pushed to `origin`.
+- Improved registry dependency workflows after testing the registry install, update, and generated CMake integration flow in production with `pico.vixcpp.com`.
+- Improved CMake error parsing so multi-line `message(FATAL_ERROR ...)` diagnostics are displayed clearly instead of collapsing into unreadable one-line reasons.
+- Improved `vix build` verbose behavior so `-v` remains readable while `--cmake-verbose` is reserved for raw CMake/Ninja output.
+- Improved `vix tests` failure diagnostics so test runner output is summarized with clearer failed test names, source locations, focused error messages, and compact code frames.
 - Improved `vix.app` diagnostics when `.vix/vix_deps.cmake` is missing.
 - Improved `vix.app` resource validation so missing resources fail early with a clear error instead of a long post-build CMake command.
-- Made `vix build --verbose` show the expected CMake output by enabling CMake verbose mode.
 - Fixed build toolchain behavior by using absolute system archiver paths.
 - Exposed middleware app integration helpers through the public aggregate header.
 - Kept middleware aggregate header cache independent.
