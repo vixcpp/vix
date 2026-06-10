@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed project dependency installation by handling stale or broken `.vix/deps` links more reliably.
 - Fixed transitive registry dependency propagation so packages like `rix/rix` can expose dependencies such as `rix/csv`, `rix/debug`, and `rix/auth` without requiring every app to list them manually.
 - Improved `vix publish` diagnostics when a tag exists locally but has not been pushed to `origin`.
+- Fixed `vix publish` registry preparation so stale local publish branches and untracked registry entry files are cleaned before checking whether a version already exists.
 - Improved registry dependency workflows after testing the registry install, update, and generated CMake integration flow in production with `pico.vixcpp.com`.
 - Improved CMake error parsing so multi-line `message(FATAL_ERROR ...)` diagnostics are displayed clearly instead of collapsing into unreadable one-line reasons.
 - Improved `vix build` verbose behavior so `-v` remains readable while `--cmake-verbose` is reserved for raw CMake/Ninja output.
