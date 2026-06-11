@@ -422,9 +422,142 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
+  build-sdk-windows:
+    name: build-sdk-full (windows / x86_64)
+    runs-on: windows-2022
+
+    env:
+      BUILD_DIR: build-sdk-full
+      INSTALL_DIR: install-sdk-full
+      ASSET: vix-sdk-windows-x86_64.zip
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Checkout tag (manual input)
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag != '' }}
+        shell: pwsh
+        run: |
+          git fetch --tags --force
+          git checkout "tags/${{ github.event.inputs.tag }}"
+
+      - name: Setup vcpkg
+        shell: pwsh
+        run: |
+          git clone https://github.com/microsoft/vcpkg $env:GITHUB_WORKSPACE\vcpkg
+          "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Append
+          cd $env:GITHUB_WORKSPACE\vcpkg
+          .\bootstrap-vcpkg.bat
+
+      - name: Vcpkg install
+        shell: pwsh
+        run: |
+          cd $env:GITHUB_WORKSPACE
+          & "$env:VCPKG_ROOT\vcpkg.exe" install --triplet x64-windows --x-manifest-root "$env:GITHUB_WORKSPACE"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Configure SDK full
+        shell: pwsh
+        run: |
+          cmake -S . -B "$env:BUILD_DIR" -A x64 `
+            -DCMAKE_INSTALL_PREFIX="$env:GITHUB_WORKSPACE\$env:INSTALL_DIR" `
+            -DVIX_ENABLE_INSTALL=ON `
+            -DVIX_BUILD_EXAMPLES=OFF `
+            -DVIX_BUILD_TESTS=OFF `
+            -DVIX_ENABLE_WARNINGS=ON `
+            -DVIX_ENABLE_HTTP_COMPRESSION=OFF `
+            -DVIX_ENABLE_DB=ON `
+            -DVIX_DB_USE_SQLITE=ON `
+            -DVIX_DB_USE_MYSQL=OFF `
+            -DVIX_DB_USE_POSTGRES=OFF `
+            -DVIX_DB_USE_REDIS=OFF `
+            -DVIX_CORE_WITH_MYSQL=OFF `
+            -DVIX_ENABLE_ORM=ON `
+            -DVIX_ENABLE_WEBSOCKET=ON `
+            -DVIX_ENABLE_CLI=ON `
+            -DVIX_ENABLE_MIDDLEWARE=ON `
+            -DVIX_ENABLE_P2P=ON `
+            -DVIX_ENABLE_P2P_HTTP=ON `
+            -DVIX_ENABLE_CACHE=ON `
+            -DVIX_ENABLE_ASYNC=ON `
+            -DVIX_ENABLE_VALIDATION=ON `
+            -DVIX_ENABLE_CRYPTO=ON `
+            -DVIX_ENABLE_WEBRPC=ON `
+            -DVIX_ENABLE_TIME=ON `
+            -DVIX_ENABLE_TESTS_MODULE=ON `
+            -DVIX_ENABLE_TEMPLATE=ON `
+            -DVIX_ENABLE_PROCESS=ON `
+            -DVIX_ENABLE_THREADPOOL=ON `
+            -DVIX_ENABLE_KV=ON `
+            -DVIX_ENABLE_AGENT=ON `
+            -DVIX_ENABLE_GAME=OFF `
+            -DVCPKG_TARGET_TRIPLET=x64-windows `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
+
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build SDK
+        shell: pwsh
+        run: |
+          cmake --build "$env:BUILD_DIR" --config Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Install SDK
+        shell: pwsh
+        run: |
+          cmake --install "$env:BUILD_DIR" --config Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Verify installed SDK tree
+        shell: pwsh
+        run: |
+          if (!(Test-Path "$env:INSTALL_DIR\bin\vix.exe")) { throw "missing bin\vix.exe" }
+          if (!(Test-Path "$env:INSTALL_DIR\include\vix.hpp")) { throw "missing include\vix.hpp" }
+          if (!(Test-Path "$env:INSTALL_DIR\include\vix\websocket.hpp")) { throw "missing include\vix\websocket.hpp" }
+          if (!(Test-Path "$env:INSTALL_DIR\lib\cmake\Vix\VixConfig.cmake")) { throw "missing VixConfig.cmake" }
+          if (!(Test-Path "$env:INSTALL_DIR\lib\cmake\Vix\VixTargets.cmake")) { throw "missing VixTargets.cmake" }
+
+          & "$env:INSTALL_DIR\bin\vix.exe" --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Package SDK
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive -Path "$env:INSTALL_DIR\*" -DestinationPath "dist\$env:ASSET" -Force
+          if (!(Test-Path "dist\$env:ASSET")) { throw "missing SDK archive" }
+
+      - name: Validate packaged SDK
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force smoke-sdk -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path smoke-sdk | Out-Null
+
+          Expand-Archive -LiteralPath "dist\$env:ASSET" -DestinationPath smoke-sdk -Force
+
+          if (!(Test-Path "smoke-sdk\bin\vix.exe")) { throw "archive missing bin\vix.exe" }
+          if (!(Test-Path "smoke-sdk\include\vix.hpp")) { throw "archive missing include\vix.hpp" }
+          if (!(Test-Path "smoke-sdk\lib\cmake\Vix\VixConfig.cmake")) { throw "archive missing VixConfig.cmake" }
+
+          & "smoke-sdk\bin\vix.exe" --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdk-dist-windows-x86_64
+          path: dist/*
+          if-no-files-found: error
+
   publish-sdk:
     name: publish-sdk
-    needs: build-sdk
+    needs:
+      - build-sdk
+      - build-sdk-windows
     runs-on: ubuntu-24.04
 
     steps:
@@ -441,8 +574,10 @@ jobs:
           mkdir -p dist
 
           find dist-all -type f -name "vix-sdk-linux-x86_64.tar.gz" -exec cp -f {} dist/ \;
+          find dist-all -type f -name "vix-sdk-windows-x86_64.zip" -exec cp -f {} dist/ \;
 
           test -f dist/vix-sdk-linux-x86_64.tar.gz
+          test -f dist/vix-sdk-windows-x86_64.zip
 
           ls -lah dist
 
@@ -453,7 +588,7 @@ jobs:
 
           cd dist
 
-          for f in vix-sdk-*.tar.gz; do
+          for f in vix-sdk-*.tar.gz vix-sdk-*.zip; do
             [ -f "$f" ] || continue
             sha256sum "$f" > "$f.sha256"
           done
@@ -488,7 +623,7 @@ jobs:
           printf "%s" "$MINISIGN_PRIVATE_KEY_B64" | base64 -d > "$keyfile"
           test -s "$keyfile"
 
-          for f in vix-sdk-*.tar.gz; do
+          for f in vix-sdk-*.tar.gz vix-sdk-*.zip; do
             [ -f "$f" ] || continue
             "$MS" -S -s "$keyfile" -m "$f"
           done

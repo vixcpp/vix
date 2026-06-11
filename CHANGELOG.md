@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved `vix publish` diagnostics when a tag exists locally but has not been pushed to `origin`.
 - Fixed `vix publish` registry preparation so stale local publish branches and untracked registry entry files are cleaned before checking whether a version already exists.
 - Improved registry dependency workflows after testing the registry install, update, and generated CMake integration flow in production with `pico.vixcpp.com`.
+- Fixed the Windows SDK release pipeline so `vix-sdk-windows-x86_64.zip` is built, packaged, checksummed, signed, and uploaded to GitHub Releases.
+- Fixed the Windows installer failure where `install.ps1` attempted to download `vix-sdk-windows-x86_64.zip` but the asset was missing from the release.
 - Improved CMake error parsing so multi-line `message(FATAL_ERROR ...)` diagnostics are displayed clearly instead of collapsing into unreadable one-line reasons.
 - Improved `vix build` verbose behavior so `-v` remains readable while `--cmake-verbose` is reserved for raw CMake/Ninja output.
 - Improved `vix tests` failure diagnostics so test runner output is summarized with clearer failed test names, source locations, focused error messages, and compact code frames.
