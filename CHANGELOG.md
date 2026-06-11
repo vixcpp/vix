@@ -17,7 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed `vix run` for generic CMake projects by detecting and running the executable produced by the build instead of assuming the folder name is the target name.
 - Kept default `vix run` output cleaner during normal execution.
 - Fixed `vix update` so it updates only dependencies with newer resolved versions instead of reprocessing every dependency in the project.
+- Fixed `vix update` so it respects the version constraints declared in `vix.json` instead of always resolving direct dependencies to the latest registry version.
+- Improved `vix update` so it can refresh lockfile metadata and package hashes even when dependency versions do not change.
+- Improved `vix update` summaries by separating version changes from lockfile metadata updates.
 - Improved `vix update` output so already-current dependencies are no longer repeated in the main update summary.
+- Improved `vix outdated` so the default view shows only direct project dependencies from `vix.json`, with `--all` available for the full locked dependency graph.
+- Improved `vix list` so the default view shows only direct project dependencies from `vix.json`, with `--all` available for transitive locked dependencies.
+- Added pagination and JSON output support to `vix list`.
 - Fixed `vix install` output so it reports only dependencies that were actually installed or relinked instead of counting every dependency from `vix.lock` as newly installed.
 - Fixed `vix install` output to keep dependency installation messages shorter and cleaner.
 - Fixed project dependency installation by handling stale or broken `.vix/deps` links more reliably.
