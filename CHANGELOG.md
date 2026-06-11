@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.6.2
+
+### Added
+
+- Added constant-time byte comparison helpers to the crypto module for security-sensitive comparisons.
+- Added PBKDF2-HMAC-SHA256 password hashing and verification helpers to the crypto module.
+
+### Fixed
+
+- Fixed `vix run` for generic CMake projects by detecting and running the executable produced by the build instead of assuming the folder name is the target name.
+- Kept default `vix run` output cleaner during normal execution.
+- Fixed `vix update` so it updates only dependencies with newer resolved versions instead of reprocessing every dependency in the project.
+- Fixed `vix update` so it respects the version constraints declared in `vix.json` instead of always resolving direct dependencies to the latest registry version.
+- Improved `vix update` so it can refresh lockfile metadata and package hashes even when dependency versions do not change.
+- Improved `vix update` summaries by separating version changes from lockfile metadata updates.
+- Improved `vix update` output so already-current dependencies are no longer repeated in the main update summary.
+- Improved `vix outdated` so the default view shows only direct project dependencies from `vix.json`, with `--all` available for the full locked dependency graph.
+- Improved `vix list` so the default view shows only direct project dependencies from `vix.json`, with `--all` available for transitive locked dependencies.
+- Added pagination and JSON output support to `vix list`.
+- Fixed `vix install` output so it reports only dependencies that were actually installed or relinked instead of counting every dependency from `vix.lock` as newly installed.
+- Fixed `vix install` output to keep dependency installation messages shorter and cleaner.
+- Fixed project dependency installation by handling stale or broken `.vix/deps` links more reliably.
+- Fixed transitive registry dependency propagation so packages like `rix/rix` can expose dependencies such as `rix/csv`, `rix/debug`, and `rix/auth` without requiring every app to list them manually.
+- Improved `vix publish` diagnostics when a tag exists locally but has not been pushed to `origin`.
+- Fixed `vix publish` registry preparation so stale local publish branches and untracked registry entry files are cleaned before checking whether a version already exists.
+- Improved registry dependency workflows after testing the registry install, update, and generated CMake integration flow in production with `pico.vixcpp.com`.
+- Fixed the Windows SDK release pipeline so `vix-sdk-windows-x86_64.zip` is built, packaged, checksummed, signed, and uploaded to GitHub Releases.
+- Fixed the Windows installer failure where `install.ps1` attempted to download `vix-sdk-windows-x86_64.zip` but the asset was missing from the release.
+- Improved CMake error parsing so multi-line `message(FATAL_ERROR ...)` diagnostics are displayed clearly instead of collapsing into unreadable one-line reasons.
+- Improved `vix build` verbose behavior so `-v` remains readable while `--cmake-verbose` is reserved for raw CMake/Ninja output.
+- Improved `vix tests` failure diagnostics so test runner output is summarized with clearer failed test names, source locations, focused error messages, and compact code frames.
+- Improved `vix.app` diagnostics when `.vix/vix_deps.cmake` is missing.
+- Improved `vix.app` resource validation so missing resources fail early with a clear error instead of a long post-build CMake command.
+- Fixed build toolchain behavior by using absolute system archiver paths.
+- Exposed middleware app integration helpers through the public aggregate header.
+- Kept middleware aggregate header cache independent.
+
 ## v2.6.1
 
 ### Changed
