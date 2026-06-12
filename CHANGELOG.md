@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.6.3
+
+### Fixed
+
+- Fixed `vix publish` so it prepares and normalizes the local registry index internally before publishing.
+- Fixed stale local registry state handling by fetching `origin`, resetting to `origin/main`, and cleaning untracked registry entry files before checking existing versions.
+- Improved `vix publish` diagnostics when a package version already exists in the registry.
+
 ## v2.6.2
 
 ### Added
