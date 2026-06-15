@@ -17,6 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed `vix run` diagnostics when multiple runnable executables are produced by a build.
 - Fixed project watch mode so it resolves runnable executables generically instead of assuming the binary name matches the project folder.
 - Avoided duplicate CMake configure output when build errors are already handled.
+- Improved compiler diagnostics so template errors originating in system headers can be re-anchored to the relevant project instantiation location.
+- Fixed `vix tests` progress output for long CTest runs.
+- Fixed `vix tests` interruption handling so `Ctrl+C` is reported as a user interruption instead of a test failure.
+- Fixed HTTP session parsing and error-response edge cases for malformed requests, invalid content lengths, oversized payloads, and unexpected EOF bodies.
+- Fixed HTTP keep-alive shutdown behavior for case-insensitive `Connection: close` handling.
+- Fixed WAF session configuration handling for target length, body size, and mode validation in isolated tests.
+- Fixed runtime worker shutdown behavior when yielding tasks are still being rescheduled.
+- Improved router route metadata so tests can validate registered paths, methods, and heavy-route flags.
 
 ### Changed
 
@@ -24,12 +32,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Expanded JSON module documentation with builders, parsing, dumping, safe access, JPath, Simple payloads, tests, benchmarks, and useful links.
 - Added benchmark result snapshots for JSON construction, conversion, dumping, parsing, JPath, and Simple payloads.
 - Shared runnable executable discovery through a reusable CLI resolver used by project run flows.
+- Strengthened the core test layout with dedicated test groups for HTTP, router, session, server, runtime, executor, config, and app behavior.
+- Updated core test registration so network-based tests use isolated ports, timeouts, and serial execution where required.
+- Improved `vix tests` live progress reporting to show completed, total, running, and elapsed test state during long CTest runs.
 
 ### Added
 
 - Added JSON module test coverage for builders, parsing, dumping, includes, conversions, JPath, and Simple values.
 - Added JSON module benchmark coverage for builders, conversions, dumping, parsing, JPath, and Simple values.
 - Added stricter JSON module CI coverage for tests, benchmarks, examples, package export, smoke checks, static analysis, and configuration coverage.
+- Added broad HTTP session test coverage for transports, parsed request heads, constructors, GET requests, bodies, errors, keep-alive, WAF behavior, and TLS sessions.
+- Added HTTP server test coverage for TLS config, constructors, router integration, threading, shutdown, and run validation.
+- Added runtime test coverage for budgets, tasks, mailboxes, run queues, supervisors, workers, schedulers, runtime config, and lifecycle behavior.
+- Added executor test coverage for metrics, task options, runtime executor construction, lifecycle, submit/post behavior, metrics, and shutdown.
+- Added config test coverage for defaults, environment loading, set/get behavior, typed accessors, database settings, WAF settings, TLS settings, logging settings, reload behavior, and copy/move behavior.
+- Added app test coverage for constructors, config access, dev mode, templates, routes, groups, middleware, protected routes, static directories, static hooks, lifecycle behavior, module initialization, and stdout configuration.
 
 ## v2.6.2
 
