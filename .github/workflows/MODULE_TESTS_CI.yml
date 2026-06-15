@@ -1,0 +1,189 @@
+name: Module Tests CI
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - release/**
+    paths:
+      - ".github/workflows/MODULE_TESTS_CI.yml"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - "tests/**"
+      - "modules/**"
+      - ".gitmodules"
+
+  pull_request:
+    branches:
+      - main
+      - dev
+      - release/**
+    paths:
+      - ".github/workflows/MODULE_TESTS_CI.yml"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - "tests/**"
+      - "modules/**"
+      - ".gitmodules"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DEPS: >
+    build-essential
+    cmake
+    ninja-build
+    clang
+    llvm
+    lld
+    g++
+    pkg-config
+    git
+    curl
+    zip
+    unzip
+    tar
+    libssl-dev
+    zlib1g-dev
+    nlohmann-json3-dev
+    libsqlite3-dev
+    libspdlog-dev
+    libfmt-dev
+    libmysqlcppconn-dev
+  BUILD_JOBS: 2
+
+jobs:
+  umbrella-tests:
+    name: Umbrella Tests (${{ matrix.compiler }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [clang, gcc]
+
+    steps:
+      - name: Checkout umbrella repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y $DEPS
+
+      - name: Select compiler
+        run: |
+          if [ "${{ matrix.compiler }}" = "clang" ]; then
+            echo "CC=clang" >> "$GITHUB_ENV"
+            echo "CXX=clang++" >> "$GITHUB_ENV"
+          else
+            echo "CC=gcc" >> "$GITHUB_ENV"
+            echo "CXX=g++" >> "$GITHUB_ENV"
+          fi
+
+      - name: Configure umbrella tests
+        run: |
+          cmake -G Ninja -S . -B build-tests \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DVIX_BUILD_TESTS=ON \
+            -DVIX_BUILD_EXAMPLES=OFF \
+            -DVIX_ENABLE_SANITIZERS=OFF \
+            -DVIX_ENABLE_WARNINGS=ON \
+            -DVIX_ENABLE_INSTALL=OFF \
+            -DVIX_FORCE_FETCH_JSON=OFF \
+            -DVIX_FETCH_DEPS=OFF \
+            -DVIX_ENABLE_ASYNC=ON \
+            -DVIX_ENABLE_CRYPTO=ON \
+            -DVIX_ENABLE_TIME=ON \
+            -DVIX_TIME_BUILD_TESTS=ON \
+            -DVIX_ENABLE_TEMPLATE=ON \
+            -DVIX_TEMPLATE_BUILD_TESTS=ON \
+            -DVIX_ENABLE_AGENT=ON \
+            -DVIX_AGENT_BUILD_TESTS=ON \
+            -DVIX_ENABLE_GAME=ON \
+            -DVIX_GAME_BUILD_TESTS=ON \
+            -DVIX_GAME_ENABLE_SDL=OFF \
+            -DVIX_GAME_ENABLE_SDL_OPENGL=OFF \
+            -DVIX_ENABLE_WEBRPC=ON \
+            -DVIX_ENABLE_VALIDATION=ON \
+            -DVIX_ENABLE_CACHE=ON \
+            -DVIX_ENABLE_P2P=ON \
+            -DVIX_ENABLE_P2P_HTTP=ON \
+            -DVIX_ENABLE_DB=ON \
+            -DVIX_DB_USE_MYSQL=ON \
+            -DVIX_DB_USE_SQLITE=OFF \
+            -DVIX_ENABLE_ORM=ON \
+            -DVIX_ENABLE_MIDDLEWARE=ON \
+            -DVIX_ENABLE_CLI=ON \
+            -DVIX_ENABLE_WEBSOCKET=ON
+
+      - name: Build tests
+        run: |
+          cmake --build build-tests -j"${BUILD_JOBS}"
+
+      - name: Run tests
+        run: |
+          ctest --test-dir build-tests --output-on-failure
+
+  module-tests-light:
+    name: Module Tests Light Profile
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout umbrella repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y $DEPS
+
+      - name: Configure light module tests
+        run: |
+          cmake -G Ninja -S . -B build-module-light \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DVIX_BUILD_TESTS=ON \
+            -DVIX_BUILD_EXAMPLES=OFF \
+            -DVIX_ENABLE_INSTALL=OFF \
+            -DVIX_ENABLE_SANITIZERS=OFF \
+            -DVIX_ENABLE_WARNINGS=ON \
+            -DVIX_FORCE_FETCH_JSON=OFF \
+            -DVIX_FETCH_DEPS=OFF \
+            -DVIX_ENABLE_TIME=ON \
+            -DVIX_TIME_BUILD_TESTS=ON \
+            -DVIX_ENABLE_TEMPLATE=ON \
+            -DVIX_TEMPLATE_BUILD_TESTS=ON \
+            -DVIX_ENABLE_THREADPOOL=ON \
+            -DVIX_ENABLE_KV=ON \
+            -DVIX_ENABLE_GAME=ON \
+            -DVIX_GAME_BUILD_TESTS=ON \
+            -DVIX_GAME_ENABLE_SDL=OFF \
+            -DVIX_GAME_ENABLE_SDL_OPENGL=OFF \
+            -DVIX_ENABLE_AGENT=OFF \
+            -DVIX_ENABLE_DB=OFF \
+            -DVIX_ENABLE_ORM=OFF \
+            -DVIX_ENABLE_P2P=OFF \
+            -DVIX_ENABLE_P2P_HTTP=OFF \
+            -DVIX_ENABLE_CACHE=OFF \
+            -DVIX_ENABLE_CLI=OFF \
+            -DVIX_ENABLE_WEBSOCKET=OFF
+
+      - name: Build light module tests
+        run: |
+          cmake --build build-module-light -j"${BUILD_JOBS}"
+
+      - name: Run light module tests
+        run: |
+          ctest --test-dir build-module-light --output-on-failure
