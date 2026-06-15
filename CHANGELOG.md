@@ -10,8 +10,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed `vix publish` so it prepares and normalizes the local registry index internally before publishing.
-- Fixed stale local registry state handling by fetching `origin`, resetting to `origin/main`, and cleaning untracked registry entry files before checking existing versions.
+- Fixed stale local registry state handling by fetching `origin`, resetting to `origin/main`, and cleaning untracked registry entry files before checking existing package versions.
 - Improved `vix publish` diagnostics when a package version already exists in the registry.
+- Fixed JSON module JPath parsing after bracket segments, including paths such as `users[0].email` and `["complex.key"].value`.
+- Fixed `vix run` executable resolution for CMake projects that produce binaries with names different from the project directory.
+- Fixed `vix run` diagnostics when multiple runnable executables are produced by a build.
+- Fixed project watch mode so it resolves runnable executables generically instead of assuming the binary name matches the project folder.
+- Avoided duplicate CMake configure output when build errors are already handled.
+
+### Changed
+
+- Updated the JSON module with dedicated CMake targets for examples, tests, and benchmarks.
+- Expanded JSON module documentation with builders, parsing, dumping, safe access, JPath, Simple payloads, tests, benchmarks, and useful links.
+- Added benchmark result snapshots for JSON construction, conversion, dumping, parsing, JPath, and Simple payloads.
+- Shared runnable executable discovery through a reusable CLI resolver used by project run flows.
+
+### Added
+
+- Added JSON module test coverage for builders, parsing, dumping, includes, conversions, JPath, and Simple values.
+- Added JSON module benchmark coverage for builders, conversions, dumping, parsing, JPath, and Simple values.
+- Added stricter JSON module CI coverage for tests, benchmarks, examples, package export, smoke checks, static analysis, and configuration coverage.
 
 ## v2.6.2
 
