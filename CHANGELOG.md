@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed WAF session configuration handling for target length, body size, and mode validation in isolated tests.
 - Fixed runtime worker shutdown behavior when yielding tasks are still being rescheduled.
 - Improved router route metadata so tests can validate registered paths, methods, and heavy-route flags.
+- Fixed and stabilized Core benchmark workloads so long-running benchmark targets do not block full benchmark runs.
 
 ### Changed
 
@@ -35,6 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Strengthened the core test layout with dedicated test groups for HTTP, router, session, server, runtime, executor, config, and app behavior.
 - Updated core test registration so network-based tests use isolated ports, timeouts, and serial execution where required.
 - Improved `vix tests` live progress reporting to show completed, total, running, and elapsed test state during long CTest runs.
+- Updated the Core module README with benchmark workflow documentation and a link to the official v2.6.3 benchmark baseline article.
+- Documented the benchmark rule that official performance numbers must be generated from Release builds, not dev/debug builds.
+- Updated Core benchmark registration so benchmark binaries are grouped under `build-release/benchmarks/core` when `VIX_CORE_BUILD_BENCHMARKS=ON`.
 
 ### Added
 
@@ -47,6 +51,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added executor test coverage for metrics, task options, runtime executor construction, lifecycle, submit/post behavior, metrics, and shutdown.
 - Added config test coverage for defaults, environment loading, set/get behavior, typed accessors, database settings, WAF settings, TLS settings, logging settings, reload behavior, and copy/move behavior.
 - Added app test coverage for constructors, config access, dev mode, templates, routes, groups, middleware, protected routes, static directories, static hooks, lifecycle behavior, module initialization, and stdout configuration.
+- Added the official Vix Core benchmark suite covering runtime tasks, runtime queues, runtime scheduler, runtime workers, executor submit/post/metrics, router matching, router registration, HTTP request/response behavior, fake transport sessions, app route registration, and app group registration.
+- Added shared benchmark utilities for measuring median time, mean time, operations per second, warmup iterations, measured samples, and JSON report generation.
+- Added `scripts/run_core_benchmarks.sh` to run the full Core benchmark suite and write versioned JSON reports.
+- Added `scripts/compare_core_benchmarks.py` to compare current benchmark results against a baseline using configurable warning and failure thresholds.
+- Added `benchmarks/baselines/` for versioned official benchmark baselines.
+- Added the official Core `v2.6.3` Release benchmark baseline generated on Linux x86_64 with GCC 13.3.0.
+- Added a blog article documenting the Vix Core v2.6.3 benchmark baseline and the performance workflow.
 
 ## v2.6.2
 

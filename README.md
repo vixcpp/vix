@@ -63,9 +63,7 @@ irm https://vixcpp.com/install.ps1 | iex
 
 More installation options:
 
-```text
 https://vixcpp.com/install
-```
 
 ## Quick start
 
@@ -256,10 +254,10 @@ Cnerium attaches to Vix and protects selected write operations.
 | [Rix](https://github.com/rixcpp/rix)                                | Official userland library layer for Vix.cpp, distributed through the registry.                                                   |
 | [Vix Pico](https://github.com/vixcpp/pico)                          | Production-style backend used to validate Vix modules, deployment, auth, PDF generation, SQLite, KV, jobs, and WebSocket routes. |
 | [Vix Game](https://github.com/vixcpp/vix-game)                      | Game-oriented project built on the Vix.cpp runtime foundation.                                                                   |
-| [Softadastra Runner](https://github.com/softadastra/runner)         | Small command runner built with Vix.cpp and `vix::process`.                                                                      |
 | [Kordex](https://github.com/softadastra/kordex)                     | JavaScript and TypeScript runtime layer built on Vix and Softadastra.                                                            |
-| [Softadastra Engine](https://github.com/softadastra/softadastra)    | Local-first and offline-first runtime foundation for reliable applications.                                                      |
 | [Cnerium](https://github.com/softadastra/cnerium)                   | Reliability-first application framework built on Vix and the Softadastra SDK.                                                    |
+| [Softadastra Engine](https://github.com/softadastra/softadastra)    | Local-first and offline-first runtime foundation for reliable applications.                                                      |
+| [Softadastra Runner](https://github.com/softadastra/runner)         | Small command runner built with Vix.cpp and `vix::process`.                                                                      |
 | [Softadastra Cloud](https://github.com/softadastra/cloud)           | Reliability testing control plane for reports, scores, and dashboard results.                                                    |
 | [Softadastra Converdict](https://github.com/softadastra/converdict) | Reliability verification platform for distributed systems.                                                                       |
 | [Softadastra PulseGrid](https://github.com/softadastra/PulseGrid)   | Real-time service monitoring built with Vix.cpp.                                                                                 |
@@ -333,7 +331,7 @@ vix tests
 Add a package:
 
 ```bash
-vix add rix/csv
+vix add rix/rix@0.9.1
 vix install
 ```
 
@@ -389,9 +387,7 @@ Contributions are welcome.
 
 Read the contribution guide:
 
-```text
 https://docs.vixcpp.com/contributing
-```
 
 You can contribute by improving the runtime, writing examples, testing Vix on real projects, improving documentation, or publishing packages for the Vix registry.
 
