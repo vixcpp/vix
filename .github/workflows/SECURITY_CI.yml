@@ -14,6 +14,7 @@ on:
       - "examples/**"
       - "tests/**"
       - "modules/**"
+      - "third_party/**"
       - ".gitmodules"
       - "README.md"
       - "CHANGELOG.md"
@@ -31,6 +32,7 @@ on:
       - "examples/**"
       - "tests/**"
       - "modules/**"
+      - "third_party/**"
       - ".gitmodules"
       - "README.md"
       - "CHANGELOG.md"
@@ -39,6 +41,10 @@ on:
 
 permissions:
   contents: read
+
+defaults:
+  run:
+    shell: bash
 
 env:
   DEPS: >
@@ -55,9 +61,11 @@ env:
     pkg-config
     git
     curl
+    ca-certificates
     zip
     unzip
     tar
+    libasio-dev
     libssl-dev
     zlib1g-dev
     nlohmann-json3-dev
@@ -65,12 +73,122 @@ env:
     libspdlog-dev
     libfmt-dev
     libmysqlcppconn-dev
+
   BUILD_JOBS: 2
+
+  COMMON_FLAGS: >-
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    -DVIX_ENABLE_WARNINGS=ON
+    -DVIX_ENABLE_LTO=OFF
+    -DVIX_FORCE_FETCH_JSON=OFF
+    -DVIX_FETCH_DEPS=OFF
+    -DVIX_BENCH_MODE=OFF
+
+  FULL_FEATURE_FLAGS: >-
+    -DVIX_ENABLE_ASYNC=ON
+    -DVIX_ENABLE_CRYPTO=ON
+    -DVIX_ENABLE_TIME=ON
+    -DVIX_ENABLE_WEBRPC=ON
+    -DVIX_ENABLE_VALIDATION=ON
+    -DVIX_ENABLE_CACHE=ON
+    -DVIX_ENABLE_P2P=ON
+    -DVIX_ENABLE_P2P_HTTP=ON
+    -DVIX_ENABLE_DB=ON
+    -DVIX_DB_USE_MYSQL=ON
+    -DVIX_DB_USE_SQLITE=OFF
+    -DVIX_ENABLE_ORM=ON
+    -DVIX_ENABLE_MIDDLEWARE=ON
+    -DVIX_ENABLE_CLI=ON
+    -DVIX_ENABLE_WEBSOCKET=ON
+    -DVIX_ENABLE_TEMPLATE=ON
+    -DVIX_ENABLE_TESTS_MODULE=ON
+    -DVIX_ENABLE_PROCESS=ON
+    -DVIX_ENABLE_THREADPOOL=ON
+    -DVIX_ENABLE_KV=ON
+    -DVIX_ENABLE_AGENT=ON
+    -DVIX_ENABLE_GAME=ON
+    -DVIX_GAME_ENABLE_SDL=OFF
+    -DVIX_GAME_ENABLE_SDL_OPENGL=OFF
+
+  TEST_FEATURE_FLAGS: >-
+    -DVIX_ENABLE_ASYNC=ON
+    -DVIX_ENABLE_CRYPTO=ON
+    -DVIX_ENABLE_TIME=ON
+    -DVIX_ENABLE_WEBRPC=ON
+    -DVIX_ENABLE_VALIDATION=ON
+    -DVIX_ENABLE_CACHE=ON
+    -DVIX_ENABLE_P2P=ON
+    -DVIX_ENABLE_P2P_HTTP=ON
+    -DVIX_ENABLE_DB=ON
+    -DVIX_DB_USE_MYSQL=OFF
+    -DVIX_DB_USE_SQLITE=ON
+    -DVIX_ENABLE_ORM=ON
+    -DVIX_ENABLE_MIDDLEWARE=ON
+    -DVIX_ENABLE_CLI=ON
+    -DVIX_ENABLE_WEBSOCKET=ON
+    -DVIX_ENABLE_TEMPLATE=ON
+    -DVIX_ENABLE_TESTS_MODULE=ON
+    -DVIX_ENABLE_PROCESS=ON
+    -DVIX_ENABLE_THREADPOOL=ON
+    -DVIX_ENABLE_KV=ON
+    -DVIX_ENABLE_AGENT=ON
+    -DVIX_ENABLE_GAME=ON
+    -DVIX_GAME_ENABLE_SDL=OFF
+    -DVIX_GAME_ENABLE_SDL_OPENGL=OFF
+
+  MODULE_TEST_FLAGS: >-
+    -DVIX_BUILD_TESTS=ON
+    -DVIX_CORE_BUILD_TESTS=ON
+    -DVIX_JSON_BUILD_TESTS=ON
+    -DVIX_UTILS_BUILD_TESTS=ON
+    -DVIX_ERROR_BUILD_TESTS=ON
+    -DVIX_PATH_BUILD_TESTS=ON
+    -DVIX_FS_BUILD_TESTS=ON
+    -DVIX_IO_BUILD_TESTS=ON
+    -DVIX_ENV_BUILD_TESTS=ON
+    -DVIX_OS_BUILD_TESTS=ON
+    -DVIX_LOG_BUILD_TESTS=ON
+    -DVIX_ASYNC_BUILD_TESTS=ON
+    -DVIX_CRYPTO_BUILD_TESTS=ON
+    -DVIX_TIME_BUILD_TESTS=ON
+    -DVIX_VALIDATION_BUILD_TESTS=ON
+    -DVIX_CONVERSION_BUILD_TESTS=ON
+    -DVIX_WEBRPC_BUILD_TESTS=ON
+    -DVIX_CACHE_BUILD_TESTS=ON
+    -DVIX_NET_BUILD_TESTS=ON
+    -DVIX_SYNC_BUILD_TESTS=ON
+    -DVIX_P2P_BUILD_TESTS=ON
+    -DVIX_P2P_HTTP_BUILD_TESTS=ON
+    -DVIX_DB_BUILD_TESTS=ON
+    -DVIX_ORM_BUILD_TESTS=ON
+    -DVIX_MIDDLEWARE_BUILD_TESTS=ON
+    -DVIX_CLI_BUILD_TESTS=ON
+    -DVIX_WEBSOCKET_BUILD_TESTS=ON
+    -DVIX_TEMPLATE_BUILD_TESTS=ON
+    -DTEMPLATE_BUILD_TESTS=ON
+    -DVIX_PROCESS_BUILD_TESTS=ON
+    -DVIX_THREADPOOL_BUILD_TESTS=ON
+    -DVIX_KV_BUILD_TESTS=ON
+    -DVIX_AGENT_BUILD_TESTS=ON
+    -DVIX_AI_AGENT_BUILD_TESTS=ON
+    -DVIX_GAME_BUILD_TESTS=ON
+
+  MODULE_BENCH_FLAGS: >-
+    -DVIX_CORE_BUILD_BENCHMARKS=OFF
+    -DVIX_JSON_BUILD_BENCHMARKS=OFF
+    -DVIX_ASYNC_BUILD_BENCHMARKS=OFF
+    -DVIX_TIME_BUILD_BENCH=OFF
+    -DVIX_TEMPLATE_BUILD_BENCH=OFF
+    -DTEMPLATE_BUILD_BENCHMARKS=OFF
+    -DVIX_THREADPOOL_BUILD_BENCHMARKS=OFF
+    -DVIX_KV_BUILD_BENCHMARKS=OFF
 
 jobs:
   build-matrix:
     name: Build (${{ matrix.compiler }}, examples=${{ matrix.examples }})
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+
     strategy:
       fail-fast: false
       matrix:
@@ -86,18 +204,21 @@ jobs:
 
       - name: Install dependencies
         run: |
+          set -euxo pipefail
           sudo apt-get update -y
-          sudo apt-get install -y $DEPS
+          sudo apt-get install -y --no-install-recommends $DEPS
 
       - name: Verify critical module directories
         run: |
-          test -f CMakeLists.txt || (echo "::error::Root CMakeLists.txt missing"; exit 1)
-          test -f modules/json/CMakeLists.txt || (echo "::error::modules/json missing"; exit 1)
-          test -f modules/utils/CMakeLists.txt || (echo "::error::modules/utils missing"; exit 1)
-          test -f modules/core/CMakeLists.txt || (echo "::error::modules/core missing"; exit 1)
+          set -euxo pipefail
+          test -f CMakeLists.txt
+          test -f modules/json/CMakeLists.txt
+          test -f modules/utils/CMakeLists.txt
+          test -f modules/core/CMakeLists.txt
 
       - name: Select compiler
         run: |
+          set -euxo pipefail
           if [ "${{ matrix.compiler }}" = "clang" ]; then
             echo "CC=clang" >> "$GITHUB_ENV"
             echo "CXX=clang++" >> "$GITHUB_ENV"
@@ -108,44 +229,35 @@ jobs:
 
       - name: Configure
         run: |
+          set -euxo pipefail
           cmake -G Ninja -S . -B build \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            $COMMON_FLAGS \
+            $FULL_FEATURE_FLAGS \
             -DVIX_BUILD_TESTS=OFF \
             -DVIX_BUILD_EXAMPLES=${{ matrix.examples }} \
             -DVIX_ENABLE_SANITIZERS=OFF \
-            -DVIX_ENABLE_WARNINGS=ON \
-            -DVIX_ENABLE_LTO=OFF \
-            -DVIX_ENABLE_INSTALL=ON \
-            -DVIX_FORCE_FETCH_JSON=OFF \
-            -DVIX_FETCH_DEPS=OFF \
-            -DVIX_ENABLE_ASYNC=ON \
-            -DVIX_ENABLE_CRYPTO=ON \
-            -DVIX_ENABLE_TIME=ON \
-            -DVIX_ENABLE_WEBRPC=ON \
-            -DVIX_ENABLE_VALIDATION=ON \
-            -DVIX_ENABLE_CACHE=ON \
-            -DVIX_ENABLE_P2P=ON \
-            -DVIX_ENABLE_P2P_HTTP=ON \
-            -DVIX_ENABLE_DB=ON \
-            -DVIX_DB_USE_MYSQL=ON \
-            -DVIX_DB_USE_SQLITE=OFF \
-            -DVIX_ENABLE_ORM=ON \
-            -DVIX_ENABLE_MIDDLEWARE=ON \
-            -DVIX_ENABLE_CLI=ON \
-            -DVIX_ENABLE_WEBSOCKET=ON
+            -DVIX_ENABLE_INSTALL=ON
 
       - name: Build
         run: |
+          set -euxo pipefail
           cmake --build build -j"${BUILD_JOBS}"
 
       - name: Show generated executables
         run: |
+          set -euxo pipefail
           find build -type f -executable | sort || true
 
-  sanitizers:
-    name: Sanitizers (clang)
+  module-tests:
+    name: Module Tests (${{ matrix.compiler }})
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [clang, gcc]
 
     steps:
       - name: Checkout umbrella repository
@@ -156,50 +268,119 @@ jobs:
 
       - name: Install dependencies
         run: |
+          set -euxo pipefail
           sudo apt-get update -y
-          sudo apt-get install -y $DEPS
+          sudo apt-get install -y --no-install-recommends $DEPS
+
+      - name: Select compiler
+        run: |
+          set -euxo pipefail
+          if [ "${{ matrix.compiler }}" = "clang" ]; then
+            echo "CC=clang" >> "$GITHUB_ENV"
+            echo "CXX=clang++" >> "$GITHUB_ENV"
+          else
+            echo "CC=gcc" >> "$GITHUB_ENV"
+            echo "CXX=g++" >> "$GITHUB_ENV"
+          fi
+
+      - name: Configure module tests
+        run: |
+          set -euxo pipefail
+          cmake -G Ninja -S . -B build-tests \
+            -DCMAKE_BUILD_TYPE=Debug \
+            $COMMON_FLAGS \
+            $TEST_FEATURE_FLAGS \
+            $MODULE_TEST_FLAGS \
+            $MODULE_BENCH_FLAGS \
+            -DVIX_BUILD_EXAMPLES=OFF \
+            -DVIX_ENABLE_SANITIZERS=OFF \
+            -DVIX_ENABLE_INSTALL=OFF
+
+      - name: Build module tests
+        run: |
+          set -euxo pipefail
+          cmake --build build-tests -j"${BUILD_JOBS}"
+
+      - name: List registered tests
+        run: |
+          set -euxo pipefail
+          ctest --test-dir build-tests -N | tee /tmp/vix_ctest_list.txt
+
+          if ! grep -Eq "Total Tests: [1-9][0-9]*" /tmp/vix_ctest_list.txt; then
+            echo "::error::No tests were registered. Check module BUILD_TESTS options."
+            exit 1
+          fi
+
+      - name: Run module tests
+        run: |
+          set -euxo pipefail
+          ctest --test-dir build-tests --output-on-failure --timeout 180
+
+  sanitized-module-tests:
+    name: Sanitized Module Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+
+    env:
+      ASAN_OPTIONS: detect_leaks=1:halt_on_error=1:strict_string_checks=1:check_initialization_order=1
+      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+
+    steps:
+      - name: Checkout umbrella repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          set -euxo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends $DEPS
 
       - name: Select clang
         run: |
+          set -euxo pipefail
           echo "CC=clang" >> "$GITHUB_ENV"
           echo "CXX=clang++" >> "$GITHUB_ENV"
 
-      - name: Configure sanitizer build
+      - name: Configure sanitized module tests
         run: |
-          cmake -G Ninja -S . -B build-san \
+          set -euxo pipefail
+          cmake -G Ninja -S . -B build-san-tests \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DVIX_BUILD_TESTS=OFF \
-            -DVIX_BUILD_EXAMPLES=ON \
+            $COMMON_FLAGS \
+            $TEST_FEATURE_FLAGS \
+            $MODULE_TEST_FLAGS \
+            $MODULE_BENCH_FLAGS \
+            -DVIX_BUILD_EXAMPLES=OFF \
             -DVIX_ENABLE_SANITIZERS=ON \
-            -DVIX_ENABLE_WARNINGS=ON \
-            -DVIX_ENABLE_LTO=OFF \
-            -DVIX_ENABLE_INSTALL=OFF \
-            -DVIX_FORCE_FETCH_JSON=OFF \
-            -DVIX_FETCH_DEPS=OFF \
-            -DVIX_ENABLE_ASYNC=ON \
-            -DVIX_ENABLE_CRYPTO=ON \
-            -DVIX_ENABLE_TIME=ON \
-            -DVIX_ENABLE_WEBRPC=ON \
-            -DVIX_ENABLE_VALIDATION=ON \
-            -DVIX_ENABLE_CACHE=ON \
-            -DVIX_ENABLE_P2P=ON \
-            -DVIX_ENABLE_P2P_HTTP=ON \
-            -DVIX_ENABLE_DB=ON \
-            -DVIX_DB_USE_MYSQL=ON \
-            -DVIX_DB_USE_SQLITE=OFF \
-            -DVIX_ENABLE_ORM=ON \
-            -DVIX_ENABLE_MIDDLEWARE=ON \
-            -DVIX_ENABLE_CLI=ON \
-            -DVIX_ENABLE_WEBSOCKET=ON
+            -DVIX_ENABLE_INSTALL=OFF
 
-      - name: Build sanitizer config
+      - name: Build sanitized module tests
         run: |
-          cmake --build build-san -j"${BUILD_JOBS}"
+          set -euxo pipefail
+          cmake --build build-san-tests -j"${BUILD_JOBS}"
+
+      - name: List registered sanitized tests
+        run: |
+          set -euxo pipefail
+          ctest --test-dir build-san-tests -N | tee /tmp/vix_san_ctest_list.txt
+
+          if ! grep -Eq "Total Tests: [1-9][0-9]*" /tmp/vix_san_ctest_list.txt; then
+            echo "::error::No sanitized tests were registered. Check module BUILD_TESTS options."
+            exit 1
+          fi
+
+      - name: Run sanitized module tests
+        run: |
+          set -euxo pipefail
+          ctest --test-dir build-san-tests --output-on-failure --timeout 180
 
   runtime-smoke:
     name: Runtime Smoke and CLI Checks
     runs-on: ubuntu-latest
+    timeout-minutes: 35
 
     steps:
       - name: Checkout umbrella repository
@@ -210,57 +391,47 @@ jobs:
 
       - name: Install dependencies
         run: |
+          set -euxo pipefail
           sudo apt-get update -y
-          sudo apt-get install -y $DEPS
+          sudo apt-get install -y --no-install-recommends $DEPS
 
       - name: Configure runtime build
         run: |
+          set -euxo pipefail
           cmake -G Ninja -S . -B build-runtime \
             -DCMAKE_BUILD_TYPE=Debug \
+            $COMMON_FLAGS \
+            $FULL_FEATURE_FLAGS \
             -DVIX_BUILD_TESTS=OFF \
             -DVIX_BUILD_EXAMPLES=ON \
             -DVIX_ENABLE_SANITIZERS=OFF \
-            -DVIX_ENABLE_WARNINGS=ON \
-            -DVIX_ENABLE_LTO=OFF \
-            -DVIX_ENABLE_INSTALL=OFF \
-            -DVIX_FORCE_FETCH_JSON=OFF \
-            -DVIX_FETCH_DEPS=OFF \
-            -DVIX_ENABLE_ASYNC=ON \
-            -DVIX_ENABLE_CRYPTO=ON \
-            -DVIX_ENABLE_TIME=ON \
-            -DVIX_ENABLE_WEBRPC=ON \
-            -DVIX_ENABLE_VALIDATION=ON \
-            -DVIX_ENABLE_CACHE=ON \
-            -DVIX_ENABLE_P2P=ON \
-            -DVIX_ENABLE_P2P_HTTP=ON \
-            -DVIX_ENABLE_DB=ON \
-            -DVIX_DB_USE_MYSQL=ON \
-            -DVIX_DB_USE_SQLITE=OFF \
-            -DVIX_ENABLE_ORM=ON \
-            -DVIX_ENABLE_MIDDLEWARE=ON \
-            -DVIX_ENABLE_CLI=ON \
-            -DVIX_ENABLE_WEBSOCKET=ON
+            -DVIX_ENABLE_INSTALL=OFF
 
       - name: Build runtime artifacts
         run: |
+          set -euxo pipefail
           cmake --build build-runtime -j"${BUILD_JOBS}"
 
       - name: Locate vix binary
         run: |
+          set -euxo pipefail
           if [ -f build-runtime/vix ]; then
             echo "VIX_BIN=build-runtime/vix" >> "$GITHUB_ENV"
           elif [ -f build-runtime/vix_cli ]; then
             echo "VIX_BIN=build-runtime/vix_cli" >> "$GITHUB_ENV"
+          elif [ -f build-runtime/cli_build/vix ]; then
+            echo "VIX_BIN=build-runtime/cli_build/vix" >> "$GITHUB_ENV"
+          elif [ -f build-runtime/cli_build/vix_cli ]; then
+            echo "VIX_BIN=build-runtime/cli_build/vix_cli" >> "$GITHUB_ENV"
           else
             echo "::error::Could not find vix binary in build-runtime"
-            find build-runtime -maxdepth 3 -type f | sort || true
+            find build-runtime -maxdepth 5 -type f | sort || true
             exit 1
           fi
 
       - name: Run CLI smoke checks
-        shell: bash
         run: |
-          set -e
+          set -euxo pipefail
 
           timeout 10s "$VIX_BIN" --help >/tmp/vix_help.log 2>&1 || STATUS=$?
           cat /tmp/vix_help.log || true
@@ -280,6 +451,7 @@ jobs:
   static-analysis:
     name: Umbrella Static Analysis
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
       - name: Checkout umbrella repository
@@ -290,56 +462,176 @@ jobs:
 
       - name: Install dependencies
         run: |
+          set -euxo pipefail
           sudo apt-get update -y
-          sudo apt-get install -y $DEPS
+          sudo apt-get install -y --no-install-recommends $DEPS
 
-      - name: Configure for analysis
+      - name: Configure analysis build
         run: |
+          set -euxo pipefail
           cmake -G Ninja -S . -B build-analyze \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DVIX_BUILD_TESTS=OFF \
+            $COMMON_FLAGS \
+            $TEST_FEATURE_FLAGS \
+            $MODULE_TEST_FLAGS \
+            $MODULE_BENCH_FLAGS \
             -DVIX_BUILD_EXAMPLES=ON \
             -DVIX_ENABLE_SANITIZERS=OFF \
-            -DVIX_ENABLE_WARNINGS=ON \
-            -DVIX_ENABLE_INSTALL=OFF \
-            -DVIX_FORCE_FETCH_JSON=OFF \
-            -DVIX_FETCH_DEPS=OFF \
-            -DVIX_ENABLE_ASYNC=ON \
-            -DVIX_ENABLE_CRYPTO=ON \
-            -DVIX_ENABLE_TIME=ON \
-            -DVIX_ENABLE_WEBRPC=ON \
-            -DVIX_ENABLE_VALIDATION=ON \
-            -DVIX_ENABLE_CACHE=ON \
-            -DVIX_ENABLE_P2P=ON \
-            -DVIX_ENABLE_P2P_HTTP=ON \
-            -DVIX_ENABLE_DB=ON \
-            -DVIX_DB_USE_MYSQL=ON \
-            -DVIX_ENABLE_ORM=ON \
-            -DVIX_ENABLE_MIDDLEWARE=ON \
-            -DVIX_ENABLE_CLI=ON \
-            -DVIX_ENABLE_WEBSOCKET=ON
+            -DVIX_ENABLE_INSTALL=OFF
 
-      - name: Run clang-tidy
+      - name: Build analysis target
         run: |
-          set +e
-          find modules examples -name '*.cpp' -print0 2>/dev/null | xargs -0 -r -n1 -P2 clang-tidy -p build-analyze
-          exit 0
+          set -euxo pipefail
+          cmake --build build-analyze -j"${BUILD_JOBS}"
 
-      - name: Run cppcheck
+      - name: Run clang-tidy on modules, examples, and module tests
         run: |
-          set +e
+          set -euo pipefail
+
+          SEARCH_ROOTS=()
+          [ -d modules ] && SEARCH_ROOTS+=(modules)
+          [ -d examples ] && SEARCH_ROOTS+=(examples)
+
+          mapfile -d '' FILES < <(
+            find "${SEARCH_ROOTS[@]}" \
+              \( -path '*/third_party/*' -o -path '*/build/*' -o -path '*/.git/*' \) -prune \
+              -o -name '*.cpp' -print0
+          )
+
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "::error::No .cpp files found for clang-tidy."
+            exit 1
+          fi
+
+          clang-tidy -p build-analyze "${FILES[@]}"
+
+      - name: Run cppcheck on modules
+        run: |
+          set -euxo pipefail
           cppcheck \
-            --enable=all \
+            --enable=warning,performance,portability \
             --std=c++20 \
             --inconclusive \
-            --quiet \
+            --error-exitcode=2 \
             --suppress=missingIncludeSystem \
-            modules/ examples/
-          exit 0
+            --inline-suppr \
+            modules/
+
+      - name: Run cppcheck style report
+        run: |
+          set -euxo pipefail
+          cppcheck \
+            --enable=style \
+            --std=c++20 \
+            --inconclusive \
+            --suppress=missingIncludeSystem \
+            --inline-suppr \
+            modules/ examples/ || true
 
   valgrind:
-    name: Umbrella Valgrind
+    name: Umbrella Valgrind Module Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout umbrella repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          set -euxo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends $DEPS
+
+      - name: Configure valgrind test build
+        run: |
+          set -euxo pipefail
+          cmake -G Ninja -S . -B build-valgrind \
+            -DCMAKE_BUILD_TYPE=Debug \
+            $COMMON_FLAGS \
+            $TEST_FEATURE_FLAGS \
+            $MODULE_TEST_FLAGS \
+            $MODULE_BENCH_FLAGS \
+            -DVIX_BUILD_EXAMPLES=OFF \
+            -DVIX_ENABLE_SANITIZERS=OFF \
+            -DVIX_ENABLE_INSTALL=OFF
+
+      - name: Build valgrind test targets
+        run: |
+          set -euxo pipefail
+          cmake --build build-valgrind -j"${BUILD_JOBS}"
+
+      - name: List registered tests
+        run: |
+          set -euxo pipefail
+          ctest --test-dir build-valgrind -N | tee /tmp/vix_valgrind_ctest_list.txt
+
+          if ! grep -Eq "Total Tests: [1-9][0-9]*" /tmp/vix_valgrind_ctest_list.txt; then
+            echo "::error::No tests were registered for valgrind."
+            exit 1
+          fi
+
+      - name: Run tests before valgrind
+        run: |
+          set -euxo pipefail
+          ctest --test-dir build-valgrind --output-on-failure --timeout 180
+
+      - name: Run valgrind on discovered test executables
+        run: |
+          set -euo pipefail
+
+          mapfile -t TEST_BINS < <(
+            find build-valgrind -type f -executable \
+              ! -path '*/CMakeFiles/*' \
+              ! -path '*/_deps/*' \
+              | grep -E '(^|/)([^/]*test[^/]*|[^/]*tests[^/]*)$' \
+              | grep -Ev '(_bench|benchmark|cmake|ctest|vix$|vix_cli$)' \
+              | sort -u
+          )
+
+          if [ ${#TEST_BINS[@]} -eq 0 ]; then
+            echo "::error::No test executables found for valgrind."
+            find build-valgrind -type f -executable | sort || true
+            exit 1
+          fi
+
+          FAIL=0
+
+          for exe in "${TEST_BINS[@]}"; do
+            echo "==> Valgrind: $exe"
+
+            LIMIT="120s"
+
+            case "$(basename "$exe")" in
+              *runtime*|*lifecycle*|*server*|*websocket*|*async*)
+                LIMIT="300s"
+                ;;
+            esac
+
+            set +e
+            timeout "$LIMIT" valgrind \
+              --leak-check=full \
+              --show-leak-kinds=all \
+              --track-origins=yes \
+              --errors-for-leak-kinds=definite,indirect,possible \
+              --error-exitcode=99 \
+              "$exe"
+            STATUS=$?
+            set -e
+
+            if [ $STATUS -ne 0 ]; then
+              echo "::error::Valgrind failed for $exe with status $STATUS"
+              FAIL=1
+            fi
+          done
+
+          exit "$FAIL"
+
+  package-export:
+    name: Umbrella Package Export Check
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -352,122 +644,38 @@ jobs:
 
       - name: Install dependencies
         run: |
+          set -euxo pipefail
           sudo apt-get update -y
-          sudo apt-get install -y $DEPS
-
-      - name: Configure valgrind build
-        run: |
-          cmake -G Ninja -S . -B build-valgrind \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DVIX_BUILD_TESTS=OFF \
-            -DVIX_BUILD_EXAMPLES=OFF \
-            -DVIX_ENABLE_SANITIZERS=OFF \
-            -DVIX_ENABLE_WARNINGS=ON \
-            -DVIX_ENABLE_LTO=OFF \
-            -DVIX_ENABLE_INSTALL=OFF \
-            -DVIX_FORCE_FETCH_JSON=OFF \
-            -DVIX_FETCH_DEPS=OFF \
-            -DVIX_ENABLE_ASYNC=ON \
-            -DVIX_ENABLE_CRYPTO=ON \
-            -DVIX_ENABLE_TIME=ON \
-            -DVIX_ENABLE_WEBRPC=ON \
-            -DVIX_ENABLE_VALIDATION=ON \
-            -DVIX_ENABLE_CACHE=ON \
-            -DVIX_ENABLE_P2P=ON \
-            -DVIX_ENABLE_P2P_HTTP=ON \
-            -DVIX_ENABLE_DB=ON \
-            -DVIX_DB_USE_MYSQL=ON \
-            -DVIX_ENABLE_ORM=ON \
-            -DVIX_ENABLE_MIDDLEWARE=ON \
-            -DVIX_ENABLE_CLI=ON \
-            -DVIX_ENABLE_WEBSOCKET=ON
-
-      - name: Build
-        run: |
-          cmake --build build-valgrind -j"${BUILD_JOBS}"
-
-      - name: Locate vix binary
-        run: |
-          if [ -f build-valgrind/vix ]; then
-            echo "VIX_BIN=build-valgrind/vix" >> "$GITHUB_ENV"
-          elif [ -f build-valgrind/vix_cli ]; then
-            echo "VIX_BIN=build-valgrind/vix_cli" >> "$GITHUB_ENV"
-          else
-            echo "::error::Could not find vix binary in build-valgrind"
-            exit 1
-          fi
-
-      - name: Run valgrind on CLI
-        shell: bash
-        run: |
-          set -e
-          timeout 20s valgrind \
-            --leak-check=full \
-            --show-leak-kinds=all \
-            --track-origins=yes \
-            "$VIX_BIN" --help >/tmp/umbrella_valgrind.log 2>&1 || STATUS=$?
-          cat /tmp/umbrella_valgrind.log || true
-          if [ "${STATUS:-0}" -ne 0 ] && [ "${STATUS:-0}" -ne 124 ]; then
-            echo "::error::Valgrind reported issues for umbrella CLI"
-            exit 1
-          fi
-
-  package-export:
-    name: Umbrella Package Export Check
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout umbrella repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          submodules: recursive
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y $DEPS
+          sudo apt-get install -y --no-install-recommends $DEPS
 
       - name: Configure installable build
         run: |
+          set -euxo pipefail
           cmake -G Ninja -S . -B build-install \
             -DCMAKE_BUILD_TYPE=Release \
+            $COMMON_FLAGS \
+            $FULL_FEATURE_FLAGS \
             -DVIX_BUILD_TESTS=OFF \
             -DVIX_BUILD_EXAMPLES=OFF \
             -DVIX_ENABLE_SANITIZERS=OFF \
-            -DVIX_ENABLE_WARNINGS=ON \
-            -DVIX_ENABLE_LTO=OFF \
             -DVIX_ENABLE_INSTALL=ON \
-            -DVIX_FORCE_FETCH_JSON=OFF \
-            -DVIX_FETCH_DEPS=OFF \
-            -DVIX_ENABLE_ASYNC=ON \
-            -DVIX_ENABLE_CRYPTO=ON \
-            -DVIX_ENABLE_TIME=ON \
-            -DVIX_ENABLE_WEBRPC=ON \
-            -DVIX_ENABLE_VALIDATION=ON \
-            -DVIX_ENABLE_CACHE=ON \
-            -DVIX_ENABLE_P2P=ON \
-            -DVIX_ENABLE_P2P_HTTP=ON \
-            -DVIX_ENABLE_DB=ON \
-            -DVIX_DB_USE_MYSQL=ON \
-            -DVIX_DB_USE_SQLITE=OFF \
-            -DVIX_ENABLE_ORM=ON \
-            -DVIX_ENABLE_MIDDLEWARE=ON \
-            -DVIX_ENABLE_CLI=ON \
-            -DVIX_ENABLE_WEBSOCKET=ON \
             -DCMAKE_INSTALL_PREFIX="${PWD}/.ci-install"
 
       - name: Build package
         run: |
+          set -euxo pipefail
           cmake --build build-install -j"${BUILD_JOBS}"
 
       - name: Install package
         run: |
+          set -euxo pipefail
           cmake --install build-install
 
       - name: Verify install tree
         run: |
+          set -euxo pipefail
           find .ci-install -maxdepth 10 -type f | sort || true
+
           test -f .ci-install/lib/cmake/Vix/VixConfig.cmake || (echo "::error::VixConfig.cmake missing"; exit 1)
           test -f .ci-install/lib/cmake/Vix/VixConfigVersion.cmake || (echo "::error::VixConfigVersion.cmake missing"; exit 1)
           test -f .ci-install/include/vix/json/Simple.hpp || (echo "::error::json headers missing"; exit 1)
@@ -475,20 +683,30 @@ jobs:
 
       - name: Consumer package check
         run: |
+          set -euxo pipefail
+
           mkdir -p /tmp/vix-consumer
+
           cat >/tmp/vix-consumer/CMakeLists.txt <<'EOF'
           cmake_minimum_required(VERSION 3.20)
           project(vix_consumer LANGUAGES CXX)
+
           set(CMAKE_CXX_STANDARD 20)
           set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
           find_package(Vix CONFIG REQUIRED)
+
           add_executable(vix_consumer main.cpp)
           target_link_libraries(vix_consumer PRIVATE vix::vix)
           EOF
 
           cat >/tmp/vix-consumer/main.cpp <<'EOF'
           #include <vix/json/Simple.hpp>
-          int main() { return 0; }
+
+          int main()
+          {
+            return 0;
+          }
           EOF
 
           cmake -G Ninja -S /tmp/vix-consumer -B /tmp/vix-consumer/build \
@@ -499,6 +717,7 @@ jobs:
   config-coverage:
     name: Umbrella Configuration Coverage
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
       - name: Checkout umbrella repository
@@ -509,13 +728,16 @@ jobs:
 
       - name: Install dependencies
         run: |
+          set -euxo pipefail
           sudo apt-get update -y
-          sudo apt-get install -y $DEPS
+          sudo apt-get install -y --no-install-recommends $DEPS
 
       - name: Configure minimal profile
         run: |
+          set -euxo pipefail
           cmake -G Ninja -S . -B build-min \
             -DCMAKE_BUILD_TYPE=Release \
+            $COMMON_FLAGS \
             -DVIX_BUILD_TESTS=OFF \
             -DVIX_BUILD_EXAMPLES=OFF \
             -DVIX_ENABLE_INSTALL=OFF \
@@ -526,54 +748,72 @@ jobs:
             -DVIX_ENABLE_P2P=OFF \
             -DVIX_ENABLE_P2P_HTTP=OFF \
             -DVIX_ENABLE_CACHE=OFF \
+            -DVIX_ENABLE_AGENT=OFF \
+            -DVIX_ENABLE_GAME=OFF \
             -DVIX_ENABLE_ASYNC=ON \
             -DVIX_ENABLE_CRYPTO=ON \
             -DVIX_ENABLE_TIME=ON \
             -DVIX_ENABLE_WEBRPC=ON \
             -DVIX_ENABLE_VALIDATION=ON \
             -DVIX_ENABLE_MIDDLEWARE=ON \
-            -DVIX_ENABLE_CLI=OFF \
-            -DVIX_FORCE_FETCH_JSON=OFF \
-            -DVIX_FETCH_DEPS=OFF
+            -DVIX_ENABLE_CLI=OFF
 
       - name: Build minimal profile
         run: |
+          set -euxo pipefail
           cmake --build build-min -j"${BUILD_JOBS}"
 
       - name: Configure full debug profile
         run: |
+          set -euxo pipefail
           cmake -G Ninja -S . -B build-full \
             -DCMAKE_BUILD_TYPE=Debug \
+            $COMMON_FLAGS \
+            $FULL_FEATURE_FLAGS \
             -DVIX_BUILD_TESTS=OFF \
             -DVIX_BUILD_EXAMPLES=ON \
             -DVIX_ENABLE_INSTALL=OFF \
-            -DVIX_ENABLE_SANITIZERS=OFF \
-            -DVIX_ENABLE_WEBSOCKET=ON \
-            -DVIX_ENABLE_ORM=ON \
-            -DVIX_ENABLE_DB=ON \
-            -DVIX_DB_USE_MYSQL=ON \
-            -DVIX_ENABLE_P2P=ON \
-            -DVIX_ENABLE_P2P_HTTP=ON \
-            -DVIX_ENABLE_CACHE=ON \
-            -DVIX_ENABLE_ASYNC=ON \
-            -DVIX_ENABLE_CRYPTO=ON \
-            -DVIX_ENABLE_TIME=ON \
-            -DVIX_ENABLE_WEBRPC=ON \
-            -DVIX_ENABLE_VALIDATION=ON \
-            -DVIX_ENABLE_MIDDLEWARE=ON \
-            -DVIX_ENABLE_CLI=ON \
-            -DVIX_FORCE_FETCH_JSON=OFF \
-            -DVIX_FETCH_DEPS=OFF
+            -DVIX_ENABLE_SANITIZERS=OFF
 
       - name: Build full debug profile
         run: |
+          set -euxo pipefail
           cmake --build build-full -j"${BUILD_JOBS}"
+
+      - name: Configure full test profile
+        run: |
+          set -euxo pipefail
+          cmake -G Ninja -S . -B build-full-tests \
+            -DCMAKE_BUILD_TYPE=Debug \
+            $COMMON_FLAGS \
+            $TEST_FEATURE_FLAGS \
+            $MODULE_TEST_FLAGS \
+            $MODULE_BENCH_FLAGS \
+            -DVIX_BUILD_EXAMPLES=OFF \
+            -DVIX_ENABLE_INSTALL=OFF \
+            -DVIX_ENABLE_SANITIZERS=OFF
+
+      - name: Build full test profile
+        run: |
+          set -euxo pipefail
+          cmake --build build-full-tests -j"${BUILD_JOBS}"
+
+      - name: Verify full test profile registers tests
+        run: |
+          set -euxo pipefail
+          ctest --test-dir build-full-tests -N | tee /tmp/vix_full_tests_list.txt
+
+          if ! grep -Eq "Total Tests: [1-9][0-9]*" /tmp/vix_full_tests_list.txt; then
+            echo "::error::Full test profile did not register tests."
+            exit 1
+          fi
 
   summary:
     name: SECURITY_CI Summary
     needs:
       - build-matrix
-      - sanitizers
+      - module-tests
+      - sanitized-module-tests
       - runtime-smoke
       - static-analysis
       - valgrind
@@ -586,10 +826,10 @@ jobs:
         run: |
           echo "SECURITY_CI completed."
           echo "- umbrella build matrix"
-          echo "- dedicated sanitizer build without install/export"
-          echo "- runtime smoke"
-          echo "- static analysis"
-          echo "- valgrind"
-          echo "- package export"
-          echo "- consumer package check"
-          echo "- minimal/full config coverage"
+          echo "- module tests with clang and gcc"
+          echo "- sanitized module tests"
+          echo "- runtime and CLI smoke checks"
+          echo "- static analysis on modules, examples, and module tests"
+          echo "- valgrind on module test executables"
+          echo "- package export and consumer check"
+          echo "- minimal/full/full-test configuration coverage"

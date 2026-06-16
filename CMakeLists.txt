@@ -206,24 +206,96 @@ option(VIX_ENABLE_VALIDATION       "Build Vix Validation module"                
 option(VIX_ENABLE_CRYPTO           "Build Vix Crypto module"                                      ON)
 option(VIX_ENABLE_WEBRPC           "Build Vix WebRPC module"                                      ON)
 option(VIX_ENABLE_TIME             "Build Vix Time module"                                        ON)
-option(VIX_TIME_BUILD_TESTS        "Build vix::time tests"                                        OFF)
+option(VIX_TIME_BUILD_TESTS        "Build vix::time tests"                                        ${VIX_BUILD_TESTS})
 option(VIX_TIME_BUILD_BENCH        "Build vix::time benchmarks"                                   OFF)
+
 option(VIX_ENABLE_TESTS_MODULE     "Build Vix Tests module"                                       ON)
+
 option(VIX_ENABLE_TEMPLATE         "Build Vix Template module"                                    ON)
-option(VIX_TEMPLATE_BUILD_TESTS    "Build vix::template tests"                                    OFF)
+option(VIX_TEMPLATE_BUILD_TESTS    "Build vix::template tests"                                    ${VIX_BUILD_TESTS})
 option(VIX_TEMPLATE_BUILD_EXAMPLES "Build vix::template examples"                                 OFF)
 option(VIX_TEMPLATE_BUILD_BENCH    "Build vix::template benchmarks"                               OFF)
+
 option(VIX_ENABLE_PROCESS          "Build Vix Process module"                                     ON)
+
 option(VIX_ENABLE_THREADPOOL       "Build Vix ThreadPool module"                                  ON)
+option(VIX_THREADPOOL_BUILD_EXAMPLES   "Build vix::threadpool examples"                           OFF)
+option(VIX_THREADPOOL_BUILD_TESTS      "Build vix::threadpool tests"                              ${VIX_BUILD_TESTS})
+option(VIX_THREADPOOL_BUILD_BENCHMARKS "Build vix::threadpool benchmarks"                         OFF)
+
 option(VIX_ENABLE_KV               "Build Vix KV module"                                          ON)
+option(VIX_KV_BUILD_EXAMPLES       "Build vix::kv examples"                                       OFF)
+option(VIX_KV_BUILD_TESTS          "Build vix::kv tests"                                          ${VIX_BUILD_TESTS})
+option(VIX_KV_BUILD_BENCHMARKS     "Build vix::kv benchmarks"                                     OFF)
+
 option(VIX_ENABLE_AGENT            "Build Vix AI Agent module"                                    ON)
-option(VIX_AGENT_BUILD_TESTS       "Build vix::ai_agent tests"                                    OFF)
+option(VIX_AGENT_BUILD_TESTS       "Build vix::ai_agent tests"                                    ${VIX_BUILD_TESTS})
 option(VIX_AGENT_BUILD_EXAMPLES    "Build vix::ai_agent examples"                                 OFF)
+
 option(VIX_ENABLE_GAME             "Build Vix Game module"                                        ON)
-option(VIX_GAME_BUILD_TESTS        "Build vix::game tests"                                        OFF)
+option(VIX_GAME_BUILD_TESTS        "Build vix::game tests"                                        ${VIX_BUILD_TESTS})
 option(VIX_GAME_BUILD_EXAMPLES     "Build vix::game examples"                                     OFF)
 option(VIX_GAME_ENABLE_SDL         "Enable SDL backend for vix::game"                             OFF)
 option(VIX_GAME_ENABLE_SDL_OPENGL  "Enable SDL OpenGL renderer backend for vix::game"             OFF)
+
+option(VIX_ORM_BUILD_EXAMPLES      "Build vix::orm examples"                                      OFF)
+option(VIX_ORM_BUILD_TESTS         "Build vix::orm tests"                                         ${VIX_BUILD_TESTS})
+
+# ----------------------------------------------------
+# Module test defaults
+# ----------------------------------------------------
+# The root tests/ directory may be empty. In umbrella builds, tests live
+# inside modules/*, so VIX_BUILD_TESTS must propagate to module options.
+set(VIX_ERROR_BUILD_TESTS      ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::error tests")
+set(VIX_PATH_BUILD_TESTS       ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::path tests")
+set(VIX_FS_BUILD_TESTS         ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::fs tests")
+set(VIX_IO_BUILD_TESTS         ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::io tests")
+set(VIX_ENV_BUILD_TESTS        ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::env tests")
+set(VIX_OS_BUILD_TESTS         ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::os tests")
+set(VIX_LOG_BUILD_TESTS        ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::log tests")
+set(VIX_UTILS_BUILD_TESTS      ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::utils tests")
+set(VIX_JSON_BUILD_TESTS       ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::json tests")
+set(VIX_CORE_BUILD_TESTS       ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::core tests")
+set(VIX_ASYNC_BUILD_TESTS      ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::async tests")
+set(VIX_CRYPTO_BUILD_TESTS     ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::crypto tests")
+set(VIX_CONVERSION_BUILD_TESTS ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::conversion tests")
+set(VIX_VALIDATION_BUILD_TESTS ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::validation tests")
+set(VIX_WEBRPC_BUILD_TESTS     ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::webrpc tests")
+set(VIX_NET_BUILD_TESTS        ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::net tests")
+set(VIX_SYNC_BUILD_TESTS       ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::sync tests")
+set(VIX_CACHE_BUILD_TESTS      ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::cache tests")
+set(VIX_P2P_BUILD_TESTS        ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::p2p tests")
+set(VIX_P2P_HTTP_BUILD_TESTS   ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::p2p_http tests")
+set(VIX_DB_BUILD_TESTS         ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::db tests")
+set(VIX_MIDDLEWARE_BUILD_TESTS ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::middleware tests")
+set(VIX_CLI_BUILD_TESTS        ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::cli tests")
+set(VIX_WEBSOCKET_BUILD_TESTS  ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::websocket tests")
+
+# Some modules use their own public option names.
+set(TEMPLATE_BUILD_TESTS       ${VIX_TEMPLATE_BUILD_TESTS} CACHE BOOL "Build template tests")
+set(VIX_AI_AGENT_BUILD_TESTS   ${VIX_AGENT_BUILD_TESTS} CACHE BOOL "Build vix ai agent tests")
+
+# ----------------------------------------------------
+# Testing bootstrap
+# ----------------------------------------------------
+# Must happen before add_subdirectory(modules/*), otherwise module tests may
+# be built but not registered correctly in the umbrella CTest tree.
+if (VIX_BUILD_TESTS)
+  include(CTest)
+  enable_testing()
+
+  find_package(GTest QUIET)
+  if (NOT GTest_FOUND)
+    message(STATUS "GTest not found, fetching googletest...")
+    fetchcontent_declare(
+      googletest
+      GIT_REPOSITORY https://github.com/google/googletest.git
+      GIT_TAG        v1.14.0
+    )
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    fetchcontent_makeavailable(googletest)
+  endif()
+endif()
 
 # ----------------------------------------------------
 # Tooling / Static analysis
@@ -706,9 +778,9 @@ set(VIX_HAS_THREADPOOL OFF)
 if (VIX_ENABLE_THREADPOOL AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/threadpool/CMakeLists.txt")
   message(STATUS "Adding 'modules/threadpool'...")
 
-  set(VIX_THREADPOOL_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-  set(VIX_THREADPOOL_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-  set(VIX_THREADPOOL_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
+  set(VIX_THREADPOOL_BUILD_EXAMPLES ${VIX_THREADPOOL_BUILD_EXAMPLES} CACHE BOOL "Build vix::threadpool examples" FORCE)
+  set(VIX_THREADPOOL_BUILD_TESTS ${VIX_THREADPOOL_BUILD_TESTS} CACHE BOOL "Build vix::threadpool tests" FORCE)
+  set(VIX_THREADPOOL_BUILD_BENCHMARKS ${VIX_THREADPOOL_BUILD_BENCHMARKS} CACHE BOOL "Build vix::threadpool benchmarks" FORCE)
 
   add_subdirectory(modules/threadpool threadpool_build)
 
@@ -731,9 +803,9 @@ set(VIX_HAS_KV OFF)
 if (VIX_ENABLE_KV AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/kv/CMakeLists.txt")
   message(STATUS "Adding 'modules/kv'...")
 
-  set(VIX_KV_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-  set(VIX_KV_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-  set(VIX_KV_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
+  set(VIX_KV_BUILD_EXAMPLES ${VIX_KV_BUILD_EXAMPLES} CACHE BOOL "Build vix::kv examples" FORCE)
+  set(VIX_KV_BUILD_TESTS ${VIX_KV_BUILD_TESTS} CACHE BOOL "Build vix::kv tests" FORCE)
+  set(VIX_KV_BUILD_BENCHMARKS ${VIX_KV_BUILD_BENCHMARKS} CACHE BOOL "Build vix::kv benchmarks" FORCE)
 
   add_subdirectory(modules/kv kv_build)
 
@@ -1109,8 +1181,8 @@ if (VIX_ENABLE_ORM AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/orm/CMakeList
   endif()
 
   message(STATUS "Adding 'modules/orm'...")
-  set(VIX_ORM_BUILD_EXAMPLES OFF CACHE BOOL "Build vix_orm examples")
-  set(VIX_ORM_BUILD_TESTS    OFF CACHE BOOL "Build vix_orm tests")
+  set(VIX_ORM_BUILD_EXAMPLES ${VIX_ORM_BUILD_EXAMPLES} CACHE BOOL "Build vix::orm examples" FORCE)
+  set(VIX_ORM_BUILD_TESTS ${VIX_ORM_BUILD_TESTS} CACHE BOOL "Build vix::orm tests" FORCE)
 
   add_subdirectory(modules/orm orm_build)
 
@@ -1350,24 +1422,12 @@ if (VIX_BUILD_EXAMPLES AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples/CMakeLis
 endif()
 
 # ----------------------------------------------------
-# Tests
+# Root umbrella tests
 # ----------------------------------------------------
+# Module tests are registered by modules/* when VIX_BUILD_TESTS and the
+# matching module test option are ON. This block is only for optional
+# root-level tests under ./tests.
 if (VIX_BUILD_TESTS)
-  include(CTest)
-  enable_testing()
-
-  find_package(GTest QUIET)
-  if (NOT GTest_FOUND)
-    message(STATUS "GTest not found, fetching googletest...")
-    fetchcontent_declare(
-      googletest
-      GIT_REPOSITORY https://github.com/google/googletest.git
-      GIT_TAG        v1.14.0
-    )
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-    fetchcontent_makeavailable(googletest)
-  endif()
-
   file(GLOB_RECURSE VIX_TEST_SOURCES CONFIGURE_DEPENDS
        "${CMAKE_CURRENT_SOURCE_DIR}/tests/*_test.cpp")
 
@@ -1395,7 +1455,7 @@ if (VIX_BUILD_TESTS)
       DISCOVERY_MODE PRE_TEST
     )
   else()
-    message(STATUS "No *_test.cpp found under tests/ — skipping.")
+    message(STATUS "No root *_test.cpp found under tests/ — module tests only.")
   endif()
 endif()
 
