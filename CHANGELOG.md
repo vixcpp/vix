@@ -24,8 +24,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed HTTP keep-alive shutdown behavior for case-insensitive `Connection: close` handling.
 - Fixed WAF session configuration handling for target length, body size, and mode validation in isolated tests.
 - Fixed runtime worker shutdown behavior when yielding tasks are still being rescheduled.
+- Fixed runtime executor shutdown so pending posted tasks are drained before workers are stopped.
+- Fixed runtime executor idle detection by tracking accepted in-flight tasks before they begin execution.
 - Improved router route metadata so tests can validate registered paths, methods, and heavy-route flags.
 - Fixed and stabilized Core benchmark workloads so long-running benchmark targets do not block full benchmark runs.
+- Fixed Core template backend linking in tests and benchmarks.
+- Fixed Core JSON dependency resolution when configuration headers require JSON support.
+- Fixed Core application shutdown races that could leave server threads joinable during fast lifecycle tests.
+- Fixed `App::close()` so shutdown is terminal, idempotent, and safe before or after `listen()`.
+- Fixed `App::wait()` so signal-stop paths close the running server instead of only exiting the wait loop.
+- Fixed `App::listen()` so closed app instances cannot be restarted accidentally.
+- Fixed HTTP server shutdown ordering so the accept loop is allowed to drain before the async I/O context is stopped.
+- Fixed HTTP server lifecycle teardown by destroying the TCP listener before shutting down the async context.
+- Fixed HTTP server readiness signaling so the server is marked ready only after the accept loop has started.
+- Fixed HTTP server metrics-thread shutdown races by serializing metrics-thread creation with shutdown joining.
+- Fixed async TCP stream close behavior by cancelling pending operations, shutting down the socket, and closing it safely.
+- Fixed async TCP listener close behavior by cancelling and closing the acceptor on the Asio executor.
+- Fixed async TCP listener lifetime during pending accepts by keeping the acceptor alive until completion handlers finish.
+- Fixed async shutdown behavior so pending Asio operations can complete and resume their awaiting coroutines cleanly.
+- Fixed async scheduler shutdown behavior so pending coroutine handles are not silently destroyed before completion paths can run.
+- Fixed sanitizer-detected Core lifecycle races in app/server shutdown tests.
+- Fixed strict CI failures caused by benchmark binaries being treated as normal Valgrind test executables.
 
 ### Changed
 
@@ -33,12 +52,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Expanded JSON module documentation with builders, parsing, dumping, safe access, JPath, Simple payloads, tests, benchmarks, and useful links.
 - Added benchmark result snapshots for JSON construction, conversion, dumping, parsing, JPath, and Simple payloads.
 - Shared runnable executable discovery through a reusable CLI resolver used by project run flows.
-- Strengthened the core test layout with dedicated test groups for HTTP, router, session, server, runtime, executor, config, and app behavior.
-- Updated core test registration so network-based tests use isolated ports, timeouts, and serial execution where required.
+- Strengthened the Core test layout with dedicated test groups for HTTP, router, session, server, runtime, executor, config, and app behavior.
+- Updated Core test registration so network-based tests use isolated ports, timeouts, and serial execution where required.
 - Improved `vix tests` live progress reporting to show completed, total, running, and elapsed test state during long CTest runs.
 - Updated the Core module README with benchmark workflow documentation and a link to the official v2.6.3 benchmark baseline article.
 - Documented the benchmark rule that official performance numbers must be generated from Release builds, not dev/debug builds.
 - Updated Core benchmark registration so benchmark binaries are grouped under `build-release/benchmarks/core` when `VIX_CORE_BUILD_BENCHMARKS=ON`.
+- Strengthened Core shutdown semantics across `App`, `HTTPServer`, `RuntimeExecutor`, and async TCP services.
+- Updated Core strict CI so style-only `cppcheck` findings are reported separately from blocking warnings, performance, and portability checks.
+- Updated Valgrind CI scope to avoid running benchmark binaries as memory tests.
+- Increased Valgrind timeouts for slower runtime and lifecycle tests under instrumentation.
+- Improved Core sanitizer coverage for lifecycle, shutdown, executor, session, server, and app behavior.
+- Updated async TCP internals to serialize listener cancellation through the Asio executor instead of racing close operations from external threads.
 
 ### Added
 
@@ -51,6 +76,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added executor test coverage for metrics, task options, runtime executor construction, lifecycle, submit/post behavior, metrics, and shutdown.
 - Added config test coverage for defaults, environment loading, set/get behavior, typed accessors, database settings, WAF settings, TLS settings, logging settings, reload behavior, and copy/move behavior.
 - Added app test coverage for constructors, config access, dev mode, templates, routes, groups, middleware, protected routes, static directories, static hooks, lifecycle behavior, module initialization, and stdout configuration.
+- Added dedicated Core lifecycle coverage for close-before-listen, repeated close, signal-stop cleanup, external executor shutdown, ready-info behavior, and close-without-explicit-wait paths.
+- Added async shutdown coverage for scheduler, cancellation, task completion, and pending operation behavior.
+- Added strict Core CI coverage for debug/runtime builds, sanitizer builds, Valgrind memory checks, static analysis, benchmark builds, and package export validation.
 - Added the official Vix Core benchmark suite covering runtime tasks, runtime queues, runtime scheduler, runtime workers, executor submit/post/metrics, router matching, router registration, HTTP request/response behavior, fake transport sessions, app route registration, and app group registration.
 - Added shared benchmark utilities for measuring median time, mean time, operations per second, warmup iterations, measured samples, and JSON report generation.
 - Added `scripts/run_core_benchmarks.sh` to run the full Core benchmark suite and write versioned JSON reports.
