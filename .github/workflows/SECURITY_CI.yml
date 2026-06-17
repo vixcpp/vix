@@ -484,33 +484,64 @@ jobs:
           set -euxo pipefail
           cmake --build build-analyze -j"${BUILD_JOBS}"
 
-      - name: Run clang-tidy on module source files
+      - name: Run clang-tidy on configured module source files
         run: |
           set -euo pipefail
 
-          mapfile -d '' FILES < <(
-            find modules \
-              \( \
-                -path '*/third_party/*' -o \
-                -path '*/build/*' -o \
-                -path '*/.git/*' -o \
-                -path '*/tests/*' -o \
-                -path '*/test/*' -o \
-                -path '*/examples/*' -o \
-                -path '*/benchmarks/*' -o \
-                -path '*/benchmark/*' \
-              \) -prune \
-              -o -path '*/src/*.cpp' -print0
-          )
+          python3 <<'PY' > /tmp/vix_clang_tidy_files.txt
+          import json
+          import os
 
-          if [ ${#FILES[@]} -eq 0 ]; then
-            echo "::error::No module source .cpp files found for clang-tidy."
-            exit 1
-          fi
+          compile_commands_path = "build-analyze/compile_commands.json"
 
-          printf 'clang-tidy will analyze %s files\n' "${#FILES[@]}"
+          with open(compile_commands_path, "r", encoding="utf-8") as f:
+              commands = json.load(f)
 
-          clang-tidy -p build-analyze "${FILES[@]}"
+          files = []
+          seen = set()
+
+          for entry in commands:
+              path = os.path.realpath(entry.get("file", ""))
+
+              if not path.endswith(".cpp"):
+                  continue
+
+              normalized = path.replace("\\", "/")
+
+              # Only analyze real module implementation files.
+              if "/modules/" not in normalized:
+                  continue
+
+              if "/src/" not in normalized:
+                  continue
+
+              # Exclude generated/dependency/build areas.
+              if "/third_party/" in normalized:
+                  continue
+
+              if "/_deps/" in normalized:
+                  continue
+
+              if "/build-" in normalized:
+                  continue
+
+              if path not in seen:
+                  seen.add(path)
+                  files.append(path)
+
+          files.sort()
+
+          if not files:
+              raise SystemExit("No configured module source .cpp files found for clang-tidy.")
+
+          for path in files:
+              print(path)
+          PY
+
+          COUNT="$(wc -l < /tmp/vix_clang_tidy_files.txt)"
+          echo "clang-tidy will analyze ${COUNT} configured module source files"
+
+          xargs -r clang-tidy -p build-analyze < /tmp/vix_clang_tidy_files.txt
 
       - name: Run cppcheck on modules
         run: |
