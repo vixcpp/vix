@@ -52,6 +52,7 @@ env:
     cmake
     ninja-build
     clang
+    clang-tools
     llvm
     lld
     g++
@@ -451,7 +452,7 @@ jobs:
   static-analysis:
     name: Umbrella Static Analysis
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
 
     steps:
       - name: Checkout umbrella repository
@@ -484,7 +485,7 @@ jobs:
           set -euxo pipefail
           cmake --build build-analyze -j"${BUILD_JOBS}"
 
-      - name: Run clang-tidy on configured module source files
+      - name: Collect configured module source files
         run: |
           set -euo pipefail
 
@@ -541,7 +542,58 @@ jobs:
           COUNT="$(wc -l < /tmp/vix_clang_tidy_files.txt)"
           echo "clang-tidy will analyze ${COUNT} configured module source files"
 
-          xargs -r clang-tidy -p build-analyze < /tmp/vix_clang_tidy_files.txt
+      - name: Run clang-tidy (parallel)
+        run: |
+          set -euo pipefail
+
+          if [ ! -s /tmp/vix_clang_tidy_files.txt ]; then
+            echo "::error::No configured module source .cpp files found for clang-tidy."
+            exit 1
+          fi
+
+          JOBS="$(nproc)"
+          echo "Running clang-tidy with ${JOBS} parallel jobs"
+
+          # Locate a run-clang-tidy driver (name varies by distro/version).
+          RUN_CLANG_TIDY=""
+          for candidate in \
+            run-clang-tidy \
+            run-clang-tidy-18 \
+            run-clang-tidy-17 \
+            run-clang-tidy-16 \
+            run-clang-tidy.py; do
+            if command -v "$candidate" >/dev/null 2>&1; then
+              RUN_CLANG_TIDY="$candidate"
+              break
+            fi
+          done
+
+          if [ -z "$RUN_CLANG_TIDY" ]; then
+            # Fallback: search the filesystem (some packages ship it unlinked).
+            FOUND="$(find /usr -name 'run-clang-tidy*' -type f 2>/dev/null | head -n1 || true)"
+            if [ -n "$FOUND" ]; then
+              RUN_CLANG_TIDY="$FOUND"
+            fi
+          fi
+
+          mapfile -t FILES < /tmp/vix_clang_tidy_files.txt
+
+          if [ -n "$RUN_CLANG_TIDY" ]; then
+            echo "Using driver: $RUN_CLANG_TIDY"
+            # run-clang-tidy takes file path regexes/paths as positional args.
+            "$RUN_CLANG_TIDY" \
+              -p build-analyze \
+              -j "$JOBS" \
+              -quiet \
+              "${FILES[@]}"
+          else
+            echo "::warning::run-clang-tidy not found, falling back to parallel xargs"
+            # Parallel fallback: one clang-tidy process per file, JOBS at a time.
+            # -P parallelizes; -n1 gives one file per invocation.
+            xargs -r -P "$JOBS" -n1 \
+              clang-tidy -p build-analyze --quiet \
+              < /tmp/vix_clang_tidy_files.txt
+          fi
 
       - name: Run cppcheck on modules
         run: |
@@ -553,6 +605,7 @@ jobs:
             --error-exitcode=2 \
             --suppress=missingIncludeSystem \
             --inline-suppr \
+            -j "$(nproc)" \
             modules/
 
       - name: Run cppcheck style report
@@ -564,6 +617,7 @@ jobs:
             --inconclusive \
             --suppress=missingIncludeSystem \
             --inline-suppr \
+            -j "$(nproc)" \
             modules/ examples/ || true
 
   valgrind:
