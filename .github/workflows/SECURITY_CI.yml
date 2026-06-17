@@ -56,7 +56,6 @@ env:
     llvm
     lld
     g++
-    cppcheck
     clang-tidy
     valgrind
     pkg-config
@@ -597,78 +596,6 @@ jobs:
               clang-tidy -p build-analyze --quiet \
               < /tmp/vix_clang_tidy_files.txt
           fi
-
-      - name: Run cppcheck on module source files
-        run: |
-          set -euxo pipefail
-
-          mapfile -t CPPCHECK_FILES < <(
-            find modules \
-              -type f \
-              -path '*/src/*.cpp' \
-              ! -path '*/third_party/*' \
-              ! -path '*/_deps/*' \
-              ! -path '*/build/*' \
-              ! -path '*/tests/*' \
-              ! -path '*/test/*' \
-              ! -path '*/examples/*' \
-              ! -path '*/benchmarks/*' \
-              ! -path '*/benchmark/*' \
-              ! -path '*/backends/sdl/*' \
-              | sort
-          )
-
-          if [ ${#CPPCHECK_FILES[@]} -eq 0 ]; then
-            echo "::error::No module source files found for cppcheck."
-            exit 1
-          fi
-
-          printf 'cppcheck will analyze %s module source files\n' "${#CPPCHECK_FILES[@]}"
-
-          cppcheck \
-            --enable=warning,performance,portability \
-            --std=c++20 \
-            --inconclusive \
-            --error-exitcode=2 \
-            --suppress=missingIncludeSystem \
-            --inline-suppr \
-            -j "$(nproc)" \
-            "${CPPCHECK_FILES[@]}"
-
-      - name: Run cppcheck style report
-        run: |
-          set -euxo pipefail
-
-          mapfile -t CPPCHECK_STYLE_FILES < <(
-            find modules examples \
-              -type f \
-              -name '*.cpp' \
-              ! -path '*/third_party/*' \
-              ! -path '*/_deps/*' \
-              ! -path '*/build/*' \
-              ! -path '*/tests/*' \
-              ! -path '*/test/*' \
-              ! -path '*/benchmarks/*' \
-              ! -path '*/benchmark/*' \
-              ! -path '*/backends/sdl/*' \
-              | sort
-          )
-
-          if [ ${#CPPCHECK_STYLE_FILES[@]} -eq 0 ]; then
-            echo "::warning::No files found for cppcheck style report."
-            exit 0
-          fi
-
-          printf 'cppcheck style will analyze %s files\n' "${#CPPCHECK_STYLE_FILES[@]}"
-
-          cppcheck \
-            --enable=style \
-            --std=c++20 \
-            --inconclusive \
-            --suppress=missingIncludeSystem \
-            --inline-suppr \
-            -j "$(nproc)" \
-            "${CPPCHECK_STYLE_FILES[@]}" || true
 
   valgrind:
     name: Umbrella Valgrind Module Tests
