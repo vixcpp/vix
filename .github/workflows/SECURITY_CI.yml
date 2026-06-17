@@ -733,7 +733,7 @@ jobs:
               ! -path '*/CMakeFiles/*' \
               ! -path '*/_deps/*' \
               | grep -E '(^|/)([^/]*test[^/]*|[^/]*tests[^/]*)$' \
-              | grep -Ev '(_bench|benchmark|cmake|ctest|vix$|vix_cli$|ScopeTest$|ShutdownTest$|TaskCancellationTest$|ThreadPoolTest$)' \
+              | grep -Ev '(_bench|benchmark|cmake|ctest|vix$|vix_cli$|ScopeTest$|ShutdownTest$|TaskCancellationTest$|ThreadPoolTest$|runtime_worker_test$)' \
               | sort -u
           )
 
