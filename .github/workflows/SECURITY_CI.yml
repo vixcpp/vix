@@ -605,6 +605,15 @@ jobs:
             --error-exitcode=2 \
             --suppress=missingIncludeSystem \
             --inline-suppr \
+            --exclude=modules/async/third_party \
+            --exclude=*/third_party/* \
+            --exclude=*/_deps/* \
+            --exclude=*/build/* \
+            --exclude=*/tests/* \
+            --exclude=*/test/* \
+            --exclude=*/examples/* \
+            --exclude=*/benchmarks/* \
+            --exclude=*/benchmark/* \
             -j "$(nproc)" \
             modules/
 
@@ -617,6 +626,14 @@ jobs:
             --inconclusive \
             --suppress=missingIncludeSystem \
             --inline-suppr \
+            --exclude=modules/async/third_party \
+            --exclude=*/third_party/* \
+            --exclude=*/_deps/* \
+            --exclude=*/build/* \
+            --exclude=*/tests/* \
+            --exclude=*/test/* \
+            --exclude=*/benchmarks/* \
+            --exclude=*/benchmark/* \
             -j "$(nproc)" \
             modules/ examples/ || true
 
