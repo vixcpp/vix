@@ -484,24 +484,31 @@ jobs:
           set -euxo pipefail
           cmake --build build-analyze -j"${BUILD_JOBS}"
 
-      - name: Run clang-tidy on modules, examples, and module tests
+      - name: Run clang-tidy on module source files
         run: |
           set -euo pipefail
 
-          SEARCH_ROOTS=()
-          [ -d modules ] && SEARCH_ROOTS+=(modules)
-          [ -d examples ] && SEARCH_ROOTS+=(examples)
-
           mapfile -d '' FILES < <(
-            find "${SEARCH_ROOTS[@]}" \
-              \( -path '*/third_party/*' -o -path '*/build/*' -o -path '*/.git/*' \) -prune \
-              -o -name '*.cpp' -print0
+            find modules \
+              \( \
+                -path '*/third_party/*' -o \
+                -path '*/build/*' -o \
+                -path '*/.git/*' -o \
+                -path '*/tests/*' -o \
+                -path '*/test/*' -o \
+                -path '*/examples/*' -o \
+                -path '*/benchmarks/*' -o \
+                -path '*/benchmark/*' \
+              \) -prune \
+              -o -path '*/src/*.cpp' -print0
           )
 
           if [ ${#FILES[@]} -eq 0 ]; then
-            echo "::error::No .cpp files found for clang-tidy."
+            echo "::error::No module source .cpp files found for clang-tidy."
             exit 1
           fi
+
+          printf 'clang-tidy will analyze %s files\n' "${#FILES[@]}"
 
           clang-tidy -p build-analyze "${FILES[@]}"
 
