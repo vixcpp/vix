@@ -32,7 +32,7 @@ int main()
 }
 ```
 
-## App
+## vix::App
 
 `App` is the main application object. It owns the router, middleware chain, server lifecycle, static files, and runtime configuration.
 

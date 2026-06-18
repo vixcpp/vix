@@ -41,29 +41,50 @@ style="border-radius:50%; object-fit:cover;"
   </tr>
 </table>
 
-Vix.cpp removes friction from C++ application development.
+---
 
-It gives C++ a modern application workflow while keeping native performance, explicit control, and production-oriented architecture.
+Vix.cpp gives C++ projects a modern application workflow while keeping native performance, explicit control, and compatibility with the existing C++ ecosystem.
 
-Vix is not only a web framework. It is a runtime foundation for backend services, WebSocket applications, AI agents, games, P2P systems, local-first applications, fast builds, templates, package-based projects, and production-ready C++ services.
+It is not only a web framework.
 
-## Install
+Vix.cpp is an application runtime and developer platform for modern C++:
 
-Linux and macOS:
-
-```bash
-curl -fsSL https://vixcpp.com/install.sh | bash
+```txt
+C++ source code
+  -> Vix.cpp workflow
+  -> CMake/Ninja when needed
+  -> native executable or library
 ```
 
-Windows PowerShell:
+It provides one command surface for creating projects, running files, building targets, testing, formatting, managing dependencies, packaging applications, exposing OpenAPI documentation, and operating production services.
 
-```powershell
-irm https://vixcpp.com/install.ps1 | iex
-```
+## Why Vix.cpp exists
 
-More installation options:
+C++ is powerful, portable, mature, and fast.
 
-https://vixcpp.com/install
+The hard part is often not the language itself. The hard part is everything around the application:
+
+- project structure
+- build configuration
+- dependency setup
+- development commands
+- test execution
+- diagnostics
+- packaging
+- runtime configuration
+- OpenAPI documentation
+- deployment
+- production logs
+- health checks
+- service management
+
+Most serious C++ projects eventually rebuild the same foundation.
+
+Vix.cpp exists to make that foundation repeatable.
+
+The goal is not to hide C++.
+
+The goal is to make real C++ applications easier to create, run, test, package, document, and operate.
 
 ## Quick start
 
@@ -76,11 +97,11 @@ int main()
 {
     vix::App app;
 
-    app.get("/", [](vix::Request &req, vix::Response &res) {
-        res.send("Hello from Vix.cpp");
+    app.get("/", [](vix::Request &, vix::Response &res) {
+        res.text("Hello from Vix.cpp");
     });
 
-    app.run(8080);
+    app.run();
 
     return 0;
 }
@@ -94,223 +115,113 @@ vix run server.cpp
 
 Open:
 
-```text
+```txt
 http://localhost:8080
 ```
 
-## Why Vix.cpp ?
+## OpenAPI in one command
 
-C++ is powerful, but building real applications often means rebuilding the same foundation again and again.
-
-Vix gives you that foundation:
-
-- run C++ files with `vix run`
-- create structured projects with `vix new`
-- build projects with `vix build`
-- run tests with `vix tests`
-- manage packages through the Vix registry
-- build HTTP backend services
-- build WebSocket applications
-- build P2P systems
-- build AI agent projects
-- build game-oriented projects
-- use async and threadpool modules
-- use KV, cache, database, ORM, middleware, crypto, validation, JSON, template, and process modules
-- generate production-ready backend projects
-- integrate backend projects with frontend applications such as Vue.js
-
-Vix is designed to make C++ feel usable for real application development without hiding what makes C++ powerful.
-
-## Runtime modules
-
-```text
-agent        async        cache        cli          conversion
-core         crypto       db           env          error
-fs           game         io           json         kv
-log          middleware   net          orm          os
-p2p          p2p_http     path         process      reply
-sync         template     tests        threadpool   time
-utils        validation   webrpc       websocket
-```
-
-Vix.cpp is designed as an application runtime layer, not only as an HTTP server.
-
-## Vix Reply
-
-Vix Reply is the interactive REPL engine for Vix.
-
-It powers the interactive `vix` and `vix repl` experience, with support for expressions, variables, JSON values, runtime helpers, and real C++ snippets powered by the normal `vix run` pipeline.
-
-Start the REPL:
+For projects that expose API documentation, enable docs during a run:
 
 ```bash
-vix
+vix run api --docs
 ```
 
-Or explicitly:
+Then open:
+
+```txt
+http://localhost:8080/docs
+```
+
+Or fetch the generated OpenAPI document:
+
+```txt
+http://localhost:8080/openapi.json
+```
+
+Docs are disabled by default for normal runs:
 
 ```bash
-vix repl
+vix run api
 ```
 
-Run real C++ from the REPL:
+This keeps API documentation explicit and environment-aware.
 
-```text
->>> :cpp
-C++ mode. Type :run to execute or :cancel to exit.
-cpp> #include <vix/print.hpp>
-...   int main() {
-...     vix::print("Hello from C++");
-...   }
-Hello from C++
-```
+## Add OpenAPI routes manually
 
-Vix Reply is not a fake C++ interpreter. C++ snippets are written to a temporary `.cpp` file and executed through `vix run`, so the code goes through the real compiler, Vix diagnostics, and the normal runtime behavior.
-
-## Registry and packages
-
-Vix includes registry integration for package-based C++ projects.
-
-```bash
-vix add rix/csv
-vix install
-vix build
-```
-
-The registry makes it possible to build a larger ecosystem around Vix without forcing every library into the core runtime.
-
-## Rix
-
-Rix is the official userland library layer for Vix.cpp.
-
-It provides optional public libraries that live in the registry and can evolve independently from Vix Core.
-
-Vix stays focused on the runtime, CLI, build workflow, registry integration, and existing core modules.
-
-Rix provides reusable libraries for application developers.
-
-Examples:
-
-```bash
-vix add rix/csv
-vix add rix/debug
-vix add rix/auth
-vix add rix/pdf
-```
-
-Rix packages can be used independently, or through a unified facade package when a project wants one clean entry point.
-
-```cpp
-rix.csv.parse(...)
-rix.debug.print(...)
-rix.auth.register_user(...)
-rix.pdf.document()
-```
-
-Rix does not replace Vix.
-
-It grows around Vix as the public library layer for real applications.
-
-## Cnerium
-
-Cnerium is a reliability-first backend layer for Vix.
-
-It attaches to an existing Vix backend and adds durable route behavior for critical write operations.
-
-Cnerium is designed for routes that must stay correct under retries, timeouts, lost responses, process restarts, and unstable networks.
+For custom applications, register the OpenAPI and documentation routes in code:
 
 ```cpp
 #include <vix.hpp>
-#include <cnerium/cnerium.hpp>
+#include <vix/openapi/register_docs.hpp>
 
 int main()
 {
     vix::App app;
 
-    auto c = cnerium::attach(app);
+    app.get("/status", [](vix::Request &, vix::Response &res) {
+        res.text("OK");
+    });
 
-    c.durable_post(
-        "/orders",
-        "orders.create",
-        [](cnerium::DurableRequest &request) {
-            return cnerium::created({
-                {"ok", true}
-            });
-        });
+    vix::openapi::register_openapi_and_docs(
+        *app.router(),
+        "Example API",
+        "1.0.0"
+    );
 
-    c.start();
     app.run();
+
+    return 0;
 }
 ```
 
-Cnerium does not replace Vix. Vix remains the backend runtime, HTTP server, router, WebSocket transport, build workflow, and application foundation.
+This registers:
 
-Cnerium attaches to Vix and protects selected write operations.
-
-## Built with Vix.cpp
-
-| Project                                                             | Description                                                                                                                      |
-| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| [Rix](https://github.com/rixcpp/rix)                                | Official userland library layer for Vix.cpp, distributed through the registry.                                                   |
-| [Vix Pico](https://github.com/vixcpp/pico)                          | Production-style backend used to validate Vix modules, deployment, auth, PDF generation, SQLite, KV, jobs, and WebSocket routes. |
-| [Vix Game](https://github.com/vixcpp/vix-game)                      | Game-oriented project built on the Vix.cpp runtime foundation.                                                                   |
-| [Kordex](https://github.com/softadastra/kordex)                     | JavaScript and TypeScript runtime layer built on Vix and Softadastra.                                                            |
-| [Cnerium](https://github.com/softadastra/cnerium)                   | Reliability-first application framework built on Vix and the Softadastra SDK.                                                    |
-| [Softadastra Engine](https://github.com/softadastra/softadastra)    | Local-first and offline-first runtime foundation for reliable applications.                                                      |
-| [Softadastra Runner](https://github.com/softadastra/runner)         | Small command runner built with Vix.cpp and `vix::process`.                                                                      |
-| [Softadastra Cloud](https://github.com/softadastra/cloud)           | Reliability testing control plane for reports, scores, and dashboard results.                                                    |
-| [Softadastra Converdict](https://github.com/softadastra/converdict) | Reliability verification platform for distributed systems.                                                                       |
-| [Softadastra PulseGrid](https://github.com/softadastra/PulseGrid)   | Real-time service monitoring built with Vix.cpp.                                                                                 |
-
-## Vix Pico
-
-Vix Pico is a production-style backend built with Vix.cpp.
-
-It validates Vix in real backend conditions:
-
-- HTTP routes
-- WebSocket runtime
-- SQLite persistence
-- KV storage
-- threadpool jobs
-- runtime events
-- production service deployment
-- Rix Auth diagnostics
-- Rix PDF generation
-
-Pico is used to prove that Vix can build and deploy real backend applications, not only small examples.
-
-## Softadastra Runner
-
-Softadastra Runner is a simple command runner built with Vix.cpp.
-
-It shows how to structure a small console application around:
-
-- application orchestration
-- CLI input and output
-- command parsing
-- service logic
-- process execution through `vix::process`
-
-Run it with:
-
-```bash
-vix build
-vix run
+```txt
+GET /openapi.json
+GET /docs
+GET /docs/
+GET /docs/index.html
+GET /docs/swagger-ui.css
+GET /docs/swagger-ui-bundle.js
 ```
 
-Runner is intentionally small, readable, and useful as a clean example for building console tools with Vix.cpp.
+The documentation UI is served locally with embedded Swagger UI assets.
+
+## Document routes with metadata
+
+OpenAPI metadata can be attached to routes through route documentation.
+
+```cpp
+vix::router::RouteDoc doc;
+
+doc.summary = "Service status";
+doc.description = "Returns whether the service is running.";
+doc.tags = {"system"};
+doc.responses["200"] = {
+    {"description", "OK"}
+};
+```
+
+The OpenAPI generator builds the document from router metadata and registered module documentation.
+
+```txt
+router routes + registry docs
+  -> OpenAPI 3.0.3 document
+```
 
 ## Project workflow
 
 Create a new project:
 
 ```bash
-vix new hello --app
-cd hello
+vix new api
+cd api
+vix install
+vix dev
 ```
 
-Build it:
+Build the project:
 
 ```bash
 vix build
@@ -328,68 +239,818 @@ Run tests:
 vix tests
 ```
 
-Add a package:
+Validate the project:
 
 ```bash
-vix add rix/rix@0.9.1
+vix check --tests
+```
+
+Package it:
+
+```bash
+vix pack
+```
+
+## What Vix.cpp provides
+
+Vix.cpp combines three layers.
+
+### 1. Developer workflow
+
+Vix gives C++ projects a consistent command surface:
+
+```bash
+vix run main.cpp
+vix new api
 vix install
+vix dev
+vix build
+vix tests
+vix fmt
+vix check
+vix pack
+```
+
+Instead of wiring every project manually, Vix gives the common development lifecycle a predictable shape.
+
+### 2. Runtime modules
+
+Vix provides reusable runtime modules for application development:
+
+```txt
+agent        async        cache        cli          conversion
+core         crypto       db           env          error
+fs           game         io           json         kv
+log          middleware   net          orm          os
+p2p          p2p_http     path         process      reply
+sync         template     tests        threadpool   time
+utils        validation   webrpc       websocket
+```
+
+These modules are designed to support real applications, not only small examples.
+
+### 3. Native C++ integration
+
+Vix does not replace the C++ toolchain.
+
+It works with native C++, CMake, Ninja, compilers, linkers, and normal executable or library outputs.
+
+```txt
+C++:
+  language, performance, native binaries
+
+CMake and Ninja:
+  build system and ecosystem compatibility
+
+Vix.cpp:
+  application workflow, runtime modules, CLI, diagnostics, project lifecycle
+```
+
+## What you can build
+
+Vix.cpp can be used for:
+
+- backend services
+- HTTP APIs
+- OpenAPI-documented APIs
+- WebSocket applications
+- command-line tools
+- reusable C++ libraries
+- local-first applications
+- P2P systems
+- AI agent workflows
+- game-oriented projects
+- production services
+
+## Install
+
+Linux and macOS:
+
+```bash
+curl -fsSL https://vixcpp.com/install.sh | bash
+```
+
+Windows PowerShell:
+
+```powershell
+irm https://vixcpp.com/install.ps1 | iex
+```
+
+More installation options:
+
+```txt
+https://vixcpp.com/install
+```
+
+## Run a single C++ file
+
+Single-file mode is the fastest way to try Vix.cpp.
+
+Create `main.cpp`:
+
+```cpp
+#include <vix.hpp>
+
+int main()
+{
+    vix::print("Hello from Vix.cpp");
+    return 0;
+}
+```
+
+Run it:
+
+```bash
+vix run main.cpp
+```
+
+Vix detects the source file, builds it with the native C++ toolchain, then runs the generated program.
+
+Use this mode for:
+
+- experiments
+- examples
+- small tools
+- learning Vix APIs
+- testing short C++ snippets
+
+When the code grows into multiple files, tests, dependencies, or a stable application, move to a Vix project.
+
+## Create a project
+
+Create a new application:
+
+```bash
+vix new hello --app
+cd hello
+vix build
+vix run
+```
+
+A generated project usually looks like this:
+
+```txt
+hello/
+├── src/
+│   └── main.cpp
+├── tests/
+│   └── test_basic.cpp
+├── .env.example
+├── vix.app
+├── vix.json
+└── README.md
+```
+
+This structure is intentionally small.
+
+It gives the application enough organization to grow without forcing a complex layout too early.
+
+## Development mode
+
+Use `vix dev` during active development:
+
+```bash
+vix dev
+```
+
+The development loop is:
+
+```txt
+edit
+save
+detect change
+rebuild
+restart
+continue
+```
+
+Use:
+
+```bash
+vix build
+```
+
+when you only want to compile.
+
+Use:
+
+```bash
+vix run
+```
+
+when you want to start the application manually.
+
+Use:
+
+```bash
+vix dev
+```
+
+when you are actively editing code.
+
+## Build system model
+
+Vix supports two project models:
+
+```txt
+CMakeLists.txt
+vix.app
+```
+
+Resolution order:
+
+```txt
+1. CMakeLists.txt
+2. vix.app
+```
+
+If `CMakeLists.txt` exists, Vix uses it.
+
+If no `CMakeLists.txt` exists but `vix.app` exists, Vix loads the manifest and generates an internal CMake project.
+
+```txt
+Project with CMakeLists.txt
+  -> Vix uses the existing CMake project
+
+Project with vix.app
+  -> Vix generates an internal CMake project
+  -> Vix builds the target
+```
+
+This keeps advanced CMake projects in control while giving simpler applications a cleaner manifest workflow.
+
+## Build examples
+
+Build the current project:
+
+```bash
+vix build
+```
+
+Build with verbose output:
+
+```bash
+vix build -v
+```
+
+Build a release version:
+
+```bash
+vix build --preset release
+```
+
+Build a specific target:
+
+```bash
+vix build --build-target vix
+```
+
+Build everything:
+
+```bash
+vix build --build-target all
+```
+
+Build a single C++ file:
+
+```bash
+vix build main.cpp
+```
+
+## Run targets
+
+`vix run` is not limited to web applications.
+
+It can run:
+
+- the current project
+- a named project or target
+- a single C++ file
+- a `.vix` manifest
+- a compiled binary
+- a Docker image
+- a container image
+- an SSH target
+- an HTTP or HTTPS target
+- Vix umbrella examples
+
+Examples:
+
+```bash
+vix run
+vix run api
+vix run main.cpp
+vix run app.vix
+vix run ./app
+vix run docker://nginx
+vix run ssh://user@host
+vix run https://example.com
+```
+
+## Command map
+
+| Command            | Purpose                               |
+| ------------------ | ------------------------------------- |
+| `vix run main.cpp` | Run a single C++ file                 |
+| `vix new <name>`   | Create a new project                  |
+| `vix install`      | Install project dependencies          |
+| `vix dev`          | Start development mode                |
+| `vix build`        | Configure and build                   |
+| `vix run`          | Build if needed, then run             |
+| `vix tests`        | Run tests                             |
+| `vix fmt`          | Format source files                   |
+| `vix check`        | Validate the project                  |
+| `vix pack`         | Package a project                     |
+| `vix registry`     | Manage registry metadata              |
+| `vix replay`       | Replay a recorded execution           |
+| `vix agent`        | Run AI-assisted development workflows |
+| `vix game export`  | Export a game project                 |
+
+## Architecture
+
+Vix.cpp is organized as a modular framework.
+
+```txt
+vix/
+├── modules/
+│   ├── agent/
+│   ├── async/
+│   ├── cache/
+│   ├── cli/
+│   ├── core/
+│   ├── crypto/
+│   ├── db/
+│   ├── env/
+│   ├── error/
+│   ├── fs/
+│   ├── game/
+│   ├── io/
+│   ├── json/
+│   ├── kv/
+│   ├── log/
+│   ├── middleware/
+│   ├── net/
+│   ├── orm/
+│   ├── p2p/
+│   ├── p2p_http/
+│   ├── path/
+│   ├── process/
+│   ├── reply/
+│   ├── sync/
+│   ├── template/
+│   ├── tests/
+│   ├── threadpool/
+│   ├── time/
+│   ├── utils/
+│   ├── validation/
+│   ├── websocket/
+│   └── webrpc/
+├── docs/
+├── tests/
+└── benchmarks/
+```
+
+Each module can evolve independently while still being part of the same application platform.
+
+## HTTP server example
+
+```cpp
+#include <vix.hpp>
+
+int main()
+{
+    vix::App app;
+
+    app.get("/", [](vix::Request &, vix::Response &res) {
+        res.text("Hello from Vix.cpp");
+    });
+
+    app.get("/health", [](vix::Request &, vix::Response &res) {
+        res.text("OK");
+    });
+
+    app.run();
+
+    return 0;
+}
+```
+
+Run:
+
+```bash
+vix run server.cpp
+```
+
+Test:
+
+```bash
+curl -i http://127.0.0.1:8080/
+curl -i http://127.0.0.1:8080/health
+```
+
+## API documentation workflow
+
+A professional API should be inspectable.
+
+Vix supports OpenAPI documentation routes that can be enabled explicitly.
+
+Development run with docs:
+
+```bash
+vix run api --docs
+```
+
+Normal run without docs:
+
+```bash
+vix run api
+```
+
+Explicitly disable docs:
+
+```bash
+vix run api --no-docs
+```
+
+Environment variable form:
+
+```bash
+VIX_DOCS=1 vix run api
+VIX_DOCS=0 vix run api
+```
+
+Recommended production policy:
+
+```txt
+disable docs completely
+protect /docs behind auth
+serve docs only in internal environments
+serve /openapi.json only in CI or staging
+```
+
+## Registry and packages
+
+Vix includes a registry workflow for package-based C++ projects.
+
+```bash
+vix registry sync
+vix add <package>
+vix install
+```
+
+The registry model is:
+
+```txt
+Registry index       -> package metadata
+Store                -> fetched package Git checkouts
+vix.json             -> declared project dependency requirements
+vix.lock             -> exact resolved dependency versions
+.vix/deps            -> project-local dependency links or copies
+.vix/vix_deps.cmake  -> generated dependency integration
+```
+
+The registry keeps package metadata separate from the project source.
+
+## Rix
+
+Rix is the unified userland library layer for Vix.cpp.
+
+Vix provides:
+
+```txt
+runtime
+CLI
+build workflow
+registry integration
+core modules
+```
+
+Rix provides:
+
+```txt
+optional userland libraries
+a unified facade
+independent packages
+```
+
+Install the unified facade:
+
+```bash
+vix add @rix/rix
+vix install
+```
+
+Use it:
+
+```cpp
+#include <rix.hpp>
+
+int main()
+{
+    rix.debug.print("Hello", "Rix");
+
+    auto table = rix.csv.parse("name,language\nAda,C++\n");
+
+    rix.debug.log("loaded {} rows", table.size());
+
+    return 0;
+}
 ```
 
 ## Production workflow
 
-Vix provides a production workflow for backend applications.
+Vix is designed to make production services inspectable and easier to operate.
 
-A basic deployment can be handled with:
-
-```bash
-vix deploy
-```
-
-`vix deploy` can build the application, restart the service, check service status, run health checks, validate the proxy, and show logs when something fails.
-
-For production inspection and operations, Vix also provides:
+A production-oriented workflow can include:
 
 ```bash
-vix doctor production
-vix service status
-vix logs
-vix health
-vix proxy nginx check
-```
-
-A typical production flow looks like this:
-
-```bash
-vix build
+vix build --preset release
 vix service install
-vix proxy nginx init
-vix deploy
+vix service start
+vix service status
+vix service logs
+vix proxy nginx check
 vix doctor production
 ```
 
-The idea is to avoid custom deployment scripts for normal Vix backend applications.
+The goal is to make production state visible:
 
-Vix should make the production state visible: service, ports, proxy, TLS, health checks, logs, and runtime status.
+```txt
+App status
+Binary path
+Service status
+HTTP port
+WebSocket port
+Public URL
+Proxy state
+TLS state
+Healthcheck result
+Logs
+```
 
-## Links
+C++ applications should not become black boxes after deployment.
 
-- Website: https://vixcpp.com
-- Documentation: https://docs.vixcpp.com
-- Rix documentation: https://rix.vixcpp.com
-- Registry: https://registry.vixcpp.com
-- Engineering notes: https://blog.vixcpp.com
-- X: https://x.com/vix_cpp
-- YouTube: https://www.youtube.com/@vixcpp
+## Replay failed runs
+
+`vix replay` helps reproduce recorded executions.
+
+Record a run:
+
+```bash
+vix run api --replay
+```
+
+Replay the latest recorded run:
+
+```bash
+vix replay last
+```
+
+Replay the latest failed run:
+
+```bash
+vix replay failed
+```
+
+This is useful when a run failed, crashed, or behaved unexpectedly and you want to reproduce the same context.
+
+## AI-assisted workflows
+
+Vix includes an AI agent command for local project analysis and assisted development workflows.
+
+```bash
+vix agent ask "Explain this project"
+vix agent analyze .
+vix agent scan .
+```
+
+The agent can inspect a workspace when allowed, summarize project structure, and help with development tasks.
+
+## Game projects
+
+Vix includes game-oriented tooling through the `vix game` namespace.
+
+```bash
+vix game export
+```
+
+This can export a game project into a distributable directory with assets and metadata.
+
+## Benchmarks
+
+Vix.cpp treats performance as an engineering concern, not only a marketing claim.
+
+The Core module includes an official benchmark suite used to track performance across releases and detect regressions before they are merged or released.
+
+Benchmark source:
+
+- [Core benchmarks](https://github.com/vixcpp/vix/tree/main/modules/core/benchmarks)
+- [Core benchmarks README](https://github.com/vixcpp/vix/blob/main/modules/core/benchmarks/README.md)
+- [v2.6.3 benchmark baseline](https://github.com/vixcpp/vix/tree/main/modules/core/benchmarks/baselines/v2.6.3)
+- [Engineering note: Vix Core v2.6.3 benchmark baseline](https://blog.vixcpp.com/posts/vix-core/vix-core-benchmark-baseline-v263)
+
+Example:
+
+```bash
+vix build --build-target benchmarks
+```
+
+Core benchmark areas include:
+
+```txt
+runtime.task
+runtime.queue
+runtime.scheduler
+runtime.worker
+
+executor.submit
+executor.post
+executor.metrics
+
+router.match
+router.registration
+
+http.request
+http.response
+
+session.fake_transport
+
+app.route_registration
+app.group_registration
+```
+
+The official Core benchmark baseline is stored under:
+
+```txt
+modules/core/benchmarks/baselines/v2.6.3/
+```
+
+Baseline files include:
+
+```txt
+core_app_group_registration_bench.json
+core_app_route_registration_bench.json
+core_executor_metrics_bench.json
+core_executor_post_bench.json
+core_executor_submit_bench.json
+core_http_request_bench.json
+core_http_response_bench.json
+core_router_match_bench.json
+core_router_registration_bench.json
+core_runtime_queue_bench.json
+core_runtime_scheduler_bench.json
+core_runtime_task_bench.json
+core_runtime_worker_bench.json
+core_session_fake_transport_bench.json
+```
+
+Official benchmark numbers must be generated from Release builds.
+
+```txt
+dev/debug = compile, test, debug
+release   = measure performance
+```
+
+From `modules/core`, build the benchmark suite with:
+
+```bash
+vix build --clean --preset release --build-target all -v -- \
+  -DVIX_CORE_BUILD_BENCHMARKS=ON \
+  -DVIX_CORE_BUILD_TESTS=ON
+```
+
+Run one benchmark:
+
+```bash
+./build-release/benchmarks/core/core_router_match_bench
+```
+
+Run the full Core benchmark suite:
+
+```bash
+./scripts/run_core_benchmarks.sh \
+  --bin-dir build-release/benchmarks/core \
+  --out-dir benchmarks/results/dev \
+  --version dev \
+  --runner local \
+  --machine local
+```
+
+Compare results against the official baseline:
+
+```bash
+./scripts/compare_core_benchmarks.py \
+  benchmarks/baselines/v2.6.3 \
+  benchmarks/results/current
+```
+
+By default, benchmark comparison uses:
+
+```txt
+median_ops_per_sec
+```
+
+Higher is better.
+
+Default thresholds:
+
+```txt
+WARN = -5%
+FAIL = -10%
+```
+
+## Engineering principles
+
+Vix.cpp is built around these principles:
+
+- keep native C++
+- do not hide the toolchain
+- integrate with CMake instead of fighting it
+- make common workflows repeatable
+- expose APIs through OpenAPI when needed
+- keep diagnostics readable
+- keep production inspectable
+- make modules composable
+- measure performance instead of guessing
+- prefer explicit APIs over hidden magic
+- make simple projects easy and complex projects possible
+
+## What Vix.cpp is not
+
+Vix.cpp does not replace C++.
+
+It does not turn C++ into a scripting language.
+
+It does not replace CMake for advanced build systems.
+
+It does not force every project into one structure.
+
+It does not expose documentation by default in every environment.
+
+It gives C++ applications a consistent workflow and a modular runtime foundation while preserving native control.
+
+## Project status
+
+Vix.cpp is under active development.
+
+Some areas are stable and suitable for real application work.
+
+Some areas are still evolving and should be evaluated carefully before production use.
+
+The project is developed with an emphasis on:
+
+- real application workflows
+- tests
+- benchmarks
+- OpenAPI documentation
+- production diagnostics
+- modular design
+
+## Documentation
+
+Start here:
+
+- [Website](https://vixcpp.com)
+- [Documentation](https://docs.vixcpp.com)
+- [Registry](https://registry.vixcpp.com)
+- [Rix](https://rix.vixcpp.com)
+- [Engineering notes](https://blog.vixcpp.com)
+
+Recommended path:
+
+1. Install Vix.cpp
+2. Run your first C++ file
+3. Create your first project
+4. Build your first HTTP server
+5. Enable OpenAPI docs locally
+6. Learn the CLI commands
+7. Explore runtime modules
+8. Add packages from the registry
+9. Move from local development to production
+
+## Built with Vix.cpp
+
+| Project            | Purpose                                        |
+| ------------------ | ---------------------------------------------- |
+| Rix                | Unified userland library layer for Vix.cpp     |
+| Cnerium            | Durable backend reliability layer built on Vix |
+| Vix Game           | Game-oriented runtime project                  |
+| PulseGrid          | Production-style service monitoring project    |
+| Softadastra Runner | Command runner built with Vix.cpp              |
 
 ## Contributing
 
 Contributions are welcome.
 
-Read the contribution guide:
+Before opening a pull request, run:
 
-https://docs.vixcpp.com/contributing
+```bash
+vix fmt --check
+vix check --tests
+vix build --preset release
+```
 
-You can contribute by improving the runtime, writing examples, testing Vix on real projects, improving documentation, or publishing packages for the Vix registry.
+For changes touching performance-sensitive code, run the benchmark suite and compare results with the current baseline.
 
 ## License
 

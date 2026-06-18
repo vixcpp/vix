@@ -43,8 +43,8 @@ app.templates("./views");
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-      <title>{{ title }}</title>
-    </head>
+    <title>{{ title }}</title>
+  </head>
   <body>
     <h1>{{ title }}</h1>
     <p>Hello {{ user }}.</p>
@@ -86,7 +86,7 @@ ctx.set("features", features);
 ```html
 <ul>
   {% for feature in features %}
-    <li>{{ feature }}</li>
+  <li>{{ feature }}</li>
   {% endfor %}
 </ul>
 ```
@@ -95,9 +95,9 @@ ctx.set("features", features);
 
 ```html
 {% if logged_in %}
-  <p>Welcome back, {{ user }}.</p>
+<p>Welcome back, {{ user }}.</p>
 {% else %}
-  <p>Please log in.</p>
+<p>Please log in.</p>
 {% endif %}
 ```
 
@@ -110,12 +110,10 @@ ctx.set("features", features);
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-      <title>{{ title }}</title>
-    </head>
+    <title>{{ title }}</title>
+  </head>
   <body>
-    <main>
-      {% block content %}{% endblock %}
-    </main>
+    <main>{% block content %}{% endblock %}</main>
   </body>
 </html>
 ```
@@ -123,10 +121,9 @@ ctx.set("features", features);
 `views/index.html`:
 
 ```html
-{% extends "base.html" %}
-{% block content %}
-  <h1>{{ title }}</h1>
-  <p>Hello {{ user }}.</p>
+{% extends "base.html" %} {% block content %}
+<h1>{{ title }}</h1>
+<p>Hello {{ user }}.</p>
 {% endblock %}
 ```
 
@@ -182,25 +179,25 @@ ctx.set("recent_orders", orders);
 
 ```html
 {% for order in recent_orders %}
-  <tr>
-    <td>{{ order.id }}</td>
-    <td>{{ order.customer }}</td>
-    <td>{{ order.status }}</td>
-    <td>{{ order.amount }}</td>
-  </tr>
+<tr>
+  <td>{{ order.id }}</td>
+  <td>{{ order.customer }}</td>
+  <td>{{ order.status }}</td>
+  <td>{{ order.amount }}</td>
+</tr>
 {% endfor %}
 ```
 
 ## Template features
 
-| Feature    | Example                         |
-|------------|---------------------------------|
-| Variable   | `{{ title }}`                   |
-| Condition  | `{% if logged_in %}`            |
-| Loop       | `{% for item in items %}`       |
-| Include    | `{% include "header.html" %}`   |
-| Layout     | `{% extends "base.html" %}`     |
-| Block      | `{% block content %}`           |
+| Feature   | Example                       |
+| --------- | ----------------------------- |
+| Variable  | `{{ title }}`                 |
+| Condition | `{% if logged_in %}`          |
+| Loop      | `{% for item in items %}`     |
+| Include   | `{% include "header.html" %}` |
+| Layout    | `{% extends "base.html" %}`   |
+| Block     | `{% block content %}`         |
 
 ## Templates with database data
 
@@ -267,5 +264,5 @@ public/
 ## What to use next
 
 - [Static files guide](/guides/static-files)
-- [SQLite API guide](/guides/sqlite-api)
+- [SQLite API guide](//guides/database/sqlite)
 - [Production Nginx + systemd guide](/guides/production-nginx-systemd)

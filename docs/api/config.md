@@ -10,7 +10,7 @@ The Config API loads application settings from environment files and exposes typ
 
 ```cpp
 #include <vix.hpp>        // for normal applications
-#include <vix/env.hpp>    // for config-only code
+#include <vix/Config.hpp>    // for config-only code
 ```
 
 Main type: `vix::config::Config`.

@@ -12,10 +12,10 @@ Sessions are useful for: login state, dashboards, admin panels, browser-based au
 
 ## Session vs token authentication
 
-| Style          | Common use                                         |
-|----------------|----------------------------------------------------|
-| Bearer token   | APIs, mobile apps, and service-to-service calls.   |
-| Session cookie | Browser apps, dashboards, and server-rendered apps.|
+| Style          | Common use                                          |
+| -------------- | --------------------------------------------------- |
+| Bearer token   | APIs, mobile apps, and service-to-service calls.    |
+| Session cookie | Browser apps, dashboards, and server-rendered apps. |
 
 ## Setup
 
@@ -148,12 +148,12 @@ const std::string session_id = *value;
 
 ## Session status codes
 
-| Status | Meaning                                      |
-|--------|----------------------------------------------|
-| `200`  | Session exists or request succeeded.         |
-| `400`  | Login request body is invalid.               |
-| `401`  | Session is missing, expired, or invalid.     |
-| `403`  | Session exists, but access is not allowed.   |
+| Status | Meaning                                    |
+| ------ | ------------------------------------------ |
+| `200`  | Session exists or request succeeded.       |
+| `400`  | Login request body is invalid.             |
+| `401`  | Session is missing, expired, or invalid.   |
+| `403`  | Session exists, but access is not allowed. |
 
 ## Production notes
 
@@ -196,4 +196,4 @@ For production, store sessions in SQLite, MySQL, Redis, or another persistent st
 
 - [CORS guide](/guides/cors)
 - [Rate limiting guide](/guides/rate-limiting)
-- [SQLite API guide](/guides/sqlite-api)
+- [SQLite API guide](/guides/database/sqlite)

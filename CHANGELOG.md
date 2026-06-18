@@ -45,6 +45,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed async scheduler shutdown behavior so pending coroutine handles are not silently destroyed before completion paths can run.
 - Fixed sanitizer-detected Core lifecycle races in app/server shutdown tests.
 - Fixed strict CI failures caused by benchmark binaries being treated as normal Valgrind test executables.
+- Fixed module test binaries so sanitizer-enabled static libraries are linked with the required ASan/UBSan runtime flags.
+- Fixed sanitizer linking for module tests across async, cache, crypto, game, JSON, KV, middleware, P2P, sync, template, tests, time, WebRPC, websocket, agent, and threadpool modules.
+- Fixed validation module test linking by avoiding a single GoogleTest binary for plain test files that each define their own `main`.
+- Fixed path, fs, io, log, os, process, error, and env module test targets so sanitizer builds link correctly.
+- Fixed crypto, agent, WebRPC, websocket, cache, async, game, JSON, KV, middleware, P2P, sync, template, tests, and time test targets so ASan/UBSan builds do not fail with missing sanitizer runtime symbols.
+- Fixed threadpool future handling for pre-cancelled and queued-cancelled tasks so futures are resolved deterministically instead of hanging.
+- Fixed threadpool task handle cancellation paths so cancelled queued work reports cancellation through the associated future.
+- Fixed threadpool tests that assumed asynchronous work completed immediately after posting.
+- Fixed threadpool `ExecutorTest` by waiting for posted threadpool work to complete before checking shared state.
+- Fixed threadpool `ShutdownTest` behavior expectations for `allow_after_stop` submission policy.
+- Fixed game registry clear test to avoid reading a system object after `Registry::clear()` destroys owned systems.
+- Fixed time module smoke test signed integer overflow detected by UBSan.
+- Fixed CLI run preset selection false positive by ensuring empty preset lists are handled before accessing the first preset.
+- Fixed SECURITY_CI static-analysis scope so third-party, generated, example, benchmark, and test files are not treated as blocking project source analysis.
+- Fixed cppcheck CI failures caused by analyzing vendored Asio tests and optional backend files outside the configured build profile.
+- Fixed clang-tidy CI scope so optional SDL backend files are not analyzed when SDL support is disabled.
 
 ### Changed
 
@@ -64,6 +80,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Increased Valgrind timeouts for slower runtime and lifecycle tests under instrumentation.
 - Improved Core sanitizer coverage for lifecycle, shutdown, executor, session, server, and app behavior.
 - Updated async TCP internals to serialize listener cancellation through the Asio executor instead of racing close operations from external threads.
+- Updated SECURITY_CI to build and run module-level tests instead of relying only on root-level test discovery.
+- Updated SECURITY_CI to enable tests for modules that keep their tests inside each module directory.
+- Updated SECURITY_CI sanitized test coverage to run broad module tests with ASan/UBSan enabled.
+- Updated SECURITY_CI Valgrind coverage to focus on stable memory-test targets and avoid known timing-sensitive concurrency tests.
+- Updated SECURITY_CI static analysis to analyze only project source files instead of vendored dependencies, examples, tests, and benchmarks.
+- Updated cppcheck blocking analysis to run on module implementation sources only.
+- Updated cppcheck style reporting so style-only findings remain visible without blocking the release.
+- Updated clang-tidy analysis to use configured source files from the CMake compilation database.
+- Updated module test CMake files to consistently attach sanitizer compile and link options to test executables.
+- Updated threadpool tests to be deterministic under sanitizer instrumentation.
+- Updated game tests to avoid ownership/lifetime assumptions after registry cleanup.
+- Updated time tests to be safe under UBSan integer-overflow checks.
+- Updated CLI static-analysis handling for guarded preset access and cppcheck false positives.
 
 ### Added
 
@@ -86,6 +115,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `benchmarks/baselines/` for versioned official benchmark baselines.
 - Added the official Core `v2.6.3` Release benchmark baseline generated on Linux x86_64 with GCC 13.3.0.
 - Added a blog article documenting the Vix Core v2.6.3 benchmark baseline and the performance workflow.
+- Added umbrella SECURITY_CI coverage for module tests across async, cache, conversion, crypto, env, error, fs, game, io, JSON, KV, log, middleware, os, path, P2P, process, sync, template, tests, threadpool, time, validation, WebRPC, websocket, and agent.
+- Added sanitizer-ready module test coverage for broad Vix module integration.
+- Added deterministic threadpool coverage for executor posting, queued cancellation, scoped tasks, task handles, and shutdown behavior.
+- Added CI filtering rules to keep third-party code and optional disabled backends out of blocking static analysis.
 
 ## v2.6.2
 
