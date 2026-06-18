@@ -11,7 +11,7 @@ You will build:
 - bearer token style authentication
 
 > This guide keeps the implementation simple and in-memory.
-For production, store users in SQLite or MySQL, hash passwords, and use real JWT/session middleware.
+> For production, store users in SQLite or MySQL, hash passwords, and use real JWT/session middleware.
 
 ## Goal
 
@@ -201,7 +201,7 @@ curl -i http://127.0.0.1:8080/private
 ## Authentication status codes
 
 | Status | Meaning       | Example                           |
-|--------|---------------|-----------------------------------|
+| ------ | ------------- | --------------------------------- |
 | `201`  | Created.      | User registered successfully.     |
 | `400`  | Bad Request.  | Invalid input was provided.       |
 | `401`  | Unauthorized. | Missing or invalid auth token.    |
@@ -249,4 +249,4 @@ if (user == nullptr) {
 
 - [Sessions guide](/guides/sessions)
 - [Rate limiting guide](/guides/rate-limiting)
-- [SQLite API guide](/guides/sqlite-api)
+- [SQLite API guide](/guides/database/sqlite)

@@ -3,6 +3,7 @@
 This guide shows how to validate input in Vix.
 
 You will learn how to validate:
+
 - single values,
 - query params,
 - path params,
@@ -48,16 +49,16 @@ auto result = vix::validation::validate("email", email)
 
 ## Common value rules
 
-| Rule              | Purpose                                      |
-|-------------------|----------------------------------------------|
-| `required()`      | Requires a present and non-empty value.      |
-| `email()`         | Requires a valid email address.              |
-| `length_min(n)`   | Requires a string length of at least `n`.    |
-| `length_max(n)`   | Requires a string length of at most `n`.     |
-| `min(n)`          | Requires a numeric value of at least `n`.    |
-| `max(n)`          | Requires a numeric value of at most `n`.     |
-| `between(a, b)`   | Requires a numeric value between `a` and `b`.|
-| `in_set(...)`     | Requires one of the allowed values.          |
+| Rule            | Purpose                                       |
+| --------------- | --------------------------------------------- |
+| `required()`    | Requires a present and non-empty value.       |
+| `email()`       | Requires a valid email address.               |
+| `length_min(n)` | Requires a string length of at least `n`.     |
+| `length_max(n)` | Requires a string length of at most `n`.      |
+| `min(n)`        | Requires a numeric value of at least `n`.     |
+| `max(n)`        | Requires a numeric value of at most `n`.      |
+| `between(a, b)` | Requires a numeric value between `a` and `b`. |
+| `in_set(...)`   | Requires one of the allowed values.           |
 
 ## Read validation errors
 
@@ -258,8 +259,8 @@ parsed<int>().between(18, 120, "age must be between 18 and 120").parse_message("
 
 ## When to use each validation tool
 
-| Tool                      | Use when                                          |
-|---------------------------|----------------------------------------------------|
+| Tool                      | Use when                                           |
+| ------------------------- | -------------------------------------------------- |
 | `validate(...)`           | You need to validate one value.                    |
 | `validate_parsed<T>(...)` | You need to parse and validate a string.           |
 | `Schema<T>`               | You need to validate a struct.                     |
@@ -304,5 +305,5 @@ res.json({"ok", true});
 ## What to use next
 
 - [Authentication guide](/guides/authentication)
-- [SQLite API guide](/guides/sqlite-api)
+- [SQLite API guide](/guides/database/sqlite)
 - [REST API guide](/guides/build-rest-api)

@@ -5,6 +5,121 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.6.3
+
+### Fixed
+
+- Fixed `vix publish` so it prepares and normalizes the local registry index internally before publishing.
+- Fixed stale local registry state handling by fetching `origin`, resetting to `origin/main`, and cleaning untracked registry entry files before checking existing package versions.
+- Improved `vix publish` diagnostics when a package version already exists in the registry.
+- Fixed JSON module JPath parsing after bracket segments, including paths such as `users[0].email` and `["complex.key"].value`.
+- Fixed `vix run` executable resolution for CMake projects that produce binaries with names different from the project directory.
+- Fixed `vix run` diagnostics when multiple runnable executables are produced by a build.
+- Fixed project watch mode so it resolves runnable executables generically instead of assuming the binary name matches the project folder.
+- Avoided duplicate CMake configure output when build errors are already handled.
+- Improved compiler diagnostics so template errors originating in system headers can be re-anchored to the relevant project instantiation location.
+- Fixed `vix tests` progress output for long CTest runs.
+- Fixed `vix tests` interruption handling so `Ctrl+C` is reported as a user interruption instead of a test failure.
+- Fixed HTTP session parsing and error-response edge cases for malformed requests, invalid content lengths, oversized payloads, and unexpected EOF bodies.
+- Fixed HTTP keep-alive shutdown behavior for case-insensitive `Connection: close` handling.
+- Fixed WAF session configuration handling for target length, body size, and mode validation in isolated tests.
+- Fixed runtime worker shutdown behavior when yielding tasks are still being rescheduled.
+- Fixed runtime executor shutdown so pending posted tasks are drained before workers are stopped.
+- Fixed runtime executor idle detection by tracking accepted in-flight tasks before they begin execution.
+- Improved router route metadata so tests can validate registered paths, methods, and heavy-route flags.
+- Fixed and stabilized Core benchmark workloads so long-running benchmark targets do not block full benchmark runs.
+- Fixed Core template backend linking in tests and benchmarks.
+- Fixed Core JSON dependency resolution when configuration headers require JSON support.
+- Fixed Core application shutdown races that could leave server threads joinable during fast lifecycle tests.
+- Fixed `App::close()` so shutdown is terminal, idempotent, and safe before or after `listen()`.
+- Fixed `App::wait()` so signal-stop paths close the running server instead of only exiting the wait loop.
+- Fixed `App::listen()` so closed app instances cannot be restarted accidentally.
+- Fixed HTTP server shutdown ordering so the accept loop is allowed to drain before the async I/O context is stopped.
+- Fixed HTTP server lifecycle teardown by destroying the TCP listener before shutting down the async context.
+- Fixed HTTP server readiness signaling so the server is marked ready only after the accept loop has started.
+- Fixed HTTP server metrics-thread shutdown races by serializing metrics-thread creation with shutdown joining.
+- Fixed async TCP stream close behavior by cancelling pending operations, shutting down the socket, and closing it safely.
+- Fixed async TCP listener close behavior by cancelling and closing the acceptor on the Asio executor.
+- Fixed async TCP listener lifetime during pending accepts by keeping the acceptor alive until completion handlers finish.
+- Fixed async shutdown behavior so pending Asio operations can complete and resume their awaiting coroutines cleanly.
+- Fixed async scheduler shutdown behavior so pending coroutine handles are not silently destroyed before completion paths can run.
+- Fixed sanitizer-detected Core lifecycle races in app/server shutdown tests.
+- Fixed strict CI failures caused by benchmark binaries being treated as normal Valgrind test executables.
+- Fixed module test binaries so sanitizer-enabled static libraries are linked with the required ASan/UBSan runtime flags.
+- Fixed sanitizer linking for module tests across async, cache, crypto, game, JSON, KV, middleware, P2P, sync, template, tests, time, WebRPC, websocket, agent, and threadpool modules.
+- Fixed validation module test linking by avoiding a single GoogleTest binary for plain test files that each define their own `main`.
+- Fixed path, fs, io, log, os, process, error, and env module test targets so sanitizer builds link correctly.
+- Fixed crypto, agent, WebRPC, websocket, cache, async, game, JSON, KV, middleware, P2P, sync, template, tests, and time test targets so ASan/UBSan builds do not fail with missing sanitizer runtime symbols.
+- Fixed threadpool future handling for pre-cancelled and queued-cancelled tasks so futures are resolved deterministically instead of hanging.
+- Fixed threadpool task handle cancellation paths so cancelled queued work reports cancellation through the associated future.
+- Fixed threadpool tests that assumed asynchronous work completed immediately after posting.
+- Fixed threadpool `ExecutorTest` by waiting for posted threadpool work to complete before checking shared state.
+- Fixed threadpool `ShutdownTest` behavior expectations for `allow_after_stop` submission policy.
+- Fixed game registry clear test to avoid reading a system object after `Registry::clear()` destroys owned systems.
+- Fixed time module smoke test signed integer overflow detected by UBSan.
+- Fixed CLI run preset selection false positive by ensuring empty preset lists are handled before accessing the first preset.
+- Fixed SECURITY_CI static-analysis scope so third-party, generated, example, benchmark, and test files are not treated as blocking project source analysis.
+- Fixed cppcheck CI failures caused by analyzing vendored Asio tests and optional backend files outside the configured build profile.
+- Fixed clang-tidy CI scope so optional SDL backend files are not analyzed when SDL support is disabled.
+
+### Changed
+
+- Updated the JSON module with dedicated CMake targets for examples, tests, and benchmarks.
+- Expanded JSON module documentation with builders, parsing, dumping, safe access, JPath, Simple payloads, tests, benchmarks, and useful links.
+- Added benchmark result snapshots for JSON construction, conversion, dumping, parsing, JPath, and Simple payloads.
+- Shared runnable executable discovery through a reusable CLI resolver used by project run flows.
+- Strengthened the Core test layout with dedicated test groups for HTTP, router, session, server, runtime, executor, config, and app behavior.
+- Updated Core test registration so network-based tests use isolated ports, timeouts, and serial execution where required.
+- Improved `vix tests` live progress reporting to show completed, total, running, and elapsed test state during long CTest runs.
+- Updated the Core module README with benchmark workflow documentation and a link to the official v2.6.3 benchmark baseline article.
+- Documented the benchmark rule that official performance numbers must be generated from Release builds, not dev/debug builds.
+- Updated Core benchmark registration so benchmark binaries are grouped under `build-release/benchmarks/core` when `VIX_CORE_BUILD_BENCHMARKS=ON`.
+- Strengthened Core shutdown semantics across `App`, `HTTPServer`, `RuntimeExecutor`, and async TCP services.
+- Updated Core strict CI so style-only `cppcheck` findings are reported separately from blocking warnings, performance, and portability checks.
+- Updated Valgrind CI scope to avoid running benchmark binaries as memory tests.
+- Increased Valgrind timeouts for slower runtime and lifecycle tests under instrumentation.
+- Improved Core sanitizer coverage for lifecycle, shutdown, executor, session, server, and app behavior.
+- Updated async TCP internals to serialize listener cancellation through the Asio executor instead of racing close operations from external threads.
+- Updated SECURITY_CI to build and run module-level tests instead of relying only on root-level test discovery.
+- Updated SECURITY_CI to enable tests for modules that keep their tests inside each module directory.
+- Updated SECURITY_CI sanitized test coverage to run broad module tests with ASan/UBSan enabled.
+- Updated SECURITY_CI Valgrind coverage to focus on stable memory-test targets and avoid known timing-sensitive concurrency tests.
+- Updated SECURITY_CI static analysis to analyze only project source files instead of vendored dependencies, examples, tests, and benchmarks.
+- Updated cppcheck blocking analysis to run on module implementation sources only.
+- Updated cppcheck style reporting so style-only findings remain visible without blocking the release.
+- Updated clang-tidy analysis to use configured source files from the CMake compilation database.
+- Updated module test CMake files to consistently attach sanitizer compile and link options to test executables.
+- Updated threadpool tests to be deterministic under sanitizer instrumentation.
+- Updated game tests to avoid ownership/lifetime assumptions after registry cleanup.
+- Updated time tests to be safe under UBSan integer-overflow checks.
+- Updated CLI static-analysis handling for guarded preset access and cppcheck false positives.
+
+### Added
+
+- Added JSON module test coverage for builders, parsing, dumping, includes, conversions, JPath, and Simple values.
+- Added JSON module benchmark coverage for builders, conversions, dumping, parsing, JPath, and Simple values.
+- Added stricter JSON module CI coverage for tests, benchmarks, examples, package export, smoke checks, static analysis, and configuration coverage.
+- Added broad HTTP session test coverage for transports, parsed request heads, constructors, GET requests, bodies, errors, keep-alive, WAF behavior, and TLS sessions.
+- Added HTTP server test coverage for TLS config, constructors, router integration, threading, shutdown, and run validation.
+- Added runtime test coverage for budgets, tasks, mailboxes, run queues, supervisors, workers, schedulers, runtime config, and lifecycle behavior.
+- Added executor test coverage for metrics, task options, runtime executor construction, lifecycle, submit/post behavior, metrics, and shutdown.
+- Added config test coverage for defaults, environment loading, set/get behavior, typed accessors, database settings, WAF settings, TLS settings, logging settings, reload behavior, and copy/move behavior.
+- Added app test coverage for constructors, config access, dev mode, templates, routes, groups, middleware, protected routes, static directories, static hooks, lifecycle behavior, module initialization, and stdout configuration.
+- Added dedicated Core lifecycle coverage for close-before-listen, repeated close, signal-stop cleanup, external executor shutdown, ready-info behavior, and close-without-explicit-wait paths.
+- Added async shutdown coverage for scheduler, cancellation, task completion, and pending operation behavior.
+- Added strict Core CI coverage for debug/runtime builds, sanitizer builds, Valgrind memory checks, static analysis, benchmark builds, and package export validation.
+- Added the official Vix Core benchmark suite covering runtime tasks, runtime queues, runtime scheduler, runtime workers, executor submit/post/metrics, router matching, router registration, HTTP request/response behavior, fake transport sessions, app route registration, and app group registration.
+- Added shared benchmark utilities for measuring median time, mean time, operations per second, warmup iterations, measured samples, and JSON report generation.
+- Added `scripts/run_core_benchmarks.sh` to run the full Core benchmark suite and write versioned JSON reports.
+- Added `scripts/compare_core_benchmarks.py` to compare current benchmark results against a baseline using configurable warning and failure thresholds.
+- Added `benchmarks/baselines/` for versioned official benchmark baselines.
+- Added the official Core `v2.6.3` Release benchmark baseline generated on Linux x86_64 with GCC 13.3.0.
+- Added a blog article documenting the Vix Core v2.6.3 benchmark baseline and the performance workflow.
+- Added umbrella SECURITY_CI coverage for module tests across async, cache, conversion, crypto, env, error, fs, game, io, JSON, KV, log, middleware, os, path, P2P, process, sync, template, tests, threadpool, time, validation, WebRPC, websocket, and agent.
+- Added sanitizer-ready module test coverage for broad Vix module integration.
+- Added deterministic threadpool coverage for executor posting, queued cancellation, scoped tasks, task handles, and shutdown behavior.
+- Added CI filtering rules to keep third-party code and optional disabled backends out of blocking static analysis.
+
 ## v2.6.2
 
 ### Added

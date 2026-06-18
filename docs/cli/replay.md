@@ -4,6 +4,9 @@
 
 It helps you reproduce a run that failed, crashed, or behaved unexpectedly. Use it when you want to rerun the same command without guessing what happened.
 
+> `vix run` does not record replay data by default.
+> To create a replay record, run your command with `--replay`.
+
 ## Usage
 
 ```bash
@@ -25,6 +28,33 @@ It can:
 - append extra runtime arguments
 - add temporary environment variables during replay
 
+## Recording a run
+
+Replay records are created only when `vix run` is executed with `--replay`.
+
+```bash
+# Record a project run
+vix run api --replay
+
+# Record a built executable run
+vix run ./build-ninja/api --replay
+
+# Record a manifest run
+vix run app.vix --replay
+
+# Record a single-file C++ run
+vix run main.cpp --replay
+```
+
+Without `--replay`, `vix run` runs normally and does not create `.vix/runs/`.
+
+```bash
+vix run api
+vix run main.cpp
+```
+
+These commands do not create replay data.
+
 ## Basic usage
 
 ```bash
@@ -45,10 +75,10 @@ vix replay 2026-05-05-18-42-11-a91f
 
 Use `vix replay` when an execution fails and you want to reproduce it quickly.
 
-**Typical workflow:**
+Typical workflow:
 
 ```bash
-vix dev
+vix run api --replay
 # something fails
 
 vix replay failed
@@ -57,7 +87,7 @@ vix replay failed
 Or:
 
 ```bash
-vix run server.cpp
+vix run server.cpp --replay
 # unexpected result
 
 vix replay last
@@ -69,15 +99,15 @@ Without replay, you often need to remember: which command was used, which direct
 
 `vix replay` keeps that context in a recorded run.
 
-## Difference between `vix run`, `vix dev`, and `vix replay`
+## Difference between vix run, vix dev, and vix replay
 
-| Command      | Best for                        | Records/replays context              |
-|--------------|---------------------------------|--------------------------------------|
-| `vix run`    | manual run                      | records execution                    |
-| `vix dev`    | active development              | records execution with watch mode    |
-| `vix replay` | reproducing a previous run      | replays recorded execution           |
+| Command      | Best for                   | Records/replays context                     |
+| ------------ | -------------------------- | ------------------------------------------- |
+| `vix run`    | manual run                 | records only with `--replay`                |
+| `vix dev`    | active development         | records development executions when enabled |
+| `vix replay` | reproducing a previous run | replays recorded execution                  |
 
-> `vix replay` does not replace `vix run` or `vix dev`. It uses their recorded executions.
+`vix replay` does not replace `vix run` or `vix dev`. It uses recorded executions created by replay-enabled runs.
 
 ## Replay the latest run
 
@@ -125,9 +155,7 @@ Run ids are stored under `.vix/runs/`.
 
 ```bash
 vix replay list
-```
 
-```bash
 # Show only failed runs
 vix replay list --failed
 
@@ -209,7 +237,7 @@ Removes recorded replay runs from `.vix/runs/`.
 
 A recorded run is stored as:
 
-```text
+```
 .vix/runs/<id>/
   run.json
   stdout.log
@@ -219,40 +247,58 @@ A recorded run is stored as:
 
 The latest marker stores the most recent run id:
 
-```text
+```
 .vix/runs/latest
 ```
 
 ## Options
 
-| Option               | Description                                            |
-|----------------------|--------------------------------------------------------|
-| `--dry-run`          | Print the replay command without executing it          |
-| `--summary`          | Print the record summary before replaying              |
-| `--no-summary`       | Do not print the record summary                        |
-| `--dir`, `--cwd`     | Use another directory containing `.vix/runs`           |
-| `--env KEY=VALUE`    | Add an environment variable during replay              |
-| `--`                 | Append remaining arguments to the replay command       |
-| `-h`, `--help`       | Show command help                                      |
+| Option            | Description                                      |
+| ----------------- | ------------------------------------------------ |
+| `--dry-run`       | Print the replay command without executing it    |
+| `--summary`       | Print the record summary before replaying        |
+| `--no-summary`    | Do not print the record summary                  |
+| `--dir`, `--cwd`  | Use another directory containing `.vix/runs`     |
+| `--env KEY=VALUE` | Add an environment variable during replay        |
+| `--`              | Append remaining arguments to the replay command |
+| `-h`, `--help`    | Show command help                                |
 
-### List options
+## Recording option on vix run
 
-| Option                        | Description                                     |
-|-------------------------------|-------------------------------------------------|
-| `--all`                       | Show all replay runs                            |
-| `--failed`, `--fail`          | Show failed replay runs                         |
-| `--success`, `--ok`           | Show successful replay runs                     |
-| `--interrupted`, `--interrupt`| Show interrupted replay runs                    |
-| `--limit <n>`                 | Limit number of rows                            |
-| `--dir`, `--cwd <path>`       | Use another directory containing `.vix/runs`    |
+| Option     | Description                                        |
+| ---------- | -------------------------------------------------- |
+| `--replay` | Record this `vix run` execution under `.vix/runs/` |
 
----
+Example:
+
+```bash
+vix run api --replay
+vix run ./build-ninja/api --replay
+vix run app.vix --replay
+vix run main.cpp --replay
+```
+
+## List options
+
+| Option                         | Description                                  |
+| ------------------------------ | -------------------------------------------- |
+| `--all`                        | Show all replay runs                         |
+| `--failed`, `--fail`           | Show failed replay runs                      |
+| `--success`, `--ok`            | Show successful replay runs                  |
+| `--interrupted`, `--interrupt` | Show interrupted replay runs                 |
+| `--limit <n>`                  | Limit number of rows                         |
+| `--dir`, `--cwd <path>`        | Use another directory containing `.vix/runs` |
 
 ## Common workflows
 
 ```bash
-# Replay the last run
-vix replay
+# Record and replay a project run
+vix run api --replay
+vix replay last
+
+# Record and replay a single-file C++ run
+vix run main.cpp --replay
+vix replay last
 
 # Replay the latest failed run
 vix replay failed
@@ -276,16 +322,34 @@ vix replay clean
 
 ## Common mistakes
 
+### Expecting vix run to record automatically
+
+Wrong:
+
+```bash
+vix run api
+vix replay last
+```
+
+Correct:
+
+```bash
+vix run api --replay
+vix replay last
+```
+
+`vix run` does not create replay records by default. Use `--replay` when you want the execution to be recorded.
+
 ### Running replay from the wrong directory
 
-**Wrong:**
+Wrong:
 
 ```bash
 cd ..
 vix replay last
 ```
 
-**Correct:**
+Correct:
 
 ```bash
 cd api
@@ -298,9 +362,9 @@ Or:
 vix replay last --dir ./api
 ```
 
-> `vix replay` reads `.vix/runs/` from the current directory unless `--dir` or `--cwd` is provided.
+`vix replay` reads `.vix/runs/` from the current directory unless `--dir` or `--cwd` is provided.
 
-### Forgetting that `failed` means the latest failed run
+### Forgetting that failed means the latest failed run
 
 ```bash
 vix replay failed
@@ -314,34 +378,34 @@ To list all failures:
 vix replay list --failed
 ```
 
-### Passing extra arguments without `--`
+### Passing extra arguments without --
 
-**Wrong:**
+Wrong:
 
 ```bash
 vix replay last --port 8080
 ```
 
-**Correct:**
+Correct:
 
 ```bash
 vix replay last -- --port 8080
 ```
 
-> The `--` separates replay options from arguments appended to the replayed command.
+The `--` separates replay options from arguments appended to the replayed command.
 
 ## Related commands
 
-| Command      | Purpose                                          |
-|--------------|--------------------------------------------------|
-| `vix run`    | Build and run manually                           |
-| `vix dev`    | Start dev server with auto-reload                |
-| `vix build`  | Configure and compile                            |
-| `vix check`  | Validate build, tests, runtime, and sanitizers   |
-| `vix tests`  | Run tests                                        |
+| Command     | Purpose                                        |
+| ----------- | ---------------------------------------------- |
+| `vix run`   | Build and run manually                         |
+| `vix dev`   | Start dev server with auto-reload              |
+| `vix build` | Configure and compile                          |
+| `vix check` | Validate build, tests, runtime, and sanitizers |
+| `vix tests` | Run tests                                      |
 
 ## Next step
 
 Continue with development mode.
 
-[Open the vix dev guide](/cli/dev)
+Open the vix dev guide

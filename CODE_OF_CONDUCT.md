@@ -1,119 +1,229 @@
-# Vix.cpp Code of Conduct
+# Code of Conduct
 
-## Our Commitment
+# Vix.cpp Community Code of Conduct
 
-We are committed to fostering a welcoming, inclusive, and professional community around **Vix.cpp**.
+## Our Pledge
 
-We want this project to be a place where developers from all backgrounds can collaborate, learn, and build high-quality software together, free from harassment or discrimination.
+We as contributors, maintainers, and community members pledge to make participation in the Vix.cpp project a respectful, welcoming, and productive experience for everyone.
 
-We pledge to make participation in this project a harassment-free experience for everyone, regardless of:
+Vix.cpp is an open source project built around collaboration, technical excellence, learning, and long-term engineering quality.
 
-- age, body size, disability, ethnicity, nationality
-- gender identity or expression
-- level of experience or education
-- personal appearance
-- race, religion, sexual identity, or orientation
+We are committed to providing a community environment that is free from harassment, intimidation, discrimination, personal attacks, or abusive behavior.
 
 ---
 
 ## Our Standards
 
-### Expected Behavior
+Examples of behavior that contributes to a positive environment include:
 
-Contributors are expected to:
+- being respectful and professional,
+- giving and receiving constructive feedback,
+- focusing on the technical problem instead of attacking people,
+- being patient with beginners and new contributors,
+- explaining decisions clearly,
+- accepting that different people may have different levels of experience,
+- helping improve documentation, tests, examples, and code quality,
+- recognizing the work and time of contributors.
 
-- Be respectful, professional, and constructive in all interactions
-- Provide feedback focused on ideas and code, not individuals
-- Welcome newcomers and support less experienced contributors
-- Respect differing viewpoints and experiences
-- Give proper credit for others’ work and ideas
-- Act in the best interest of the project and its community
+Examples of unacceptable behavior include:
 
-### Unacceptable Behavior
-
-The following behaviors are not tolerated:
-
-- Sexualized language, imagery, or unwelcome advances
-- Trolling, insulting, or derogatory comments
-- Harassment, intimidation, or threats (public or private)
-- Publishing private information about others without explicit permission
-- Any conduct that would reasonably be considered inappropriate in a professional environment
-
----
-
-## Enforcement Responsibilities
-
-Project maintainers are responsible for clarifying and enforcing this Code of Conduct.
-
-They may remove, edit, or reject comments, commits, issues, pull requests, or other contributions that violate these standards.
-
-Maintainers may also temporarily or permanently ban contributors whose behavior they deem harmful, abusive, or disruptive.
+- harassment, threats, or intimidation,
+- insults, personal attacks, or mocking,
+- discriminatory language or behavior,
+- sexualized language or unwanted attention,
+- trolling, repeated disruption, or bad-faith arguments,
+- publishing private information without permission,
+- deliberately derailing technical discussions,
+- pressuring maintainers or contributors aggressively,
+- disrespectful behavior in issues, pull requests, discussions, commits, or community channels.
 
 ---
 
-## Scope
+## Technical Discussions
 
-This Code of Conduct applies within all project spaces, including but not limited to:
+Vix.cpp is a technical project. Disagreement is normal and often useful.
 
-- GitHub issues, pull requests, discussions, and code reviews
-- Official communication channels related to Vix.cpp
+However, technical disagreement must remain respectful.
 
-It also applies when an individual is representing the project in public spaces, such as:
+Acceptable:
 
-- Using official project communication channels
-- Representing Vix.cpp at events, conferences, or online discussions
+```text
+I think this design may create a lifetime issue because the future can remain unresolved.
+```
+
+Not acceptable:
+
+```text
+This code is stupid and the author clearly does not understand C++.
+```
+
+When reviewing code, focus on:
+
+- correctness,
+- safety,
+- performance,
+- maintainability,
+- clarity,
+- tests,
+- documentation,
+- compatibility.
+
+Do not attack the contributor.
 
 ---
 
-## Enforcement
+## Maintainer Responsibilities
 
-If you experience or witness behavior that violates this Code of Conduct, please report it by contacting:
+Project maintainers are responsible for clarifying and enforcing acceptable behavior.
 
-**Email:** gaspardkirira@outlook.com
+Maintainers may take action when behavior harms the project, contributors, users, or the wider community.
 
-All reports will be reviewed promptly and handled with discretion.  
-Project maintainers are committed to respecting the privacy and safety of everyone involved.
+Maintainer actions may include:
+
+- asking for clarification,
+- warning a participant,
+- editing or removing inappropriate comments,
+- closing or locking discussions,
+- rejecting contributions,
+- temporarily or permanently banning a participant from project spaces.
+
+Maintainers should apply this Code of Conduct fairly and consistently.
+
+---
+
+## Contributor Responsibilities
+
+All contributors are expected to follow this Code of Conduct when participating in the Vix.cpp project.
+
+This applies to:
+
+- GitHub issues,
+- pull requests,
+- code reviews,
+- discussions,
+- commits,
+- documentation,
+- examples,
+- benchmarks,
+- CI conversations,
+- release discussions,
+- community chats or public project channels.
+
+Contributors should help keep discussions focused, respectful, and useful.
+
+---
+
+## Reporting Problems
+
+If you experience or witness unacceptable behavior, please report it to the project maintainers.
+
+You may contact the maintainer at:
+
+```text
+adastrablockchain@gmail.com
+```
+
+When reporting an incident, include as much relevant information as possible:
+
+- where it happened,
+- what was said or done,
+- who was involved,
+- links to issues, pull requests, discussions, or messages,
+- screenshots if available,
+- whether the behavior is ongoing.
+
+Reports will be reviewed as privately and respectfully as possible.
 
 ---
 
 ## Enforcement Guidelines
 
-When determining appropriate consequences, maintainers will consider the context, severity, and history of the behavior.
+Maintainers may apply the following enforcement actions depending on the situation.
 
 ### 1. Correction
 
-**Impact:** Minor unprofessional or inappropriate behavior.  
-**Consequence:** Private clarification and guidance on expected conduct.
+For minor or unintentional issues, maintainers may ask the participant to correct their behavior.
+
+Example:
+
+```text
+Please keep the discussion focused on the code and avoid personal remarks.
+```
 
 ### 2. Warning
 
-**Impact:** Repeated minor violations or a single significant incident.  
-**Consequence:** Formal warning and possible temporary limitations on participation.
+For repeated or more serious behavior, maintainers may issue a formal warning.
 
-### 3. Temporary Ban
+The warning may describe:
 
-**Impact:** Serious or repeated violations of community standards.  
-**Consequence:** Temporary suspension from participation in project spaces.
+- what behavior was unacceptable,
+- what change is expected,
+- what may happen if the behavior continues.
+
+### 3. Temporary Restriction
+
+For serious or repeated violations, maintainers may temporarily restrict participation.
+
+This may include:
+
+- temporary issue or PR restrictions,
+- temporary discussion restrictions,
+- temporary removal from project communication spaces.
 
 ### 4. Permanent Ban
 
-**Impact:** Sustained pattern of abusive, hostile, or harmful behavior.  
-**Consequence:** Permanent removal from all project-related spaces.
+For severe, abusive, threatening, or repeated harmful behavior, maintainers may permanently ban a participant from project spaces.
 
 ---
 
-## Attribution
+## Scope
 
-This Code of Conduct is adapted from the  
-[Contributor Covenant, version 2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct.html).
+This Code of Conduct applies within all official Vix.cpp project spaces.
 
-For additional information, see:  
-https://www.contributor-covenant.org/faq
+It may also apply outside official spaces when a person's behavior directly affects the project, its contributors, its users, or its community.
 
 ---
 
-## Summary
+## Good Faith Participation
 
-All contributors are expected to act with professionalism, respect, and integrity.
+The Vix.cpp project welcomes:
 
-By participating in **Vix.cpp**, you help build not only high-performance software, but also a healthy and collaborative community.
+- questions,
+- bug reports,
+- feature requests,
+- documentation improvements,
+- tests,
+- examples,
+- benchmark results,
+- performance investigations,
+- design discussions,
+- constructive criticism.
+
+Good faith participation is always welcome.
+
+Bad faith behavior, harassment, or abuse is not.
+
+---
+
+## Project Values
+
+Vix.cpp values:
+
+- technical honesty,
+- careful engineering,
+- respectful collaboration,
+- reproducible benchmarks,
+- reliable CI,
+- clean APIs,
+- strong tests,
+- maintainable code,
+- open learning,
+- long-term project quality.
+
+The goal is to build a serious C++ runtime while keeping the community healthy and respectful.
+
+---
+
+## License
+
+This Code of Conduct is provided as part of the Vix.cpp project documentation.

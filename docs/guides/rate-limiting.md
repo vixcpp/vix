@@ -60,13 +60,13 @@ app.use(vix::middleware::app::adapt_ctx(
 
 ## Where to apply rate limiting
 
-| Endpoint                 | Suggested limit              |
-|--------------------------|------------------------------|
-| `GET /health`            | High limit or no limit.      |
-| `GET /api/*`             | Normal application limit.    |
-| `POST /auth/login`       | Strict authentication limit. |
-| `POST /auth/register`    | Strict registration limit.   |
-| `POST /password/reset`   | Very strict recovery limit.  |
+| Endpoint               | Suggested limit              |
+| ---------------------- | ---------------------------- |
+| `GET /health`          | High limit or no limit.      |
+| `GET /api/*`           | Normal application limit.    |
+| `POST /auth/login`     | Strict authentication limit. |
+| `POST /auth/register`  | Strict registration limit.   |
+| `POST /password/reset` | Very strict recovery limit.  |
 
 ## Test rate limiting
 
@@ -130,6 +130,6 @@ For testing:
 
 ## What to use next
 
-- [SQLite API guide](/guides/sqlite-api)
-- [MySQL API guide](/guides/mysql-api)
+- [SQLite API guide](/guides/database/sqlite)
+- [MySQL API guide](/guides/database/mysql)
 - [Production Nginx + systemd guide](/guides/production-nginx-systemd)

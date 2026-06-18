@@ -1,6 +1,12 @@
 ---
 title: Vix.cpp Documentation
-layout: home
+layout: false
 ---
 
-<DocsHomeHero />
+<script setup>
+import { onMounted } from 'vue'
+
+onMounted(() => {
+  window.location.replace('/getting-started/')
+})
+</script>

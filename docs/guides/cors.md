@@ -99,13 +99,13 @@ curl -i -X OPTIONS http://127.0.0.1:8080/api/messages \
 
 ## CORS headers explained
 
-| Header                             | Purpose                                      |
-|------------------------------------|----------------------------------------------|
-| `Access-Control-Allow-Origin`      | Defines which origin is allowed.             |
-| `Access-Control-Allow-Methods`     | Defines which HTTP methods are allowed.      |
-| `Access-Control-Allow-Headers`     | Defines which request headers are allowed.   |
-| `Access-Control-Allow-Credentials` | Defines whether credentials are allowed.     |
-| `Access-Control-Expose-Headers`    | Defines which response headers JS can read.  |
+| Header                             | Purpose                                     |
+| ---------------------------------- | ------------------------------------------- |
+| `Access-Control-Allow-Origin`      | Defines which origin is allowed.            |
+| `Access-Control-Allow-Methods`     | Defines which HTTP methods are allowed.     |
+| `Access-Control-Allow-Headers`     | Defines which request headers are allowed.  |
+| `Access-Control-Allow-Credentials` | Defines whether credentials are allowed.    |
+| `Access-Control-Expose-Headers`    | Defines which response headers JS can read. |
 
 ## Common mistakes
 
