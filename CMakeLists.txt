@@ -216,6 +216,11 @@ option(VIX_TEMPLATE_BUILD_TESTS    "Build vix::template tests"                  
 option(VIX_TEMPLATE_BUILD_EXAMPLES "Build vix::template examples"                                 OFF)
 option(VIX_TEMPLATE_BUILD_BENCH    "Build vix::template benchmarks"                               OFF)
 
+option(VIX_ENABLE_UI               "Build Vix UI module"                                          ON)
+option(VIX_UI_BUILD_TESTS          "Build vix::ui tests"                                          ${VIX_BUILD_TESTS})
+option(VIX_UI_BUILD_EXAMPLES       "Build vix::ui examples"                                       OFF)
+option(VIX_UI_BUILD_BENCHMARKS     "Build vix::ui benchmarks"                                     OFF)
+
 option(VIX_ENABLE_PROCESS          "Build Vix Process module"                                     ON)
 
 option(VIX_ENABLE_THREADPOOL       "Build Vix ThreadPool module"                                  ON)
@@ -270,9 +275,13 @@ set(VIX_DB_BUILD_TESTS         ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::db test
 set(VIX_MIDDLEWARE_BUILD_TESTS ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::middleware tests")
 set(VIX_CLI_BUILD_TESTS        ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::cli tests")
 set(VIX_WEBSOCKET_BUILD_TESTS  ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::websocket tests")
+set(VIX_UI_BUILD_TESTS         ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::ui tests")
 
 # Some modules use their own public option names.
 set(TEMPLATE_BUILD_TESTS       ${VIX_TEMPLATE_BUILD_TESTS} CACHE BOOL "Build template tests")
+set(UI_BUILD_TESTS             ${VIX_UI_BUILD_TESTS} CACHE BOOL "Build ui tests")
+set(UI_BUILD_EXAMPLES          ${VIX_UI_BUILD_EXAMPLES} CACHE BOOL "Build ui examples")
+set(UI_BUILD_BENCHMARKS        ${VIX_UI_BUILD_BENCHMARKS} CACHE BOOL "Build ui benchmarks")
 set(VIX_AI_AGENT_BUILD_TESTS   ${VIX_AGENT_BUILD_TESTS} CACHE BOOL "Build vix ai agent tests")
 
 # ----------------------------------------------------
@@ -846,6 +855,36 @@ else()
   message(STATUS "Template: disabled or not present.")
 endif()
 
+# --- UI (optional) ---
+set(VIX_HAS_UI OFF)
+
+if (VIX_ENABLE_UI AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/ui/CMakeLists.txt")
+  if (NOT TARGET vix::template AND NOT TARGET template)
+    message(FATAL_ERROR "UI requires vix::template. Ensure template is added before ui.")
+  endif()
+
+  message(STATUS "Adding 'modules/ui'...")
+
+  set(UI_BUILD_TESTS ${VIX_UI_BUILD_TESTS} CACHE BOOL "Build ui tests" FORCE)
+  set(UI_BUILD_EXAMPLES ${VIX_UI_BUILD_EXAMPLES} CACHE BOOL "Build ui examples" FORCE)
+  set(UI_BUILD_BENCHMARKS ${VIX_UI_BUILD_BENCHMARKS} CACHE BOOL "Build ui benchmarks" FORCE)
+  set(UI_INSTALL OFF CACHE BOOL "Enable standalone install/package rules" FORCE)
+
+  add_subdirectory(modules/ui ui_build)
+
+  if (TARGET vix::ui OR TARGET ui)
+    set(VIX_HAS_UI ON)
+
+    if (TARGET ui AND NOT TARGET vix::ui)
+      add_library(vix::ui ALIAS ui)
+    endif()
+  else()
+    message(WARNING "UI module added but no vix::ui target was exported.")
+  endif()
+else()
+  message(STATUS "UI: disabled or not present.")
+endif()
+
 # --- Core ---
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/core/CMakeLists.txt")
   message(STATUS "Adding 'modules/core'...")
@@ -1316,6 +1355,12 @@ elseif (TARGET template)
   target_link_libraries(vix INTERFACE template)
 endif()
 
+if (TARGET vix::ui)
+  target_link_libraries(vix INTERFACE vix::ui)
+elseif (TARGET ui)
+  target_link_libraries(vix INTERFACE ui)
+endif()
+
 # ----------------------------------------------------
 # Examples filtering
 # ----------------------------------------------------
@@ -1514,7 +1559,7 @@ endif()
 
 if (VIX_ENABLE_INSTALL)
 
-   foreach(_m error path fs io env os log tests core utils json websocket webrpc crypto time conversion validation async process threadpool kv agent game net cache sync p2p p2p_http middleware db orm template)
+   foreach(_m error path fs io env os log tests core utils json websocket webrpc crypto time conversion validation async process threadpool kv agent game net cache sync p2p p2p_http middleware db orm template ui)
     if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/${_m}/include")
       install(DIRECTORY "modules/${_m}/include/"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
@@ -1596,6 +1641,7 @@ if (VIX_ENABLE_INSTALL)
   set(VIX_WITH_P2P_HTTP ${VIX_WITH_P2P_HTTP})
   set(VIX_HAS_TIME ${VIX_HAS_TIME})
   set(VIX_HAS_TEMPLATE ${VIX_HAS_TEMPLATE})
+  set(VIX_HAS_UI ${VIX_HAS_UI})
 
   set(VIX_WITH_THREADPOOL OFF)
   if (VIX_HAS_THREADPOOL)
@@ -1645,6 +1691,14 @@ if (VIX_ENABLE_INSTALL)
   if (VIX_HAS_TEMPLATE)
     set(VIX_WITH_TEMPLATE ON)
   endif()
+
+  set(VIX_WITH_UI OFF)
+  if (VIX_HAS_UI)
+    set(VIX_WITH_UI ON)
+  endif()
+
+  set(VIX_HAS_UI ${VIX_HAS_UI})
+  set(VIX_WITH_UI ${VIX_WITH_UI})
 
   set(VIX_WITH_AGENT OFF)
   if (VIX_HAS_AGENT)
@@ -1739,11 +1793,12 @@ message(STATUS "Game SDL OpenGL   : ${VIX_GAME_ENABLE_SDL_OPENGL}")
 message(STATUS "Validation built  : ${VIX_HAS_VALIDATION}")
 message(STATUS "Middleware built  : ${VIX_HAS_MIDDLEWARE}")
 message(STATUS "Template built    : ${VIX_HAS_TEMPLATE}")
+message(STATUS "UI built          : ${VIX_HAS_UI}")
 message(STATUS "Examples          : ${VIX_BUILD_EXAMPLES}")
 message(STATUS "Tests             : ${VIX_BUILD_TESTS}")
 message(STATUS "Sanitizers        : ${VIX_ENABLE_SANITIZERS}")
 message(STATUS "Coverage          : ${VIX_ENABLE_COVERAGE}")
 message(STATUS "LTO               : ${VIX_ENABLE_LTO}")
 message(STATUS "Install/Export    : ${VIX_ENABLE_INSTALL}")
-message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} WEBRPC=${VIX_WITH_WEBRPC} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P} TEMPLATE=${VIX_WITH_TEMPLATE} THREADPOOL=${VIX_WITH_THREADPOOL} KV=${VIX_WITH_KV} AGENT=${VIX_WITH_AGENT} GAME=${VIX_WITH_GAME} GAME_SDL=${VIX_WITH_GAME_SDL} GAME_SDL_OPENGL=${VIX_WITH_GAME_SDL_OPENGL}")
+message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} WEBRPC=${VIX_WITH_WEBRPC} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P} TEMPLATE=${VIX_WITH_TEMPLATE} UI=${VIX_WITH_UI} THREADPOOL=${VIX_WITH_THREADPOOL} KV=${VIX_WITH_KV} AGENT=${VIX_WITH_AGENT} GAME=${VIX_WITH_GAME} GAME_SDL=${VIX_WITH_GAME_SDL} GAME_SDL_OPENGL=${VIX_WITH_GAME_SDL_OPENGL}")
 message(STATUS "------------------------------------------------------")

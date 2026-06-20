@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.7.0
+
+### Added
+
+- Added the new `ui` module to the Vix.cpp umbrella build.
+- Added `vix::ui` as a first-class Vix module target.
+- Added umbrella support for building, linking, installing, and exporting the UI module.
+- Added `VIX_ENABLE_UI` to control whether the UI module is built from the umbrella project.
+- Added UI module test, example, and benchmark configuration flags:
+  - `VIX_UI_BUILD_TESTS`
+  - `VIX_UI_BUILD_EXAMPLES`
+  - `VIX_UI_BUILD_BENCHMARKS`
+  - `UI_BUILD_TESTS`
+  - `UI_BUILD_EXAMPLES`
+  - `UI_BUILD_BENCHMARKS`
+
+- Added `VIX_HAS_UI` and `VIX_WITH_UI` package flags to the generated `VixConfig.cmake`.
+- Added SDK packaging support for UI headers and the UI static library.
+- Added UI package export validation in SDK and umbrella CI.
+- Added UI consumer smoke coverage using `#include <vix/ui.hpp>`.
+- Added `examples/ui/` for UI module examples.
+
+### Changed
+
+- Updated the Core module to support an optional UI backend.
+- Updated Core CMake configuration with `VIX_CORE_WITH_UI` and `VIX_CORE_FETCH_UI`.
+- Updated Core package configuration so installed Core builds can resolve the UI dependency when Core is built with UI support.
+- Updated the umbrella target `vix::vix` to link `vix::ui` when the UI module is available.
+- Updated the umbrella install rules to include UI module headers.
+- Updated release builds to include the UI module in umbrella release coverage.
+- Updated SDK release builds to include the UI module in full SDK archives.
+- Updated module test CI to build and test the UI module with the rest of the umbrella modules.
+- Updated security CI to include UI in full, test, package-export, and configuration-coverage profiles.
+- Updated build-safety CI so release CLI builds also validate the UI module integration path.
+
+### Fixed
+
+- Fixed umbrella package export coverage so `vix::ui` is validated after installation.
+- Fixed SDK package validation so missing UI headers or static library artifacts are detected during release.
+- Fixed Core CI coverage so UI-enabled and UI-disabled Core configurations are both tested.
+- Fixed release CI coverage gaps where newly added modules could be skipped by umbrella build profiles.
+
 ## v2.6.3
 
 ### Fixed

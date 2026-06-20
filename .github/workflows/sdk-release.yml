@@ -105,6 +105,7 @@ jobs:
             -DVIX_ENABLE_TIME=ON \
             -DVIX_ENABLE_TESTS_MODULE=ON \
             -DVIX_ENABLE_TEMPLATE=ON \
+            -DVIX_ENABLE_UI=ON \
             -DVIX_ENABLE_PROCESS=ON \
             -DVIX_ENABLE_THREADPOOL=ON \
             -DVIX_ENABLE_KV=ON \
@@ -117,6 +118,13 @@ jobs:
             -DVIX_TEMPLATE_BUILD_TESTS=OFF \
             -DVIX_TEMPLATE_BUILD_EXAMPLES=OFF \
             -DVIX_TEMPLATE_BUILD_BENCH=OFF \
+            -DVIX_UI_BUILD_TESTS=OFF \
+            -DVIX_UI_BUILD_EXAMPLES=OFF \
+            -DVIX_UI_BUILD_BENCHMARKS=OFF \
+            -DUI_BUILD_TESTS=OFF \
+            -DUI_BUILD_EXAMPLES=OFF \
+            -DUI_BUILD_BENCHMARKS=OFF \
+            -DUI_INSTALL=OFF \
             -DVIX_AGENT_BUILD_TESTS=OFF \
             -DVIX_AGENT_BUILD_EXAMPLES=OFF \
             -DVIX_GAME_BUILD_TESTS=OFF \
@@ -190,11 +198,15 @@ jobs:
           test -f "$INSTALL_DIR/include/vix/threadpool.hpp"
           test -f "$INSTALL_DIR/include/vix/kv.hpp"
           test -f "$INSTALL_DIR/include/vix/template.hpp"
+          test -f "$INSTALL_DIR/include/vix/ui.hpp"
           test -f "$INSTALL_DIR/include/vix/p2p.hpp"
           test -f "$INSTALL_DIR/include/vix/p2p_http.hpp"
           test -f "$INSTALL_DIR/include/vix/webrpc.hpp"
           test -f "$INSTALL_DIR/include/vix/game.hpp"
           test -f "$INSTALL_DIR/include/vix/agent.hpp"
+
+          test -d "$INSTALL_DIR/include/vix/ui"
+          test -f "$INSTALL_DIR/include/vix/ui/assets/AssetManager.hpp"
 
           test -f "$INSTALL_DIR/include/asio/io_context.hpp"
           test -f "$INSTALL_DIR/include/asio.hpp"
@@ -226,6 +238,7 @@ jobs:
           test -f "$INSTALL_DIR/lib/libvix_p2p.a"
           test -f "$INSTALL_DIR/lib/libvix_p2p_http.a"
           test -f "$INSTALL_DIR/lib/libvix_middleware.a"
+          test -f "$INSTALL_DIR/lib/libui.a"
 
           nm -C "$INSTALL_DIR/lib/libvix_websocket.a" | grep "vix::websocket::LowLevelServer::run"
           nm -C "$INSTALL_DIR/lib/libvix_websocket.a" | grep "vix::websocket::Session::shutdown_now"
@@ -233,12 +246,14 @@ jobs:
 
           grep -R "vix::websocket" "$INSTALL_DIR/lib/cmake/Vix" -n
           grep -R "libvix_websocket" "$INSTALL_DIR/lib/cmake/Vix" -n
+          grep -R "vix::ui" "$INSTALL_DIR/lib/cmake/Vix" -n
+          grep -R "libui" "$INSTALL_DIR/lib/cmake/Vix" -n
 
           find "$INSTALL_DIR/include" -maxdepth 5 -type f | sort > installed-headers.txt
           find "$INSTALL_DIR/lib" -maxdepth 2 -type f | sort > installed-libs.txt
           find "$INSTALL_DIR/lib/cmake" -maxdepth 5 -type f | sort > installed-cmake-files.txt
 
-          sed -n '1,160p' installed-headers.txt
+          sed -n '1,180p' installed-headers.txt
           cat installed-libs.txt
           cat installed-cmake-files.txt
 
@@ -280,7 +295,9 @@ jobs:
           test -f smoke-sdk-tree/bin/vix
           test -f smoke-sdk-tree/include/vix.hpp
           test -f smoke-sdk-tree/include/vix/websocket.hpp
+          test -f smoke-sdk-tree/include/vix/ui.hpp
           test -f smoke-sdk-tree/lib/libvix_websocket.a
+          test -f smoke-sdk-tree/lib/libui.a
           test -f smoke-sdk-tree/lib/cmake/Vix/VixConfig.cmake
           test -f smoke-sdk-tree/lib/cmake/Vix/VixTargets.cmake
 
@@ -335,6 +352,7 @@ jobs:
           #include <vix/threadpool.hpp>
           #include <vix/kv.hpp>
           #include <vix/template.hpp>
+          #include <vix/ui.hpp>
           #include <vix/p2p.hpp>
           #include <vix/p2p_http.hpp>
           #include <vix/webrpc.hpp>
@@ -349,8 +367,11 @@ jobs:
             vix::websocket::Config ws_config{};
             vix::websocket::Router ws_router{};
 
+            vix::ui::ViewContext view_context{};
+
             (void)ws_config;
             (void)ws_router;
+            (void)view_context;
 
             std::cout << "Vix full SDK consumer build and link works\n";
             return 0;
@@ -414,6 +435,54 @@ jobs:
           cmake --build consumer-ws/build -j2
 
           ./consumer-ws/build/app
+
+      - name: Validate packaged SDK with UI link project
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          rm -rf smoke-sdk-ui consumer-ui
+          mkdir -p smoke-sdk-ui consumer-ui
+
+          tar -xzf "dist/$ASSET" -C smoke-sdk-ui
+
+          cat > consumer-ui/CMakeLists.txt <<'EOF'
+          cmake_minimum_required(VERSION 3.20)
+          project(vix_sdk_ui_consumer LANGUAGES CXX)
+
+          set(CMAKE_CXX_STANDARD 20)
+          set(CMAKE_CXX_STANDARD_REQUIRED ON)
+          set(CMAKE_CXX_EXTENSIONS OFF)
+
+          find_package(Vix CONFIG REQUIRED)
+
+          add_executable(app main.cpp)
+          target_link_libraries(app PRIVATE vix::vix)
+          EOF
+
+          cat > consumer-ui/main.cpp <<'EOF'
+          #include <vix/ui.hpp>
+
+          #include <iostream>
+
+          int main()
+          {
+            vix::ui::ViewContext context{};
+
+            (void)context;
+
+            std::cout << "Vix UI SDK link works\n";
+            return 0;
+          }
+          EOF
+
+          cmake -S consumer-ui -B consumer-ui/build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/smoke-sdk-ui"
+
+          cmake --build consumer-ui/build -j2
+
+          ./consumer-ui/build/app
 
       - name: Upload dist
         uses: actions/upload-artifact@v4
@@ -490,11 +559,19 @@ jobs:
             -DVIX_ENABLE_TIME=ON `
             -DVIX_ENABLE_TESTS_MODULE=ON `
             -DVIX_ENABLE_TEMPLATE=ON `
+            -DVIX_ENABLE_UI=ON `
             -DVIX_ENABLE_PROCESS=ON `
             -DVIX_ENABLE_THREADPOOL=ON `
             -DVIX_ENABLE_KV=ON `
             -DVIX_ENABLE_AGENT=ON `
             -DVIX_ENABLE_GAME=OFF `
+            -DVIX_UI_BUILD_TESTS=OFF `
+            -DVIX_UI_BUILD_EXAMPLES=OFF `
+            -DVIX_UI_BUILD_BENCHMARKS=OFF `
+            -DUI_BUILD_TESTS=OFF `
+            -DUI_BUILD_EXAMPLES=OFF `
+            -DUI_BUILD_BENCHMARKS=OFF `
+            -DUI_INSTALL=OFF `
             -DVCPKG_TARGET_TRIPLET=x64-windows `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
 
@@ -538,6 +615,8 @@ jobs:
           if (!(Test-Path "$env:INSTALL_DIR\bin\sqlite3.dll")) { throw "missing bin\sqlite3.dll" }
           if (!(Test-Path "$env:INSTALL_DIR\include\vix.hpp")) { throw "missing include\vix.hpp" }
           if (!(Test-Path "$env:INSTALL_DIR\include\vix\websocket.hpp")) { throw "missing include\vix\websocket.hpp" }
+          if (!(Test-Path "$env:INSTALL_DIR\include\vix\ui.hpp")) { throw "missing include\vix\ui.hpp" }
+          if (!(Test-Path "$env:INSTALL_DIR\include\vix\ui\assets\AssetManager.hpp")) { throw "missing include\vix\ui\assets\AssetManager.hpp" }
           if (!(Test-Path "$env:INSTALL_DIR\lib\cmake\Vix\VixConfig.cmake")) { throw "missing VixConfig.cmake" }
           if (!(Test-Path "$env:INSTALL_DIR\lib\cmake\Vix\VixTargets.cmake")) { throw "missing VixTargets.cmake" }
 
@@ -562,6 +641,7 @@ jobs:
           if (!(Test-Path "smoke-sdk\bin\vix.exe")) { throw "archive missing bin\vix.exe" }
           if (!(Test-Path "smoke-sdk\bin\sqlite3.dll")) { throw "archive missing bin\sqlite3.dll" }
           if (!(Test-Path "smoke-sdk\include\vix.hpp")) { throw "archive missing include\vix.hpp" }
+          if (!(Test-Path "smoke-sdk\include\vix\ui.hpp")) { throw "archive missing include\vix\ui.hpp" }
           if (!(Test-Path "smoke-sdk\lib\cmake\Vix\VixConfig.cmake")) { throw "archive missing VixConfig.cmake" }
 
           & "smoke-sdk\bin\vix.exe" --version

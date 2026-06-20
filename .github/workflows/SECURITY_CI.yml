@@ -101,6 +101,7 @@ env:
     -DVIX_ENABLE_CLI=ON
     -DVIX_ENABLE_WEBSOCKET=ON
     -DVIX_ENABLE_TEMPLATE=ON
+    -DVIX_ENABLE_UI=ON
     -DVIX_ENABLE_TESTS_MODULE=ON
     -DVIX_ENABLE_PROCESS=ON
     -DVIX_ENABLE_THREADPOOL=ON
@@ -109,6 +110,13 @@ env:
     -DVIX_ENABLE_GAME=ON
     -DVIX_GAME_ENABLE_SDL=OFF
     -DVIX_GAME_ENABLE_SDL_OPENGL=OFF
+    -DVIX_UI_BUILD_TESTS=OFF
+    -DVIX_UI_BUILD_EXAMPLES=OFF
+    -DVIX_UI_BUILD_BENCHMARKS=OFF
+    -DUI_BUILD_TESTS=OFF
+    -DUI_BUILD_EXAMPLES=OFF
+    -DUI_BUILD_BENCHMARKS=OFF
+    -DUI_INSTALL=OFF
 
   TEST_FEATURE_FLAGS: >-
     -DVIX_ENABLE_ASYNC=ON
@@ -127,6 +135,7 @@ env:
     -DVIX_ENABLE_CLI=ON
     -DVIX_ENABLE_WEBSOCKET=ON
     -DVIX_ENABLE_TEMPLATE=ON
+    -DVIX_ENABLE_UI=ON
     -DVIX_ENABLE_TESTS_MODULE=ON
     -DVIX_ENABLE_PROCESS=ON
     -DVIX_ENABLE_THREADPOOL=ON
@@ -135,6 +144,11 @@ env:
     -DVIX_ENABLE_GAME=ON
     -DVIX_GAME_ENABLE_SDL=OFF
     -DVIX_GAME_ENABLE_SDL_OPENGL=OFF
+    -DVIX_UI_BUILD_EXAMPLES=OFF
+    -DVIX_UI_BUILD_BENCHMARKS=OFF
+    -DUI_BUILD_EXAMPLES=OFF
+    -DUI_BUILD_BENCHMARKS=OFF
+    -DUI_INSTALL=OFF
 
   MODULE_TEST_FLAGS: >-
     -DVIX_BUILD_TESTS=ON
@@ -166,6 +180,8 @@ env:
     -DVIX_WEBSOCKET_BUILD_TESTS=ON
     -DVIX_TEMPLATE_BUILD_TESTS=ON
     -DTEMPLATE_BUILD_TESTS=ON
+    -DVIX_UI_BUILD_TESTS=ON
+    -DUI_BUILD_TESTS=ON
     -DVIX_PROCESS_BUILD_TESTS=ON
     -DVIX_THREADPOOL_BUILD_TESTS=ON
     -DVIX_KV_BUILD_TESTS=ON
@@ -180,6 +196,8 @@ env:
     -DVIX_TIME_BUILD_BENCH=OFF
     -DVIX_TEMPLATE_BUILD_BENCH=OFF
     -DTEMPLATE_BUILD_BENCHMARKS=OFF
+    -DVIX_UI_BUILD_BENCHMARKS=OFF
+    -DUI_BUILD_BENCHMARKS=OFF
     -DVIX_THREADPOOL_BUILD_BENCHMARKS=OFF
     -DVIX_KV_BUILD_BENCHMARKS=OFF
 
@@ -215,6 +233,8 @@ jobs:
           test -f modules/json/CMakeLists.txt
           test -f modules/utils/CMakeLists.txt
           test -f modules/core/CMakeLists.txt
+          test -f modules/template/CMakeLists.txt
+          test -f modules/ui/CMakeLists.txt
 
       - name: Select compiler
         run: |
@@ -511,14 +531,12 @@ jobs:
 
               normalized = path.replace("\\", "/")
 
-              # Only analyze real module implementation files.
               if "/modules/" not in normalized:
                   continue
 
               if "/src/" not in normalized:
                   continue
 
-              # Exclude generated/dependency/build areas.
               if "/third_party/" in normalized:
                   continue
 
@@ -556,7 +574,6 @@ jobs:
           JOBS="$(nproc)"
           echo "Running clang-tidy with ${JOBS} parallel jobs"
 
-          # Locate a run-clang-tidy driver (name varies by distro/version).
           RUN_CLANG_TIDY=""
           for candidate in \
             run-clang-tidy \
@@ -571,7 +588,6 @@ jobs:
           done
 
           if [ -z "$RUN_CLANG_TIDY" ]; then
-            # Fallback: search the filesystem (some packages ship it unlinked).
             FOUND="$(find /usr -name 'run-clang-tidy*' -type f 2>/dev/null | head -n1 || true)"
             if [ -n "$FOUND" ]; then
               RUN_CLANG_TIDY="$FOUND"
@@ -582,7 +598,6 @@ jobs:
 
           if [ -n "$RUN_CLANG_TIDY" ]; then
             echo "Using driver: $RUN_CLANG_TIDY"
-            # run-clang-tidy takes file path regexes/paths as positional args.
             "$RUN_CLANG_TIDY" \
               -p build-analyze \
               -j "$JOBS" \
@@ -590,8 +605,6 @@ jobs:
               "${FILES[@]}"
           else
             echo "::warning::run-clang-tidy not found, falling back to parallel xargs"
-            # Parallel fallback: one clang-tidy process per file, JOBS at a time.
-            # -P parallelizes; -n1 gives one file per invocation.
             xargs -r -P "$JOBS" -n1 \
               clang-tidy -p build-analyze --quiet \
               < /tmp/vix_clang_tidy_files.txt
@@ -750,8 +763,16 @@ jobs:
 
           test -f .ci-install/lib/cmake/Vix/VixConfig.cmake || (echo "::error::VixConfig.cmake missing"; exit 1)
           test -f .ci-install/lib/cmake/Vix/VixConfigVersion.cmake || (echo "::error::VixConfigVersion.cmake missing"; exit 1)
+
           test -f .ci-install/include/vix/json/Simple.hpp || (echo "::error::json headers missing"; exit 1)
           test -f .ci-install/include/vix/utils/Logger.hpp || (echo "::error::utils headers missing"; exit 1)
+          test -f .ci-install/include/vix/template.hpp || (echo "::error::template umbrella header missing"; exit 1)
+          test -f .ci-install/include/vix/ui.hpp || (echo "::error::ui umbrella header missing"; exit 1)
+          test -f .ci-install/include/vix/ui/assets/AssetManager.hpp || (echo "::error::ui headers missing"; exit 1)
+
+          test -f .ci-install/lib/libui.a || (echo "::error::ui static library missing"; exit 1)
+
+          grep -R "vix::ui" .ci-install/lib/cmake/Vix -n || (echo "::error::vix::ui not exported"; exit 1)
 
       - name: Consumer package check
         run: |
@@ -774,9 +795,13 @@ jobs:
 
           cat >/tmp/vix-consumer/main.cpp <<'EOF'
           #include <vix/json/Simple.hpp>
+          #include <vix/template.hpp>
+          #include <vix/ui.hpp>
 
           int main()
           {
+            vix::ui::ViewContext context{};
+            (void)context;
             return 0;
           }
           EOF
@@ -828,6 +853,15 @@ jobs:
             -DVIX_ENABLE_WEBRPC=ON \
             -DVIX_ENABLE_VALIDATION=ON \
             -DVIX_ENABLE_MIDDLEWARE=ON \
+            -DVIX_ENABLE_TEMPLATE=ON \
+            -DVIX_ENABLE_UI=ON \
+            -DVIX_UI_BUILD_TESTS=OFF \
+            -DVIX_UI_BUILD_EXAMPLES=OFF \
+            -DVIX_UI_BUILD_BENCHMARKS=OFF \
+            -DUI_BUILD_TESTS=OFF \
+            -DUI_BUILD_EXAMPLES=OFF \
+            -DUI_BUILD_BENCHMARKS=OFF \
+            -DUI_INSTALL=OFF \
             -DVIX_ENABLE_CLI=OFF
 
       - name: Build minimal profile
@@ -901,7 +935,8 @@ jobs:
           echo "- module tests with clang and gcc"
           echo "- sanitized module tests"
           echo "- runtime and CLI smoke checks"
-          echo "- static analysis on modules, examples, and module tests"
+          echo "- static analysis on configured module sources"
           echo "- valgrind on module test executables"
           echo "- package export and consumer check"
           echo "- minimal/full/full-test configuration coverage"
+          echo "- UI module integration coverage"

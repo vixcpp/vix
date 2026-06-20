@@ -186,6 +186,15 @@ jobs:
             -DVIX_DB_USE_MYSQL=OFF
             -DVIX_CORE_WITH_MYSQL=OFF
             -DVIX_ENABLE_HTTP_COMPRESSION=OFF
+
+            -DVIX_ENABLE_UI=ON
+            -DVIX_UI_BUILD_TESTS=OFF
+            -DVIX_UI_BUILD_EXAMPLES=OFF
+            -DVIX_UI_BUILD_BENCHMARKS=OFF
+            -DUI_BUILD_TESTS=OFF
+            -DUI_BUILD_EXAMPLES=OFF
+            -DUI_BUILD_BENCHMARKS=OFF
+            -DUI_INSTALL=OFF
           )
 
           if [ "${{ runner.os }}" = "Linux" ] && [ "${{ matrix.arch }}" = "aarch64" ]; then
@@ -287,6 +296,14 @@ jobs:
             -DVIX_DB_USE_SQLITE=OFF `
             -DVIX_CORE_WITH_MYSQL=OFF `
             -DVIX_ENABLE_HTTP_COMPRESSION=OFF `
+            -DVIX_ENABLE_UI=ON `
+            -DVIX_UI_BUILD_TESTS=OFF `
+            -DVIX_UI_BUILD_EXAMPLES=OFF `
+            -DVIX_UI_BUILD_BENCHMARKS=OFF `
+            -DUI_BUILD_TESTS=OFF `
+            -DUI_BUILD_EXAMPLES=OFF `
+            -DUI_BUILD_BENCHMARKS=OFF `
+            -DUI_INSTALL=OFF `
             -DVCPKG_TARGET_TRIPLET=x64-windows `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" 2>&1 | Tee-Object -FilePath cmake_output.log -Append
 
