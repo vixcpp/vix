@@ -512,10 +512,30 @@ jobs:
           cmake --install "$env:BUILD_DIR" --config Release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Bundle SQLite runtime DLL
+        shell: pwsh
+        run: |
+          $sqliteDll = Get-ChildItem -Path "$env:GITHUB_WORKSPACE\vcpkg\installed\x64-windows" -Recurse -File -Filter "sqlite3.dll" |
+            Select-Object -First 1
+
+          if (-not $sqliteDll) {
+            throw "sqlite3.dll not found in vcpkg installed tree"
+          }
+
+          New-Item -ItemType Directory -Force -Path "$env:INSTALL_DIR\bin" | Out-Null
+          Copy-Item -LiteralPath $sqliteDll.FullName -Destination "$env:INSTALL_DIR\bin\sqlite3.dll" -Force
+
+          if (!(Test-Path "$env:INSTALL_DIR\bin\sqlite3.dll")) {
+            throw "failed to copy sqlite3.dll into SDK bin directory"
+          }
+
+          Write-Host "Bundled sqlite3.dll from $($sqliteDll.FullName)"
+
       - name: Verify installed SDK tree
         shell: pwsh
         run: |
           if (!(Test-Path "$env:INSTALL_DIR\bin\vix.exe")) { throw "missing bin\vix.exe" }
+          if (!(Test-Path "$env:INSTALL_DIR\bin\sqlite3.dll")) { throw "missing bin\sqlite3.dll" }
           if (!(Test-Path "$env:INSTALL_DIR\include\vix.hpp")) { throw "missing include\vix.hpp" }
           if (!(Test-Path "$env:INSTALL_DIR\include\vix\websocket.hpp")) { throw "missing include\vix\websocket.hpp" }
           if (!(Test-Path "$env:INSTALL_DIR\lib\cmake\Vix\VixConfig.cmake")) { throw "missing VixConfig.cmake" }
@@ -540,6 +560,7 @@ jobs:
           Expand-Archive -LiteralPath "dist\$env:ASSET" -DestinationPath smoke-sdk -Force
 
           if (!(Test-Path "smoke-sdk\bin\vix.exe")) { throw "archive missing bin\vix.exe" }
+          if (!(Test-Path "smoke-sdk\bin\sqlite3.dll")) { throw "archive missing bin\sqlite3.dll" }
           if (!(Test-Path "smoke-sdk\include\vix.hpp")) { throw "archive missing include\vix.hpp" }
           if (!(Test-Path "smoke-sdk\lib\cmake\Vix\VixConfig.cmake")) { throw "archive missing VixConfig.cmake" }
 
