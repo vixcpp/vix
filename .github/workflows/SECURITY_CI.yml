@@ -68,11 +68,13 @@ env:
     libasio-dev
     libssl-dev
     zlib1g-dev
+    libbrotli-dev
     nlohmann-json3-dev
     libsqlite3-dev
     libspdlog-dev
     libfmt-dev
     libmysqlcppconn-dev
+    libgtk-3-dev
 
   BUILD_JOBS: 2
 
@@ -226,6 +228,12 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends $DEPS
 
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev || \
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
+
+          pkg-config --modversion gtk+-3.0
+          pkg-config --modversion webkit2gtk-4.1 || pkg-config --modversion webkit2gtk-4.0
+
       - name: Verify critical module directories
         run: |
           set -euxo pipefail
@@ -291,6 +299,12 @@ jobs:
           set -euxo pipefail
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends $DEPS
+
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev || \
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
+
+          pkg-config --modversion gtk+-3.0
+          pkg-config --modversion webkit2gtk-4.1 || pkg-config --modversion webkit2gtk-4.0
 
       - name: Select compiler
         run: |
@@ -358,6 +372,12 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends $DEPS
 
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev || \
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
+
+          pkg-config --modversion gtk+-3.0
+          pkg-config --modversion webkit2gtk-4.1 || pkg-config --modversion webkit2gtk-4.0
+
       - name: Select clang
         run: |
           set -euxo pipefail
@@ -417,6 +437,12 @@ jobs:
           set -euxo pipefail
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends $DEPS
+
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev || \
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
+
+          pkg-config --modversion gtk+-3.0
+          pkg-config --modversion webkit2gtk-4.1 || pkg-config --modversion webkit2gtk-4.0
 
       - name: Configure runtime build
         run: |
@@ -488,6 +514,12 @@ jobs:
           set -euxo pipefail
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends $DEPS
+
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev || \
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
+
+          pkg-config --modversion gtk+-3.0
+          pkg-config --modversion webkit2gtk-4.1 || pkg-config --modversion webkit2gtk-4.0
 
       - name: Configure analysis build
         run: |
@@ -562,7 +594,7 @@ jobs:
           COUNT="$(wc -l < /tmp/vix_clang_tidy_files.txt)"
           echo "clang-tidy will analyze ${COUNT} configured module source files"
 
-      - name: Run clang-tidy (parallel)
+      - name: Run clang-tidy parallel
         run: |
           set -euo pipefail
 
@@ -627,6 +659,12 @@ jobs:
           set -euxo pipefail
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends $DEPS
+
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev || \
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
+
+          pkg-config --modversion gtk+-3.0
+          pkg-config --modversion webkit2gtk-4.1 || pkg-config --modversion webkit2gtk-4.0
 
       - name: Configure valgrind test build
         run: |
@@ -733,6 +771,12 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends $DEPS
 
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev || \
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
+
+          pkg-config --modversion gtk+-3.0
+          pkg-config --modversion webkit2gtk-4.1 || pkg-config --modversion webkit2gtk-4.0
+
       - name: Configure installable build
         run: |
           set -euxo pipefail
@@ -828,6 +872,12 @@ jobs:
           set -euxo pipefail
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends $DEPS
+
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev || \
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
+
+          pkg-config --modversion gtk+-3.0
+          pkg-config --modversion webkit2gtk-4.1 || pkg-config --modversion webkit2gtk-4.0
 
       - name: Configure minimal profile
         run: |
@@ -940,3 +990,4 @@ jobs:
           echo "- package export and consumer check"
           echo "- minimal/full/full-test configuration coverage"
           echo "- UI module integration coverage"
+          echo "- UI Linux WebView dependencies installed"

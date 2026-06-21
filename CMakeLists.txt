@@ -220,6 +220,7 @@ option(VIX_ENABLE_UI               "Build Vix UI module"                        
 option(VIX_UI_BUILD_TESTS          "Build vix::ui tests"                                          ${VIX_BUILD_TESTS})
 option(VIX_UI_BUILD_EXAMPLES       "Build vix::ui examples"                                       OFF)
 option(VIX_UI_BUILD_BENCHMARKS     "Build vix::ui benchmarks"                                     OFF)
+option(VIX_UI_ENABLE_LINUX_WEBVIEW "Enable Linux desktop WebView backend for vix::ui"              OFF)
 
 option(VIX_ENABLE_PROCESS          "Build Vix Process module"                                     ON)
 
@@ -283,6 +284,8 @@ set(UI_BUILD_TESTS             ${VIX_UI_BUILD_TESTS} CACHE BOOL "Build ui tests"
 set(UI_BUILD_EXAMPLES          ${VIX_UI_BUILD_EXAMPLES} CACHE BOOL "Build ui examples")
 set(UI_BUILD_BENCHMARKS        ${VIX_UI_BUILD_BENCHMARKS} CACHE BOOL "Build ui benchmarks")
 set(VIX_AI_AGENT_BUILD_TESTS   ${VIX_AGENT_BUILD_TESTS} CACHE BOOL "Build vix ai agent tests")
+set(VIX_UI_ENABLE_LINUX_WEBVIEW ${VIX_UI_ENABLE_LINUX_WEBVIEW}
+    CACHE BOOL "Enable Linux desktop WebView backend for vix::ui")
 
 # ----------------------------------------------------
 # Testing bootstrap
@@ -869,6 +872,9 @@ if (VIX_ENABLE_UI AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/ui/CMakeLists.
   set(UI_BUILD_EXAMPLES ${VIX_UI_BUILD_EXAMPLES} CACHE BOOL "Build ui examples" FORCE)
   set(UI_BUILD_BENCHMARKS ${VIX_UI_BUILD_BENCHMARKS} CACHE BOOL "Build ui benchmarks" FORCE)
   set(UI_INSTALL OFF CACHE BOOL "Enable standalone install/package rules" FORCE)
+
+  set(VIX_UI_ENABLE_LINUX_WEBVIEW ${VIX_UI_ENABLE_LINUX_WEBVIEW}
+    CACHE BOOL "Enable Linux desktop WebView backend for vix::ui" FORCE)
 
   add_subdirectory(modules/ui ui_build)
 
@@ -1697,8 +1703,14 @@ if (VIX_ENABLE_INSTALL)
     set(VIX_WITH_UI ON)
   endif()
 
+  set(VIX_WITH_UI_LINUX_WEBVIEW OFF)
+  if (VIX_HAS_UI AND VIX_UI_ENABLE_LINUX_WEBVIEW)
+    set(VIX_WITH_UI_LINUX_WEBVIEW ON)
+  endif()
+
   set(VIX_HAS_UI ${VIX_HAS_UI})
   set(VIX_WITH_UI ${VIX_WITH_UI})
+  set(VIX_WITH_UI_LINUX_WEBVIEW ${VIX_WITH_UI_LINUX_WEBVIEW})
 
   set(VIX_WITH_AGENT OFF)
   if (VIX_HAS_AGENT)
@@ -1800,5 +1812,5 @@ message(STATUS "Sanitizers        : ${VIX_ENABLE_SANITIZERS}")
 message(STATUS "Coverage          : ${VIX_ENABLE_COVERAGE}")
 message(STATUS "LTO               : ${VIX_ENABLE_LTO}")
 message(STATUS "Install/Export    : ${VIX_ENABLE_INSTALL}")
-message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} WEBRPC=${VIX_WITH_WEBRPC} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P} TEMPLATE=${VIX_WITH_TEMPLATE} UI=${VIX_WITH_UI} THREADPOOL=${VIX_WITH_THREADPOOL} KV=${VIX_WITH_KV} AGENT=${VIX_WITH_AGENT} GAME=${VIX_WITH_GAME} GAME_SDL=${VIX_WITH_GAME_SDL} GAME_SDL_OPENGL=${VIX_WITH_GAME_SDL_OPENGL}")
+message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} WEBRPC=${VIX_WITH_WEBRPC} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P} TEMPLATE=${VIX_WITH_TEMPLATE} UI=${VIX_WITH_UI} UI_WEBVIEW=${VIX_WITH_UI_LINUX_WEBVIEW} THREADPOOL=${VIX_WITH_THREADPOOL} KV=${VIX_WITH_KV} AGENT=${VIX_WITH_AGENT} GAME=${VIX_WITH_GAME} GAME_SDL=${VIX_WITH_GAME_SDL} GAME_SDL_OPENGL=${VIX_WITH_GAME_SDL_OPENGL}")
 message(STATUS "------------------------------------------------------")

@@ -70,7 +70,14 @@ jobs:
             libmysqlcppconn-dev \
             libsdl2-dev \
             libsdl2-image-dev \
-            libgl1-mesa-dev
+            libgl1-mesa-dev \
+            libgtk-3-dev
+
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev || \
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
+
+          pkg-config --modversion gtk+-3.0
+          pkg-config --modversion webkit2gtk-4.1 || pkg-config --modversion webkit2gtk-4.0
 
       - name: Configure SDK full
         shell: bash
@@ -106,6 +113,7 @@ jobs:
             -DVIX_ENABLE_TESTS_MODULE=ON \
             -DVIX_ENABLE_TEMPLATE=ON \
             -DVIX_ENABLE_UI=ON \
+            -DVIX_UI_ENABLE_LINUX_WEBVIEW=ON \
             -DVIX_ENABLE_PROCESS=ON \
             -DVIX_ENABLE_THREADPOOL=ON \
             -DVIX_ENABLE_KV=ON \
@@ -560,6 +568,7 @@ jobs:
             -DVIX_ENABLE_TESTS_MODULE=ON `
             -DVIX_ENABLE_TEMPLATE=ON `
             -DVIX_ENABLE_UI=ON `
+            -DVIX_UI_ENABLE_LINUX_WEBVIEW=OFF `
             -DVIX_ENABLE_PROCESS=ON `
             -DVIX_ENABLE_THREADPOOL=ON `
             -DVIX_ENABLE_KV=ON `
