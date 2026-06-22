@@ -10,28 +10,94 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added the new `ui` module to the Vix.cpp umbrella build as a first-class `vix::ui` target.
-- Added build, install, export, SDK packaging, and CI validation support for the UI module.
+- Added Vix UI as the main foundation of this release.
+- Added server-rendered UI primitives built on top of the Vix template engine.
+- Added core UI view helpers:
+  - `vix::ui::View`
+  - `vix::ui::ViewContext`
+  - `vix::ui::ViewResult`
+  - `vix::ui::HtmlResponse`
+- Added HTML helper primitives:
+  - HTML escaping
+  - HTML attributes
+  - small HTML generation helpers
+- Added asset helpers:
+  - `Asset`
+  - `AssetManifest`
+  - `AssetManager`
+  - `AssetMap`
+  - `AssetMode`
+- Added asset pipeline support for:
+  - asset versioning
+  - manifest lookup
+  - hashed asset paths
+  - CSS and JS grouping
+  - preload helpers
+  - module script support
+  - production and development asset modes
+- Added server-rendered form helpers:
+  - fields
+  - select options
+  - checkbox state
+  - radio groups
+  - file inputs
+  - form data binding
+  - old input values
+  - CSRF rendering helper
+  - validation error model
+- Added live UI helpers:
+  - HTML fragments
+  - WebSocket-friendly update payloads
+  - flash messages
+  - toast notifications
+- Added PWA and mobile helpers:
+  - viewport metadata
+  - safe-area CSS helpers
+  - web app manifest metadata
+  - installable web app meta tags
+- Added desktop shell primitives:
+  - `AppShell`
+  - `ShellConfig`
+  - `ServerProcess`
+  - `ServerReadiness`
+  - descriptor shell backend
+  - Linux WebView shell backend
+- Added platform descriptors for web, desktop, and mobile targets.
 - Added `examples/ui/` for UI module examples.
 - Added package support for `#include <vix/ui.hpp>` through the generated SDK and install layout.
+- Added build, install, export, SDK packaging, and CI validation support for the UI module.
 
 ### Changed
 
+- Updated the umbrella build so `vix::ui` is built, linked, installed, and exported as part of Vix.cpp.
+- Updated `vix::vix` so it links `vix::ui` when the UI module is enabled.
 - Updated the Core module to support optional UI integration.
-- Updated umbrella builds so `vix::vix` links `vix::ui` when the UI module is enabled.
+- Updated the HTTP response layer to support Vix UI responses and views directly.
+- Updated module examples to include UI, forms, assets, live UI, desktop shell, and PWA workflows.
 - Updated release, SDK, module test, security, and build-safety CI profiles to include UI module coverage.
+- Updated package validation so newly added modules are checked after installation.
 
 ### Fixed
 
-- Fixed package export validation so newly added modules such as `vix::ui` are checked after installation.
+- Fixed package export validation so `vix::ui` is validated after installation.
 - Fixed SDK validation so missing UI headers or static library artifacts are detected during release.
-- Fixed Core CI coverage so both UI-enabled and UI-disabled configurations are tested.
-
-### Fixed
-
-- Fixed umbrella package export coverage so `vix::ui` is validated after installation.
-- Fixed SDK package validation so missing UI headers or static library artifacts are detected during release.
-- Fixed Core CI coverage so UI-enabled and UI-disabled Core configurations are both tested.
+- Fixed Core CI coverage so UI-enabled and UI-disabled configurations are both tested.
 - Fixed release CI coverage gaps where newly added modules could be skipped by umbrella build profiles.
+- Fixed app shell tests so automated test runs use the descriptor backend instead of opening a real Linux WebView window.
+
+### Notes
+
+Vix.cpp v2.7.0 is mainly a UI foundation release.
+
+The goal is to make C++ web UI development simpler by keeping the rendering model server-first, reusing the existing Vix template engine, and avoiding a heavy frontend framework.
+
+The direction is:
+
+```txt
+server-rendered UI first
+WebView app shell later
+native UI only if truly needed
+```
 
 ## v2.6.3
 
