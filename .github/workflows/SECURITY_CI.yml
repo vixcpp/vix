@@ -1,6 +1,6 @@
 name: SECURITY_CI
 
-on:
+"on":
   push:
     branches:
       - main
@@ -104,6 +104,7 @@ env:
     -DVIX_ENABLE_WEBSOCKET=ON
     -DVIX_ENABLE_TEMPLATE=ON
     -DVIX_ENABLE_UI=ON
+    -DVIX_ENABLE_NOTE=ON
     -DVIX_ENABLE_TESTS_MODULE=ON
     -DVIX_ENABLE_PROCESS=ON
     -DVIX_ENABLE_THREADPOOL=ON
@@ -115,6 +116,9 @@ env:
     -DVIX_UI_BUILD_TESTS=OFF
     -DVIX_UI_BUILD_EXAMPLES=OFF
     -DVIX_UI_BUILD_BENCHMARKS=OFF
+    -DVIX_NOTE_BUILD_TESTS=OFF
+    -DVIX_NOTE_BUILD_EXAMPLES=OFF
+    -DVIX_NOTE_INSTALL=OFF
     -DUI_BUILD_TESTS=OFF
     -DUI_BUILD_EXAMPLES=OFF
     -DUI_BUILD_BENCHMARKS=OFF
@@ -138,6 +142,7 @@ env:
     -DVIX_ENABLE_WEBSOCKET=ON
     -DVIX_ENABLE_TEMPLATE=ON
     -DVIX_ENABLE_UI=ON
+    -DVIX_ENABLE_NOTE=ON
     -DVIX_ENABLE_TESTS_MODULE=ON
     -DVIX_ENABLE_PROCESS=ON
     -DVIX_ENABLE_THREADPOOL=ON
@@ -148,6 +153,8 @@ env:
     -DVIX_GAME_ENABLE_SDL_OPENGL=OFF
     -DVIX_UI_BUILD_EXAMPLES=OFF
     -DVIX_UI_BUILD_BENCHMARKS=OFF
+    -DVIX_NOTE_BUILD_EXAMPLES=OFF
+    -DVIX_NOTE_INSTALL=OFF
     -DUI_BUILD_EXAMPLES=OFF
     -DUI_BUILD_BENCHMARKS=OFF
     -DUI_INSTALL=OFF
@@ -183,6 +190,7 @@ env:
     -DVIX_TEMPLATE_BUILD_TESTS=ON
     -DTEMPLATE_BUILD_TESTS=ON
     -DVIX_UI_BUILD_TESTS=ON
+    -DVIX_NOTE_BUILD_TESTS=ON
     -DUI_BUILD_TESTS=ON
     -DVIX_PROCESS_BUILD_TESTS=ON
     -DVIX_THREADPOOL_BUILD_TESTS=ON
@@ -243,6 +251,7 @@ jobs:
           test -f modules/core/CMakeLists.txt
           test -f modules/template/CMakeLists.txt
           test -f modules/ui/CMakeLists.txt
+          test -f modules/note/CMakeLists.txt
 
       - name: Select compiler
         run: |
@@ -494,6 +503,14 @@ jobs:
           cat /tmp/vix_version.log || true
           if [ "${STATUS:-0}" -ne 0 ] && [ "${STATUS:-0}" -ne 124 ]; then
             echo "::error::vix --version failed"
+            exit 1
+          fi
+
+          unset STATUS
+          timeout 10s "$VIX_BIN" note --help >/tmp/vix_note_help.log 2>&1 || STATUS=$?
+          cat /tmp/vix_note_help.log || true
+          if [ "${STATUS:-0}" -ne 0 ] && [ "${STATUS:-0}" -ne 124 ]; then
+            echo "::error::vix note --help failed"
             exit 1
           fi
 
@@ -813,10 +830,13 @@ jobs:
           test -f .ci-install/include/vix/template.hpp || (echo "::error::template umbrella header missing"; exit 1)
           test -f .ci-install/include/vix/ui.hpp || (echo "::error::ui umbrella header missing"; exit 1)
           test -f .ci-install/include/vix/ui/assets/AssetManager.hpp || (echo "::error::ui headers missing"; exit 1)
+          test -f .ci-install/include/vix/note/note.hpp || (echo "::error::note umbrella header missing"; exit 1)
 
           test -f .ci-install/lib/libui.a || (echo "::error::ui static library missing"; exit 1)
+          test -f .ci-install/lib/libvix_note.a || (echo "::error::note static library missing"; exit 1)
 
           grep -R "vix::ui" .ci-install/lib/cmake/Vix -n || (echo "::error::vix::ui not exported"; exit 1)
+          grep -R "vix::note" .ci-install/lib/cmake/Vix -n || (echo "::error::vix::note not exported"; exit 1)
 
       - name: Consumer package check
         run: |
@@ -841,6 +861,7 @@ jobs:
           #include <vix/json/Simple.hpp>
           #include <vix/template.hpp>
           #include <vix/ui.hpp>
+          #include <vix/note/note.hpp>
 
           int main()
           {
@@ -905,6 +926,10 @@ jobs:
             -DVIX_ENABLE_MIDDLEWARE=ON \
             -DVIX_ENABLE_TEMPLATE=ON \
             -DVIX_ENABLE_UI=ON \
+            -DVIX_ENABLE_NOTE=ON \
+            -DVIX_NOTE_BUILD_TESTS=OFF \
+            -DVIX_NOTE_BUILD_EXAMPLES=OFF \
+            -DVIX_NOTE_INSTALL=OFF \
             -DVIX_UI_BUILD_TESTS=OFF \
             -DVIX_UI_BUILD_EXAMPLES=OFF \
             -DVIX_UI_BUILD_BENCHMARKS=OFF \
@@ -990,4 +1015,5 @@ jobs:
           echo "- package export and consumer check"
           echo "- minimal/full/full-test configuration coverage"
           echo "- UI module integration coverage"
+          echo "- Note module integration coverage"
           echo "- UI Linux WebView dependencies installed"

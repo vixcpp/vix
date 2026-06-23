@@ -1,6 +1,6 @@
 name: release
 
-on:
+"on":
   push:
     tags:
       - "v*"
@@ -216,6 +216,7 @@ jobs:
             -DVIX_ENABLE_HTTP_COMPRESSION=OFF
 
             -DVIX_ENABLE_UI=ON
+            -DVIX_ENABLE_NOTE=ON
             -DVIX_UI_BUILD_TESTS=OFF
             -DVIX_UI_BUILD_EXAMPLES=OFF
             -DVIX_UI_BUILD_BENCHMARKS=OFF
@@ -223,6 +224,9 @@ jobs:
             -DUI_BUILD_EXAMPLES=OFF
             -DUI_BUILD_BENCHMARKS=OFF
             -DUI_INSTALL=OFF
+            -DVIX_NOTE_BUILD_TESTS=OFF
+            -DVIX_NOTE_BUILD_EXAMPLES=OFF
+            -DVIX_NOTE_INSTALL=OFF
           )
 
           if [ "${{ runner.os }}" = "Linux" ]; then
@@ -335,6 +339,7 @@ jobs:
             -DVIX_CORE_WITH_MYSQL=OFF `
             -DVIX_ENABLE_HTTP_COMPRESSION=OFF `
             -DVIX_ENABLE_UI=ON `
+            -DVIX_ENABLE_NOTE=ON `
             -DVIX_UI_ENABLE_LINUX_WEBVIEW=OFF `
             -DVIX_UI_BUILD_TESTS=OFF `
             -DVIX_UI_BUILD_EXAMPLES=OFF `
@@ -343,6 +348,9 @@ jobs:
             -DUI_BUILD_EXAMPLES=OFF `
             -DUI_BUILD_BENCHMARKS=OFF `
             -DUI_INSTALL=OFF `
+            -DVIX_NOTE_BUILD_TESTS=OFF `
+            -DVIX_NOTE_BUILD_EXAMPLES=OFF `
+            -DVIX_NOTE_INSTALL=OFF `
             -DVCPKG_TARGET_TRIPLET=x64-windows `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" 2>&1 | Tee-Object -FilePath cmake_output.log -Append
 
@@ -462,6 +470,8 @@ jobs:
           file smoke/vix
           ldd smoke/vix || true
           smoke/vix --version
+          smoke/vix note --help >/tmp/vix-note-help.txt
+          head -n 80 /tmp/vix-note-help.txt
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
@@ -487,6 +497,12 @@ jobs:
 
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           Copy-Item $bin dist\vix.exe
+
+          & dist\vix.exe --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          & dist\vix.exe note --help | Select-Object -First 80
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           $asset = "vix-windows-${{ matrix.arch }}.zip"
           Compress-Archive -Path dist\vix.exe -DestinationPath "dist\$asset" -Force

@@ -10,23 +10,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added the new `ui` module to the Vix.cpp umbrella build as a first-class `vix::ui` target.
-- Added Vix UI as the main foundation of this release.
+- Added Vix UI as one of the two main foundations of this release.
 - Added server-rendered UI primitives built on top of the Vix template engine.
 - Added core UI view helpers:
   - `vix::ui::View`
   - `vix::ui::ViewContext`
   - `vix::ui::ViewResult`
   - `vix::ui::HtmlResponse`
+
 - Added HTML helper primitives:
   - HTML escaping
   - HTML attributes
   - small HTML generation helpers
+
 - Added asset helpers:
   - `Asset`
   - `AssetManifest`
   - `AssetManager`
   - `AssetMap`
   - `AssetMode`
+
 - Added asset pipeline support for:
   - asset versioning
   - manifest lookup
@@ -35,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - preload helpers
   - module script support
   - production and development asset modes
+
 - Added server-rendered form helpers:
   - fields
   - select options
@@ -45,16 +49,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - old input values
   - CSRF rendering helper
   - validation error model
+
 - Added live UI helpers:
   - HTML fragments
   - WebSocket-friendly update payloads
   - flash messages
   - toast notifications
+
 - Added PWA and mobile helpers:
   - viewport metadata
   - safe-area CSS helpers
   - web app manifest metadata
   - installable web app meta tags
+
 - Added desktop shell primitives:
   - `AppShell`
   - `ShellConfig`
@@ -62,42 +69,95 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `ServerReadiness`
   - descriptor shell backend
   - Linux WebView shell backend
+
 - Added platform descriptors for web, desktop, and mobile targets.
 - Added `examples/ui/` for UI module examples.
 - Added package support for `#include <vix/ui.hpp>` through the generated SDK and install layout.
 - Added build, install, export, SDK packaging, and CI validation support for the UI module.
+- Added the new `note` module to the Vix.cpp umbrella build as a first-class `vix::note` target.
+- Added Vix Note as the second main foundation of this release.
+- Added a lightweight visual notebook foundation for learning C++ and Vix.cpp faster.
+- Added `.vixnote` document support with markdown-compatible parsing.
+- Added note document and cell models:
+  - `vix::note::NoteDocument`
+  - `vix::note::NoteCell`
+  - `vix::note::NoteResult`
+  - `vix::note::NoteOutput`
+  - `vix::note::NoteError`
+
+- Added C++ cell execution through `vix run`.
+- Added runtime session and kernel support for running cells and storing outputs.
+- Added local Note UI assets:
+  - `assets/index.html`
+  - `assets/css/note.css`
+  - `assets/js/note.js`
+
+- Added embedded Note UI asset fallback.
+- Added support for loading Note UI assets from disk.
+- Added local Note server and route layer.
+- Added Note API routes for:
+  - `/api/document`
+  - `/api/cells/<index>/run`
+  - `/api/run-all`
+
+- Added visual rendering of note cells, execution status, outputs, and errors in the browser UI.
+- Added static HTML export support for `.vixnote` lessons.
+- Added `vix note <file.vixnote>` command support in the CLI.
+- Added `examples/hello.vixnote` as the main Vix Note example.
+- Added build, install, export, SDK packaging, and CI validation support for the Note module.
 
 ### Changed
 
-- Updated the umbrella build so `vix::ui` is built, linked, installed, and exported as part of Vix.cpp.
-- Updated `vix::vix` so it links `vix::ui` when the UI module is enabled.
+- Updated the umbrella build so `vix::ui` and `vix::note` are built, linked, installed, and exported as part of Vix.cpp.
+- Updated `vix::vix` so it links `vix::ui` and `vix::note` when the corresponding modules are enabled.
 - Updated the Core module to support optional UI integration.
 - Updated the HTTP response layer to support Vix UI responses and views directly.
-- Updated module examples to include UI, forms, assets, live UI, desktop shell, and PWA workflows.
-- Updated release, SDK, module test, security, and build-safety CI profiles to include UI module coverage.
-- Updated package validation so newly added modules are checked after installation.
+- Updated module examples to focus on UI and Note workflows.
+- Updated release, SDK, module test, security, and build-safety CI profiles to include UI and Note module coverage.
+- Updated package validation so newly added UI and Note modules are checked after installation.
+- Updated the CLI command registry to expose `vix note`.
+- Updated Vix Note assets so the browser UI is rendered from real local assets instead of a static placeholder.
+- Updated Vix Note routing so the UI can fetch document state and run cells through API calls.
+- Updated Vix Note version metadata for the v0.2.0 local UI milestone.
 
 ### Fixed
 
-- Fixed package export validation so `vix::ui` is validated after installation.
-- Fixed SDK validation so missing UI headers or static library artifacts are detected during release.
-- Fixed Core CI coverage so UI-enabled and UI-disabled configurations are both tested.
+- Fixed package export validation so `vix::ui` and `vix::note` are validated after installation.
+- Fixed SDK validation so missing UI or Note headers and static library artifacts are detected during release.
 - Fixed release CI coverage gaps where newly added modules could be skipped by umbrella build profiles.
+- Fixed Core CI coverage so UI-enabled and UI-disabled configurations are both tested.
 - Fixed app shell tests so automated test runs use the descriptor backend instead of opening a real Linux WebView window.
+- Fixed Note asset loading so `index.html` is served consistently through both `/` and `/index.html`.
+- Fixed Note server tests so local HTTP behavior can be validated without depending on an external backend.
+- Fixed Note route tests to cover document JSON, single-cell execution, run-all execution, and static asset responses.
 
 ### Notes
 
-Vix.cpp v2.7.0 is mainly a UI foundation release.
+Vix.cpp v2.7.0 is focused only on two foundations:
 
-The goal is to make C++ web UI development simpler by keeping the rendering model server-first, reusing the existing Vix template engine, and avoiding a heavy frontend framework.
+```txt
+Vix UI
+Vix Note
+```
+
+Vix UI provides the server-rendered UI foundation for C++ applications.
+
+Vix Note provides the visual learning workspace for C++ and Vix.cpp lessons.
+
+The goal of this release is not to make Vix.cpp heavier. The goal is to make C++ development easier to understand, easier to teach, and easier to turn into real interfaces.
 
 The direction is:
 
 ```txt
 server-rendered UI first
+visual C++ learning with Vix Note
 WebView app shell later
 native UI only if truly needed
 ```
+
+Vix UI makes it possible to build clean server-rendered interfaces in C++.
+
+Vix Note makes it possible to write explanations, run small C++ cells, see outputs near the code, and export lessons without turning the terminal into the only learning experience.
 
 ## v2.6.3
 

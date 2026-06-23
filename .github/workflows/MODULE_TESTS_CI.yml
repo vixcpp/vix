@@ -1,6 +1,6 @@
 name: Module Tests CI
 
-on:
+"on":
   push:
     branches:
       - main
@@ -88,6 +88,7 @@ jobs:
           test -f modules/utils/CMakeLists.txt
           test -f modules/template/CMakeLists.txt
           test -f modules/ui/CMakeLists.txt
+          test -f modules/note/CMakeLists.txt
 
       - name: Select compiler
         run: |
@@ -129,6 +130,10 @@ jobs:
             -DVIX_UI_BUILD_BENCHMARKS=OFF \
             -DUI_BUILD_BENCHMARKS=OFF \
             -DUI_INSTALL=OFF \
+            -DVIX_ENABLE_NOTE=ON \
+            -DVIX_NOTE_BUILD_TESTS=ON \
+            -DVIX_NOTE_BUILD_EXAMPLES=OFF \
+            -DVIX_NOTE_INSTALL=OFF \
             -DVIX_ENABLE_AGENT=ON \
             -DVIX_AGENT_BUILD_TESTS=ON \
             -DVIX_AI_AGENT_BUILD_TESTS=ON \
@@ -198,6 +203,7 @@ jobs:
           test -f modules/utils/CMakeLists.txt
           test -f modules/template/CMakeLists.txt
           test -f modules/ui/CMakeLists.txt
+          test -f modules/note/CMakeLists.txt
 
       - name: Configure light module tests
         run: |
@@ -227,6 +233,10 @@ jobs:
             -DVIX_UI_BUILD_BENCHMARKS=OFF \
             -DUI_BUILD_BENCHMARKS=OFF \
             -DUI_INSTALL=OFF \
+            -DVIX_ENABLE_NOTE=ON \
+            -DVIX_NOTE_BUILD_TESTS=ON \
+            -DVIX_NOTE_BUILD_EXAMPLES=OFF \
+            -DVIX_NOTE_INSTALL=OFF \
             -DVIX_ENABLE_THREADPOOL=ON \
             -DVIX_THREADPOOL_BUILD_TESTS=ON \
             -DVIX_ENABLE_KV=ON \

@@ -222,6 +222,10 @@ option(VIX_UI_BUILD_EXAMPLES       "Build vix::ui examples"                     
 option(VIX_UI_BUILD_BENCHMARKS     "Build vix::ui benchmarks"                                     OFF)
 option(VIX_UI_ENABLE_LINUX_WEBVIEW "Enable Linux desktop WebView backend for vix::ui"              OFF)
 
+option(VIX_ENABLE_NOTE             "Build Vix Note module"                                        ON)
+option(VIX_NOTE_BUILD_TESTS        "Build vix::note tests"                                        ${VIX_BUILD_TESTS})
+option(VIX_NOTE_BUILD_EXAMPLES     "Build vix::note examples"                                     OFF)
+
 option(VIX_ENABLE_PROCESS          "Build Vix Process module"                                     ON)
 
 option(VIX_ENABLE_THREADPOOL       "Build Vix ThreadPool module"                                  ON)
@@ -277,6 +281,7 @@ set(VIX_MIDDLEWARE_BUILD_TESTS ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::middlew
 set(VIX_CLI_BUILD_TESTS        ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::cli tests")
 set(VIX_WEBSOCKET_BUILD_TESTS  ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::websocket tests")
 set(VIX_UI_BUILD_TESTS         ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::ui tests")
+set(VIX_NOTE_BUILD_TESTS       ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::note tests")
 
 # Some modules use their own public option names.
 set(TEMPLATE_BUILD_TESTS       ${VIX_TEMPLATE_BUILD_TESTS} CACHE BOOL "Build template tests")
@@ -891,6 +896,31 @@ else()
   message(STATUS "UI: disabled or not present.")
 endif()
 
+# --- Note (optional) ---
+set(VIX_HAS_NOTE OFF)
+
+if (VIX_ENABLE_NOTE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/note/CMakeLists.txt")
+  message(STATUS "Adding 'modules/note'...")
+
+  set(VIX_NOTE_BUILD_TESTS ${VIX_NOTE_BUILD_TESTS} CACHE BOOL "Build vix::note tests" FORCE)
+  set(VIX_NOTE_BUILD_EXAMPLES ${VIX_NOTE_BUILD_EXAMPLES} CACHE BOOL "Build vix::note examples" FORCE)
+  set(VIX_NOTE_INSTALL OFF CACHE BOOL "Enable standalone install/package rules" FORCE)
+
+  add_subdirectory(modules/note note_build)
+
+  if (TARGET vix::note OR TARGET vix_note)
+    set(VIX_HAS_NOTE ON)
+
+    if (TARGET vix_note AND NOT TARGET vix::note)
+      add_library(vix::note ALIAS vix_note)
+    endif()
+  else()
+    message(WARNING "Note module added but no vix::note target was exported.")
+  endif()
+else()
+  message(STATUS "Note: disabled or not present.")
+endif()
+
 # --- Core ---
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/core/CMakeLists.txt")
   message(STATUS "Adding 'modules/core'...")
@@ -1367,6 +1397,12 @@ elseif (TARGET ui)
   target_link_libraries(vix INTERFACE ui)
 endif()
 
+if (TARGET vix::note)
+  target_link_libraries(vix INTERFACE vix::note)
+elseif (TARGET vix_note)
+  target_link_libraries(vix INTERFACE vix_note)
+endif()
+
 # ----------------------------------------------------
 # Examples filtering
 # ----------------------------------------------------
@@ -1565,7 +1601,7 @@ endif()
 
 if (VIX_ENABLE_INSTALL)
 
-   foreach(_m error path fs io env os log tests core utils json websocket webrpc crypto time conversion validation async process threadpool kv agent game net cache sync p2p p2p_http middleware db orm template ui)
+  foreach(_m error path fs io env os log tests core utils json websocket webrpc crypto time conversion validation async process threadpool kv agent game net cache sync p2p p2p_http middleware db orm template ui note)
     if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/${_m}/include")
       install(DIRECTORY "modules/${_m}/include/"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
@@ -1712,6 +1748,14 @@ if (VIX_ENABLE_INSTALL)
   set(VIX_WITH_UI ${VIX_WITH_UI})
   set(VIX_WITH_UI_LINUX_WEBVIEW ${VIX_WITH_UI_LINUX_WEBVIEW})
 
+  set(VIX_WITH_NOTE OFF)
+  if (VIX_HAS_NOTE)
+    set(VIX_WITH_NOTE ON)
+  endif()
+
+  set(VIX_HAS_NOTE ${VIX_HAS_NOTE})
+  set(VIX_WITH_NOTE ${VIX_WITH_NOTE})
+
   set(VIX_WITH_AGENT OFF)
   if (VIX_HAS_AGENT)
     set(VIX_WITH_AGENT ON)
@@ -1806,11 +1850,12 @@ message(STATUS "Validation built  : ${VIX_HAS_VALIDATION}")
 message(STATUS "Middleware built  : ${VIX_HAS_MIDDLEWARE}")
 message(STATUS "Template built    : ${VIX_HAS_TEMPLATE}")
 message(STATUS "UI built          : ${VIX_HAS_UI}")
+message(STATUS "Note built        : ${VIX_HAS_NOTE}")
 message(STATUS "Examples          : ${VIX_BUILD_EXAMPLES}")
 message(STATUS "Tests             : ${VIX_BUILD_TESTS}")
 message(STATUS "Sanitizers        : ${VIX_ENABLE_SANITIZERS}")
 message(STATUS "Coverage          : ${VIX_ENABLE_COVERAGE}")
 message(STATUS "LTO               : ${VIX_ENABLE_LTO}")
 message(STATUS "Install/Export    : ${VIX_ENABLE_INSTALL}")
-message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} WEBRPC=${VIX_WITH_WEBRPC} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P} TEMPLATE=${VIX_WITH_TEMPLATE} UI=${VIX_WITH_UI} UI_WEBVIEW=${VIX_WITH_UI_LINUX_WEBVIEW} THREADPOOL=${VIX_WITH_THREADPOOL} KV=${VIX_WITH_KV} AGENT=${VIX_WITH_AGENT} GAME=${VIX_WITH_GAME} GAME_SDL=${VIX_WITH_GAME_SDL} GAME_SDL_OPENGL=${VIX_WITH_GAME_SDL_OPENGL}")
+message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} WEBRPC=${VIX_WITH_WEBRPC} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P} TEMPLATE=${VIX_WITH_TEMPLATE} UI=${VIX_WITH_UI} UI_WEBVIEW=${VIX_WITH_UI_LINUX_WEBVIEW} NOTE=${VIX_WITH_NOTE} THREADPOOL=${VIX_WITH_THREADPOOL} KV=${VIX_WITH_KV} AGENT=${VIX_WITH_AGENT} GAME=${VIX_WITH_GAME} GAME_SDL=${VIX_WITH_GAME_SDL} GAME_SDL_OPENGL=${VIX_WITH_GAME_SDL_OPENGL}")
 message(STATUS "------------------------------------------------------")
