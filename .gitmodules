@@ -155,3 +155,7 @@
 	path = modules/ui
 	url = https://github.com/vixcpp/ui.git
 	branch = dev
+[submodule "modules/note"]
+	path = modules/note
+	url = https://github.com/vixcpp/note.git
+	branch = dev
