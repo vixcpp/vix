@@ -10,8 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added the new `ui` module to the Vix.cpp umbrella build as a first-class `vix::ui` target.
+
 - Added Vix UI as one of the two main foundations of this release.
+
 - Added server-rendered UI primitives built on top of the Vix template engine.
+
 - Added core UI view helpers:
   - `vix::ui::View`
   - `vix::ui::ViewContext`
@@ -71,13 +74,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Linux WebView shell backend
 
 - Added platform descriptors for web, desktop, and mobile targets.
+
 - Added `examples/ui/` for UI module examples.
+
 - Added package support for `#include <vix/ui.hpp>` through the generated SDK and install layout.
+
 - Added build, install, export, SDK packaging, and CI validation support for the UI module.
+
 - Added the new `note` module to the Vix.cpp umbrella build as a first-class `vix::note` target.
+
 - Added Vix Note as the second main foundation of this release.
-- Added a lightweight visual notebook foundation for learning C++ and Vix.cpp faster.
+
+- Added Vix Note v1.0.0 as the first stable visual notebook foundation for learning C++ and Vix.cpp faster.
+
 - Added `.vixnote` document support with markdown-compatible parsing.
+
+- Added stable note cell metadata support through `<!-- vixnote:cell ... -->` comments.
+
 - Added note document and cell models:
   - `vix::note::NoteDocument`
   - `vix::note::NoteCell`
@@ -86,24 +99,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `vix::note::NoteError`
 
 - Added C++ cell execution through `vix run`.
-- Added runtime session and kernel support for running cells and storing outputs.
+
+- Added Reply cell execution through the embedded Vix Reply runtime.
+
+- Added runtime session and kernel support for running cells, storing outputs, and tracking execution records.
+
+- Added project-aware note execution support:
+  - project root detection
+  - `vix.app` detection
+  - `.vix/manifest.vix` detection
+  - `.vix/deps` detection
+  - include path detection
+  - project working directory support
+
 - Added local Note UI assets:
   - `assets/index.html`
   - `assets/css/note.css`
   - `assets/js/note.js`
 
 - Added embedded Note UI asset fallback.
-- Added support for loading Note UI assets from disk.
+
+- Added installed Note UI asset loading.
+
+- Added custom Note UI asset directory support.
+
+- Added `VIX_NOTE_ASSET_DIR` support for overriding Note UI assets.
+
 - Added local Note server and route layer.
+
 - Added Note API routes for:
   - `/api/document`
-  - `/api/cells/<index>/run`
+  - `/api/cells`
+  - `/api/cells/<id>`
+  - `/api/cells/<id>/run`
+  - `/api/cells/<id>/move`
   - `/api/run-all`
+  - `/api/document/save`
 
 - Added visual rendering of note cells, execution status, outputs, and errors in the browser UI.
+
 - Added static HTML export support for `.vixnote` lessons.
+
 - Added `vix note <file.vixnote>` command support in the CLI.
-- Added `examples/hello.vixnote` as the main Vix Note example.
+
+- Added `vix note export <file.vixnote> --out <file.html>` command support in the CLI.
+
+- Added modern C++ learning note examples:
+  - `examples/cpp_basics.vixnote`
+  - `examples/cpp_variables.vixnote`
+  - `examples/cpp_functions.vixnote`
+  - `examples/cpp_conditionals.vixnote`
+  - `examples/cpp_loops.vixnote`
+  - `examples/cpp_vectors.vixnote`
+  - `examples/cpp_structs.vixnote`
+  - `examples/cpp_classes.vixnote`
+  - `examples/cpp_standard_library.vixnote`
+
+- Added Reply learning note examples:
+  - `examples/reply_quick_cells.vixnote`
+  - `examples/reply_basics.vixnote`
+  - `examples/reply_calculator.vixnote`
+  - `examples/reply_variables.vixnote`
+  - `examples/reply_json_values.vixnote`
+  - `examples/reply_runtime_helpers.vixnote`
+
+- Added HTML cell example:
+  - `examples/html_cells.vixnote`
+
 - Added build, install, export, SDK packaging, and CI validation support for the Note module.
 
 ### Changed
@@ -116,9 +178,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated release, SDK, module test, security, and build-safety CI profiles to include UI and Note module coverage.
 - Updated package validation so newly added UI and Note modules are checked after installation.
 - Updated the CLI command registry to expose `vix note`.
-- Updated Vix Note assets so the browser UI is rendered from real local assets instead of a static placeholder.
-- Updated Vix Note routing so the UI can fetch document state and run cells through API calls.
-- Updated Vix Note version metadata for the v0.2.0 local UI milestone.
+- Updated Vix Note assets so the browser UI is rendered from real local assets.
+- Updated Vix Note routing so the UI can fetch document state, edit cells, save documents, and run cells through API calls.
+- Updated Vix Note serialization so stable cell ids and titles are preserved during save/load cycles.
+- Updated Vix Note documentation for the v1.0.0 stable release.
+- Updated Vix Note roadmap to mark the first stable module milestones as completed.
+- Replaced old Note examples with modern C++, Reply, and HTML-focused learning examples.
+- Updated Vix Note version metadata for the v1.0.0 stable release.
 
 ### Fixed
 
@@ -128,8 +194,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed Core CI coverage so UI-enabled and UI-disabled configurations are both tested.
 - Fixed app shell tests so automated test runs use the descriptor backend instead of opening a real Linux WebView window.
 - Fixed Note asset loading so `index.html` is served consistently through both `/` and `/index.html`.
+- Fixed Note asset resolution so custom, environment, installed, and embedded fallback assets are handled consistently.
 - Fixed Note server tests so local HTTP behavior can be validated without depending on an external backend.
-- Fixed Note route tests to cover document JSON, single-cell execution, run-all execution, and static asset responses.
+- Fixed Note route tests to cover document JSON, cell execution, run-all execution, static asset responses, and custom asset directories.
+- Fixed Note storage tests to verify stable metadata preservation after save/load.
+- Fixed Note serialization so cell ids are not lost after editing and saving a `.vixnote` document.
+
+### Removed
+
+- Removed old early Note examples:
+  - `examples/hello.vixnote`
+  - `examples/learning_cpp.vixnote`
+  - `examples/vix_ui_note.vixnote`
 
 ### Notes
 
@@ -157,7 +233,7 @@ native UI only if truly needed
 
 Vix UI makes it possible to build clean server-rendered interfaces in C++.
 
-Vix Note makes it possible to write explanations, run small C++ cells, see outputs near the code, and export lessons without turning the terminal into the only learning experience.
+Vix Note makes it possible to write explanations, run small C++ and Reply cells, see outputs near the code, save readable `.vixnote` files, open them through `vix note`, and export lessons without turning the terminal into the only learning experience.
 
 ## v2.6.3
 
