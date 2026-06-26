@@ -109,6 +109,7 @@ jobs:
             -DVIX_ENABLE_VALIDATION=ON \
             -DVIX_ENABLE_CRYPTO=ON \
             -DVIX_ENABLE_WEBRPC=ON \
+            -DVIX_ENABLE_REQUESTS=ON \
             -DVIX_ENABLE_TIME=ON \
             -DVIX_ENABLE_TESTS_MODULE=ON \
             -DVIX_ENABLE_TEMPLATE=ON \
@@ -215,6 +216,8 @@ jobs:
           test -f "$INSTALL_DIR/include/vix/p2p.hpp"
           test -f "$INSTALL_DIR/include/vix/p2p_http.hpp"
           test -f "$INSTALL_DIR/include/vix/webrpc.hpp"
+          test -f "$INSTALL_DIR/include/vix/requests.hpp"
+          test -f "$INSTALL_DIR/include/vix/requests/requests.hpp"
           test -f "$INSTALL_DIR/include/vix/game.hpp"
           test -f "$INSTALL_DIR/include/vix/agent.hpp"
 
@@ -252,6 +255,7 @@ jobs:
           test -f "$INSTALL_DIR/lib/libvix_p2p.a"
           test -f "$INSTALL_DIR/lib/libvix_p2p_http.a"
           test -f "$INSTALL_DIR/lib/libvix_middleware.a"
+          test -f "$INSTALL_DIR/lib/libvix_requests.a"
           test -f "$INSTALL_DIR/lib/libui.a"
           test -f "$INSTALL_DIR/lib/libvix_note.a"
 
@@ -265,6 +269,8 @@ jobs:
           grep -R "libui" "$INSTALL_DIR/lib/cmake/Vix" -n
           grep -R "vix::note" "$INSTALL_DIR/lib/cmake/Vix" -n
           grep -R "libvix_note" "$INSTALL_DIR/lib/cmake/Vix" -n
+          grep -R "vix::requests" "$INSTALL_DIR/lib/cmake/Vix" -n
+          grep -R "libvix_requests" "$INSTALL_DIR/lib/cmake/Vix" -n
 
           find "$INSTALL_DIR/include" -maxdepth 5 -type f | sort > installed-headers.txt
           find "$INSTALL_DIR/lib" -maxdepth 2 -type f | sort > installed-libs.txt
@@ -620,6 +626,7 @@ jobs:
             -DVIX_ENABLE_VALIDATION=ON `
             -DVIX_ENABLE_CRYPTO=ON `
             -DVIX_ENABLE_WEBRPC=ON `
+            -DVIX_ENABLE_REQUESTS=OFF `
             -DVIX_ENABLE_TIME=ON `
             -DVIX_ENABLE_TESTS_MODULE=ON `
             -DVIX_ENABLE_TEMPLATE=ON `

@@ -91,6 +91,7 @@ env:
     -DVIX_ENABLE_CRYPTO=ON
     -DVIX_ENABLE_TIME=ON
     -DVIX_ENABLE_WEBRPC=ON
+    -DVIX_ENABLE_REQUESTS=ON
     -DVIX_ENABLE_VALIDATION=ON
     -DVIX_ENABLE_CACHE=ON
     -DVIX_ENABLE_P2P=ON
@@ -129,6 +130,7 @@ env:
     -DVIX_ENABLE_CRYPTO=ON
     -DVIX_ENABLE_TIME=ON
     -DVIX_ENABLE_WEBRPC=ON
+    -DVIX_ENABLE_REQUESTS=ON
     -DVIX_ENABLE_VALIDATION=ON
     -DVIX_ENABLE_CACHE=ON
     -DVIX_ENABLE_P2P=ON
@@ -831,12 +833,16 @@ jobs:
           test -f .ci-install/include/vix/ui.hpp || (echo "::error::ui umbrella header missing"; exit 1)
           test -f .ci-install/include/vix/ui/assets/AssetManager.hpp || (echo "::error::ui headers missing"; exit 1)
           test -f .ci-install/include/vix/note/note.hpp || (echo "::error::note umbrella header missing"; exit 1)
+          test -f .ci-install/include/vix/requests.hpp || (echo "::error::requests umbrella header missing"; exit 1)
+          test -f .ci-install/include/vix/requests/requests.hpp || (echo "::error::requests headers missing"; exit 1)
 
           test -f .ci-install/lib/libui.a || (echo "::error::ui static library missing"; exit 1)
           test -f .ci-install/lib/libvix_note.a || (echo "::error::note static library missing"; exit 1)
+          test -f .ci-install/lib/libvix_requests.a || (echo "::error::requests static library missing"; exit 1)
 
           grep -R "vix::ui" .ci-install/lib/cmake/Vix -n || (echo "::error::vix::ui not exported"; exit 1)
           grep -R "vix::note" .ci-install/lib/cmake/Vix -n || (echo "::error::vix::note not exported"; exit 1)
+          grep -R "vix::requests" .ci-install/lib/cmake/Vix -n || (echo "::error::vix::requests not exported"; exit 1)
 
       - name: Consumer package check
         run: |

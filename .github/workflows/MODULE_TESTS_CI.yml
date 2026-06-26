@@ -89,6 +89,7 @@ jobs:
           test -f modules/template/CMakeLists.txt
           test -f modules/ui/CMakeLists.txt
           test -f modules/note/CMakeLists.txt
+          test -f modules/requests/CMakeLists.txt
 
       - name: Select compiler
         run: |
@@ -144,6 +145,9 @@ jobs:
             -DVIX_GAME_ENABLE_SDL=OFF \
             -DVIX_GAME_ENABLE_SDL_OPENGL=OFF \
             -DVIX_ENABLE_WEBRPC=ON \
+            -DVIX_ENABLE_REQUESTS=ON \
+            -DVIX_REQUESTS_BUILD_TESTS=ON \
+            -DVIX_REQUESTS_BUILD_EXAMPLES=OFF \
             -DVIX_ENABLE_VALIDATION=ON \
             -DVIX_ENABLE_CACHE=ON \
             -DVIX_ENABLE_P2P=ON \
@@ -206,6 +210,7 @@ jobs:
           test -f modules/template/CMakeLists.txt
           test -f modules/ui/CMakeLists.txt
           test -f modules/note/CMakeLists.txt
+          test -f modules/requests/CMakeLists.txt
 
       - name: Configure light module tests
         run: |
@@ -256,7 +261,10 @@ jobs:
             -DVIX_ENABLE_P2P_HTTP=OFF \
             -DVIX_ENABLE_CACHE=OFF \
             -DVIX_ENABLE_CLI=OFF \
-            -DVIX_ENABLE_WEBSOCKET=OFF
+            -DVIX_ENABLE_WEBSOCKET=OFF \
+            -DVIX_ENABLE_REQUESTS=ON \
+            -DVIX_REQUESTS_BUILD_TESTS=ON \
+            -DVIX_REQUESTS_BUILD_EXAMPLES=OFF
 
       - name: Build light module tests
         run: |

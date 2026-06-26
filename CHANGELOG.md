@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v2.7.0
 
-Vix.cpp v2.7.0 introduces three new foundations for the framework: `vix::ui` for server-rendered interfaces, `vix::note` for visual runnable C++ learning documents, and the first CLI foundations for desktop and mobile app shells.
+Vix.cpp v2.7.0 introduces four new foundations for the framework: `vix::ui` for server-rendered interfaces, `vix::note` for visual runnable C++ learning documents, `vix::requests` for simple HTTP client workflows, and the first CLI foundations for desktop and mobile app shells.
 
-This release keeps the core framework focused while adding first-class UI, notebook, desktop shell, and mobile WebView workflows to the umbrella build, SDK packaging, examples, CLI, and CI validation.
+This release keeps the core framework focused while adding first-class UI, notebook, HTTP requests, desktop shell, and mobile WebView workflows to the umbrella build, SDK packaging, examples, CLI, and CI validation.
 
 ### Added
 
@@ -215,10 +215,19 @@ dist/<app-name>/
 
 - Added support for launching generated Android shells on connected devices through `adb`.
 
+#### Vix Requests
+
+- Added the `requests` module to the Vix umbrella build as `vix::requests` on supported POSIX platforms.
+- Added `VIX_ENABLE_REQUESTS`, `VIX_REQUESTS_BUILD_TESTS`, and `VIX_REQUESTS_BUILD_EXAMPLES` umbrella options.
+- Added SDK and install support for `#include <vix/requests.hpp>` and `#include <vix/requests/requests.hpp>`.
+- Added `vix::requests` to the umbrella `vix::vix` target when enabled.
+- Added release, security, and module-test CI coverage for building, testing, installing, and exporting `vix::requests`.
+- Kept `requests` disabled by default on Windows until the module gains a Windows transport implementation.
+
 ### Changed
 
-- Updated the umbrella build so `vix::ui` and `vix::note` are built, linked, installed, and exported as part of Vix.cpp.
-- Updated `vix::vix` to link `vix::ui` and `vix::note` when enabled.
+- Updated the umbrella build so `vix::ui`, `vix::note`, and `vix::requests` are built, linked, installed, and exported as part of Vix.cpp.
+- Updated `vix::vix` to link `vix::ui`, `vix::note`, and `vix::requests` when enabled.
 - Updated Core to support optional UI response integration.
 - Updated the HTTP response layer to return Vix UI responses and views directly.
 - Updated the CLI registry to expose the new `vix note`, `vix desktop`, and `vix mobile` commands.
@@ -230,9 +239,9 @@ dist/<app-name>/
 - Updated Note serialization to preserve stable cell ids and titles during save/load cycles.
 - Updated C++ note execution defaults to avoid unnecessary clean rebuilds during normal cell execution.
 - Updated module examples to focus on UI and Note workflows.
-- Updated release, SDK, module test, security, and build-safety CI profiles to cover UI and Note.
+- Updated release, SDK, module test, security, and build-safety CI profiles to cover UI, Note, and Requests.
 - Updated CLI release and strict CI profiles to cover desktop shell and mobile shell command registration.
-- Updated package validation so UI and Note headers/libraries are checked after installation.
+- Updated package validation so UI, Note, and Requests headers/libraries are checked after installation.
 - Updated Vix Note documentation, roadmap, and version metadata for the v1.0.0 stable release.
 
 * Updated `vix desktop` so `run` is clearly the development workflow, while `build` and `package --target dir` generate distributable desktop folders.
@@ -254,8 +263,8 @@ vix desktop ui_dashboard.cpp
 
 ### Fixed
 
-- Fixed package export validation for `vix::ui` and `vix::note`.
-- Fixed SDK validation so missing UI or Note headers and static library artifacts are detected during release checks.
+- Fixed package export validation for `vix::ui`, `vix::note`, and `vix::requests`.
+- Fixed SDK validation so missing UI, Note, or Requests headers and static library artifacts are detected during release checks.
 - Fixed release CI coverage gaps where newly added modules could be skipped by umbrella build profiles.
 - Fixed Core CI coverage for both UI-enabled and UI-disabled configurations.
 - Fixed app shell tests to use the descriptor backend instead of opening a real Linux WebView window.
@@ -294,6 +303,7 @@ Vix UI
 Vix Note
 Vix Desktop Shell
 Vix Mobile Shell
+Vix Requests
 ```
 
 Vix UI provides the server-rendered interface layer for C++ applications.
@@ -304,12 +314,15 @@ Vix Desktop Shell provides the first CLI workflow for opening Vix web applicatio
 
 Vix Mobile Shell provides the first CLI workflow for generating, building, and running Android WebView wrappers around Vix web or PWA applications.
 
+Vix Requests provides the first umbrella-packaged HTTP client module for simple request, session, header, parameter, body, response, redirect, timeout, and local integration-test workflows on supported POSIX platforms.
+
 The direction of this release is:
 
 ```txt
 server-rendered UI first
 visual C++ learning with Vix Note
 desktop and mobile WebView shells for real apps
+simple HTTP client workflows through vix::requests
 PWA as the mobile foundation
 native UI only when truly needed
 ```

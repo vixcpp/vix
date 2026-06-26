@@ -205,6 +205,9 @@ option(VIX_ENABLE_ASYNC            "Build Vix Async module"                     
 option(VIX_ENABLE_VALIDATION       "Build Vix Validation module"                                  ON)
 option(VIX_ENABLE_CRYPTO           "Build Vix Crypto module"                                      ON)
 option(VIX_ENABLE_WEBRPC           "Build Vix WebRPC module"                                      ON)
+option(VIX_ENABLE_REQUESTS         "Build Vix Requests module"                                    ON)
+option(VIX_REQUESTS_BUILD_TESTS     "Build vix::requests tests"                                     ${VIX_BUILD_TESTS})
+option(VIX_REQUESTS_BUILD_EXAMPLES  "Build vix::requests examples"                                  OFF)
 option(VIX_ENABLE_TIME             "Build Vix Time module"                                        ON)
 option(VIX_TIME_BUILD_TESTS        "Build vix::time tests"                                        ${VIX_BUILD_TESTS})
 option(VIX_TIME_BUILD_BENCH        "Build vix::time benchmarks"                                   OFF)
@@ -272,6 +275,7 @@ set(VIX_CRYPTO_BUILD_TESTS     ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::crypto 
 set(VIX_CONVERSION_BUILD_TESTS ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::conversion tests")
 set(VIX_VALIDATION_BUILD_TESTS ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::validation tests")
 set(VIX_WEBRPC_BUILD_TESTS     ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::webrpc tests")
+set(VIX_REQUESTS_BUILD_TESTS   ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::requests tests")
 set(VIX_NET_BUILD_TESTS        ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::net tests")
 set(VIX_SYNC_BUILD_TESTS       ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::sync tests")
 set(VIX_CACHE_BUILD_TESTS      ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::cache tests")
@@ -637,6 +641,49 @@ else()
   message(STATUS "WebRPC: disabled or not present.")
 endif()
 
+
+# --- Requests (optional, async transport) ---
+set(VIX_HAS_REQUESTS OFF)
+
+if (VIX_ENABLE_REQUESTS AND NOT VIX_ENABLE_ASYNC)
+  message(FATAL_ERROR "Requests requires vix::async. Enable VIX_ENABLE_ASYNC or disable VIX_ENABLE_REQUESTS.")
+endif()
+
+if (VIX_ENABLE_REQUESTS AND VIX_ENABLE_ASYNC AND NOT TARGET vix::async AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/async/CMakeLists.txt")
+  message(STATUS "Adding 'modules/async' for requests...")
+  add_subdirectory(modules/async async_build)
+
+  if (TARGET vix::async OR TARGET vix_async)
+    set(VIX_HAS_ASYNC ON)
+    if (TARGET vix_async AND NOT TARGET vix::async)
+      add_library(vix::async ALIAS vix_async)
+    endif()
+  else()
+    message(FATAL_ERROR "Requests requires vix::async, but the async module did not export it.")
+  endif()
+endif()
+
+if (VIX_ENABLE_REQUESTS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/requests/CMakeLists.txt")
+  message(STATUS "Adding 'modules/requests'...")
+
+  set(VIX_REQUESTS_BUILD_TESTS ${VIX_REQUESTS_BUILD_TESTS} CACHE BOOL "Build vix::requests tests" FORCE)
+  set(VIX_REQUESTS_BUILD_EXAMPLES ${VIX_REQUESTS_BUILD_EXAMPLES} CACHE BOOL "Build vix::requests examples" FORCE)
+  set(VIX_REQUESTS_INSTALL OFF CACHE BOOL "Enable standalone install/package rules" FORCE)
+
+  add_subdirectory(modules/requests requests_build)
+
+  if (TARGET vix::requests OR TARGET vix_requests)
+    set(VIX_HAS_REQUESTS ON)
+    if (TARGET vix_requests AND NOT TARGET vix::requests)
+      add_library(vix::requests ALIAS vix_requests)
+    endif()
+  else()
+    message(WARNING "Requests module added but no vix::requests target was exported.")
+  endif()
+else()
+  message(STATUS "Requests: disabled or not present.")
+endif()
+
 # --- Utils ---
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/utils/CMakeLists.txt")
   message(STATUS "Adding 'modules/utils'...")
@@ -756,8 +803,13 @@ else()
 endif()
 
 # --- Async (optional) ---
-set(VIX_HAS_ASYNC OFF)
-if (VIX_ENABLE_ASYNC AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/async/CMakeLists.txt")
+if (NOT DEFINED VIX_HAS_ASYNC)
+  set(VIX_HAS_ASYNC OFF)
+endif()
+
+if (TARGET vix::async)
+  set(VIX_HAS_ASYNC ON)
+elseif (VIX_ENABLE_ASYNC AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/async/CMakeLists.txt")
   message(STATUS "Adding 'modules/async'...")
   add_subdirectory(modules/async async_build)
 
@@ -1371,6 +1423,10 @@ if (TARGET vix::webrpc)
   target_link_libraries(vix INTERFACE vix::webrpc)
 endif()
 
+if (TARGET vix::requests)
+  target_link_libraries(vix INTERFACE vix::requests)
+endif()
+
 # Link websocket only if it exists
 if (TARGET vix::websocket)
   target_link_libraries(vix INTERFACE vix::websocket)
@@ -1599,13 +1655,18 @@ if (VIX_HAS_P2P_HTTP)
   set(VIX_WITH_P2P_HTTP ON)
 endif()
 
+set(VIX_WITH_REQUESTS OFF)
+if (VIX_HAS_REQUESTS)
+  set(VIX_WITH_REQUESTS ON)
+endif()
+
 if ((VIX_HAS_DB AND VIX_DB_USE_SQLITE) OR VIX_HAS_WEBSOCKET)
   set(VIX_WITH_SQLITE ON)
 endif()
 
 if (VIX_ENABLE_INSTALL)
 
-  foreach(_m error path fs io env os log tests core utils json websocket webrpc crypto time conversion validation async process threadpool kv agent game net cache sync p2p p2p_http middleware db orm template ui note)
+  foreach(_m error path fs io env os log tests core utils json websocket webrpc requests crypto time conversion validation async process threadpool kv agent game net cache sync p2p p2p_http middleware db orm template ui note)
     if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/${_m}/include")
       install(DIRECTORY "modules/${_m}/include/"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
@@ -1728,6 +1789,11 @@ if (VIX_ENABLE_INSTALL)
     set(VIX_WITH_WEBRPC ON)
   endif()
 
+  set(VIX_WITH_REQUESTS OFF)
+  if (VIX_HAS_REQUESTS)
+    set(VIX_WITH_REQUESTS ON)
+  endif()
+
   set(VIX_WITH_VALIDATION OFF)
   if (VIX_HAS_VALIDATION)
     set(VIX_WITH_VALIDATION ON)
@@ -1759,6 +1825,9 @@ if (VIX_ENABLE_INSTALL)
 
   set(VIX_HAS_NOTE ${VIX_HAS_NOTE})
   set(VIX_WITH_NOTE ${VIX_WITH_NOTE})
+
+  set(VIX_HAS_REQUESTS ${VIX_HAS_REQUESTS})
+  set(VIX_WITH_REQUESTS ${VIX_WITH_REQUESTS})
 
   set(VIX_WITH_AGENT OFF)
   if (VIX_HAS_AGENT)
@@ -1838,6 +1907,7 @@ message(STATUS "Tests module      : ${VIX_HAS_TESTS}")
 message(STATUS "JSON backend      : ${_VIX_JSON_BACKEND}")
 message(STATUS "Time module       : ${VIX_HAS_TIME}")
 message(STATUS "WebRPC built      : ${VIX_HAS_WEBRPC}")
+message(STATUS "Requests built    : ${VIX_HAS_REQUESTS}")
 message(STATUS "WebSocket built   : ${VIX_HAS_WEBSOCKET}")
 message(STATUS "Process built     : ${VIX_HAS_PROCESS}")
 message(STATUS "ThreadPool built  : ${VIX_HAS_THREADPOOL}")
@@ -1861,5 +1931,5 @@ message(STATUS "Sanitizers        : ${VIX_ENABLE_SANITIZERS}")
 message(STATUS "Coverage          : ${VIX_ENABLE_COVERAGE}")
 message(STATUS "LTO               : ${VIX_ENABLE_LTO}")
 message(STATUS "Install/Export    : ${VIX_ENABLE_INSTALL}")
-message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} WEBRPC=${VIX_WITH_WEBRPC} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P} TEMPLATE=${VIX_WITH_TEMPLATE} UI=${VIX_WITH_UI} UI_WEBVIEW=${VIX_WITH_UI_LINUX_WEBVIEW} NOTE=${VIX_WITH_NOTE} THREADPOOL=${VIX_WITH_THREADPOOL} KV=${VIX_WITH_KV} AGENT=${VIX_WITH_AGENT} GAME=${VIX_WITH_GAME} GAME_SDL=${VIX_WITH_GAME_SDL} GAME_SDL_OPENGL=${VIX_WITH_GAME_SDL_OPENGL}")
+message(STATUS "Flags exported    : JSON=${VIX_WITH_JSON} CONVERSION=${VIX_WITH_CONVERSION} VALIDATION=${VIX_WITH_VALIDATION} WEBRPC=${VIX_WITH_WEBRPC} REQUESTS=${VIX_WITH_REQUESTS} CRYPTO=${VIX_WITH_CRYPTO} BOOST_FS=${VIX_WITH_BOOST_FS} OPENSSL=${VIX_WITH_OPENSSL} SQLITE=${VIX_WITH_SQLITE} MYSQL=${VIX_WITH_MYSQL} HAS_ORM=${VIX_HAS_ORM} CACHE=${VIX_WITH_CACHE} P2P=${VIX_WITH_P2P} TEMPLATE=${VIX_WITH_TEMPLATE} UI=${VIX_WITH_UI} UI_WEBVIEW=${VIX_WITH_UI_LINUX_WEBVIEW} NOTE=${VIX_WITH_NOTE} THREADPOOL=${VIX_WITH_THREADPOOL} KV=${VIX_WITH_KV} AGENT=${VIX_WITH_AGENT} GAME=${VIX_WITH_GAME} GAME_SDL=${VIX_WITH_GAME_SDL} GAME_SDL_OPENGL=${VIX_WITH_GAME_SDL_OPENGL}")
 message(STATUS "------------------------------------------------------")
