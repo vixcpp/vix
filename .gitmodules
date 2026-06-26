@@ -159,3 +159,7 @@
 	path = modules/note
 	url = https://github.com/vixcpp/note.git
 	branch = dev
+[submodule "modules/requests"]
+	path = modules/requests
+	url = https://github.com/vixcpp/requests.git
+	branch = dev
