@@ -123,6 +123,8 @@ jobs:
             -DVIX_TEMPLATE_BUILD_BENCH=OFF \
             -DTEMPLATE_BUILD_BENCHMARKS=OFF \
             -DVIX_ENABLE_UI=ON \
+            -DVIX_CLI_ENABLE_DESKTOP=ON \
+            -DVIX_UI_ENABLE_LINUX_WEBVIEW=OFF \
             -DVIX_UI_BUILD_TESTS=ON \
             -DUI_BUILD_TESTS=ON \
             -DVIX_UI_BUILD_EXAMPLES=OFF \
@@ -226,6 +228,8 @@ jobs:
             -DVIX_TEMPLATE_BUILD_BENCH=OFF \
             -DTEMPLATE_BUILD_BENCHMARKS=OFF \
             -DVIX_ENABLE_UI=ON \
+            -DVIX_CLI_ENABLE_DESKTOP=OFF \
+            -DVIX_UI_ENABLE_LINUX_WEBVIEW=OFF \
             -DVIX_UI_BUILD_TESTS=ON \
             -DUI_BUILD_TESTS=ON \
             -DVIX_UI_BUILD_EXAMPLES=OFF \

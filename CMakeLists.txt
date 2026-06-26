@@ -221,6 +221,7 @@ option(VIX_UI_BUILD_TESTS          "Build vix::ui tests"                        
 option(VIX_UI_BUILD_EXAMPLES       "Build vix::ui examples"                                       OFF)
 option(VIX_UI_BUILD_BENCHMARKS     "Build vix::ui benchmarks"                                     OFF)
 option(VIX_UI_ENABLE_LINUX_WEBVIEW "Enable Linux desktop WebView backend for vix::ui"              OFF)
+option(VIX_CLI_ENABLE_DESKTOP       "Build vix desktop CLI support through vix::ui"                 ${VIX_ENABLE_UI})
 
 option(VIX_ENABLE_NOTE             "Build Vix Note module"                                        ON)
 option(VIX_NOTE_BUILD_TESTS        "Build vix::note tests"                                        ${VIX_BUILD_TESTS})
@@ -279,6 +280,7 @@ set(VIX_P2P_HTTP_BUILD_TESTS   ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::p2p_htt
 set(VIX_DB_BUILD_TESTS         ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::db tests")
 set(VIX_MIDDLEWARE_BUILD_TESTS ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::middleware tests")
 set(VIX_CLI_BUILD_TESTS        ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::cli tests")
+set(VIX_CLI_ENABLE_DESKTOP     ${VIX_CLI_ENABLE_DESKTOP} CACHE BOOL "Build vix desktop CLI support through vix::ui")
 set(VIX_WEBSOCKET_BUILD_TESTS  ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::websocket tests")
 set(VIX_UI_BUILD_TESTS         ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::ui tests")
 set(VIX_NOTE_BUILD_TESTS       ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::note tests")
@@ -1242,6 +1244,8 @@ endif()
 # --- CLI (optional) ---
 if (VIX_ENABLE_CLI AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/cli/CMakeLists.txt")
   message(STATUS "Adding 'modules/cli'...")
+  set(VIX_CLI_ENABLE_DESKTOP ${VIX_CLI_ENABLE_DESKTOP}
+      CACHE BOOL "Build vix desktop CLI support through vix::ui" FORCE)
   add_subdirectory(modules/cli cli_build)
 else()
   message(STATUS "CLI: disabled or not present.")

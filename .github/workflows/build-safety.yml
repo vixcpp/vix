@@ -69,6 +69,8 @@ jobs:
             -DVIX_CORE_WITH_MYSQL=OFF \
             -DVIX_ENABLE_TEMPLATE=ON \
             -DVIX_ENABLE_UI=ON \
+            -DVIX_CLI_ENABLE_DESKTOP=ON \
+            -DVIX_UI_ENABLE_LINUX_WEBVIEW=OFF \
             -DVIX_UI_BUILD_TESTS=OFF \
             -DVIX_UI_BUILD_EXAMPLES=OFF \
             -DVIX_UI_BUILD_BENCHMARKS=OFF \

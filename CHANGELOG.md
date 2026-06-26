@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v2.7.0
 
-Vix.cpp v2.7.0 introduces two new foundations for the framework: `vix::ui` for server-rendered interfaces and `vix::note` for visual, runnable C++ learning documents.
+Vix.cpp v2.7.0 introduces three new foundations for the framework: `vix::ui` for server-rendered interfaces, `vix::note` for visual runnable C++ learning documents, and the first CLI foundations for desktop and mobile app shells.
 
-This release keeps the core framework focused while adding first-class UI and notebook workflows to the umbrella build, SDK packaging, examples, CLI, and CI validation.
+This release keeps the core framework focused while adding first-class UI, notebook, desktop shell, and mobile WebView workflows to the umbrella build, SDK packaging, examples, CLI, and CI validation.
 
 ### Added
 
@@ -22,6 +22,7 @@ This release keeps the core framework focused while adding first-class UI and no
   - `vix::ui::ViewContext`
   - `vix::ui::ViewResult`
   - `vix::ui::HtmlResponse`
+
 - Added HTML helpers for escaping, attributes, and small HTML generation tasks.
 - Added asset pipeline helpers:
   - `Asset`
@@ -29,6 +30,7 @@ This release keeps the core framework focused while adding first-class UI and no
   - `AssetManager`
   - `AssetMap`
   - `AssetMode`
+
 - Added support for asset versioning, manifest lookup, hashed asset paths, CSS/JS grouping, preload helpers, module scripts, and production/development asset modes.
 - Added server-rendered form helpers for fields, select options, checkbox/radio state, file inputs, form data binding, old values, CSRF helpers, and validation errors.
 - Added live UI helpers for fragments, WebSocket-friendly updates, flash messages, and toast notifications.
@@ -40,6 +42,7 @@ This release keeps the core framework focused while adding first-class UI and no
   - `ServerReadiness`
   - descriptor shell backend
   - Linux WebView shell backend
+
 - Added platform descriptors for web, desktop, and mobile targets.
 - Added `examples/ui/`.
 - Added SDK and install support for `#include <vix/ui.hpp>`.
@@ -56,6 +59,7 @@ This release keeps the core framework focused while adding first-class UI and no
   - `vix::note::NoteResult`
   - `vix::note::NoteOutput`
   - `vix::note::NoteError`
+
 - Added C++ cell execution through `vix run`.
 - Added Reply cell execution through the embedded Vix Reply runtime.
 - Added runtime session and kernel support for running cells, storing outputs, and tracking execution records.
@@ -66,9 +70,150 @@ This release keeps the core framework focused while adding first-class UI and no
 - Added Note API routes for document loading, cell editing, cell execution, cell movement, run-all, and document saving.
 - Added browser UI rendering for cells, execution status, outputs, and errors.
 - Added static HTML export for `.vixnote` lessons.
-- Added `vix note <file.vixnote>`.
+- Added `vix note` workspace mode, allowing Vix Note to start directly in the current directory without requiring an existing `.vixnote` file.
+- Added `vix note <file.vixnote>` for opening an existing note document.
+- Added `vix note --desktop` and `vix note <file.vixnote> --desktop` for opening Vix Note in a desktop WebView shell.
+- Added desktop shell options for Vix Note:
+  - `--desktop`
+  - `--shell`
+  - `--browser`
+  - `--width`
+  - `--height`
+  - `--devtools`
+  - `--fullscreen`
+  - `--no-resizable`
+
 - Added `vix note export <file.vixnote> --out <file.html>`.
 - Added modern C++, Reply, and HTML `.vixnote` learning examples.
+
+#### CLI desktop shell
+
+- Added `vix desktop` as the CLI entry point for desktop app shell workflows.
+- Added `vix desktop run` for development desktop workflows.
+- Added simple target-based desktop run support:
+
+```bash
+vix desktop run ui_dashboard.cpp
+vix desktop ui_dashboard.cpp
+```
+
+- Added `vix desktop run --url <url>` for opening an existing local or remote web app in a desktop shell.
+- Added support for launching a desktop shell around a local server command:
+
+```bash
+vix desktop run --server "vix run --force-server main.cpp" --port 8080
+```
+
+- Added automatic desktop server environment forwarding through `SERVER_HOST` and `SERVER_PORT`.
+- Added `vix desktop build <target.cpp|binary>` for generating a distributable desktop folder.
+- Added `vix desktop package <target.cpp|binary> --target dir` as the first packaging target.
+- Added support for packaging an already-built server binary through:
+
+```bash
+vix desktop build --binary ./build/my_server
+vix desktop package --server-binary ./build/my_server --target dir
+```
+
+- Added generated desktop bundle layout:
+
+```txt
+dist/<app-name>/
+  <app-name>
+  <app-name>.desktop
+  vix-desktop.json
+  bin/
+    vix
+    <server-binary>
+  resources/
+    <icon>
+```
+
+- Added generated launcher script for running the packaged desktop app.
+
+- Added generated `vix-desktop.json` manifest with app metadata, server path, URL, window size, readiness URL, and desktop options.
+
+- Added generated Linux `.desktop` file for directory-based desktop bundles.
+
+- Added desktop build/package options:
+  - `--out`
+  - `--target`
+  - `--binary`
+  - `--server-binary`
+  - `--clean`
+  - `-j`
+  - `--jobs`
+  - `--with-sqlite`
+  - `--with-mysql`
+  - `--local-cache`
+
+- Added desktop metadata options:
+  - `--name`
+  - `--title`
+  - `--app-id`
+  - `--app-version`
+  - `--version`
+  - `--vendor`
+  - `--icon`
+
+- Added desktop shell options for app name, title, URL, host, port, size, fullscreen mode, resizable mode, devtools, startup timeout, server readiness, and package output.
+
+- Added CLI integration with `vix::ui::AppShell` and `vix::ui::ShellConfig`.
+
+- Added optional build detection for `vix::ui` through `VIX_CLI_HAS_UI`.
+
+#### CLI mobile shell
+
+- Added `vix mobile` as the CLI entry point for mobile WebView shell workflows.
+- Added Android WebView shell generation:
+  - `vix mobile init android`
+  - `vix mobile android`
+
+- Added Android project generation for WebView/PWA wrappers, including:
+  - Gradle project files
+  - Android manifest
+  - Java `MainActivity`
+  - app resources
+  - generated README
+  - optional `local.properties` SDK detection
+
+- Added Android build support:
+  - `vix mobile build`
+  - `vix mobile build android`
+
+- Added Android run support:
+  - `vix mobile run`
+  - `vix mobile run android`
+
+- Added Gradle wrapper generation:
+  - `vix mobile wrapper`
+  - `vix mobile wrapper android`
+
+- Added Android device listing:
+  - `vix mobile devices`
+
+- Added Android mobile shell options:
+  - `--name`
+  - `--url`
+  - `--package`
+  - `--output`
+  - `--min-sdk`
+  - `--target-sdk`
+  - `--compile-sdk`
+  - `--version-code`
+  - `--version-name`
+  - `--agp`
+  - `--allow-cleartext`
+  - `--no-cleartext`
+  - `--gradle`
+  - `--gradle-version`
+  - `--distribution-type`
+  - `--project`
+  - `--debug`
+  - `--release`
+  - `--no-install`
+  - `--force`
+
+- Added support for launching generated Android shells on connected devices through `adb`.
 
 ### Changed
 
@@ -76,14 +221,36 @@ This release keeps the core framework focused while adding first-class UI and no
 - Updated `vix::vix` to link `vix::ui` and `vix::note` when enabled.
 - Updated Core to support optional UI response integration.
 - Updated the HTTP response layer to return Vix UI responses and views directly.
-- Updated the CLI registry to expose the new `vix note` command.
+- Updated the CLI registry to expose the new `vix note`, `vix desktop`, and `vix mobile` commands.
+- Updated `vix note` so a note file is optional. Running `vix note` now starts a workspace in the current directory, similar to notebook workflows.
+- Updated `vix note` so existing `.vixnote` files can still be opened explicitly with `vix note <file.vixnote>`.
+- Updated `vix note` to support desktop WebView mode through `vix note --desktop`.
 - Updated Vix Note assets so the browser UI is served from real local assets with embedded fallback.
 - Updated Note routing so the UI can fetch document state, edit cells, save documents, and execute cells through API calls.
 - Updated Note serialization to preserve stable cell ids and titles during save/load cycles.
+- Updated C++ note execution defaults to avoid unnecessary clean rebuilds during normal cell execution.
 - Updated module examples to focus on UI and Note workflows.
 - Updated release, SDK, module test, security, and build-safety CI profiles to cover UI and Note.
+- Updated CLI release and strict CI profiles to cover desktop shell and mobile shell command registration.
 - Updated package validation so UI and Note headers/libraries are checked after installation.
 - Updated Vix Note documentation, roadmap, and version metadata for the v1.0.0 stable release.
+
+* Updated `vix desktop` so `run` is clearly the development workflow, while `build` and `package --target dir` generate distributable desktop folders.
+* Updated `vix desktop run` to accept a direct C++ target:
+
+```bash
+vix desktop run ui_dashboard.cpp
+```
+
+- Updated `vix desktop` so a direct target defaults to desktop run mode:
+
+```bash
+vix desktop ui_dashboard.cpp
+```
+
+- Updated desktop server startup so the configured host and port are forwarded to the launched server through `SERVER_HOST` and `SERVER_PORT`.
+- Updated desktop startup timeout defaults for server-backed desktop apps.
+- Updated desktop CLI help to document run, build, package, metadata, window, server, and build/package options.
 
 ### Fixed
 
@@ -97,7 +264,19 @@ This release keeps the core framework focused while adding first-class UI and no
 - Fixed Note server and route tests for local HTTP behavior, document JSON, cell execution, run-all execution, static assets, and custom asset directories.
 - Fixed Note storage tests for stable metadata preservation after save/load.
 - Fixed Note serialization so cell ids are not lost after editing and saving `.vixnote` documents.
+- Fixed Vix Note startup behavior so the command can start from the current directory without requiring a pre-existing note file.
+- Fixed Vix Note desktop mode so the local Note server is started in-process and opened through `AppShell`.
+- Fixed Android mobile shell generation so the generated project can build without missing launcher icon resources.
+- Fixed Android mobile shell build behavior to prefer `./gradlew` when a Gradle wrapper exists.
+- Fixed Android mobile shell project detection so `vix mobile build`, `vix mobile run`, and `vix mobile wrapper` work from inside the generated Android project directory.
+- Fixed Android mobile launch behavior to use the generated package and `MainActivity`.
 - Fixed scheduler and worker test behavior in the threadpool module for the release branch.
+
+* Fixed desktop shell startup so the WebView waits for the configured server readiness URL before opening.
+* Fixed desktop shell behavior when the readiness endpoint is already in use by another process.
+* Fixed desktop server lifecycle handling so server processes launched by `vix desktop run` are cleaned up when the desktop shell closes.
+* Fixed supervised server shutdown so `vix run --force-server` does not report a normal desktop shutdown as a runtime error.
+* Fixed desktop server startup so `--port` is applied to both the shell URL and the launched server process.
 
 ### Removed
 
@@ -113,22 +292,29 @@ Vix.cpp v2.7.0 is a foundation release for:
 ```txt
 Vix UI
 Vix Note
+Vix Desktop Shell
+Vix Mobile Shell
 ```
 
 Vix UI provides the server-rendered interface layer for C++ applications.
 
-Vix Note provides the visual learning workspace for C++ and Vix.cpp lessons, with runnable C++ and Reply cells, saved `.vixnote` files, browser-based editing, and static HTML export.
+Vix Note provides the visual learning workspace for C++ and Vix.cpp lessons, with runnable C++ and Reply cells, saved `.vixnote` files, browser-based editing, desktop WebView mode, workspace startup, and static HTML export.
+
+Vix Desktop Shell provides the first CLI workflow for opening Vix web applications in a native desktop WebView shell, plus the first distributable desktop folder workflow through `vix desktop build` and `vix desktop package --target dir`.
+
+Vix Mobile Shell provides the first CLI workflow for generating, building, and running Android WebView wrappers around Vix web or PWA applications.
 
 The direction of this release is:
 
 ```txt
 server-rendered UI first
 visual C++ learning with Vix Note
-WebView app shell later
+desktop and mobile WebView shells for real apps
+PWA as the mobile foundation
 native UI only when truly needed
 ```
 
-The goal is to make C++ development easier to teach, inspect, and turn into real interfaces without making the core runtime heavier by default.
+The goal is to make C++ development easier to teach, inspect, package, and turn into real interfaces without making the core runtime heavier by default.
 
 ## v2.6.3
 
