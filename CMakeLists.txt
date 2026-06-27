@@ -177,6 +177,7 @@ endif()
 # Options
 # ----------------------------------------------------
 option(VIX_ENABLE_WARNINGS         "Enable extra warnings"                                        ON)
+option(VIX_ENABLE_INSTALL          "Enable install/export rules for packaging"                    ON)
 option(VIX_ENABLE_LTO              "Enable IPO/LTO (Release only)"                                OFF)
 option(VIX_MSVC_STATIC_RUNTIME     "Link MSVC runtime statically (/MT)"                           OFF)
 option(VIX_ENABLE_CLANG_TIDY       "Enable clang-tidy if available"                               OFF)
@@ -1617,8 +1618,6 @@ endif()
 # ----------------------------------------------------
 # Install/export (find_package(Vix CONFIG))
 # ----------------------------------------------------
-option(VIX_ENABLE_INSTALL "Enable install/export rules for packaging" ON)
-
 # Compute feature flags as real ON/OFF at configure-time (NO generator expressions)
 set(VIX_WITH_JSON     ON)
 set(VIX_WITH_OPENSSL  OFF)
