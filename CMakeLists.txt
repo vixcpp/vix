@@ -46,6 +46,70 @@ endif()
 
 project(vix VERSION ${_VIX_PROJECT_VERSION} LANGUAGES CXX)
 
+set(VIX_SDK_PROFILE "" CACHE STRING "SDK profile to build (empty/legacy/default/web/data/desktop/p2p/game/agent/all)")
+set_property(CACHE VIX_SDK_PROFILE PROPERTY STRINGS
+  "" legacy default web data desktop p2p game agent all
+)
+
+set(_VIX_SDK_PROFILE_EFFECTIVE "${VIX_SDK_PROFILE}")
+if (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "")
+  set(_VIX_SDK_PROFILE_EFFECTIVE "legacy")
+endif()
+string(TOLOWER "${_VIX_SDK_PROFILE_EFFECTIVE}" _VIX_SDK_PROFILE_EFFECTIVE)
+
+set(_VIX_SDK_PROFILE_NAMES legacy default web data desktop p2p game agent all)
+if (NOT _VIX_SDK_PROFILE_EFFECTIVE IN_LIST _VIX_SDK_PROFILE_NAMES)
+  message(FATAL_ERROR
+    "Unknown VIX_SDK_PROFILE=${VIX_SDK_PROFILE}. "
+    "Expected one of: legacy, default, web, data, desktop, p2p, game, agent, all."
+  )
+endif()
+
+set(_VIX_SDK_PROFILE_OPTION_VARS
+  VIX_ENABLE_ORM
+  VIX_ENABLE_WEBSOCKET
+  VIX_ENABLE_CLI
+  VIX_ENABLE_MIDDLEWARE
+  VIX_ENABLE_HTTP_COMPRESSION
+  VIX_ENABLE_DB
+  VIX_DB_USE_MYSQL
+  VIX_DB_USE_SQLITE
+  VIX_DB_USE_POSTGRES
+  VIX_DB_USE_REDIS
+  VIX_ENABLE_P2P
+  VIX_ENABLE_P2P_HTTP
+  VIX_ENABLE_CACHE
+  VIX_ENABLE_ASYNC
+  VIX_ENABLE_VALIDATION
+  VIX_ENABLE_CRYPTO
+  VIX_ENABLE_WEBRPC
+  VIX_ENABLE_REQUESTS
+  VIX_ENABLE_TIME
+  VIX_ENABLE_TESTS_MODULE
+  VIX_ENABLE_TEMPLATE
+  VIX_ENABLE_UI
+  VIX_UI_ENABLE_LINUX_WEBVIEW
+  VIX_CLI_ENABLE_DESKTOP
+  VIX_ENABLE_NOTE
+  VIX_ENABLE_PROCESS
+  VIX_ENABLE_THREADPOOL
+  VIX_ENABLE_KV
+  VIX_ENABLE_AGENT
+  VIX_ENABLE_GAME
+  VIX_GAME_ENABLE_SDL
+  VIX_GAME_ENABLE_SDL_OPENGL
+)
+
+set(_VIX_SDK_PROFILE_USER_CACHE_VARS)
+foreach(_vix_sdk_profile_var IN LISTS _VIX_SDK_PROFILE_OPTION_VARS)
+  if (DEFINED CACHE{${_vix_sdk_profile_var}})
+    get_property(_vix_sdk_profile_cache_help CACHE ${_vix_sdk_profile_var} PROPERTY HELPSTRING)
+    if (NOT _vix_sdk_profile_cache_help MATCHES "^Set by VIX_SDK_PROFILE=")
+      list(APPEND _VIX_SDK_PROFILE_USER_CACHE_VARS "${_vix_sdk_profile_var}")
+    endif()
+  endif()
+endforeach()
+
 if (WIN32)
   add_compile_definitions(
     _WIN32_WINNT=0x0A00
@@ -256,6 +320,168 @@ option(VIX_GAME_ENABLE_SDL_OPENGL  "Enable SDL OpenGL renderer backend for vix::
 option(VIX_ORM_BUILD_EXAMPLES      "Build vix::orm examples"                                      OFF)
 option(VIX_ORM_BUILD_TESTS         "Build vix::orm tests"                                         ${VIX_BUILD_TESTS})
 
+function(vix_sdk_profile_default option_name option_value)
+  list(FIND _VIX_SDK_PROFILE_USER_CACHE_VARS "${option_name}" _vix_sdk_profile_user_index)
+  if (_vix_sdk_profile_user_index EQUAL -1)
+    set(${option_name} ${option_value} CACHE BOOL "Set by VIX_SDK_PROFILE=${_VIX_SDK_PROFILE_EFFECTIVE}" FORCE)
+  endif()
+endfunction()
+
+function(vix_sdk_profile_common)
+  vix_sdk_profile_default(VIX_ENABLE_ORM OFF)
+  vix_sdk_profile_default(VIX_ENABLE_WEBSOCKET OFF)
+  vix_sdk_profile_default(VIX_ENABLE_CLI ON)
+  vix_sdk_profile_default(VIX_ENABLE_MIDDLEWARE OFF)
+  vix_sdk_profile_default(VIX_ENABLE_DB OFF)
+  vix_sdk_profile_default(VIX_DB_USE_MYSQL OFF)
+  vix_sdk_profile_default(VIX_DB_USE_SQLITE OFF)
+  vix_sdk_profile_default(VIX_DB_USE_POSTGRES OFF)
+  vix_sdk_profile_default(VIX_DB_USE_REDIS OFF)
+  vix_sdk_profile_default(VIX_ENABLE_P2P OFF)
+  vix_sdk_profile_default(VIX_ENABLE_P2P_HTTP OFF)
+  vix_sdk_profile_default(VIX_ENABLE_CACHE OFF)
+  vix_sdk_profile_default(VIX_ENABLE_ASYNC ON)
+  vix_sdk_profile_default(VIX_ENABLE_VALIDATION OFF)
+  vix_sdk_profile_default(VIX_ENABLE_CRYPTO OFF)
+  vix_sdk_profile_default(VIX_ENABLE_WEBRPC OFF)
+  vix_sdk_profile_default(VIX_ENABLE_REQUESTS OFF)
+  vix_sdk_profile_default(VIX_ENABLE_TIME ON)
+  vix_sdk_profile_default(VIX_ENABLE_TESTS_MODULE OFF)
+  vix_sdk_profile_default(VIX_ENABLE_TEMPLATE ON)
+  vix_sdk_profile_default(VIX_ENABLE_UI ON)
+  vix_sdk_profile_default(VIX_UI_ENABLE_LINUX_WEBVIEW OFF)
+  vix_sdk_profile_default(VIX_CLI_ENABLE_DESKTOP OFF)
+  vix_sdk_profile_default(VIX_ENABLE_NOTE ON)
+  vix_sdk_profile_default(VIX_ENABLE_PROCESS ON)
+  vix_sdk_profile_default(VIX_ENABLE_THREADPOOL ON)
+  vix_sdk_profile_default(VIX_ENABLE_KV OFF)
+  vix_sdk_profile_default(VIX_ENABLE_AGENT OFF)
+  vix_sdk_profile_default(VIX_ENABLE_GAME OFF)
+  vix_sdk_profile_default(VIX_GAME_ENABLE_SDL OFF)
+  vix_sdk_profile_default(VIX_GAME_ENABLE_SDL_OPENGL OFF)
+endfunction()
+
+if (NOT _VIX_SDK_PROFILE_EFFECTIVE STREQUAL "legacy")
+  vix_sdk_profile_common()
+
+  if (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "web")
+    vix_sdk_profile_default(VIX_ENABLE_WEBSOCKET ON)
+    vix_sdk_profile_default(VIX_ENABLE_MIDDLEWARE ON)
+    vix_sdk_profile_default(VIX_ENABLE_VALIDATION ON)
+    vix_sdk_profile_default(VIX_ENABLE_CRYPTO ON)
+    vix_sdk_profile_default(VIX_ENABLE_WEBRPC ON)
+    vix_sdk_profile_default(VIX_ENABLE_REQUESTS ON)
+  elseif (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "data")
+    vix_sdk_profile_default(VIX_ENABLE_DB ON)
+    vix_sdk_profile_default(VIX_ENABLE_ORM ON)
+    vix_sdk_profile_default(VIX_ENABLE_KV ON)
+    vix_sdk_profile_default(VIX_ENABLE_CACHE ON)
+    vix_sdk_profile_default(VIX_DB_USE_SQLITE ON)
+  elseif (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "desktop")
+    vix_sdk_profile_default(VIX_CLI_ENABLE_DESKTOP ON)
+    if (UNIX AND NOT APPLE)
+      vix_sdk_profile_default(VIX_UI_ENABLE_LINUX_WEBVIEW ON)
+    endif()
+  elseif (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "p2p")
+    vix_sdk_profile_default(VIX_ENABLE_P2P ON)
+    vix_sdk_profile_default(VIX_ENABLE_P2P_HTTP ON)
+    vix_sdk_profile_default(VIX_ENABLE_CRYPTO ON)
+    vix_sdk_profile_default(VIX_ENABLE_CACHE ON)
+  elseif (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "game")
+    vix_sdk_profile_default(VIX_ENABLE_GAME ON)
+    vix_sdk_profile_default(VIX_GAME_ENABLE_SDL ON)
+    vix_sdk_profile_default(VIX_GAME_ENABLE_SDL_OPENGL ON)
+  elseif (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "agent")
+    vix_sdk_profile_default(VIX_ENABLE_AGENT ON)
+    vix_sdk_profile_default(VIX_ENABLE_CACHE ON)
+  elseif (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "all")
+    vix_sdk_profile_default(VIX_ENABLE_ORM ON)
+    vix_sdk_profile_default(VIX_ENABLE_WEBSOCKET ON)
+    vix_sdk_profile_default(VIX_ENABLE_MIDDLEWARE ON)
+    vix_sdk_profile_default(VIX_ENABLE_DB ON)
+    vix_sdk_profile_default(VIX_DB_USE_MYSQL ON)
+    vix_sdk_profile_default(VIX_ENABLE_P2P ON)
+    vix_sdk_profile_default(VIX_ENABLE_P2P_HTTP ON)
+    vix_sdk_profile_default(VIX_ENABLE_CACHE ON)
+    vix_sdk_profile_default(VIX_ENABLE_VALIDATION ON)
+    vix_sdk_profile_default(VIX_ENABLE_CRYPTO ON)
+    vix_sdk_profile_default(VIX_ENABLE_WEBRPC ON)
+    vix_sdk_profile_default(VIX_ENABLE_REQUESTS ON)
+    vix_sdk_profile_default(VIX_ENABLE_KV ON)
+    vix_sdk_profile_default(VIX_ENABLE_AGENT ON)
+    vix_sdk_profile_default(VIX_ENABLE_GAME ON)
+    vix_sdk_profile_default(VIX_CLI_ENABLE_DESKTOP ON)
+    if (UNIX AND NOT APPLE)
+      vix_sdk_profile_default(VIX_UI_ENABLE_LINUX_WEBVIEW ON)
+    endif()
+    vix_sdk_profile_default(VIX_GAME_ENABLE_SDL ON)
+    vix_sdk_profile_default(VIX_GAME_ENABLE_SDL_OPENGL ON)
+  endif()
+
+  if (VIX_ENABLE_CLI)
+    vix_sdk_profile_default(VIX_ENABLE_CRYPTO ON)
+    vix_sdk_profile_default(VIX_ENABLE_CACHE ON)
+    vix_sdk_profile_default(VIX_ENABLE_P2P ON)
+    vix_sdk_profile_default(VIX_ENABLE_AGENT ON)
+  endif()
+endif()
+
+function(vix_sdk_profile_user_set out_var option_name)
+  list(FIND _VIX_SDK_PROFILE_USER_CACHE_VARS "${option_name}" _vix_sdk_profile_user_index)
+  if (_vix_sdk_profile_user_index EQUAL -1)
+    set(${out_var} OFF PARENT_SCOPE)
+  else()
+    set(${out_var} ON PARENT_SCOPE)
+  endif()
+endfunction()
+
+set(_VIX_SDK_PACKAGE_DB ON)
+set(_VIX_SDK_PACKAGE_ORM ON)
+set(_VIX_SDK_PACKAGE_WEBSOCKET ON)
+set(_VIX_SDK_PACKAGE_P2P ON)
+set(_VIX_SDK_PACKAGE_P2P_HTTP ON)
+set(_VIX_SDK_PACKAGE_AGENT ON)
+set(_VIX_SDK_PACKAGE_GAME ON)
+
+if (NOT _VIX_SDK_PROFILE_EFFECTIVE STREQUAL "legacy")
+  vix_sdk_profile_user_set(_VIX_SDK_USER_DB VIX_ENABLE_DB)
+  vix_sdk_profile_user_set(_VIX_SDK_USER_ORM VIX_ENABLE_ORM)
+  vix_sdk_profile_user_set(_VIX_SDK_USER_WEBSOCKET VIX_ENABLE_WEBSOCKET)
+  vix_sdk_profile_user_set(_VIX_SDK_USER_P2P VIX_ENABLE_P2P)
+  vix_sdk_profile_user_set(_VIX_SDK_USER_P2P_HTTP VIX_ENABLE_P2P_HTTP)
+  vix_sdk_profile_user_set(_VIX_SDK_USER_AGENT VIX_ENABLE_AGENT)
+  vix_sdk_profile_user_set(_VIX_SDK_USER_GAME VIX_ENABLE_GAME)
+
+  set(_VIX_SDK_PACKAGE_DB OFF)
+  set(_VIX_SDK_PACKAGE_ORM OFF)
+  set(_VIX_SDK_PACKAGE_WEBSOCKET OFF)
+  set(_VIX_SDK_PACKAGE_P2P OFF)
+  set(_VIX_SDK_PACKAGE_P2P_HTTP OFF)
+  set(_VIX_SDK_PACKAGE_AGENT OFF)
+  set(_VIX_SDK_PACKAGE_GAME OFF)
+
+  if (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "data" OR _VIX_SDK_PROFILE_EFFECTIVE STREQUAL "all" OR (_VIX_SDK_USER_DB AND VIX_ENABLE_DB))
+    set(_VIX_SDK_PACKAGE_DB ON)
+  endif()
+  if (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "data" OR _VIX_SDK_PROFILE_EFFECTIVE STREQUAL "all" OR (_VIX_SDK_USER_ORM AND VIX_ENABLE_ORM))
+    set(_VIX_SDK_PACKAGE_ORM ON)
+  endif()
+  if (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "web" OR _VIX_SDK_PROFILE_EFFECTIVE STREQUAL "all" OR (_VIX_SDK_USER_WEBSOCKET AND VIX_ENABLE_WEBSOCKET))
+    set(_VIX_SDK_PACKAGE_WEBSOCKET ON)
+  endif()
+  if (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "p2p" OR _VIX_SDK_PROFILE_EFFECTIVE STREQUAL "all" OR (_VIX_SDK_USER_P2P AND VIX_ENABLE_P2P))
+    set(_VIX_SDK_PACKAGE_P2P ON)
+  endif()
+  if (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "p2p" OR _VIX_SDK_PROFILE_EFFECTIVE STREQUAL "all" OR (_VIX_SDK_USER_P2P_HTTP AND VIX_ENABLE_P2P_HTTP))
+    set(_VIX_SDK_PACKAGE_P2P_HTTP ON)
+  endif()
+  if (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "agent" OR _VIX_SDK_PROFILE_EFFECTIVE STREQUAL "all" OR (_VIX_SDK_USER_AGENT AND VIX_ENABLE_AGENT))
+    set(_VIX_SDK_PACKAGE_AGENT ON)
+  endif()
+  if (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "game" OR _VIX_SDK_PROFILE_EFFECTIVE STREQUAL "all" OR (_VIX_SDK_USER_GAME AND VIX_ENABLE_GAME))
+    set(_VIX_SDK_PACKAGE_GAME ON)
+  endif()
+endif()
 # ----------------------------------------------------
 # Module test defaults
 # ----------------------------------------------------
@@ -987,7 +1213,7 @@ endif()
 # --- Game (optional) ---
 set(VIX_HAS_GAME OFF)
 
-if (VIX_ENABLE_GAME AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/game/CMakeLists.txt")
+if (VIX_ENABLE_GAME AND _VIX_SDK_PACKAGE_GAME AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/game/CMakeLists.txt")
   if (NOT TARGET vix::error)
     message(FATAL_ERROR "Game requires vix::error. Ensure error is added before game.")
   endif()
@@ -1132,7 +1358,7 @@ endif()
 # --- AI Agent (optional) ---
 set(VIX_HAS_AGENT OFF)
 
-if (VIX_ENABLE_AGENT AND NOT VIX_HAS_CACHE)
+if (VIX_ENABLE_AGENT AND _VIX_SDK_PACKAGE_AGENT AND NOT VIX_HAS_CACHE)
   message(WARNING "AI Agent requested but Cache module is missing -> disabling AI Agent in umbrella")
   set(VIX_ENABLE_AGENT OFF CACHE BOOL "Build Vix AI Agent module" FORCE)
 endif()
@@ -1143,7 +1369,7 @@ if (VIX_ENABLE_AGENT AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/agent/CMake
   set(VIX_AI_AGENT_BUILD_TESTS ${VIX_AGENT_BUILD_TESTS} CACHE BOOL "Build vix ai agent tests" FORCE)
   set(VIX_AI_AGENT_BUILD_EXAMPLES ${VIX_AGENT_BUILD_EXAMPLES} CACHE BOOL "Build vix ai agent examples" FORCE)
 
-  set(VIX_AI_AGENT_ENABLE_INSTALL ON CACHE BOOL "Enable install/export rules for vix ai agent" FORCE)
+  set(VIX_AI_AGENT_ENABLE_INSTALL ${_VIX_SDK_PACKAGE_AGENT} CACHE BOOL "Enable install/export rules for vix ai agent" FORCE)
 
   add_subdirectory(modules/agent agent_build)
 
@@ -1186,6 +1412,7 @@ endif()
 set(VIX_HAS_P2P OFF)
 if (VIX_ENABLE_P2P AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/p2p/CMakeLists.txt")
   message(STATUS "Adding 'modules/p2p'...")
+  set(VIX_P2P_ENABLE_INSTALL ${_VIX_SDK_PACKAGE_P2P} CACHE BOOL "Enable install/export rules for vix::p2p" FORCE)
   add_subdirectory(modules/p2p p2p_build)
 
   # Normalise: expose vix::p2p
@@ -1224,7 +1451,7 @@ endif()
 set(VIX_HAS_P2P_HTTP OFF)
 
 # Guard: p2p_http requires both core + p2p
-if (VIX_ENABLE_P2P_HTTP AND VIX_HAS_P2P AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/p2p_http/CMakeLists.txt")
+if (VIX_ENABLE_P2P_HTTP AND _VIX_SDK_PACKAGE_P2P_HTTP AND VIX_HAS_P2P AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/p2p_http/CMakeLists.txt")
   message(STATUS "Adding 'modules/p2p_http'...")
   add_subdirectory(modules/p2p_http p2p_http_build)
 
@@ -1336,6 +1563,16 @@ endif()
 # Do not apply them to library/module targets.
 # ----------------------------------------------------
 
+
+if (TARGET vix_cli)
+  if (TARGET vix::ai_agent)
+    target_link_libraries(vix_cli PRIVATE vix::ai_agent)
+  endif()
+  if (TARGET vix::p2p)
+    target_link_libraries(vix_cli PRIVATE vix::p2p)
+  endif()
+endif()
+
 # ----------------------------------------------------
 # Link umbrella to required module targets
 # ----------------------------------------------------
@@ -1404,15 +1641,15 @@ if (TARGET vix::kv)
   target_link_libraries(vix INTERFACE vix::kv)
 endif()
 
-if (TARGET vix::ai_agent)
+if (TARGET vix::ai_agent AND _VIX_SDK_PACKAGE_AGENT)
   target_link_libraries(vix INTERFACE vix::ai_agent)
 endif()
 
-if (TARGET vix::p2p)
+if (TARGET vix::p2p AND _VIX_SDK_PACKAGE_P2P)
   target_link_libraries(vix INTERFACE vix::p2p)
 endif()
 
-if (TARGET vix::p2p_http)
+if (TARGET vix::p2p_http AND _VIX_SDK_PACKAGE_P2P_HTTP)
   target_link_libraries(vix INTERFACE vix::p2p_http)
 endif()
 
@@ -1645,12 +1882,12 @@ if (VIX_HAS_CACHE)
 endif()
 
 set(VIX_WITH_P2P OFF)
-if (VIX_HAS_P2P)
+if (VIX_HAS_P2P AND _VIX_SDK_PACKAGE_P2P)
   set(VIX_WITH_P2P ON)
 endif()
 
 set(VIX_WITH_P2P_HTTP OFF)
-if (VIX_HAS_P2P_HTTP)
+if (VIX_HAS_P2P_HTTP AND _VIX_SDK_PACKAGE_P2P_HTTP)
   set(VIX_WITH_P2P_HTTP ON)
 endif()
 
@@ -1665,7 +1902,53 @@ endif()
 
 if (VIX_ENABLE_INSTALL)
 
-  foreach(_m error path fs io env os log tests core utils json websocket webrpc requests crypto time conversion validation async process threadpool kv agent game net cache sync p2p p2p_http middleware db orm template ui note)
+  if (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "legacy")
+    set(_VIX_INSTALL_MODULES error path fs io env os log tests core utils json websocket webrpc requests crypto time conversion validation async process threadpool kv agent game net cache sync p2p p2p_http middleware db orm template ui note)
+  else()
+    set(_VIX_INSTALL_MODULES error path fs io env os log core utils json time conversion async process threadpool template ui note net sync crypto)
+    if (VIX_HAS_WEBRPC)
+      list(APPEND _VIX_INSTALL_MODULES webrpc)
+    endif()
+    if (VIX_HAS_REQUESTS)
+      list(APPEND _VIX_INSTALL_MODULES requests)
+    endif()
+    if (VIX_HAS_VALIDATION)
+      list(APPEND _VIX_INSTALL_MODULES validation)
+    endif()
+    if (VIX_HAS_MIDDLEWARE)
+      list(APPEND _VIX_INSTALL_MODULES middleware)
+    endif()
+    if (VIX_HAS_CACHE)
+      list(APPEND _VIX_INSTALL_MODULES cache)
+    endif()
+    if (VIX_HAS_KV)
+      list(APPEND _VIX_INSTALL_MODULES kv)
+    endif()
+    if (VIX_HAS_DB AND _VIX_SDK_PACKAGE_DB)
+      list(APPEND _VIX_INSTALL_MODULES db)
+    endif()
+    if (VIX_HAS_ORM AND _VIX_SDK_PACKAGE_ORM)
+      list(APPEND _VIX_INSTALL_MODULES orm)
+    endif()
+    if (VIX_HAS_WEBSOCKET AND _VIX_SDK_PACKAGE_WEBSOCKET)
+      list(APPEND _VIX_INSTALL_MODULES websocket)
+    endif()
+    if (VIX_HAS_P2P AND _VIX_SDK_PACKAGE_P2P)
+      list(APPEND _VIX_INSTALL_MODULES p2p)
+    endif()
+    if (VIX_HAS_P2P_HTTP AND _VIX_SDK_PACKAGE_P2P_HTTP)
+      list(APPEND _VIX_INSTALL_MODULES p2p_http)
+    endif()
+    if (VIX_HAS_AGENT AND _VIX_SDK_PACKAGE_AGENT)
+      list(APPEND _VIX_INSTALL_MODULES agent)
+    endif()
+    if (VIX_HAS_GAME AND _VIX_SDK_PACKAGE_GAME)
+      list(APPEND _VIX_INSTALL_MODULES game)
+    endif()
+    list(REMOVE_DUPLICATES _VIX_INSTALL_MODULES)
+  endif()
+
+  foreach(_m IN LISTS _VIX_INSTALL_MODULES)
     if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/${_m}/include")
       install(DIRECTORY "modules/${_m}/include/"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
@@ -1690,12 +1973,27 @@ if (VIX_ENABLE_INSTALL)
   # Install umbrella public headers (vix/*.hpp)
   # ----------------------------------------------------
   if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vix")
-    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/vix/"
-      DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/vix"
-      FILES_MATCHING
-        PATTERN "*.hpp"
-        PATTERN "*.h"
-    )
+    if (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "legacy")
+      install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/vix/"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/vix"
+        FILES_MATCHING
+          PATTERN "*.hpp"
+          PATTERN "*.h"
+      )
+    else()
+      foreach(_m IN LISTS _VIX_INSTALL_MODULES)
+        if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vix/${_m}.hpp")
+          install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/vix/${_m}.hpp"
+            DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/vix"
+          )
+        endif()
+      endforeach()
+      if (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "all" AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vix/all.hpp")
+        install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/vix/all.hpp"
+          DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/vix"
+        )
+      endif()
+    endif()
   endif()
 
   # ---- Install Asio (submodule) ----
@@ -1740,10 +2038,10 @@ if (VIX_ENABLE_INSTALL)
   set(VIX_WITH_MYSQL ${VIX_DB_WITH_MYSQL})
 
   set(VIX_HAS_CACHE  ${VIX_HAS_CACHE})
-  set(VIX_HAS_P2P    ${VIX_HAS_P2P})
+  set(VIX_HAS_P2P    ${VIX_WITH_P2P})
   set(VIX_WITH_CACHE ${VIX_WITH_CACHE})
   set(VIX_WITH_P2P   ${VIX_WITH_P2P})
-  set(VIX_HAS_P2P_HTTP  ${VIX_HAS_P2P_HTTP})
+  set(VIX_HAS_P2P_HTTP  ${VIX_WITH_P2P_HTTP})
   set(VIX_WITH_P2P_HTTP ${VIX_WITH_P2P_HTTP})
   set(VIX_HAS_TIME ${VIX_HAS_TIME})
   set(VIX_HAS_TEMPLATE ${VIX_HAS_TEMPLATE})
@@ -1829,30 +2127,30 @@ if (VIX_ENABLE_INSTALL)
   set(VIX_WITH_REQUESTS ${VIX_WITH_REQUESTS})
 
   set(VIX_WITH_AGENT OFF)
-  if (VIX_HAS_AGENT)
+  if (VIX_HAS_AGENT AND _VIX_SDK_PACKAGE_AGENT)
     set(VIX_WITH_AGENT ON)
   endif()
 
-  set(VIX_HAS_AGENT ${VIX_HAS_AGENT})
+  set(VIX_HAS_AGENT ${VIX_WITH_AGENT})
   set(VIX_WITH_AGENT ${VIX_WITH_AGENT})
 
   set(VIX_WITH_GAME OFF)
-  if (VIX_HAS_GAME)
+  if (VIX_HAS_GAME AND _VIX_SDK_PACKAGE_GAME)
     set(VIX_WITH_GAME ON)
   endif()
 
-  set(VIX_HAS_GAME ${VIX_HAS_GAME})
+  set(VIX_HAS_GAME ${VIX_WITH_GAME})
   set(VIX_WITH_GAME ${VIX_WITH_GAME})
 
   set(VIX_WITH_GAME_SDL OFF)
-  if (VIX_HAS_GAME AND VIX_GAME_ENABLE_SDL)
+  if (VIX_HAS_GAME AND _VIX_SDK_PACKAGE_GAME AND VIX_GAME_ENABLE_SDL)
     set(VIX_WITH_GAME_SDL ON)
   endif()
 
   set(VIX_WITH_GAME_SDL ${VIX_WITH_GAME_SDL})
 
   set(VIX_WITH_GAME_SDL_OPENGL OFF)
-  if (VIX_HAS_GAME AND VIX_GAME_ENABLE_SDL_OPENGL)
+  if (VIX_HAS_GAME AND _VIX_SDK_PACKAGE_GAME AND VIX_GAME_ENABLE_SDL_OPENGL)
     set(VIX_WITH_GAME_SDL_OPENGL ON)
   endif()
 

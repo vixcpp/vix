@@ -20,13 +20,27 @@ concurrency:
 
 jobs:
   build-sdk:
-    name: build-sdk-full (linux / x86_64)
+    name: build-sdk-${{ matrix.profile }} (linux / x86_64)
     runs-on: ubuntu-24.04
 
+    strategy:
+      fail-fast: false
+      matrix:
+        profile:
+          - default
+          - web
+          - data
+          - desktop
+          - p2p
+          - game
+          - agent
+          - all
+
     env:
-      BUILD_DIR: build-sdk-full
-      INSTALL_DIR: install-sdk-full
-      ASSET: vix-sdk-linux-x86_64.tar.gz
+      VIX_SDK_PROFILE: ${{ matrix.profile }}
+      BUILD_DIR: build-sdk-${{ matrix.profile }}
+      INSTALL_DIR: install-sdk-${{ matrix.profile }}
+      ASSET: vix-sdk-${{ matrix.profile }}-linux-x86_64.tar.gz
 
     steps:
       - name: Checkout
@@ -43,7 +57,10 @@ jobs:
           git fetch --tags --force
           git checkout "tags/${{ github.event.inputs.tag }}"
 
-      - name: Install deps (Linux)
+      # ----------------------------------------------------------------
+      # Base deps shared by every profile.
+      # ----------------------------------------------------------------
+      - name: Install base deps (Linux)
         shell: bash
         run: |
           set -euxo pipefail
@@ -66,84 +83,89 @@ jobs:
             libsqlite3-dev \
             libbrotli-dev \
             libspdlog-dev \
-            libfmt-dev \
-            libmysqlcppconn-dev \
-            libsdl2-dev \
-            libsdl2-image-dev \
-            libgl1-mesa-dev \
-            libgtk-3-dev
+            libfmt-dev
 
+      # ----------------------------------------------------------------
+      # Heavy deps installed ONLY for profiles that need them.
+      #   - desktop/all -> GTK + WebKit2GTK (Linux WebView)
+      #   - game/all    -> SDL2 + OpenGL
+      #   - all         -> MySQL client (full SDK parity)
+      # ----------------------------------------------------------------
+      - name: Install WebView deps (desktop/all)
+        if: ${{ matrix.profile == 'desktop' || matrix.profile == 'all' }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get install -y --no-install-recommends \
+            libgtk-3-dev \
+            libgl1-mesa-dev
           sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev || \
           sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
-
           pkg-config --modversion gtk+-3.0
           pkg-config --modversion webkit2gtk-4.1 || pkg-config --modversion webkit2gtk-4.0
 
-      - name: Configure SDK full
+      - name: Install SDL/OpenGL deps (game/all)
+        if: ${{ matrix.profile == 'game' || matrix.profile == 'all' }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get install -y --no-install-recommends \
+            libsdl2-dev \
+            libsdl2-image-dev \
+            libgl1-mesa-dev
+
+      - name: Install MySQL client deps (all)
+        if: ${{ matrix.profile == 'all' }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get install -y --no-install-recommends libmysqlcppconn-dev
+
+      # ----------------------------------------------------------------
+      # Configure: the profile drives module selection. We still pass the
+      # heavy backend sub-flags explicitly for desktop/game/all so they
+      # match historical full-SDK behavior and are unambiguous in logs.
+      # ----------------------------------------------------------------
+      - name: Configure SDK (${{ matrix.profile }})
         shell: bash
         run: |
           set -euxo pipefail
 
-          cmake -S . -B "$BUILD_DIR" -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX="${GITHUB_WORKSPACE}/${INSTALL_DIR}" \
-            -DVIX_ENABLE_INSTALL=ON \
-            -DVIX_BUILD_EXAMPLES=OFF \
-            -DVIX_BUILD_TESTS=OFF \
-            -DVIX_ENABLE_WARNINGS=ON \
-            -DVIX_ENABLE_HTTP_COMPRESSION=ON \
-            -DVIX_ENABLE_DB=ON \
-            -DVIX_DB_USE_SQLITE=ON \
-            -DVIX_DB_USE_MYSQL=ON \
-            -DVIX_DB_USE_POSTGRES=OFF \
-            -DVIX_DB_USE_REDIS=OFF \
-            -DVIX_CORE_WITH_MYSQL=OFF \
-            -DVIX_ENABLE_ORM=ON \
-            -DVIX_ENABLE_WEBSOCKET=ON \
-            -DVIX_ENABLE_CLI=ON \
-            -DVIX_ENABLE_MIDDLEWARE=ON \
-            -DVIX_ENABLE_P2P=ON \
-            -DVIX_ENABLE_P2P_HTTP=ON \
-            -DVIX_ENABLE_CACHE=ON \
-            -DVIX_ENABLE_ASYNC=ON \
-            -DVIX_ENABLE_VALIDATION=ON \
-            -DVIX_ENABLE_CRYPTO=ON \
-            -DVIX_ENABLE_WEBRPC=ON \
-            -DVIX_ENABLE_REQUESTS=ON \
-            -DVIX_ENABLE_TIME=ON \
-            -DVIX_ENABLE_TESTS_MODULE=ON \
-            -DVIX_ENABLE_TEMPLATE=ON \
-            -DVIX_ENABLE_UI=ON \
-            -DVIX_ENABLE_NOTE=ON \
-            -DVIX_UI_ENABLE_LINUX_WEBVIEW=ON \
-            -DVIX_ENABLE_PROCESS=ON \
-            -DVIX_ENABLE_THREADPOOL=ON \
-            -DVIX_ENABLE_KV=ON \
-            -DVIX_ENABLE_AGENT=ON \
-            -DVIX_ENABLE_GAME=ON \
-            -DVIX_GAME_ENABLE_SDL=ON \
-            -DVIX_GAME_ENABLE_SDL_OPENGL=ON \
-            -DVIX_TIME_BUILD_TESTS=OFF \
-            -DVIX_TIME_BUILD_BENCH=OFF \
-            -DVIX_TEMPLATE_BUILD_TESTS=OFF \
-            -DVIX_TEMPLATE_BUILD_EXAMPLES=OFF \
-            -DVIX_TEMPLATE_BUILD_BENCH=OFF \
-            -DVIX_UI_BUILD_TESTS=OFF \
-            -DVIX_UI_BUILD_EXAMPLES=OFF \
-            -DVIX_UI_BUILD_BENCHMARKS=OFF \
-            -DUI_BUILD_TESTS=OFF \
-            -DUI_BUILD_EXAMPLES=OFF \
-            -DUI_BUILD_BENCHMARKS=OFF \
-            -DUI_INSTALL=OFF \
-            -DVIX_NOTE_BUILD_TESTS=OFF \
-            -DVIX_NOTE_BUILD_EXAMPLES=OFF \
-            -DVIX_NOTE_INSTALL=OFF \
-            -DVIX_AGENT_BUILD_TESTS=OFF \
-            -DVIX_AGENT_BUILD_EXAMPLES=OFF \
-            -DVIX_GAME_BUILD_TESTS=OFF \
-            -DVIX_GAME_BUILD_EXAMPLES=OFF \
-            -DVIX_WEBSOCKET_BUILD_TESTS=OFF \
-            -DVIX_WEBSOCKET_BUILD_EXAMPLES=OFF
+          CMAKE_ARGS=(
+            -S . -B "$BUILD_DIR" -G Ninja
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_INSTALL_PREFIX="${GITHUB_WORKSPACE}/${INSTALL_DIR}"
+            -DVIX_SDK_PROFILE="${VIX_SDK_PROFILE}"
+            -DVIX_ENABLE_INSTALL=ON
+            -DVIX_BUILD_EXAMPLES=OFF
+            -DVIX_BUILD_TESTS=OFF
+            -DVIX_ENABLE_WARNINGS=ON
+            -DVIX_ENABLE_HTTP_COMPRESSION=ON
+          )
+
+          case "$VIX_SDK_PROFILE" in
+            all)
+              CMAKE_ARGS+=(
+                -DVIX_DB_USE_MYSQL=ON
+                -DVIX_UI_ENABLE_LINUX_WEBVIEW=ON
+                -DVIX_GAME_ENABLE_SDL=ON
+                -DVIX_GAME_ENABLE_SDL_OPENGL=ON
+              )
+              ;;
+            desktop)
+              CMAKE_ARGS+=(
+                -DVIX_UI_ENABLE_LINUX_WEBVIEW=ON
+              )
+              ;;
+            game)
+              CMAKE_ARGS+=(
+                -DVIX_GAME_ENABLE_SDL=ON
+                -DVIX_GAME_ENABLE_SDL_OPENGL=ON
+              )
+              ;;
+          esac
+
+          cmake "${CMAKE_ARGS[@]}"
 
       - name: Build SDK
         shell: bash
@@ -181,554 +203,264 @@ jobs:
           test -f "$INSTALL_DIR/include/vix/third_party/asio/asio/io_context.hpp"
           test -f "$INSTALL_DIR/include/vix/third_party/asio/asio.hpp"
 
-      - name: Verify installed SDK tree
+      # ----------------------------------------------------------------
+      # Verification. A shared shell library expresses each check once;
+      # each profile asserts only what it should contain. Checks for the
+      # foundation (CLI/core/base headers/libs + CMake package + Asio)
+      # run for every profile. Optional-module checks are gated by profile.
+      # ----------------------------------------------------------------
+      - name: Verify installed SDK tree (${{ matrix.profile }})
         shell: bash
         run: |
           set -euxo pipefail
 
-          test -d "$INSTALL_DIR"
+          P="$VIX_SDK_PROFILE"
+          ID="$INSTALL_DIR"
 
-          test -f "$INSTALL_DIR/bin/vix"
+          # --- helpers ------------------------------------------------
+          have_h() { test -f "$ID/include/$1" || { echo "MISSING header: $1" >&2; exit 1; }; }
+          have_l() { test -f "$ID/lib/$1"     || { echo "MISSING lib: $1"    >&2; exit 1; }; }
+          no_h()   { if [ -f "$ID/include/$1" ]; then echo "UNEXPECTED header: $1" >&2; exit 1; fi; }
+          no_l()   { if [ -f "$ID/lib/$1" ];     then echo "UNEXPECTED lib: $1"    >&2; exit 1; fi; }
 
-          test -f "$INSTALL_DIR/include/vix.hpp"
-          test -f "$INSTALL_DIR/include/vix/core.hpp"
-          test -f "$INSTALL_DIR/include/vix/json/Simple.hpp"
-          test -f "$INSTALL_DIR/include/vix/error/Error.hpp"
-          test -f "$INSTALL_DIR/include/vix/path/Path.hpp"
-          test -f "$INSTALL_DIR/include/vix/fs.hpp"
-          test -f "$INSTALL_DIR/include/vix/console.hpp"
-          test -f "$INSTALL_DIR/include/vix/env.hpp"
-          test -f "$INSTALL_DIR/include/vix/log.hpp"
-          test -f "$INSTALL_DIR/include/vix/async.hpp"
-          test -f "$INSTALL_DIR/include/vix/time.hpp"
-          test -f "$INSTALL_DIR/include/vix/crypto.hpp"
-          test -f "$INSTALL_DIR/include/vix/cache.hpp"
-          test -f "$INSTALL_DIR/include/vix/db.hpp"
-          test -f "$INSTALL_DIR/include/vix/orm.hpp"
-          test -f "$INSTALL_DIR/include/vix/websocket.hpp"
-          test -f "$INSTALL_DIR/include/vix/validation.hpp"
-          test -f "$INSTALL_DIR/include/vix/process.hpp"
-          test -f "$INSTALL_DIR/include/vix/threadpool.hpp"
-          test -f "$INSTALL_DIR/include/vix/kv.hpp"
-          test -f "$INSTALL_DIR/include/vix/template.hpp"
-          test -f "$INSTALL_DIR/include/vix/ui.hpp"
-          test -f "$INSTALL_DIR/include/vix/note/note.hpp"
-          test -f "$INSTALL_DIR/include/vix/p2p.hpp"
-          test -f "$INSTALL_DIR/include/vix/p2p_http.hpp"
-          test -f "$INSTALL_DIR/include/vix/webrpc.hpp"
-          test -f "$INSTALL_DIR/include/vix/requests.hpp"
-          test -f "$INSTALL_DIR/include/vix/requests/requests.hpp"
-          test -f "$INSTALL_DIR/include/vix/game.hpp"
-          test -f "$INSTALL_DIR/include/vix/agent.hpp"
+          # profile membership test: "in default web all" style
+          has() { case " $1 " in *" $P "*) return 0;; *) return 1;; esac; }
 
-          test -d "$INSTALL_DIR/include/vix/ui"
-          test -d "$INSTALL_DIR/include/vix/note"
-          test -f "$INSTALL_DIR/include/vix/ui/assets/AssetManager.hpp"
+          # --- foundation: every profile ------------------------------
+          test -d "$ID"
+          test -f "$ID/bin/vix"
+          have_h "vix.hpp"
+          have_h "vix/core.hpp"
+          have_h "vix/json/Simple.hpp"
+          have_h "vix/error/Error.hpp"
+          have_h "vix/path/Path.hpp"
+          have_h "vix/fs.hpp"
+          have_h "vix/console.hpp"
+          have_h "vix/env.hpp"
+          have_h "vix/log.hpp"
 
-          test -f "$INSTALL_DIR/include/asio/io_context.hpp"
-          test -f "$INSTALL_DIR/include/asio.hpp"
-          test -f "$INSTALL_DIR/include/vix/third_party/asio/asio/io_context.hpp"
-          test -f "$INSTALL_DIR/include/vix/third_party/asio/asio.hpp"
+          have_l "libvix_error.a"
+          have_l "libvix_path.a"
+          have_l "libvix_fs.a"
+          have_l "libvix_io.a"
+          have_l "libvix_env.a"
+          have_l "libvix_os.a"
+          have_l "libvix_utils.a"
+          have_l "libvix_log.a"
+          have_l "libvix_core.a"
 
-          test -f "$INSTALL_DIR/lib/cmake/Vix/VixConfig.cmake"
-          test -f "$INSTALL_DIR/lib/cmake/Vix/VixConfigVersion.cmake"
-          test -f "$INSTALL_DIR/lib/cmake/Vix/VixTargets.cmake"
+          test -f "$ID/include/asio/io_context.hpp"
+          test -f "$ID/include/asio.hpp"
+          test -f "$ID/include/vix/third_party/asio/asio/io_context.hpp"
+          test -f "$ID/include/vix/third_party/asio/asio.hpp"
 
-          test -f "$INSTALL_DIR/lib/libvix_error.a"
-          test -f "$INSTALL_DIR/lib/libvix_path.a"
-          test -f "$INSTALL_DIR/lib/libvix_fs.a"
-          test -f "$INSTALL_DIR/lib/libvix_io.a"
-          test -f "$INSTALL_DIR/lib/libvix_env.a"
-          test -f "$INSTALL_DIR/lib/libvix_os.a"
-          test -f "$INSTALL_DIR/lib/libvix_utils.a"
-          test -f "$INSTALL_DIR/lib/libvix_log.a"
-          test -f "$INSTALL_DIR/lib/libvix_core.a"
-          test -f "$INSTALL_DIR/lib/libvix_websocket.a"
-          test -f "$INSTALL_DIR/lib/libvix_async.a"
-          test -f "$INSTALL_DIR/lib/libvix_threadpool.a"
-          test -f "$INSTALL_DIR/lib/libvix_kv.a"
-          test -f "$INSTALL_DIR/lib/libvix_cache.a"
-          test -f "$INSTALL_DIR/lib/libvix_process.a"
-          test -f "$INSTALL_DIR/lib/libvix_crypto.a"
-          test -f "$INSTALL_DIR/lib/libvix_net.a"
-          test -f "$INSTALL_DIR/lib/libvix_sync.a"
-          test -f "$INSTALL_DIR/lib/libvix_p2p.a"
-          test -f "$INSTALL_DIR/lib/libvix_p2p_http.a"
-          test -f "$INSTALL_DIR/lib/libvix_middleware.a"
-          test -f "$INSTALL_DIR/lib/libvix_requests.a"
-          test -f "$INSTALL_DIR/lib/libui.a"
-          test -f "$INSTALL_DIR/lib/libvix_note.a"
+          test -f "$ID/lib/cmake/Vix/VixConfig.cmake"
+          test -f "$ID/lib/cmake/Vix/VixConfigVersion.cmake"
+          test -f "$ID/lib/cmake/Vix/VixTargets.cmake"
 
-          nm -C "$INSTALL_DIR/lib/libvix_websocket.a" | grep "vix::websocket::LowLevelServer::run"
-          nm -C "$INSTALL_DIR/lib/libvix_websocket.a" | grep "vix::websocket::Session::shutdown_now"
-          nm -C "$INSTALL_DIR/lib/libvix_websocket.a" | grep "vix::websocket::LongPollingManager::push_to"
+          # --- async/time/process/threadpool: all profiles -----------
+          have_h "vix/async.hpp";      have_l "libvix_async.a"
+          have_h "vix/time.hpp"
+          have_h "vix/process.hpp";    have_l "libvix_process.a"
+          have_h "vix/threadpool.hpp"; have_l "libvix_threadpool.a"
 
-          grep -R "vix::websocket" "$INSTALL_DIR/lib/cmake/Vix" -n
-          grep -R "libvix_websocket" "$INSTALL_DIR/lib/cmake/Vix" -n
-          grep -R "vix::ui" "$INSTALL_DIR/lib/cmake/Vix" -n
-          grep -R "libui" "$INSTALL_DIR/lib/cmake/Vix" -n
-          grep -R "vix::note" "$INSTALL_DIR/lib/cmake/Vix" -n
-          grep -R "libvix_note" "$INSTALL_DIR/lib/cmake/Vix" -n
-          grep -R "vix::requests" "$INSTALL_DIR/lib/cmake/Vix" -n
-          grep -R "libvix_requests" "$INSTALL_DIR/lib/cmake/Vix" -n
+          # --- Note (+ UI/template) ----------------------------------
+          # Present in every profile in this tree (Note ships with UI).
+          have_h "vix/template.hpp"
+          have_h "vix/ui.hpp"
+          have_h "vix/note/note.hpp"
+          have_l "libui.a"
+          have_l "libvix_note.a"
+          test -d "$ID/include/vix/ui"
+          test -d "$ID/include/vix/note"
+          test -f "$ID/include/vix/ui/assets/AssetManager.hpp"
 
-          find "$INSTALL_DIR/include" -maxdepth 5 -type f | sort > installed-headers.txt
-          find "$INSTALL_DIR/lib" -maxdepth 2 -type f | sort > installed-libs.txt
-          find "$INSTALL_DIR/lib/cmake" -maxdepth 5 -type f | sort > installed-cmake-files.txt
+          # --- web modules: web + all --------------------------------
+          if has "web all"; then
+            have_h "vix/websocket.hpp";  have_l "libvix_websocket.a"
+            have_h "vix/validation.hpp"
+            have_h "vix/crypto.hpp"
+            have_h "vix/webrpc.hpp"
+            have_h "vix/requests.hpp"
+            have_h "vix/requests/requests.hpp"
+            have_l "libvix_requests.a"
+            have_l "libvix_middleware.a"
+            nm -C "$ID/lib/libvix_websocket.a" | grep "vix::websocket::LowLevelServer::run"
+            nm -C "$ID/lib/libvix_websocket.a" | grep "vix::websocket::Session::shutdown_now"
+            nm -C "$ID/lib/libvix_websocket.a" | grep "vix::websocket::LongPollingManager::push_to"
+          fi
 
-          sed -n '1,180p' installed-headers.txt
-          cat installed-libs.txt
-          cat installed-cmake-files.txt
+          # --- data modules: data + all ------------------------------
+          if has "data all"; then
+            have_h "vix/db.hpp"
+            have_h "vix/orm.hpp"
+            have_h "vix/kv.hpp";    have_l "libvix_kv.a"
+            have_h "vix/cache.hpp"; have_l "libvix_cache.a"
+          fi
+
+          # --- p2p modules: p2p + all --------------------------------
+          if has "p2p all"; then
+            have_h "vix/p2p.hpp";      have_l "libvix_p2p.a"
+            have_h "vix/p2p_http.hpp"; have_l "libvix_p2p_http.a"
+            have_h "vix/crypto.hpp"
+            have_l "libvix_net.a"
+            have_l "libvix_sync.a"
+          fi
+
+          # --- desktop: WebView present in desktop + all -------------
+          if has "desktop all"; then
+            grep -R "vix::ui" "$ID/lib/cmake/Vix" -n
+            grep -R "libui"   "$ID/lib/cmake/Vix" -n
+          fi
+
+          # --- game: game + all --------------------------------------
+          if has "game all"; then
+            have_h "vix/game.hpp"
+          fi
+
+          # --- agent: agent + all ------------------------------------
+          if has "agent all"; then
+            have_h "vix/agent.hpp"
+            have_l "libvix_cache.a"   # agent depends on cache
+          fi
+
+          # --- exclusions: default must NOT carry heavy domains ------
+          if [ "$P" = "default" ]; then
+            no_h "vix/game.hpp"
+            no_h "vix/agent.hpp"
+            no_h "vix/db.hpp"
+            no_h "vix/orm.hpp"
+            no_h "vix/p2p.hpp"
+            no_h "vix/websocket.hpp"
+            no_l "libvix_p2p.a"
+            no_l "libvix_websocket.a"
+          fi
+
+          # --- exclusions: web must NOT carry game/agent/p2p ---------
+          if [ "$P" = "web" ]; then
+            no_h "vix/game.hpp"
+            no_h "vix/agent.hpp"
+            no_h "vix/p2p.hpp"
+          fi
+
+          # --- exclusions: data must NOT carry game/agent ------------
+          if [ "$P" = "data" ]; then
+            no_h "vix/game.hpp"
+            no_h "vix/agent.hpp"
+          fi
+
+          # --- inventory for logs ------------------------------------
+          find "$ID/include" -maxdepth 5 -type f | sort > installed-headers.txt
+          find "$ID/lib" -maxdepth 2 -type f | sort > installed-libs.txt
+          find "$ID/lib/cmake" -maxdepth 5 -type f | sort > installed-cmake-files.txt
+          echo "=== headers ==="; sed -n '1,200p' installed-headers.txt
+          echo "=== libs ===";    cat installed-libs.txt
+          echo "=== cmake ===";   cat installed-cmake-files.txt
 
       - name: Package SDK
         shell: bash
         run: |
           set -euxo pipefail
-
           mkdir -p dist
           tar -C "$INSTALL_DIR" -czf "dist/$ASSET" .
-
           ls -lah dist
 
       - name: Validate packaged SDK binary
         shell: bash
         run: |
           set -euxo pipefail
-
           rm -rf smoke-bin
           mkdir -p smoke-bin
-
           tar -xzf "dist/$ASSET" -C smoke-bin
-
           test -f smoke-bin/bin/vix
           file smoke-bin/bin/vix
           ldd smoke-bin/bin/vix || true
           smoke-bin/bin/vix --version
 
-      - name: Validate packaged SDK tree
+      # ----------------------------------------------------------------
+      # Consumer link smoke test, scoped per profile. A generated main.cpp
+      # includes only the headers the profile is expected to ship, so the
+      # find_package + link path is exercised for exactly that profile.
+      # ----------------------------------------------------------------
+      - name: Validate packaged SDK with consumer project (${{ matrix.profile }})
         shell: bash
         run: |
           set -euxo pipefail
 
-          rm -rf smoke-sdk-tree
-          mkdir -p smoke-sdk-tree
-
-          tar -xzf "dist/$ASSET" -C smoke-sdk-tree
-
-          test -f smoke-sdk-tree/bin/vix
-          test -f smoke-sdk-tree/include/vix.hpp
-          test -f smoke-sdk-tree/include/vix/websocket.hpp
-          test -f smoke-sdk-tree/include/vix/ui.hpp
-          test -f smoke-sdk-tree/include/vix/note/note.hpp
-          test -f smoke-sdk-tree/lib/libvix_websocket.a
-          test -f smoke-sdk-tree/lib/libui.a
-          test -f smoke-sdk-tree/lib/libvix_note.a
-          test -f smoke-sdk-tree/lib/cmake/Vix/VixConfig.cmake
-          test -f smoke-sdk-tree/lib/cmake/Vix/VixTargets.cmake
-
-          nm -C smoke-sdk-tree/lib/libvix_websocket.a | grep "vix::websocket::LowLevelServer::run"
-          nm -C smoke-sdk-tree/lib/libvix_websocket.a | grep "vix::websocket::Session::shutdown_now"
-          nm -C smoke-sdk-tree/lib/libvix_websocket.a | grep "vix::websocket::LongPollingManager::push_to"
-
-      - name: Validate packaged SDK with full consumer project
-        shell: bash
-        run: |
-          set -euxo pipefail
+          P="$VIX_SDK_PROFILE"
+          has() { case " $1 " in *" $P "*) return 0;; *) return 1;; esac; }
 
           rm -rf smoke-sdk consumer
           mkdir -p smoke-sdk consumer
-
           tar -xzf "dist/$ASSET" -C smoke-sdk
+
+          {
+            echo '#include <vix.hpp>'
+            echo '#include <vix/core.hpp>'
+            echo '#include <vix/async.hpp>'
+            echo '#include <vix/time.hpp>'
+            echo '#include <vix/process.hpp>'
+            echo '#include <vix/threadpool.hpp>'
+            echo '#include <vix/ui.hpp>'
+            echo '#include <vix/note/note.hpp>'
+            if has "web all"; then
+              echo '#include <vix/websocket.hpp>'
+              echo '#include <vix/validation.hpp>'
+              echo '#include <vix/crypto.hpp>'
+              echo '#include <vix/webrpc.hpp>'
+              echo '#include <vix/requests.hpp>'
+            fi
+            if has "data all"; then
+              echo '#include <vix/db.hpp>'
+              echo '#include <vix/orm.hpp>'
+              echo '#include <vix/kv.hpp>'
+              echo '#include <vix/cache.hpp>'
+            fi
+            if has "p2p all"; then
+              echo '#include <vix/p2p.hpp>'
+              echo '#include <vix/p2p_http.hpp>'
+            fi
+            if has "game all"; then
+              echo '#include <vix/game.hpp>'
+            fi
+            if has "agent all"; then
+              echo '#include <vix/agent.hpp>'
+            fi
+            echo '#include <iostream>'
+            echo 'int main() {'
+            echo '  vix::ui::ViewContext view_context{};'
+            echo '  (void)view_context;'
+            if has "web all"; then
+              echo '  vix::websocket::Config ws_config{};'
+              echo '  vix::websocket::Router ws_router{};'
+              echo '  (void)ws_config; (void)ws_router;'
+            fi
+            echo '  std::cout << "Vix SDK consumer (profile='"$P"') build and link works\n";'
+            echo '  return 0;'
+            echo '}'
+          } > consumer/main.cpp
 
           cat > consumer/CMakeLists.txt <<'EOF'
           cmake_minimum_required(VERSION 3.20)
           project(vix_sdk_consumer LANGUAGES CXX)
-
           set(CMAKE_CXX_STANDARD 20)
           set(CMAKE_CXX_STANDARD_REQUIRED ON)
           set(CMAKE_CXX_EXTENSIONS OFF)
-
           find_package(Vix CONFIG REQUIRED)
-
           add_executable(app main.cpp)
           target_link_libraries(app PRIVATE vix::vix)
-          EOF
-
-          cat > consumer/main.cpp <<'EOF'
-          #include <vix.hpp>
-
-          #include <vix/json/Simple.hpp>
-          #include <vix/error/Error.hpp>
-          #include <vix/path/Path.hpp>
-          #include <vix/fs.hpp>
-          #include <vix/console.hpp>
-          #include <vix/env.hpp>
-          #include <vix/log.hpp>
-          #include <vix/core.hpp>
-          #include <vix/async.hpp>
-          #include <vix/time.hpp>
-          #include <vix/crypto.hpp>
-          #include <vix/cache.hpp>
-          #include <vix/db.hpp>
-          #include <vix/orm.hpp>
-          #include <vix/websocket.hpp>
-          #include <vix/validation.hpp>
-          #include <vix/process.hpp>
-          #include <vix/threadpool.hpp>
-          #include <vix/kv.hpp>
-          #include <vix/template.hpp>
-          #include <vix/ui.hpp>
-          #include <vix/note/note.hpp>
-          #include <vix/p2p.hpp>
-          #include <vix/p2p_http.hpp>
-          #include <vix/webrpc.hpp>
-          #include <vix/game.hpp>
-          #include <vix/agent.hpp>
-
-          #include <iostream>
-          #include <string>
-
-          int main()
-          {
-            vix::websocket::Config ws_config{};
-            vix::websocket::Router ws_router{};
-
-            vix::ui::ViewContext view_context{};
-
-            (void)ws_config;
-            (void)ws_router;
-            (void)view_context;
-
-            std::cout << "Vix full SDK consumer build and link works\n";
-            return 0;
-          }
           EOF
 
           cmake -S consumer -B consumer/build \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/smoke-sdk"
-
           cmake --build consumer/build -j2
-
           ./consumer/build/app
 
-      - name: Validate packaged SDK with WebSocket link project
-        shell: bash
-        run: |
-          set -euxo pipefail
-
-          rm -rf smoke-sdk-ws consumer-ws
-          mkdir -p smoke-sdk-ws consumer-ws
-
-          tar -xzf "dist/$ASSET" -C smoke-sdk-ws
-
-          cat > consumer-ws/CMakeLists.txt <<'EOF'
-          cmake_minimum_required(VERSION 3.20)
-          project(vix_sdk_websocket_consumer LANGUAGES CXX)
-
-          set(CMAKE_CXX_STANDARD 20)
-          set(CMAKE_CXX_STANDARD_REQUIRED ON)
-          set(CMAKE_CXX_EXTENSIONS OFF)
-
-          find_package(Vix CONFIG REQUIRED)
-
-          add_executable(app main.cpp)
-          target_link_libraries(app PRIVATE vix::vix)
-          EOF
-
-          cat > consumer-ws/main.cpp <<'EOF'
-          #include <vix/websocket.hpp>
-
-          #include <iostream>
-
-          int main()
-          {
-            vix::websocket::Config config{};
-            vix::websocket::Router router{};
-
-            (void)config;
-            (void)router;
-
-            std::cout << "Vix WebSocket SDK link works\n";
-            return 0;
-          }
-          EOF
-
-          cmake -S consumer-ws -B consumer-ws/build \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/smoke-sdk-ws"
-
-          cmake --build consumer-ws/build -j2
-
-          ./consumer-ws/build/app
-
-      - name: Validate packaged SDK with UI link project
-        shell: bash
-        run: |
-          set -euxo pipefail
-
-          rm -rf smoke-sdk-ui consumer-ui
-          mkdir -p smoke-sdk-ui consumer-ui
-
-          tar -xzf "dist/$ASSET" -C smoke-sdk-ui
-
-          cat > consumer-ui/CMakeLists.txt <<'EOF'
-          cmake_minimum_required(VERSION 3.20)
-          project(vix_sdk_ui_consumer LANGUAGES CXX)
-
-          set(CMAKE_CXX_STANDARD 20)
-          set(CMAKE_CXX_STANDARD_REQUIRED ON)
-          set(CMAKE_CXX_EXTENSIONS OFF)
-
-          find_package(Vix CONFIG REQUIRED)
-
-          add_executable(app main.cpp)
-          target_link_libraries(app PRIVATE vix::vix)
-          EOF
-
-          cat > consumer-ui/main.cpp <<'EOF'
-          #include <vix/ui.hpp>
-
-          #include <iostream>
-
-          int main()
-          {
-            vix::ui::ViewContext context{};
-
-            (void)context;
-
-            std::cout << "Vix UI SDK link works\n";
-            return 0;
-          }
-          EOF
-
-          cmake -S consumer-ui -B consumer-ui/build \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/smoke-sdk-ui"
-
-          cmake --build consumer-ui/build -j2
-
-          ./consumer-ui/build/app
-
-      - name: Validate packaged SDK with Note link project
-        shell: bash
-        run: |
-          set -euxo pipefail
-
-          rm -rf smoke-sdk-note consumer-note
-          mkdir -p smoke-sdk-note consumer-note
-
-          tar -xzf "dist/$ASSET" -C smoke-sdk-note
-
-          cat > consumer-note/CMakeLists.txt <<'EOF'
-          cmake_minimum_required(VERSION 3.20)
-          project(vix_sdk_note_consumer LANGUAGES CXX)
-
-          set(CMAKE_CXX_STANDARD 20)
-          set(CMAKE_CXX_STANDARD_REQUIRED ON)
-          set(CMAKE_CXX_EXTENSIONS OFF)
-
-          find_package(Vix CONFIG REQUIRED)
-
-          add_executable(app main.cpp)
-          target_link_libraries(app PRIVATE vix::vix)
-          EOF
-
-          cat > consumer-note/main.cpp <<'EOF'
-          #include <vix/note/note.hpp>
-
-          #include <iostream>
-
-          int main()
-          {
-            std::cout << "Vix Note SDK link works\n";
-            return 0;
-          }
-          EOF
-
-          cmake -S consumer-note -B consumer-note/build \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/smoke-sdk-note"
-
-          cmake --build consumer-note/build -j2
-
-          ./consumer-note/build/app
-
       - name: Upload dist
         uses: actions/upload-artifact@v4
         with:
-          name: sdk-dist-linux-x86_64
-          path: dist/*
-          if-no-files-found: error
-
-  build-sdk-windows:
-    name: build-sdk-full (windows / x86_64)
-    runs-on: windows-2022
-
-    env:
-      BUILD_DIR: build-sdk-full
-      INSTALL_DIR: install-sdk-full
-      ASSET: vix-sdk-windows-x86_64.zip
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
-
-      - name: Checkout tag (manual input)
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag != '' }}
-        shell: pwsh
-        run: |
-          git fetch --tags --force
-          git checkout "tags/${{ github.event.inputs.tag }}"
-
-      - name: Setup vcpkg
-        shell: pwsh
-        run: |
-          git clone https://github.com/microsoft/vcpkg $env:GITHUB_WORKSPACE\vcpkg
-          "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Append
-          cd $env:GITHUB_WORKSPACE\vcpkg
-          .\bootstrap-vcpkg.bat
-
-      - name: Vcpkg install
-        shell: pwsh
-        run: |
-          cd $env:GITHUB_WORKSPACE
-          & "$env:VCPKG_ROOT\vcpkg.exe" install --triplet x64-windows --x-manifest-root "$env:GITHUB_WORKSPACE"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Configure SDK full
-        shell: pwsh
-        run: |
-          cmake -S . -B "$env:BUILD_DIR" -A x64 `
-            -DCMAKE_INSTALL_PREFIX="$env:GITHUB_WORKSPACE\$env:INSTALL_DIR" `
-            -DVIX_ENABLE_INSTALL=ON `
-            -DVIX_BUILD_EXAMPLES=OFF `
-            -DVIX_BUILD_TESTS=OFF `
-            -DVIX_ENABLE_WARNINGS=ON `
-            -DVIX_ENABLE_HTTP_COMPRESSION=OFF `
-            -DVIX_ENABLE_DB=ON `
-            -DVIX_DB_USE_SQLITE=ON `
-            -DVIX_DB_USE_MYSQL=OFF `
-            -DVIX_DB_USE_POSTGRES=OFF `
-            -DVIX_DB_USE_REDIS=OFF `
-            -DVIX_CORE_WITH_MYSQL=OFF `
-            -DVIX_ENABLE_ORM=ON `
-            -DVIX_ENABLE_WEBSOCKET=ON `
-            -DVIX_ENABLE_CLI=ON `
-            -DVIX_ENABLE_MIDDLEWARE=ON `
-            -DVIX_ENABLE_P2P=ON `
-            -DVIX_ENABLE_P2P_HTTP=ON `
-            -DVIX_ENABLE_CACHE=ON `
-            -DVIX_ENABLE_ASYNC=ON `
-            -DVIX_ENABLE_VALIDATION=ON `
-            -DVIX_ENABLE_CRYPTO=ON `
-            -DVIX_ENABLE_WEBRPC=ON `
-            -DVIX_ENABLE_REQUESTS=OFF `
-            -DVIX_ENABLE_TIME=ON `
-            -DVIX_ENABLE_TESTS_MODULE=ON `
-            -DVIX_ENABLE_TEMPLATE=ON `
-            -DVIX_ENABLE_UI=ON `
-            -DVIX_ENABLE_NOTE=ON `
-            -DVIX_UI_ENABLE_LINUX_WEBVIEW=OFF `
-            -DVIX_ENABLE_PROCESS=ON `
-            -DVIX_ENABLE_THREADPOOL=ON `
-            -DVIX_ENABLE_KV=ON `
-            -DVIX_ENABLE_AGENT=ON `
-            -DVIX_ENABLE_GAME=OFF `
-            -DVIX_UI_BUILD_TESTS=OFF `
-            -DVIX_UI_BUILD_EXAMPLES=OFF `
-            -DVIX_UI_BUILD_BENCHMARKS=OFF `
-            -DUI_BUILD_TESTS=OFF `
-            -DUI_BUILD_EXAMPLES=OFF `
-            -DUI_BUILD_BENCHMARKS=OFF `
-            -DUI_INSTALL=OFF `
-            -DVIX_NOTE_BUILD_TESTS=OFF `
-            -DVIX_NOTE_BUILD_EXAMPLES=OFF `
-            -DVIX_NOTE_INSTALL=OFF `
-            -DVCPKG_TARGET_TRIPLET=x64-windows `
-            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
-
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Build SDK
-        shell: pwsh
-        run: |
-          cmake --build "$env:BUILD_DIR" --config Release
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Install SDK
-        shell: pwsh
-        run: |
-          cmake --install "$env:BUILD_DIR" --config Release
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Bundle SQLite runtime DLL
-        shell: pwsh
-        run: |
-          $sqliteDll = Get-ChildItem -Path "$env:GITHUB_WORKSPACE\vcpkg\installed\x64-windows" -Recurse -File -Filter "sqlite3.dll" |
-            Select-Object -First 1
-
-          if (-not $sqliteDll) {
-            throw "sqlite3.dll not found in vcpkg installed tree"
-          }
-
-          New-Item -ItemType Directory -Force -Path "$env:INSTALL_DIR\bin" | Out-Null
-          Copy-Item -LiteralPath $sqliteDll.FullName -Destination "$env:INSTALL_DIR\bin\sqlite3.dll" -Force
-
-          if (!(Test-Path "$env:INSTALL_DIR\bin\sqlite3.dll")) {
-            throw "failed to copy sqlite3.dll into SDK bin directory"
-          }
-
-          Write-Host "Bundled sqlite3.dll from $($sqliteDll.FullName)"
-
-      - name: Verify installed SDK tree
-        shell: pwsh
-        run: |
-          if (!(Test-Path "$env:INSTALL_DIR\bin\vix.exe")) { throw "missing bin\vix.exe" }
-          if (!(Test-Path "$env:INSTALL_DIR\bin\sqlite3.dll")) { throw "missing bin\sqlite3.dll" }
-          if (!(Test-Path "$env:INSTALL_DIR\include\vix.hpp")) { throw "missing include\vix.hpp" }
-          if (!(Test-Path "$env:INSTALL_DIR\include\vix\websocket.hpp")) { throw "missing include\vix\websocket.hpp" }
-          if (!(Test-Path "$env:INSTALL_DIR\include\vix\ui.hpp")) { throw "missing include\vix\ui.hpp" }
-          if (!(Test-Path "$env:INSTALL_DIR\include\vix\note\note.hpp")) { throw "missing include\vix\note\note.hpp" }
-          if (!(Test-Path "$env:INSTALL_DIR\include\vix\ui\assets\AssetManager.hpp")) { throw "missing include\vix\ui\assets\AssetManager.hpp" }
-          if (!(Test-Path "$env:INSTALL_DIR\lib\cmake\Vix\VixConfig.cmake")) { throw "missing VixConfig.cmake" }
-          if (!(Test-Path "$env:INSTALL_DIR\lib\cmake\Vix\VixTargets.cmake")) { throw "missing VixTargets.cmake" }
-
-          & "$env:INSTALL_DIR\bin\vix.exe" --version
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Package SDK
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Compress-Archive -Path "$env:INSTALL_DIR\*" -DestinationPath "dist\$env:ASSET" -Force
-          if (!(Test-Path "dist\$env:ASSET")) { throw "missing SDK archive" }
-
-      - name: Validate packaged SDK
-        shell: pwsh
-        run: |
-          Remove-Item -Recurse -Force smoke-sdk -ErrorAction SilentlyContinue
-          New-Item -ItemType Directory -Force -Path smoke-sdk | Out-Null
-
-          Expand-Archive -LiteralPath "dist\$env:ASSET" -DestinationPath smoke-sdk -Force
-
-          if (!(Test-Path "smoke-sdk\bin\vix.exe")) { throw "archive missing bin\vix.exe" }
-          if (!(Test-Path "smoke-sdk\bin\sqlite3.dll")) { throw "archive missing bin\sqlite3.dll" }
-          if (!(Test-Path "smoke-sdk\include\vix.hpp")) { throw "archive missing include\vix.hpp" }
-          if (!(Test-Path "smoke-sdk\include\vix\ui.hpp")) { throw "archive missing include\vix\ui.hpp" }
-          if (!(Test-Path "smoke-sdk\include\vix\note\note.hpp")) { throw "archive missing include\vix\note\note.hpp" }
-          if (!(Test-Path "smoke-sdk\lib\cmake\Vix\VixConfig.cmake")) { throw "archive missing VixConfig.cmake" }
-
-          & "smoke-sdk\bin\vix.exe" --version
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Upload dist
-        uses: actions/upload-artifact@v4
-        with:
-          name: sdk-dist-windows-x86_64
+          name: sdk-dist-${{ matrix.profile }}-linux-x86_64
           path: dist/*
           if-no-files-found: error
 
@@ -736,11 +468,10 @@ jobs:
     name: publish-sdk
     needs:
       - build-sdk
-      - build-sdk-windows
     runs-on: ubuntu-24.04
 
     steps:
-      - name: Download SDK artifact
+      - name: Download SDK artifacts
         uses: actions/download-artifact@v4
         with:
           path: dist-all
@@ -749,14 +480,13 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-
           mkdir -p dist
 
-          find dist-all -type f -name "vix-sdk-linux-x86_64.tar.gz" -exec cp -f {} dist/ \;
-          find dist-all -type f -name "vix-sdk-windows-x86_64.zip" -exec cp -f {} dist/ \;
-
-          test -f dist/vix-sdk-linux-x86_64.tar.gz
-          test -f dist/vix-sdk-windows-x86_64.zip
+          for p in default web data desktop p2p game agent all; do
+            f="vix-sdk-${p}-linux-x86_64.tar.gz"
+            find dist-all -type f -name "$f" -exec cp -f {} dist/ \;
+            test -f "dist/$f" || { echo "missing expected asset: $f" >&2; exit 1; }
+          done
 
           ls -lah dist
 
@@ -764,14 +494,11 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-
           cd dist
-
-          for f in vix-sdk-*.tar.gz vix-sdk-*.zip; do
+          for f in vix-sdk-*.tar.gz; do
             [ -f "$f" ] || continue
             sha256sum "$f" > "$f.sha256"
           done
-
           ls -lah
 
       - name: Sign SDK assets
@@ -802,14 +529,13 @@ jobs:
           printf "%s" "$MINISIGN_PRIVATE_KEY_B64" | base64 -d > "$keyfile"
           test -s "$keyfile"
 
-          for f in vix-sdk-*.tar.gz vix-sdk-*.zip; do
+          for f in vix-sdk-*.tar.gz; do
             [ -f "$f" ] || continue
             "$MS" -S -s "$keyfile" -m "$f"
           done
 
           rm -f "$keyfile"
           rm -rf minisign-linux minisign-linux.tar.gz
-
           ls -lah
 
       - name: Determine tag
@@ -817,7 +543,6 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.tag }}" ]; then
             echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
           else

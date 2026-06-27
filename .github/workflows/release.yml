@@ -201,6 +201,11 @@ jobs:
       # -------------------------
       # Configure (Unix)
       # -------------------------
+      # NOTE: The normal CLI release intentionally uses the legacy (non-SDK)
+      # profile. VIX_SDK_PROFILE is opt-in; "legacy" preserves the exact
+      # historical module defaults for this lightweight multi-platform CLI
+      # build. SDK profiles (default/web/data/...) are only used by
+      # sdk-release.yml. Do NOT switch this to an SDK profile.
       - name: Configure (Unix)
         if: runner.os != 'Windows'
         shell: bash
@@ -210,6 +215,7 @@ jobs:
           CMAKE_ARGS=(
             -S . -B build -G Ninja
             -DCMAKE_BUILD_TYPE=Release
+            -DVIX_SDK_PROFILE=legacy
             -DVIX_ENABLE_INSTALL=OFF
             -DVIX_DB_USE_MYSQL=OFF
             -DVIX_CORE_WITH_MYSQL=OFF
@@ -322,6 +328,7 @@ jobs:
       # -------------------------
       # Configure + Build (Windows)
       # -------------------------
+      # NOTE: legacy (non-SDK) profile on purpose — see Unix configure note.
       - name: Configure (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -331,6 +338,7 @@ jobs:
           Write-Host "VCPKG_ROOT=$env:VCPKG_ROOT"
 
           cmake -S . -B build -A x64 `
+            -DVIX_SDK_PROFILE=legacy `
             -DVIX_ENABLE_INSTALL=OFF `
             -DVIX_BUILD_EXAMPLES=OFF `
             -DVIX_BUILD_TESTS=OFF `
