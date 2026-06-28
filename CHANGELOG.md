@@ -21,6 +21,83 @@ Vix Requests
 
 ### Added
 
+#### Vix SDK profiles and upgrade UX
+
+- Added SDK profile upgrade support through `vix upgrade --sdk`.
+
+- Added supported SDK profiles:
+  - `default`
+  - `web`
+  - `data`
+  - `desktop`
+  - `p2p`
+  - `game`
+  - `agent`
+  - `all`
+
+- Added `vix upgrade --sdk list` for listing SDK profiles available in the current GitHub release.
+
+- Added `vix upgrade --sdk info [profile]` for discovering a SDK profile before installing it.
+
+- Added `vix upgrade --sdk-info <profile>` as a shortcut for SDK profile information.
+
+- Added SDK profile metadata in the CLI, including:
+  - profile description
+  - included modules
+  - platform-specific system dependencies
+  - install command
+  - documentation link
+
+- Added clean SDK install paths under:
+
+```txt
+~/.vix/sdk/<profile>/<version>/
+```
+
+- Added current SDK profile metadata under:
+
+```txt
+~/.vix/sdk/<profile>/current.json
+```
+
+- Added a current SDK pointer under:
+
+```txt
+~/.vix/sdk/<profile>/current
+```
+
+- Added SDK install metadata with profile, version, platform, install directory, asset URL, install time, and download size.
+
+- Added clean unsupported-platform and missing-asset messages for SDK upgrades.
+
+- Added SDK release asset resolution using profile, OS, architecture, and version.
+
+- Added modern `vix upgrade` output with concise progress steps, clean check/dry-run output, and quiet default behavior.
+
+- Added `--verbose` to `vix upgrade` for diagnostic details when needed.
+
+- Added JSON-safe output behavior so `vix upgrade --json` prints valid JSON only.
+
+#### Installer bootstrap
+
+- Updated Unix installer to install the Vix CLI only.
+
+- Updated Windows PowerShell installer to install the Vix CLI only.
+
+- SDK installation now happens through the CLI after bootstrap:
+
+```bash
+vix upgrade --sdk list
+vix upgrade --sdk info web
+vix upgrade --sdk web
+```
+
+- Kept `--cli-only` compatibility in installers.
+
+- Moved SDK installation responsibility from install scripts to `vix upgrade --sdk`.
+
+- Added installer guidance that points users to `vix upgrade --sdk list` after CLI installation.
+
 #### Vix Note
 
 - Added the new `note` module as a first-class umbrella target: `vix::note`.
@@ -187,6 +264,26 @@ Vix Requests
 - Updated release, SDK, module test, security, and build-safety CI profiles to cover Note, UI, and Requests.
 - Updated package validation so Note, UI, and Requests headers/libraries are checked after installation.
 
+* Updated `vix upgrade` with a modern runtime-installer style output that only shows essential user-facing information by default.
+
+* Updated `vix upgrade --check` and `vix upgrade --dry-run` to use concise, readable summaries without noisy internal details.
+
+* Updated SDK upgrade behavior so `vix upgrade --sdk` means `vix upgrade --sdk default`.
+
+* Updated SDK upgrade flow to validate profile names before resolving assets.
+
+* Updated SDK dry-run and check behavior to verify whether the expected SDK release asset exists before reporting success.
+
+* Updated missing SDK profile assets to show a short actionable message and point users to:
+
+```bash
+vix upgrade --sdk list
+```
+
+- Updated SDK discovery so users can inspect modules and required system dependencies before installing a profile.
+
+- Updated install scripts to act as CLI bootstrappers only. Full SDK selection is now handled by the installed `vix` CLI.
+
 ### Fixed
 
 - Fixed package export validation for `vix::note`, `vix::ui`, and `vix::requests`.
@@ -209,6 +306,18 @@ Vix Requests
 - Fixed Android mobile shell project detection so `vix mobile build`, `vix mobile run`, and `vix mobile wrapper` work from inside the generated Android project directory.
 - Fixed Android mobile launch behavior to use the generated package and `MainActivity`.
 - Fixed scheduler and worker test behavior in the threadpool module for the release branch.
+
+* Fixed noisy `vix upgrade` output by hiding internal commands, temporary paths, clone steps, raw download details, and low-level diagnostics unless `--verbose` is used.
+
+* Fixed SDK dry-run UX so unavailable profiled SDK assets are reported clearly instead of appearing installable.
+
+* Fixed SDK profile validation to show a clean error for unknown profiles.
+
+* Fixed `vix upgrade --json` behavior so human output is not mixed with JSON.
+
+* Fixed upgrade output spacing so commands do not leave extra blank lines before returning to the shell prompt.
+
+* Fixed SDK info output readability with clearer section titles, visible profile names, wrapped module lists, platform-specific dependency commands, install command, and docs link.
 
 ### Removed
 
@@ -245,6 +354,38 @@ desktop and mobile WebView shells as UI delivery paths
 PWA as the mobile foundation
 native UI only when truly needed
 ```
+
+Vix.cpp v2.7.0 also introduces the first modern SDK profile experience for Vix.
+
+The CLI can now explain SDK profiles before installation:
+
+```bash
+vix upgrade --sdk info web
+```
+
+This shows what the profile contains, which modules are included, which system dependencies are required for the current platform, the install command to run, and the documentation page for the SDK.
+
+SDK installation is now handled through `vix upgrade` instead of the bootstrap installers. The install scripts are intentionally CLI-only so users first get the `vix` command, then install only the SDK profile they need:
+
+```bash
+vix upgrade --sdk list
+vix upgrade --sdk web
+```
+
+The available SDK profiles are:
+
+```txt
+default
+web
+data
+desktop
+p2p
+game
+agent
+all
+```
+
+This makes C++ setup less opaque: instead of guessing dependencies, users can inspect the SDK, install the required system packages, and then install the exact Vix SDK profile for their domain.
 
 The goal is to make C++ development easier to teach, inspect, connect, package, and turn into real interfaces without making the core runtime heavier by default.
 
