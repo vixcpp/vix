@@ -264,17 +264,22 @@ vix upgrade --sdk web
 - Updated release, SDK, module test, security, and build-safety CI profiles to cover Note, UI, and Requests.
 - Updated package validation so Note, UI, and Requests headers/libraries are checked after installation.
 
-* Updated `vix upgrade` with a modern runtime-installer style output that only shows essential user-facing information by default.
+- Updated `vix upgrade` with a modern runtime-installer style output that only shows essential user-facing information by default.
+- Updated `vix upgrade --check` and `vix upgrade --dry-run` to use concise, readable summaries without noisy internal details.
+- Updated SDK upgrade behavior so `vix upgrade --sdk` means `vix upgrade --sdk default`.
+- Updated SDK upgrade flow to validate profile names before resolving assets.
+- Updated SDK dry-run and check behavior to verify whether the expected SDK release asset exists before reporting success.
+- Updated missing SDK profile assets to show a short actionable message and point users to:
+- Updated the modern `vix upgrade` terminal UI with clearer colors for headings, profile names, SDK status lines, install commands, and multi-profile SDK output.
+- Updated `vix upgrade --sdk <profile...>` to support installing or checking multiple SDK profiles in one command, for example:
 
-* Updated `vix upgrade --check` and `vix upgrade --dry-run` to use concise, readable summaries without noisy internal details.
+```bash
+vix upgrade --sdk web data desktop
+```
 
-* Updated SDK upgrade behavior so `vix upgrade --sdk` means `vix upgrade --sdk default`.
+- Updated multi-profile SDK upgrade output so each profile reports its own status clearly instead of returning silently.
 
-* Updated SDK upgrade flow to validate profile names before resolving assets.
-
-* Updated SDK dry-run and check behavior to verify whether the expected SDK release asset exists before reporting success.
-
-* Updated missing SDK profile assets to show a short actionable message and point users to:
+- Updated SDK info output to show a clearer install command using the same visible command styling as dependency install commands.
 
 ```bash
 vix upgrade --sdk list
@@ -306,18 +311,16 @@ vix upgrade --sdk list
 - Fixed Android mobile shell project detection so `vix mobile build`, `vix mobile run`, and `vix mobile wrapper` work from inside the generated Android project directory.
 - Fixed Android mobile launch behavior to use the generated package and `MainActivity`.
 - Fixed scheduler and worker test behavior in the threadpool module for the release branch.
+- Fixed noisy `vix upgrade` output by hiding internal commands, temporary paths, clone steps, raw download details, and low-level diagnostics unless `--verbose` is used.
+- Fixed SDK dry-run UX so unavailable profiled SDK assets are reported clearly instead of appearing installable.
+- Fixed SDK profile validation to show a clean error for unknown profiles.
+- Fixed `vix upgrade --json` behavior so human output is not mixed with JSON.
+- Fixed upgrade output spacing so commands do not leave extra blank lines before returning to the shell prompt.
+- Fixed SDK info output readability with clearer section titles, visible profile names, wrapped module lists, platform-specific dependency commands, install command, and docs link.
 
-* Fixed noisy `vix upgrade` output by hiding internal commands, temporary paths, clone steps, raw download details, and low-level diagnostics unless `--verbose` is used.
-
-* Fixed SDK dry-run UX so unavailable profiled SDK assets are reported clearly instead of appearing installable.
-
-* Fixed SDK profile validation to show a clean error for unknown profiles.
-
-* Fixed `vix upgrade --json` behavior so human output is not mixed with JSON.
-
-* Fixed upgrade output spacing so commands do not leave extra blank lines before returning to the shell prompt.
-
-* Fixed SDK info output readability with clearer section titles, visible profile names, wrapped module lists, platform-specific dependency commands, install command, and docs link.
+- Fixed `vix upgrade --sdk web data` returning without visible output in human mode.
+- Fixed low-contrast text in the `vix upgrade` header and SDK info output by making important labels and commands more visible in terminals.
+- Fixed SDK module listing readability by using normal terminal text for module names and stronger section labels.
 
 ### Removed
 
