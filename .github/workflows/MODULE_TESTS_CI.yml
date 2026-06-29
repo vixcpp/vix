@@ -1,6 +1,6 @@
 name: Module Tests CI
 
-on:
+"on":
   push:
     branches:
       - main
@@ -76,7 +76,20 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y $DEPS
+          sudo apt-get install -y --no-install-recommends $DEPS
+
+      - name: Verify required modules
+        run: |
+          set -euxo pipefail
+
+          test -f CMakeLists.txt
+          test -f modules/core/CMakeLists.txt
+          test -f modules/json/CMakeLists.txt
+          test -f modules/utils/CMakeLists.txt
+          test -f modules/template/CMakeLists.txt
+          test -f modules/ui/CMakeLists.txt
+          test -f modules/note/CMakeLists.txt
+          test -f modules/requests/CMakeLists.txt
 
       - name: Select compiler
         run: |
@@ -106,13 +119,35 @@ jobs:
             -DVIX_TIME_BUILD_TESTS=ON \
             -DVIX_ENABLE_TEMPLATE=ON \
             -DVIX_TEMPLATE_BUILD_TESTS=ON \
+            -DTEMPLATE_BUILD_TESTS=ON \
+            -DVIX_TEMPLATE_BUILD_EXAMPLES=OFF \
+            -DVIX_TEMPLATE_BUILD_BENCH=OFF \
+            -DTEMPLATE_BUILD_BENCHMARKS=OFF \
+            -DVIX_ENABLE_UI=ON \
+            -DVIX_CLI_ENABLE_DESKTOP=ON \
+            -DVIX_UI_ENABLE_LINUX_WEBVIEW=OFF \
+            -DVIX_UI_BUILD_TESTS=ON \
+            -DUI_BUILD_TESTS=ON \
+            -DVIX_UI_BUILD_EXAMPLES=OFF \
+            -DUI_BUILD_EXAMPLES=OFF \
+            -DVIX_UI_BUILD_BENCHMARKS=OFF \
+            -DUI_BUILD_BENCHMARKS=OFF \
+            -DUI_INSTALL=OFF \
+            -DVIX_ENABLE_NOTE=ON \
+            -DVIX_NOTE_BUILD_TESTS=ON \
+            -DVIX_NOTE_BUILD_EXAMPLES=OFF \
+            -DVIX_NOTE_INSTALL=OFF \
             -DVIX_ENABLE_AGENT=ON \
             -DVIX_AGENT_BUILD_TESTS=ON \
+            -DVIX_AI_AGENT_BUILD_TESTS=ON \
             -DVIX_ENABLE_GAME=ON \
             -DVIX_GAME_BUILD_TESTS=ON \
             -DVIX_GAME_ENABLE_SDL=OFF \
             -DVIX_GAME_ENABLE_SDL_OPENGL=OFF \
             -DVIX_ENABLE_WEBRPC=ON \
+            -DVIX_ENABLE_REQUESTS=ON \
+            -DVIX_REQUESTS_BUILD_TESTS=ON \
+            -DVIX_REQUESTS_BUILD_EXAMPLES=OFF \
             -DVIX_ENABLE_VALIDATION=ON \
             -DVIX_ENABLE_CACHE=ON \
             -DVIX_ENABLE_P2P=ON \
@@ -120,14 +155,29 @@ jobs:
             -DVIX_ENABLE_DB=ON \
             -DVIX_DB_USE_MYSQL=ON \
             -DVIX_DB_USE_SQLITE=OFF \
+            -DVIX_CORE_WITH_MYSQL=OFF \
             -DVIX_ENABLE_ORM=ON \
             -DVIX_ENABLE_MIDDLEWARE=ON \
             -DVIX_ENABLE_CLI=ON \
-            -DVIX_ENABLE_WEBSOCKET=ON
+            -DVIX_ENABLE_WEBSOCKET=ON \
+            -DVIX_ENABLE_PROCESS=ON \
+            -DVIX_ENABLE_THREADPOOL=ON \
+            -DVIX_THREADPOOL_BUILD_TESTS=ON \
+            -DVIX_ENABLE_KV=ON \
+            -DVIX_KV_BUILD_TESTS=ON
 
       - name: Build tests
         run: |
           cmake --build build-tests -j"${BUILD_JOBS}"
+
+      - name: List registered tests
+        run: |
+          ctest --test-dir build-tests -N | tee /tmp/vix_module_tests.txt
+
+          if ! grep -Eq "Total Tests: [1-9][0-9]*" /tmp/vix_module_tests.txt; then
+            echo "::error::No tests were registered."
+            exit 1
+          fi
 
       - name: Run tests
         run: |
@@ -147,7 +197,20 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y $DEPS
+          sudo apt-get install -y --no-install-recommends $DEPS
+
+      - name: Verify required modules
+        run: |
+          set -euxo pipefail
+
+          test -f CMakeLists.txt
+          test -f modules/core/CMakeLists.txt
+          test -f modules/json/CMakeLists.txt
+          test -f modules/utils/CMakeLists.txt
+          test -f modules/template/CMakeLists.txt
+          test -f modules/ui/CMakeLists.txt
+          test -f modules/note/CMakeLists.txt
+          test -f modules/requests/CMakeLists.txt
 
       - name: Configure light module tests
         run: |
@@ -165,8 +228,28 @@ jobs:
             -DVIX_TIME_BUILD_TESTS=ON \
             -DVIX_ENABLE_TEMPLATE=ON \
             -DVIX_TEMPLATE_BUILD_TESTS=ON \
+            -DTEMPLATE_BUILD_TESTS=ON \
+            -DVIX_TEMPLATE_BUILD_EXAMPLES=OFF \
+            -DVIX_TEMPLATE_BUILD_BENCH=OFF \
+            -DTEMPLATE_BUILD_BENCHMARKS=OFF \
+            -DVIX_ENABLE_UI=ON \
+            -DVIX_CLI_ENABLE_DESKTOP=OFF \
+            -DVIX_UI_ENABLE_LINUX_WEBVIEW=OFF \
+            -DVIX_UI_BUILD_TESTS=ON \
+            -DUI_BUILD_TESTS=ON \
+            -DVIX_UI_BUILD_EXAMPLES=OFF \
+            -DUI_BUILD_EXAMPLES=OFF \
+            -DVIX_UI_BUILD_BENCHMARKS=OFF \
+            -DUI_BUILD_BENCHMARKS=OFF \
+            -DUI_INSTALL=OFF \
+            -DVIX_ENABLE_NOTE=ON \
+            -DVIX_NOTE_BUILD_TESTS=ON \
+            -DVIX_NOTE_BUILD_EXAMPLES=OFF \
+            -DVIX_NOTE_INSTALL=OFF \
             -DVIX_ENABLE_THREADPOOL=ON \
+            -DVIX_THREADPOOL_BUILD_TESTS=ON \
             -DVIX_ENABLE_KV=ON \
+            -DVIX_KV_BUILD_TESTS=ON \
             -DVIX_ENABLE_GAME=ON \
             -DVIX_GAME_BUILD_TESTS=ON \
             -DVIX_GAME_ENABLE_SDL=OFF \
@@ -178,11 +261,23 @@ jobs:
             -DVIX_ENABLE_P2P_HTTP=OFF \
             -DVIX_ENABLE_CACHE=OFF \
             -DVIX_ENABLE_CLI=OFF \
-            -DVIX_ENABLE_WEBSOCKET=OFF
+            -DVIX_ENABLE_WEBSOCKET=OFF \
+            -DVIX_ENABLE_REQUESTS=ON \
+            -DVIX_REQUESTS_BUILD_TESTS=ON \
+            -DVIX_REQUESTS_BUILD_EXAMPLES=OFF
 
       - name: Build light module tests
         run: |
           cmake --build build-module-light -j"${BUILD_JOBS}"
+
+      - name: List registered light tests
+        run: |
+          ctest --test-dir build-module-light -N | tee /tmp/vix_module_light_tests.txt
+
+          if ! grep -Eq "Total Tests: [1-9][0-9]*" /tmp/vix_module_light_tests.txt; then
+            echo "::error::No light profile tests were registered."
+            exit 1
+          fi
 
       - name: Run light module tests
         run: |

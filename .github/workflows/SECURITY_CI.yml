@@ -1,6 +1,6 @@
 name: SECURITY_CI
 
-on:
+"on":
   push:
     branches:
       - main
@@ -68,11 +68,13 @@ env:
     libasio-dev
     libssl-dev
     zlib1g-dev
+    libbrotli-dev
     nlohmann-json3-dev
     libsqlite3-dev
     libspdlog-dev
     libfmt-dev
     libmysqlcppconn-dev
+    libgtk-3-dev
 
   BUILD_JOBS: 2
 
@@ -89,6 +91,7 @@ env:
     -DVIX_ENABLE_CRYPTO=ON
     -DVIX_ENABLE_TIME=ON
     -DVIX_ENABLE_WEBRPC=ON
+    -DVIX_ENABLE_REQUESTS=ON
     -DVIX_ENABLE_VALIDATION=ON
     -DVIX_ENABLE_CACHE=ON
     -DVIX_ENABLE_P2P=ON
@@ -101,6 +104,8 @@ env:
     -DVIX_ENABLE_CLI=ON
     -DVIX_ENABLE_WEBSOCKET=ON
     -DVIX_ENABLE_TEMPLATE=ON
+    -DVIX_ENABLE_UI=ON
+    -DVIX_ENABLE_NOTE=ON
     -DVIX_ENABLE_TESTS_MODULE=ON
     -DVIX_ENABLE_PROCESS=ON
     -DVIX_ENABLE_THREADPOOL=ON
@@ -109,12 +114,23 @@ env:
     -DVIX_ENABLE_GAME=ON
     -DVIX_GAME_ENABLE_SDL=OFF
     -DVIX_GAME_ENABLE_SDL_OPENGL=OFF
+    -DVIX_UI_BUILD_TESTS=OFF
+    -DVIX_UI_BUILD_EXAMPLES=OFF
+    -DVIX_UI_BUILD_BENCHMARKS=OFF
+    -DVIX_NOTE_BUILD_TESTS=OFF
+    -DVIX_NOTE_BUILD_EXAMPLES=OFF
+    -DVIX_NOTE_INSTALL=OFF
+    -DUI_BUILD_TESTS=OFF
+    -DUI_BUILD_EXAMPLES=OFF
+    -DUI_BUILD_BENCHMARKS=OFF
+    -DUI_INSTALL=OFF
 
   TEST_FEATURE_FLAGS: >-
     -DVIX_ENABLE_ASYNC=ON
     -DVIX_ENABLE_CRYPTO=ON
     -DVIX_ENABLE_TIME=ON
     -DVIX_ENABLE_WEBRPC=ON
+    -DVIX_ENABLE_REQUESTS=ON
     -DVIX_ENABLE_VALIDATION=ON
     -DVIX_ENABLE_CACHE=ON
     -DVIX_ENABLE_P2P=ON
@@ -127,6 +143,8 @@ env:
     -DVIX_ENABLE_CLI=ON
     -DVIX_ENABLE_WEBSOCKET=ON
     -DVIX_ENABLE_TEMPLATE=ON
+    -DVIX_ENABLE_UI=ON
+    -DVIX_ENABLE_NOTE=ON
     -DVIX_ENABLE_TESTS_MODULE=ON
     -DVIX_ENABLE_PROCESS=ON
     -DVIX_ENABLE_THREADPOOL=ON
@@ -135,6 +153,13 @@ env:
     -DVIX_ENABLE_GAME=ON
     -DVIX_GAME_ENABLE_SDL=OFF
     -DVIX_GAME_ENABLE_SDL_OPENGL=OFF
+    -DVIX_UI_BUILD_EXAMPLES=OFF
+    -DVIX_UI_BUILD_BENCHMARKS=OFF
+    -DVIX_NOTE_BUILD_EXAMPLES=OFF
+    -DVIX_NOTE_INSTALL=OFF
+    -DUI_BUILD_EXAMPLES=OFF
+    -DUI_BUILD_BENCHMARKS=OFF
+    -DUI_INSTALL=OFF
 
   MODULE_TEST_FLAGS: >-
     -DVIX_BUILD_TESTS=ON
@@ -166,6 +191,9 @@ env:
     -DVIX_WEBSOCKET_BUILD_TESTS=ON
     -DVIX_TEMPLATE_BUILD_TESTS=ON
     -DTEMPLATE_BUILD_TESTS=ON
+    -DVIX_UI_BUILD_TESTS=ON
+    -DVIX_NOTE_BUILD_TESTS=ON
+    -DUI_BUILD_TESTS=ON
     -DVIX_PROCESS_BUILD_TESTS=ON
     -DVIX_THREADPOOL_BUILD_TESTS=ON
     -DVIX_KV_BUILD_TESTS=ON
@@ -180,6 +208,8 @@ env:
     -DVIX_TIME_BUILD_BENCH=OFF
     -DVIX_TEMPLATE_BUILD_BENCH=OFF
     -DTEMPLATE_BUILD_BENCHMARKS=OFF
+    -DVIX_UI_BUILD_BENCHMARKS=OFF
+    -DUI_BUILD_BENCHMARKS=OFF
     -DVIX_THREADPOOL_BUILD_BENCHMARKS=OFF
     -DVIX_KV_BUILD_BENCHMARKS=OFF
 
@@ -208,6 +238,12 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends $DEPS
 
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev || \
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
+
+          pkg-config --modversion gtk+-3.0
+          pkg-config --modversion webkit2gtk-4.1 || pkg-config --modversion webkit2gtk-4.0
+
       - name: Verify critical module directories
         run: |
           set -euxo pipefail
@@ -215,6 +251,9 @@ jobs:
           test -f modules/json/CMakeLists.txt
           test -f modules/utils/CMakeLists.txt
           test -f modules/core/CMakeLists.txt
+          test -f modules/template/CMakeLists.txt
+          test -f modules/ui/CMakeLists.txt
+          test -f modules/note/CMakeLists.txt
 
       - name: Select compiler
         run: |
@@ -271,6 +310,12 @@ jobs:
           set -euxo pipefail
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends $DEPS
+
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev || \
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
+
+          pkg-config --modversion gtk+-3.0
+          pkg-config --modversion webkit2gtk-4.1 || pkg-config --modversion webkit2gtk-4.0
 
       - name: Select compiler
         run: |
@@ -338,6 +383,12 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends $DEPS
 
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev || \
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
+
+          pkg-config --modversion gtk+-3.0
+          pkg-config --modversion webkit2gtk-4.1 || pkg-config --modversion webkit2gtk-4.0
+
       - name: Select clang
         run: |
           set -euxo pipefail
@@ -398,6 +449,12 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends $DEPS
 
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev || \
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
+
+          pkg-config --modversion gtk+-3.0
+          pkg-config --modversion webkit2gtk-4.1 || pkg-config --modversion webkit2gtk-4.0
+
       - name: Configure runtime build
         run: |
           set -euxo pipefail
@@ -451,6 +508,14 @@ jobs:
             exit 1
           fi
 
+          unset STATUS
+          timeout 10s "$VIX_BIN" note --help >/tmp/vix_note_help.log 2>&1 || STATUS=$?
+          cat /tmp/vix_note_help.log || true
+          if [ "${STATUS:-0}" -ne 0 ] && [ "${STATUS:-0}" -ne 124 ]; then
+            echo "::error::vix note --help failed"
+            exit 1
+          fi
+
   static-analysis:
     name: Umbrella Static Analysis
     runs-on: ubuntu-latest
@@ -468,6 +533,12 @@ jobs:
           set -euxo pipefail
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends $DEPS
+
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev || \
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
+
+          pkg-config --modversion gtk+-3.0
+          pkg-config --modversion webkit2gtk-4.1 || pkg-config --modversion webkit2gtk-4.0
 
       - name: Configure analysis build
         run: |
@@ -511,14 +582,12 @@ jobs:
 
               normalized = path.replace("\\", "/")
 
-              # Only analyze real module implementation files.
               if "/modules/" not in normalized:
                   continue
 
               if "/src/" not in normalized:
                   continue
 
-              # Exclude generated/dependency/build areas.
               if "/third_party/" in normalized:
                   continue
 
@@ -544,7 +613,7 @@ jobs:
           COUNT="$(wc -l < /tmp/vix_clang_tidy_files.txt)"
           echo "clang-tidy will analyze ${COUNT} configured module source files"
 
-      - name: Run clang-tidy (parallel)
+      - name: Run clang-tidy parallel
         run: |
           set -euo pipefail
 
@@ -556,7 +625,6 @@ jobs:
           JOBS="$(nproc)"
           echo "Running clang-tidy with ${JOBS} parallel jobs"
 
-          # Locate a run-clang-tidy driver (name varies by distro/version).
           RUN_CLANG_TIDY=""
           for candidate in \
             run-clang-tidy \
@@ -571,7 +639,6 @@ jobs:
           done
 
           if [ -z "$RUN_CLANG_TIDY" ]; then
-            # Fallback: search the filesystem (some packages ship it unlinked).
             FOUND="$(find /usr -name 'run-clang-tidy*' -type f 2>/dev/null | head -n1 || true)"
             if [ -n "$FOUND" ]; then
               RUN_CLANG_TIDY="$FOUND"
@@ -582,7 +649,6 @@ jobs:
 
           if [ -n "$RUN_CLANG_TIDY" ]; then
             echo "Using driver: $RUN_CLANG_TIDY"
-            # run-clang-tidy takes file path regexes/paths as positional args.
             "$RUN_CLANG_TIDY" \
               -p build-analyze \
               -j "$JOBS" \
@@ -590,8 +656,6 @@ jobs:
               "${FILES[@]}"
           else
             echo "::warning::run-clang-tidy not found, falling back to parallel xargs"
-            # Parallel fallback: one clang-tidy process per file, JOBS at a time.
-            # -P parallelizes; -n1 gives one file per invocation.
             xargs -r -P "$JOBS" -n1 \
               clang-tidy -p build-analyze --quiet \
               < /tmp/vix_clang_tidy_files.txt
@@ -614,6 +678,12 @@ jobs:
           set -euxo pipefail
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends $DEPS
+
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev || \
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
+
+          pkg-config --modversion gtk+-3.0
+          pkg-config --modversion webkit2gtk-4.1 || pkg-config --modversion webkit2gtk-4.0
 
       - name: Configure valgrind test build
         run: |
@@ -720,6 +790,12 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends $DEPS
 
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev || \
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
+
+          pkg-config --modversion gtk+-3.0
+          pkg-config --modversion webkit2gtk-4.1 || pkg-config --modversion webkit2gtk-4.0
+
       - name: Configure installable build
         run: |
           set -euxo pipefail
@@ -750,8 +826,23 @@ jobs:
 
           test -f .ci-install/lib/cmake/Vix/VixConfig.cmake || (echo "::error::VixConfig.cmake missing"; exit 1)
           test -f .ci-install/lib/cmake/Vix/VixConfigVersion.cmake || (echo "::error::VixConfigVersion.cmake missing"; exit 1)
+
           test -f .ci-install/include/vix/json/Simple.hpp || (echo "::error::json headers missing"; exit 1)
           test -f .ci-install/include/vix/utils/Logger.hpp || (echo "::error::utils headers missing"; exit 1)
+          test -f .ci-install/include/vix/template.hpp || (echo "::error::template umbrella header missing"; exit 1)
+          test -f .ci-install/include/vix/ui.hpp || (echo "::error::ui umbrella header missing"; exit 1)
+          test -f .ci-install/include/vix/ui/assets/AssetManager.hpp || (echo "::error::ui headers missing"; exit 1)
+          test -f .ci-install/include/vix/note/note.hpp || (echo "::error::note umbrella header missing"; exit 1)
+          test -f .ci-install/include/vix/requests.hpp || (echo "::error::requests umbrella header missing"; exit 1)
+          test -f .ci-install/include/vix/requests/requests.hpp || (echo "::error::requests headers missing"; exit 1)
+
+          test -f .ci-install/lib/libui.a || (echo "::error::ui static library missing"; exit 1)
+          test -f .ci-install/lib/libvix_note.a || (echo "::error::note static library missing"; exit 1)
+          test -f .ci-install/lib/libvix_requests.a || (echo "::error::requests static library missing"; exit 1)
+
+          grep -R "vix::ui" .ci-install/lib/cmake/Vix -n || (echo "::error::vix::ui not exported"; exit 1)
+          grep -R "vix::note" .ci-install/lib/cmake/Vix -n || (echo "::error::vix::note not exported"; exit 1)
+          grep -R "vix::requests" .ci-install/lib/cmake/Vix -n || (echo "::error::vix::requests not exported"; exit 1)
 
       - name: Consumer package check
         run: |
@@ -774,9 +865,14 @@ jobs:
 
           cat >/tmp/vix-consumer/main.cpp <<'EOF'
           #include <vix/json/Simple.hpp>
+          #include <vix/template.hpp>
+          #include <vix/ui.hpp>
+          #include <vix/note/note.hpp>
 
           int main()
           {
+            vix::ui::ViewContext context{};
+            (void)context;
             return 0;
           }
           EOF
@@ -804,6 +900,12 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends $DEPS
 
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev || \
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
+
+          pkg-config --modversion gtk+-3.0
+          pkg-config --modversion webkit2gtk-4.1 || pkg-config --modversion webkit2gtk-4.0
+
       - name: Configure minimal profile
         run: |
           set -euxo pipefail
@@ -828,6 +930,19 @@ jobs:
             -DVIX_ENABLE_WEBRPC=ON \
             -DVIX_ENABLE_VALIDATION=ON \
             -DVIX_ENABLE_MIDDLEWARE=ON \
+            -DVIX_ENABLE_TEMPLATE=ON \
+            -DVIX_ENABLE_UI=ON \
+            -DVIX_ENABLE_NOTE=ON \
+            -DVIX_NOTE_BUILD_TESTS=OFF \
+            -DVIX_NOTE_BUILD_EXAMPLES=OFF \
+            -DVIX_NOTE_INSTALL=OFF \
+            -DVIX_UI_BUILD_TESTS=OFF \
+            -DVIX_UI_BUILD_EXAMPLES=OFF \
+            -DVIX_UI_BUILD_BENCHMARKS=OFF \
+            -DUI_BUILD_TESTS=OFF \
+            -DUI_BUILD_EXAMPLES=OFF \
+            -DUI_BUILD_BENCHMARKS=OFF \
+            -DUI_INSTALL=OFF \
             -DVIX_ENABLE_CLI=OFF
 
       - name: Build minimal profile
@@ -901,7 +1016,10 @@ jobs:
           echo "- module tests with clang and gcc"
           echo "- sanitized module tests"
           echo "- runtime and CLI smoke checks"
-          echo "- static analysis on modules, examples, and module tests"
+          echo "- static analysis on configured module sources"
           echo "- valgrind on module test executables"
           echo "- package export and consumer check"
           echo "- minimal/full/full-test configuration coverage"
+          echo "- UI module integration coverage"
+          echo "- Note module integration coverage"
+          echo "- UI Linux WebView dependencies installed"

@@ -46,14 +46,38 @@ jobs:
             libfmt-dev \
             libmysqlcppconn-dev
 
+      - name: Verify required modules
+        run: |
+          set -euxo pipefail
+
+          test -f CMakeLists.txt
+          test -f modules/core/CMakeLists.txt
+          test -f modules/template/CMakeLists.txt
+          test -f modules/ui/CMakeLists.txt
+          test -f modules/cli/CMakeLists.txt
+
       - name: Configure Vix CLI
         run: |
           cmake -S . -B build-ci -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DVIX_BUILD_TESTS=OFF \
+            -DVIX_BUILD_EXAMPLES=OFF \
+            -DVIX_ENABLE_INSTALL=OFF \
             -DVIX_ENABLE_HTTP_COMPRESSION=OFF \
             -DVIX_DB_USE_MYSQL=OFF \
-            -DVIX_CORE_WITH_MYSQL=OFF
+            -DVIX_CORE_WITH_MYSQL=OFF \
+            -DVIX_ENABLE_TEMPLATE=ON \
+            -DVIX_ENABLE_UI=ON \
+            -DVIX_CLI_ENABLE_DESKTOP=ON \
+            -DVIX_UI_ENABLE_LINUX_WEBVIEW=OFF \
+            -DVIX_UI_BUILD_TESTS=OFF \
+            -DVIX_UI_BUILD_EXAMPLES=OFF \
+            -DVIX_UI_BUILD_BENCHMARKS=OFF \
+            -DUI_BUILD_TESTS=OFF \
+            -DUI_BUILD_EXAMPLES=OFF \
+            -DUI_BUILD_BENCHMARKS=OFF \
+            -DUI_INSTALL=OFF
 
       - name: Build Vix CLI
         run: |

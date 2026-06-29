@@ -1,6 +1,6 @@
 name: release
 
-on:
+"on":
   push:
     tags:
       - "v*"
@@ -70,7 +70,9 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
+
           sudo apt-get update
+
           sudo apt-get install -y --no-install-recommends \
             build-essential \
             cmake \
@@ -83,10 +85,17 @@ jobs:
             libsqlite3-dev \
             libbrotli-dev \
             libspdlog-dev \
-            libfmt-dev
+            libfmt-dev \
+            libgtk-3-dev
+
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev || \
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
+
+          pkg-config --modversion gtk+-3.0
+          pkg-config --modversion webkit2gtk-4.1 || pkg-config --modversion webkit2gtk-4.0
 
       # -------------------------
-      # Linux aarch64 toolchain + arm64 dev libs (cross)
+      # Linux aarch64 toolchain + arm64 dev libs
       # -------------------------
       - name: Setup Linux aarch64 toolchain
         if: runner.os == 'Linux' && matrix.arch == 'aarch64'
@@ -94,21 +103,28 @@ jobs:
         run: |
           set -euxo pipefail
 
-          sudo dpkg --add-architecture arm64
+          sudo dpkg --add-architecture arm64 || true
           sudo apt-get update
 
           sudo apt-get install -y --no-install-recommends \
             build-essential \
             cmake \
-            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
-            pkg-config ninja-build ca-certificates \
+            gcc-aarch64-linux-gnu \
+            g++-aarch64-linux-gnu \
+            pkg-config \
+            ninja-build \
+            ca-certificates \
             nlohmann-json3-dev:arm64 \
             libssl-dev:arm64 \
             zlib1g-dev:arm64 \
             libsqlite3-dev:arm64 \
             libbrotli-dev:arm64 \
-            libspdlog-dev \
-            libfmt-dev
+            libspdlog-dev:arm64 \
+            libfmt-dev:arm64 \
+            libgtk-3-dev:arm64
+
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev:arm64 || \
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev:arm64
 
           cat > toolchain-aarch64.cmake <<'EOF'
           set(CMAKE_SYSTEM_NAME Linux)
@@ -130,8 +146,10 @@ jobs:
           set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
 
           list(APPEND CMAKE_PREFIX_PATH
+            /usr/lib/aarch64-linux-gnu/cmake
             /usr/lib/x86_64-linux-gnu/cmake
             /usr/lib/cmake
+            /lib/aarch64-linux-gnu/cmake
             /lib/x86_64-linux-gnu/cmake
           )
 
@@ -139,6 +157,14 @@ jobs:
           set(ENV{PKG_CONFIG_LIBDIR} "/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig")
           set(ENV{PKG_CONFIG_PATH} "")
           EOF
+
+          PKG_CONFIG_LIBDIR="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig" \
+            pkg-config --modversion gtk+-3.0
+
+          PKG_CONFIG_LIBDIR="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig" \
+            pkg-config --modversion webkit2gtk-4.1 || \
+          PKG_CONFIG_LIBDIR="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig" \
+            pkg-config --modversion webkit2gtk-4.0
 
       # -------------------------
       # macOS deps
@@ -148,7 +174,9 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
+
           brew update
+
           brew install \
             cmake \
             ninja \
@@ -173,6 +201,11 @@ jobs:
       # -------------------------
       # Configure (Unix)
       # -------------------------
+      # NOTE: The normal CLI release intentionally uses the legacy (non-SDK)
+      # profile. VIX_SDK_PROFILE is opt-in; "legacy" preserves the exact
+      # historical module defaults for this lightweight multi-platform CLI
+      # build. SDK profiles (default/web/data/...) are only used by
+      # sdk-release.yml. Do NOT switch this to an SDK profile.
       - name: Configure (Unix)
         if: runner.os != 'Windows'
         shell: bash
@@ -182,11 +215,35 @@ jobs:
           CMAKE_ARGS=(
             -S . -B build -G Ninja
             -DCMAKE_BUILD_TYPE=Release
+            -DVIX_SDK_PROFILE=legacy
             -DVIX_ENABLE_INSTALL=OFF
             -DVIX_DB_USE_MYSQL=OFF
             -DVIX_CORE_WITH_MYSQL=OFF
             -DVIX_ENABLE_HTTP_COMPRESSION=OFF
+
+            -DVIX_ENABLE_UI=ON
+            -DVIX_ENABLE_NOTE=ON
+            -DVIX_UI_BUILD_TESTS=OFF
+            -DVIX_UI_BUILD_EXAMPLES=OFF
+            -DVIX_UI_BUILD_BENCHMARKS=OFF
+            -DUI_BUILD_TESTS=OFF
+            -DUI_BUILD_EXAMPLES=OFF
+            -DUI_BUILD_BENCHMARKS=OFF
+            -DUI_INSTALL=OFF
+            -DVIX_NOTE_BUILD_TESTS=OFF
+            -DVIX_NOTE_BUILD_EXAMPLES=OFF
+            -DVIX_NOTE_INSTALL=OFF
           )
+
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            CMAKE_ARGS+=(
+              -DVIX_UI_ENABLE_LINUX_WEBVIEW=ON
+            )
+          else
+            CMAKE_ARGS+=(
+              -DVIX_UI_ENABLE_LINUX_WEBVIEW=OFF
+            )
+          fi
 
           if [ "${{ runner.os }}" = "Linux" ] && [ "${{ matrix.arch }}" = "aarch64" ]; then
             CMAKE_ARGS+=(
@@ -271,6 +328,7 @@ jobs:
       # -------------------------
       # Configure + Build (Windows)
       # -------------------------
+      # NOTE: legacy (non-SDK) profile on purpose — see Unix configure note.
       - name: Configure (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -280,6 +338,7 @@ jobs:
           Write-Host "VCPKG_ROOT=$env:VCPKG_ROOT"
 
           cmake -S . -B build -A x64 `
+            -DVIX_SDK_PROFILE=legacy `
             -DVIX_ENABLE_INSTALL=OFF `
             -DVIX_BUILD_EXAMPLES=OFF `
             -DVIX_BUILD_TESTS=OFF `
@@ -287,6 +346,19 @@ jobs:
             -DVIX_DB_USE_SQLITE=OFF `
             -DVIX_CORE_WITH_MYSQL=OFF `
             -DVIX_ENABLE_HTTP_COMPRESSION=OFF `
+            -DVIX_ENABLE_UI=ON `
+            -DVIX_ENABLE_NOTE=ON `
+            -DVIX_UI_ENABLE_LINUX_WEBVIEW=OFF `
+            -DVIX_UI_BUILD_TESTS=OFF `
+            -DVIX_UI_BUILD_EXAMPLES=OFF `
+            -DVIX_UI_BUILD_BENCHMARKS=OFF `
+            -DUI_BUILD_TESTS=OFF `
+            -DUI_BUILD_EXAMPLES=OFF `
+            -DUI_BUILD_BENCHMARKS=OFF `
+            -DUI_INSTALL=OFF `
+            -DVIX_NOTE_BUILD_TESTS=OFF `
+            -DVIX_NOTE_BUILD_EXAMPLES=OFF `
+            -DVIX_NOTE_INSTALL=OFF `
             -DVCPKG_TARGET_TRIPLET=x64-windows `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" 2>&1 | Tee-Object -FilePath cmake_output.log -Append
 
@@ -406,6 +478,8 @@ jobs:
           file smoke/vix
           ldd smoke/vix || true
           smoke/vix --version
+          smoke/vix note --help >/tmp/vix-note-help.txt
+          head -n 80 /tmp/vix-note-help.txt
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
@@ -431,6 +505,12 @@ jobs:
 
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           Copy-Item $bin dist\vix.exe
+
+          & dist\vix.exe --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          & dist\vix.exe note --help | Select-Object -First 80
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           $asset = "vix-windows-${{ matrix.arch }}.zip"
           Compress-Archive -Path dist\vix.exe -DestinationPath "dist\$asset" -Force

@@ -151,3 +151,15 @@
 	path = modules/game
 	url = https://github.com/vixcpp/game.git
 	branch = dev
+[submodule "modules/ui"]
+	path = modules/ui
+	url = https://github.com/vixcpp/ui.git
+	branch = dev
+[submodule "modules/note"]
+	path = modules/note
+	url = https://github.com/vixcpp/note.git
+	branch = dev
+[submodule "modules/requests"]
+	path = modules/requests
+	url = https://github.com/vixcpp/requests.git
+	branch = dev

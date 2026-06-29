@@ -5,6 +5,393 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.7.0
+
+Vix.cpp v2.7.0 introduces three major foundations for the framework: `vix::note`, `vix::ui`, and `vix::requests`.
+
+This release focuses on making C++ easier to learn, build, inspect, connect to APIs, and turn into real interfaces. Vix Note becomes the visual learning workspace, Vix UI becomes the server-rendered interface layer, and Vix Requests becomes the built-in HTTP/HTTPS client for simple API workflows.
+
+Desktop and mobile shell workflows are included in this release as part of the UI direction, but the core identity of v2.7.0 is:
+
+```txt
+Vix Note
+Vix UI
+Vix Requests
+```
+
+### Added
+
+#### Vix SDK profiles and upgrade UX
+
+- Added SDK profile upgrade support through `vix upgrade --sdk`.
+
+- Added supported SDK profiles:
+  - `default`
+  - `web`
+  - `data`
+  - `desktop`
+  - `p2p`
+  - `game`
+  - `agent`
+  - `all`
+
+- Added `vix upgrade --sdk list` for listing SDK profiles available in the current GitHub release.
+
+- Added `vix upgrade --sdk info [profile]` for discovering a SDK profile before installing it.
+
+- Added `vix upgrade --sdk-info <profile>` as a shortcut for SDK profile information.
+
+- Added SDK profile metadata in the CLI, including:
+  - profile description
+  - included modules
+  - platform-specific system dependencies
+  - install command
+  - documentation link
+
+- Added clean SDK install paths under:
+
+```txt
+~/.vix/sdk/<profile>/<version>/
+```
+
+- Added current SDK profile metadata under:
+
+```txt
+~/.vix/sdk/<profile>/current.json
+```
+
+- Added a current SDK pointer under:
+
+```txt
+~/.vix/sdk/<profile>/current
+```
+
+- Added SDK install metadata with profile, version, platform, install directory, asset URL, install time, and download size.
+
+- Added clean unsupported-platform and missing-asset messages for SDK upgrades.
+
+- Added SDK release asset resolution using profile, OS, architecture, and version.
+
+- Added modern `vix upgrade` output with concise progress steps, clean check/dry-run output, and quiet default behavior.
+
+- Added `--verbose` to `vix upgrade` for diagnostic details when needed.
+
+- Added JSON-safe output behavior so `vix upgrade --json` prints valid JSON only.
+
+#### Installer bootstrap
+
+- Updated Unix installer to install the Vix CLI only.
+
+- Updated Windows PowerShell installer to install the Vix CLI only.
+
+- SDK installation now happens through the CLI after bootstrap:
+
+```bash
+vix upgrade --sdk list
+vix upgrade --sdk info web
+vix upgrade --sdk web
+```
+
+- Kept `--cli-only` compatibility in installers.
+
+- Moved SDK installation responsibility from install scripts to `vix upgrade --sdk`.
+
+- Added installer guidance that points users to `vix upgrade --sdk list` after CLI installation.
+
+#### Vix Note
+
+- Added the new `note` module as a first-class umbrella target: `vix::note`.
+
+- Added Vix Note v1.0.0 as a stable visual notebook foundation for learning C++ and Vix.cpp.
+
+- Added `.vixnote` document support with markdown-compatible parsing.
+
+- Added stable note cell metadata through `<!-- vixnote:cell ... -->` comments.
+
+- Added note document and cell models:
+  - `vix::note::NoteDocument`
+  - `vix::note::NoteCell`
+  - `vix::note::NoteResult`
+  - `vix::note::NoteOutput`
+  - `vix::note::NoteError`
+
+- Added C++ cell execution through `vix run`.
+
+- Added Reply cell execution through the embedded Vix Reply runtime.
+
+- Added runtime session and kernel support for running cells, storing outputs, and tracking execution records.
+
+- Added project-aware note execution support for project roots, `vix.app`, `.vix/manifest.vix`, `.vix/deps`, include paths, and project working directories.
+
+- Added local, installed, custom, and embedded fallback Note UI asset loading.
+
+- Added `VIX_NOTE_ASSET_DIR` for overriding Note UI assets.
+
+- Added a local Note server and route layer.
+
+- Added Note API routes for document loading, cell editing, cell execution, cell movement, run-all, and document saving.
+
+- Added browser UI rendering for cells, execution status, outputs, and errors.
+
+- Added static HTML export for `.vixnote` lessons.
+
+- Added `vix note` workspace mode, allowing Vix Note to start directly in the current directory without requiring an existing `.vixnote` file.
+
+- Added `vix note <file.vixnote>` for opening an existing note document.
+
+- Added `vix note --desktop` and `vix note <file.vixnote> --desktop` for opening Vix Note in a desktop WebView shell.
+
+- Added `vix note export <file.vixnote> --out <file.html>`.
+
+- Added modern C++, Reply, and HTML `.vixnote` learning examples.
+
+#### Vix UI
+
+- Added the new `ui` module as a first-class umbrella target: `vix::ui`.
+
+- Added server-rendered UI primitives built on top of the Vix template engine.
+
+- Added core view types:
+  - `vix::ui::View`
+  - `vix::ui::ViewContext`
+  - `vix::ui::ViewResult`
+  - `vix::ui::HtmlResponse`
+
+- Added HTML helpers for escaping, attributes, and small HTML generation tasks.
+
+- Added asset pipeline helpers:
+  - `Asset`
+  - `AssetManifest`
+  - `AssetManager`
+  - `AssetMap`
+  - `AssetMode`
+
+- Added support for asset versioning, manifest lookup, hashed asset paths, CSS/JS grouping, preload helpers, module scripts, and production/development asset modes.
+
+- Added server-rendered form helpers for fields, select options, checkbox/radio state, file inputs, form data binding, old values, CSRF helpers, and validation errors.
+
+- Added live UI helpers for fragments, WebSocket-friendly updates, flash messages, and toast notifications.
+
+- Added PWA/mobile helpers for viewport metadata, safe-area CSS, web app manifests, and installable web app meta tags.
+
+- Added desktop shell primitives:
+  - `AppShell`
+  - `ShellConfig`
+  - `ServerProcess`
+  - `ServerReadiness`
+  - descriptor shell backend
+  - Linux WebView shell backend
+
+- Added platform descriptors for web, desktop, and mobile targets.
+
+- Added `examples/ui/`.
+
+- Added SDK and install support for `#include <vix/ui.hpp>`.
+
+#### Vix Requests
+
+- Added the new `requests` module as a first-class umbrella target: `vix::requests`.
+
+- Added SDK and install support for:
+  - `#include <vix/requests.hpp>`
+  - `#include <vix/requests/requests.hpp>`
+
+- Added simple HTTP client workflows inspired by Python Requests:
+  - `vix::requests::get`
+  - `vix::requests::post`
+  - `vix::requests::put`
+  - `vix::requests::patch`
+  - `vix::requests::del`
+  - `vix::requests::head`
+  - `vix::requests::request`
+
+- Added `Client` and `Session` APIs.
+
+- Added async request APIs:
+  - `async_get`
+  - `async_post`
+  - `async_put`
+  - `async_patch`
+  - `async_del`
+  - `async_head`
+  - `async_request`
+
+- Added HTTP and HTTPS transport support.
+
+- Added OpenSSL/Asio HTTPS transport with TLS handshake support.
+
+- Added SNI and hostname verification.
+
+- Added TLS verification enabled by default through `RequestOptions::verify_tls`.
+
+- Added support for disabling TLS verification for local testing.
+
+- Added headers, query params, request body helpers, response parsing, redirects, cookies, timeouts, Basic Auth, Bearer Token examples, and API client wrapper examples.
+
+- Added local integration tests for HTTP behavior.
+
+- Added HTTPS smoke validation through a local OpenSSL test server.
+
+- Added `VIX_ENABLE_REQUESTS`, `VIX_REQUESTS_BUILD_TESTS`, and `VIX_REQUESTS_BUILD_EXAMPLES` umbrella options.
+
+- Added `vix::requests` to the umbrella `vix::vix` target when enabled.
+
+- Added release, security, and module-test CI coverage for building, testing, installing, and exporting `vix::requests`.
+
+#### UI shell workflows
+
+- Added `vix desktop` as the CLI entry point for desktop app shell workflows.
+- Added `vix desktop run` for development desktop workflows.
+- Added `vix desktop build` and `vix desktop package --target dir` for distributable desktop folders.
+- Added `vix mobile` as the CLI entry point for mobile WebView shell workflows.
+- Added Android WebView shell generation, build, run, wrapper, and device-listing commands.
+
+### Changed
+
+- Updated the umbrella build so `vix::note`, `vix::ui`, and `vix::requests` are built, linked, installed, and exported as part of Vix.cpp.
+- Updated `vix::vix` to link `vix::note`, `vix::ui`, and `vix::requests` when enabled.
+- Updated Core to support optional UI response integration.
+- Updated the HTTP response layer to return Vix UI responses and views directly.
+- Updated the CLI registry to expose the new `vix note`, `vix desktop`, and `vix mobile` commands.
+- Updated `vix note` so a note file is optional. Running `vix note` now starts a workspace in the current directory, similar to notebook workflows.
+- Updated `vix note` to support desktop WebView mode through `vix note --desktop`.
+- Updated Vix Note assets so the browser UI is served from real local assets with embedded fallback.
+- Updated Note routing so the UI can fetch document state, edit cells, save documents, and execute cells through API calls.
+- Updated Note serialization to preserve stable cell ids and titles during save/load cycles.
+- Updated C++ note execution defaults to avoid unnecessary clean rebuilds during normal cell execution.
+- Updated Vix Requests to use `vix::async` for transport execution.
+- Updated Vix Requests to support HTTPS through OpenSSL.
+- Updated release, SDK, module test, security, and build-safety CI profiles to cover Note, UI, and Requests.
+- Updated package validation so Note, UI, and Requests headers/libraries are checked after installation.
+
+- Updated `vix upgrade` with a modern runtime-installer style output that only shows essential user-facing information by default.
+- Updated `vix upgrade --check` and `vix upgrade --dry-run` to use concise, readable summaries without noisy internal details.
+- Updated SDK upgrade behavior so `vix upgrade --sdk` means `vix upgrade --sdk default`.
+- Updated SDK upgrade flow to validate profile names before resolving assets.
+- Updated SDK dry-run and check behavior to verify whether the expected SDK release asset exists before reporting success.
+- Updated missing SDK profile assets to show a short actionable message and point users to:
+- Updated the modern `vix upgrade` terminal UI with clearer colors for headings, profile names, SDK status lines, install commands, and multi-profile SDK output.
+- Updated `vix upgrade --sdk <profile...>` to support installing or checking multiple SDK profiles in one command, for example:
+
+```bash
+vix upgrade --sdk web data desktop
+```
+
+- Updated multi-profile SDK upgrade output so each profile reports its own status clearly instead of returning silently.
+
+- Updated SDK info output to show a clearer install command using the same visible command styling as dependency install commands.
+
+```bash
+vix upgrade --sdk list
+```
+
+- Updated SDK discovery so users can inspect modules and required system dependencies before installing a profile.
+
+- Updated install scripts to act as CLI bootstrappers only. Full SDK selection is now handled by the installed `vix` CLI.
+
+### Fixed
+
+- Fixed package export validation for `vix::note`, `vix::ui`, and `vix::requests`.
+- Fixed SDK validation so missing Note, UI, or Requests headers and static library artifacts are detected during release checks.
+- Fixed release CI coverage gaps where newly added modules could be skipped by umbrella build profiles.
+- Fixed Core CI coverage for both UI-enabled and UI-disabled configurations.
+- Fixed app shell tests to use the descriptor backend instead of opening a real Linux WebView window.
+- Fixed Note asset loading for `/` and `/index.html`.
+- Fixed Note asset resolution across custom, environment, installed, and embedded fallback assets.
+- Fixed Note server and route tests for local HTTP behavior, document JSON, cell execution, run-all execution, static assets, and custom asset directories.
+- Fixed Note storage tests for stable metadata preservation after save/load.
+- Fixed Note serialization so cell ids are not lost after editing and saving `.vixnote` documents.
+- Fixed Vix Note startup behavior so the command can start from the current directory without requiring a pre-existing note file.
+- Fixed Vix Note desktop mode so the local Note server is started in-process and opened through `AppShell`.
+- Fixed desktop shell startup so the WebView waits for the configured server readiness URL before opening.
+- Fixed desktop shell behavior when the readiness endpoint is already in use by another process.
+- Fixed desktop server lifecycle handling so server processes launched by `vix desktop run` are cleaned up when the desktop shell closes.
+- Fixed Android mobile shell generation so the generated project can build without missing launcher icon resources.
+- Fixed Android mobile shell build behavior to prefer `./gradlew` when a Gradle wrapper exists.
+- Fixed Android mobile shell project detection so `vix mobile build`, `vix mobile run`, and `vix mobile wrapper` work from inside the generated Android project directory.
+- Fixed Android mobile launch behavior to use the generated package and `MainActivity`.
+- Fixed scheduler and worker test behavior in the threadpool module for the release branch.
+- Fixed noisy `vix upgrade` output by hiding internal commands, temporary paths, clone steps, raw download details, and low-level diagnostics unless `--verbose` is used.
+- Fixed SDK dry-run UX so unavailable profiled SDK assets are reported clearly instead of appearing installable.
+- Fixed SDK profile validation to show a clean error for unknown profiles.
+- Fixed `vix upgrade --json` behavior so human output is not mixed with JSON.
+- Fixed upgrade output spacing so commands do not leave extra blank lines before returning to the shell prompt.
+- Fixed SDK info output readability with clearer section titles, visible profile names, wrapped module lists, platform-specific dependency commands, install command, and docs link.
+
+- Fixed `vix upgrade --sdk web data` returning without visible output in human mode.
+- Fixed low-contrast text in the `vix upgrade` header and SDK info output by making important labels and commands more visible in terminals.
+- Fixed SDK module listing readability by using normal terminal text for module names and stronger section labels.
+
+### Removed
+
+- Removed early Note prototype examples:
+  - `examples/hello.vixnote`
+  - `examples/learning_cpp.vixnote`
+  - `examples/vix_ui_note.vixnote`
+
+### Notes
+
+Vix.cpp v2.7.0 is a foundation release for:
+
+```txt
+Vix Note
+Vix UI
+Vix Requests
+```
+
+Vix Note provides the visual learning workspace for C++ and Vix.cpp lessons, with runnable C++ and Reply cells, saved `.vixnote` files, browser-based editing, desktop WebView mode, workspace startup, and static HTML export.
+
+Vix UI provides the server-rendered interface layer for C++ applications, including views, assets, forms, live fragments, PWA helpers, desktop shell primitives, and mobile-oriented WebView helpers.
+
+Vix Requests provides the first umbrella-packaged HTTP/HTTPS client module for simple request, session, header, parameter, body, response, redirect, timeout, TLS, async, and API workflow support.
+
+Desktop and mobile shell commands are included as practical UI workflows, but the main release identity remains Note, UI, and Requests.
+
+The direction of this release is:
+
+```txt
+visual C++ learning with Vix Note
+server-rendered UI first
+simple HTTP/HTTPS client workflows through vix::requests
+desktop and mobile WebView shells as UI delivery paths
+PWA as the mobile foundation
+native UI only when truly needed
+```
+
+Vix.cpp v2.7.0 also introduces the first modern SDK profile experience for Vix.
+
+The CLI can now explain SDK profiles before installation:
+
+```bash
+vix upgrade --sdk info web
+```
+
+This shows what the profile contains, which modules are included, which system dependencies are required for the current platform, the install command to run, and the documentation page for the SDK.
+
+SDK installation is now handled through `vix upgrade` instead of the bootstrap installers. The install scripts are intentionally CLI-only so users first get the `vix` command, then install only the SDK profile they need:
+
+```bash
+vix upgrade --sdk list
+vix upgrade --sdk web
+```
+
+The available SDK profiles are:
+
+```txt
+default
+web
+data
+desktop
+p2p
+game
+agent
+all
+```
+
+This makes C++ setup less opaque: instead of guessing dependencies, users can inspect the SDK, install the required system packages, and then install the exact Vix SDK profile for their domain.
+
+The goal is to make C++ development easier to teach, inspect, connect, package, and turn into real interfaces without making the core runtime heavier by default.
+
 ## v2.6.3
 
 ### Fixed
