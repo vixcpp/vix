@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Vix.cpp v2.7.1
 
-Vix.cpp v2.7.1 is a focused patch release that strengthens the new Vix application workflow with a Go-like internal module system for backend projects.
+Vix.cpp v2.7.1 is a focused patch release that strengthens the new Vix application workflow with a Go-like internal module system for backend projects, improves SDK lifecycle handling, fixes dev-mode manifest watching, and gives `vix uninstall` a cleaner command experience.
 
 This release introduces the first complete foundation for **Vix App Modules**: modules can now be declared in `vix.app`, enabled or disabled from one place, compiled only when active, and automatically wired into backend applications.
 
@@ -17,6 +17,8 @@ The core identity of v2.7.1 is:
 - Backend module skeletons
 - Automatic module registration
 - Stronger module checks
+- Dev mode awareness for `vix.app` changes
+- Better SDK lifecycle workflows
 
 ## Added
 
@@ -28,6 +30,7 @@ The core identity of v2.7.1 is:
   - `path`
   - `kind`
   - `depends`
+
 - Added rich module parsing in the `vix.app` manifest loader.
 - Added `AppModule` manifest metadata for module name, enabled state, path, kind, and internal dependencies.
 - Added support for `type = backend` in `vix.app`, mapped internally to an executable target.
@@ -45,10 +48,12 @@ The core identity of v2.7.1 is:
   - `vix.module`
   - `migrations/`
   - `tests/`
+
 - Added automatic backend module route registration through generated Vix app module wiring.
 - Added generated files for backend module registration:
   - `.vix/generated/app/include/vix_app_modules.hpp`
   - `.vix/generated/app/vix_app_modules.cpp`
+
 - Added automatic inclusion of `vix_app_modules.cpp` in generated backend CMake projects.
 - Added generated include support for `vix_app_modules.hpp`.
 
@@ -64,6 +69,30 @@ The core identity of v2.7.1 is:
 - Added circular dependency detection for internal module dependencies.
 - Added duplicate route prefix detection through `vix.module`.
 
+### Uninstall workflow
+
+- Added a more complete `vix uninstall` workflow with styled CLI output aligned with the newer `vix upgrade` experience.
+- Added `vix uninstall --dry-run` for previewing what would be removed without deleting files.
+- Added `vix uninstall --json` for machine-readable uninstall output.
+- Added `vix uninstall --verbose` for detailed command diagnostics.
+- Added SDK uninstall support:
+  - `vix uninstall --sdk <profile>`
+  - `vix uninstall --sdk-all`
+  - `vix uninstall --sdk-list`
+
+- Added SDK cleanup for installed SDK directories, current metadata, current pointers, and CMake user package registry entries.
+- Added global package uninstall support through the improved uninstall flow:
+  - `vix uninstall -g <package>`
+  - `vix uninstall --global <package>`
+
+- Added safer CLI uninstall path detection using install metadata, `VIX_CLI_PATH`, shell lookup, explicit prefixes, and explicit binary paths.
+- Added explicit uninstall options:
+  - `--purge`
+  - `--all`
+  - `--system`
+  - `--prefix <dir>`
+  - `--path <file>`
+
 ## Changed
 
 - Updated `vix modules` to behave as an app-first module organization layer for backend applications.
@@ -73,10 +102,16 @@ The core identity of v2.7.1 is:
 - Updated `cmake/vix_modules.cmake` behavior:
   - `vix.app` projects load only `VIX_ENABLED_MODULES`.
   - Classic CMake projects keep the legacy `modules/*` loading behavior.
+
 - Updated module activation rules so a module folder can exist without being compiled.
 - Updated module linking so `enabled = false` in `vix.app` prevents the module from being compiled and linked.
 - Updated `vix modules list` output to show declared module state, kind, path, filesystem status, and dependencies.
 - Updated backend module generation to prepare a clean structure for future services, repositories, routes, migrations, and tests.
+- Updated `vix dev` so `vix.app` is treated as a configuration file, not as an ignored project file.
+- Updated `vix dev` rebuild behavior so source and header changes keep the fast rebuild path, while `vix.app` changes trigger the full manifest-aware build path.
+- Updated `vix uninstall` output to use clearer status lines, header sections, hints, and completion messages.
+- Updated `vix uninstall --help` to document CLI uninstall, SDK uninstall, global package uninstall, purge, dry-run, JSON output, and explicit path removal.
+- Updated uninstall behavior so dangerous removals are more explicit and easier to inspect before execution.
 
 ## Fixed
 
@@ -85,12 +120,19 @@ The core identity of v2.7.1 is:
 - Fixed `vix modules add <name>` for `vix.app` projects so the module is added to the manifest automatically instead of requiring manual edits.
 - Fixed backend module generation so the generated module can compile and expose a working route through automatic registration.
 - Fixed module checks so bad architecture states are detected early before the application grows.
+- Fixed `vix dev` ignoring `vix.app` changes during watch mode.
+- Fixed `vix dev` so changes to `vix.app` now trigger a reconfigure-and-rebuild workflow.
+- Fixed `vix dev` so manifest changes can regenerate generated app wiring and CMake output instead of staying on the fast rebuild path.
+- Fixed SDK upgrade behavior so installed SDK profiles are registered with the CMake user package registry.
+- Fixed uninstall behavior so SDK metadata and current pointers do not remain after removing a profile.
+- Fixed uninstall behavior so global package entries are removed from the global manifest when a package is uninstalled.
+- Fixed CLI uninstall feedback so users get clearer hints when a binary remains available in the shell path after removal.
 
 ## Notes
 
 Vix.cpp v2.7.1 is a small but important architecture release.
 
-The goal is to make large C++ backend applications easier to organize without forcing everything into one large `src/` tree.
+This release makes large C++ backend applications easier to organize without forcing every feature into one large `src/` tree.
 
 A Vix backend application can now keep its core application bootstrap small while features live as internal modules such as:
 
@@ -105,6 +147,8 @@ Each module can be declared, enabled, disabled, and validated from one place: `v
 
 This gives C++ backend projects a more structured, Go-like organization model while staying native to CMake and Vix.
 
+`vix dev` now understands this workflow better. When a normal source file changes, Vix keeps the fast rebuild path. When `vix.app` changes, Vix treats it as a configuration change so the generated CMake project, module list, and backend route wiring can be refreshed before the application restarts.
+
 The direction of this release is:
 
 - One backend app
@@ -113,6 +157,8 @@ The direction of this release is:
 - Safe enable/disable workflow
 - Automatic backend route wiring
 - Stronger architecture checks
+- Dev mode that follows manifest changes
+- Cleaner SDK lifecycle commands
 
 This release also prepares the foundation for larger Vix-powered applications such as **Softadastra Cloud**, where features like authentication, projects, builds, packages, logs, registry, and deployments need to grow independently without turning the backend into a difficult-to-maintain folder structure.
 
