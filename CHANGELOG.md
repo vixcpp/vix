@@ -5,6 +5,212 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# Vix.cpp v2.7.2
+
+Vix.cpp v2.7.2 is a focused module-dependency release that completes the next step of Vix App Modules: registry packages can now be declared inside a specific module while the application keeps one global dependency resolution and one root `vix.lock`.
+
+This release keeps the module model clean. A module can describe the registry libraries it needs in its own `vix.module`, but the application remains responsible for resolving, locking, installing, and loading those packages during the build.
+
+The core identity of v2.7.2 is:
+
+- Module-level registry dependencies
+- `vix add --module`
+- Global lockfile generation from enabled modules
+- Module-specific CMake links
+- Better integration between `vix.module`, `vix.lock`, `vix install`, and `vix build`
+
+## Added
+
+### Module registry dependencies
+
+Added `[deps]` support in generated `vix.module` files.
+
+A module can now declare registry packages directly inside its own manifest:
+
+```ini
+[deps]
+registry = [
+  "rix/rix@^0.9.1",
+]
+
+links = [
+  "rix::rix",
+]
+```
+
+This makes it possible to declare registry packages at the module level without creating a separate `vix.json` or `vix.lock` inside the module.
+
+Enabled module registry dependencies are now resolved through the root application, and the required packages are kept in the root `vix.lock`.
+
+### `vix add --module`
+
+Added support for adding a registry package to a specific module:
+
+```bash
+vix add rix/rix --module auth
+```
+
+Added short module syntax:
+
+```bash
+vix add rix/rix -m auth
+```
+
+Added assignment-style module syntax:
+
+```bash
+vix add rix/rix --module=auth
+```
+
+Added explicit CMake target linking support:
+
+```bash
+vix add rix/rix --module auth --link rix::rix
+```
+
+Added automatic default CMake link target inference:
+
+```text
+rix/rix -> rix::rix
+```
+
+When a package is added to a module, Vix inserts the dependency into:
+
+```text
+modules/<module>/vix.module
+```
+
+The root lockfile is refreshed after `vix add --module`, so module dependencies immediately update the root `vix.lock`.
+
+### Module CMake integration
+
+Added generated CMake variables for module-specific links:
+
+```cmake
+set(VIX_MODULE_auth_LINKS
+  rix::rix
+)
+```
+
+Added module target linking from `vix.module` dependencies.
+
+Registry packages can now be linked directly to the module target that needs them instead of being linked globally to the main application.
+
+Generated CMake now includes `.vix/vix_deps.cmake` when enabled modules declare registry dependencies.
+
+The dependency loading order was updated so registry package targets are available before enabled modules are loaded.
+
+### Module checks
+
+Added validation for module registry dependency declarations.
+
+Added checks for modules that declare registry dependencies without matching links.
+
+Added checks for modules that declare links without matching registry dependencies.
+
+Added safer validation around `vix.module` dependency metadata.
+
+## Changed
+
+Updated `vix add` so it now supports both project-level and module-level dependency workflows.
+
+The existing project-level behavior is preserved:
+
+```bash
+vix add <package>
+```
+
+This still adds a dependency to the root project.
+
+The module-level workflow now writes into the target module manifest instead:
+
+```bash
+vix add <package> --module <name>
+```
+
+Updated the dependency resolution flow so enabled module dependencies are merged into the effective application dependency set.
+
+Updated lockfile generation so the root `vix.lock` includes dependencies required by enabled modules.
+
+Updated generated app CMake so registry dependencies declared by enabled modules can trigger `.vix/vix_deps.cmake` loading.
+
+Updated module CMake generation so registry package targets are linked to the module that needs them.
+
+Updated the module workflow so disabled modules do not force their registry dependencies into the active build.
+
+## Fixed
+
+Fixed `vix add --module` creating or updating `vix.module` without generating a root `vix.lock`.
+
+Fixed `vix install` failing after module-only dependencies because `vix.lock` was missing.
+
+Fixed module registry dependencies being installed correctly but not loaded during `vix build`.
+
+Fixed unresolved CMake targets such as:
+
+```text
+missing: rix::rix
+```
+
+Fixed generated CMake ordering so `.vix/vix_deps.cmake` is loaded before module targets are added.
+
+Fixed module dependency links so package targets declared in `vix.module` are available before `target_link_libraries()` is evaluated.
+
+Fixed the gap between `vix add --module`, `vix install`, and `vix build`.
+
+## Notes
+
+Vix.cpp v2.7.2 completes an important part of the module architecture introduced in v2.7.1.
+
+A module can now own its dependency declaration without becoming a separate project. For example, an `auth` module can declare the registry package it needs:
+
+```ini
+name = "auth"
+kind = "service"
+
+[routes]
+prefix = "/api/auth"
+
+[deps]
+registry = [
+  "rix/rix@^0.9.1",
+]
+
+links = [
+  "rix::rix",
+]
+
+[tests]
+enabled = true
+```
+
+Then the command:
+
+```bash
+vix add rix/rix --module auth
+```
+
+updates the module manifest, refreshes the root `vix.lock`, and keeps the application dependency graph reproducible from one place.
+
+The workflow becomes:
+
+```bash
+vix modules add auth
+vix add rix/rix --module auth
+vix install
+vix build
+```
+
+The separation is intentional:
+
+- `vix.app` decides which modules are enabled.
+- `vix.module` describes what a module needs.
+- `vix.lock` remains global.
+- `vix install` installs the effective dependency graph.
+- `vix build` loads registry package targets before compiling modules.
+
+This gives Vix modules a stronger backend-oriented workflow while keeping the project structure simple and predictable.
+
 # Vix.cpp v2.7.1
 
 Vix.cpp v2.7.1 is a focused patch release that strengthens the new Vix application workflow with a Go-like internal module system for C++ application and backend projects, improves SDK lifecycle handling, fixes dev-mode manifest watching, and gives `vix uninstall` a cleaner command experience.
