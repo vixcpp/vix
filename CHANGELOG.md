@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Vix.cpp v2.7.2 is a focused module-dependency release that completes the next step of Vix App Modules: registry packages can now be declared inside a specific module while the application keeps one global dependency resolution and one root `vix.lock`.
 
-This release keeps the module model clean. A module can describe the registry libraries it needs in its own `vix.module`, but the application remains responsible for resolving, locking, installing, and loading those packages during the build.
+This release also improves the quality of the existing codebase. Several build warnings were removed across Vix, and Vix Note now handles unsafe C++ cell execution more safely when user code produces too much output or does not terminate.
 
 The core identity of v2.7.2 is:
 
@@ -17,6 +17,8 @@ The core identity of v2.7.2 is:
 - `vix add --module`
 - Global lockfile generation from enabled modules
 - Module-specific CMake links
+- Safer Vix Note C++ cell execution
+- Cleaner warning-free builds
 - Better integration between `vix.module`, `vix.lock`, `vix install`, and `vix build`
 
 ## Added
@@ -110,6 +112,35 @@ Added checks for modules that declare links without matching registry dependenci
 
 Added safer validation around `vix.module` dependency metadata.
 
+### Vix Note execution guards
+
+Added timeout protection for C++ cells in Vix Note.
+
+C++ cells can now stop safely when user code does not terminate, such as an accidental infinite loop.
+
+Added output capture limits for C++ cells. This prevents the notebook UI from freezing when a program writes a very large amount of output.
+
+For example, this kind of code can produce an unexpectedly large output because `v.size() - 1` underflows when the vector is empty:
+
+```cpp
+#include <iostream>
+#include <vector>
+
+int main()
+{
+  std::vector<int> v;
+
+  for (int i = 0; i < v.size() - 1; i++)
+  {
+    std::cout << i << "\n";
+  }
+
+  return 0;
+}
+```
+
+Vix Note now guards against this by stopping the execution when the captured output becomes too large.
+
 ## Changed
 
 Updated `vix add` so it now supports both project-level and module-level dependency workflows.
@@ -138,6 +169,10 @@ Updated module CMake generation so registry package targets are linked to the mo
 
 Updated the module workflow so disabled modules do not force their registry dependencies into the active build.
 
+Updated Vix Note C++ cell execution so long-running or noisy programs are handled with stronger runtime guards.
+
+Updated the codebase to remove remaining compiler warnings and keep the build output cleaner across supported platforms.
+
 ## Fixed
 
 Fixed `vix add --module` creating or updating `vix.module` without generating a root `vix.lock`.
@@ -157,6 +192,18 @@ Fixed generated CMake ordering so `.vix/vix_deps.cmake` is loaded before module 
 Fixed module dependency links so package targets declared in `vix.module` are available before `target_link_libraries()` is evaluated.
 
 Fixed the gap between `vix add --module`, `vix install`, and `vix build`.
+
+Fixed Vix Note blocking when a C++ cell entered an infinite loop.
+
+Fixed Vix Note freezing when a C++ cell produced too much output.
+
+Fixed unsafe output capture behavior in Vix Note by adding an output limit before the browser receives a very large result.
+
+Fixed sign-conversion warnings in Vix Note runtime and web route code.
+
+Fixed socket length conversion warnings in the Vix Note web server.
+
+Fixed remaining compiler warnings across Vix so the project now builds with a cleaner output.
 
 ## Notes
 
@@ -208,6 +255,10 @@ The separation is intentional:
 - `vix.lock` remains global.
 - `vix install` installs the effective dependency graph.
 - `vix build` loads registry package targets before compiling modules.
+
+Vix Note also becomes safer in this release. In v2.7.1, a C++ cell could block the notebook when user code entered an infinite loop or produced a very large output. In v2.7.2, C++ cell execution now has runtime guards for timeout and captured output size, so the notebook can recover instead of being locked by a bad run.
+
+This release also removes the remaining warnings that were visible in the build logs. The result is a cleaner codebase, a quieter CI output, and a more reliable release foundation for the next Vix.cpp iterations.
 
 This gives Vix modules a stronger backend-oriented workflow while keeping the project structure simple and predictable.
 
