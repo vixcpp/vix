@@ -7,15 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Vix.cpp v2.7.3
 
-Vix.cpp v2.7.3 is a WebSocket application-module release. It fixes the generated WebSocket module workflow, makes WebSocket module names customizable, and updates the backend template so developers can immediately see whether the browser is connected to the generated WebSocket runtime.
+Vix.cpp v2.7.3 is a WebSocket application-module and backend-template release. It fixes the generated WebSocket module workflow, makes WebSocket module names customizable, adds an API-only backend scaffold for separately hosted frontends, and updates the standard backend template so developers can immediately see whether the browser is connected to the generated WebSocket runtime.
 
 The core identity of v2.7.3 is:
 
 - Generated WebSocket application modules
 - Custom WebSocket module names with `--name`
 - Runtime-safe WebSocket workflows for `vix.app` and backend projects
+- API-only backend project generation with `vix new <name> --template backend --api-only`
 - Backend static WebSocket connection status UI
-- Updated documentation for application modules, `vix.app`, CLI modules, and WebSocket workflows
+- Updated documentation for application modules, `vix.app`, CLI modules, backend templates, and WebSocket workflows
 
 ## Added
 
@@ -48,6 +49,18 @@ vix modules add --websocket --name live_chat --workflow attached
 
 This makes WebSocket module generation usable in scripts and templates where the module name is supplied as an option instead of a positional argument.
 
+### Backend API-only mode
+
+Added `--api-only` for backend project generation.
+
+```bash
+vix new api --template backend --api-only
+```
+
+API-only backend projects keep the production backend shell: `src/main.cpp`, `AppBootstrap`, middleware and route registries, controllers, support helpers, storage, migrations, tests, `.env`, `.env.example`, `vix.app`, `vix.json`, and README. They omit `public/`, `views/`, generated static frontend files, template setup, static directory setup, static-file compression middleware, and `public` or `views` resource entries.
+
+This supports deployment setups where the C++ backend runs separately from a Vue, React, Next.js, or static frontend application.
+
 ### Backend WebSocket status panel
 
 Added a static WebSocket status panel to generated backend assets. The generated browser page now checks the local WebSocket endpoint and shows whether the connection is open, closed, or unavailable.
@@ -66,6 +79,8 @@ Updated `vix modules add --websocket` so generated modules use the current WebSo
 Updated the generated application module runtime selection so non-runtime WebSocket client modules are ignored by runtime generation.
 
 Updated `vix.app` module handling so WebSocket modules can be generated and built across application and backend workflows.
+
+Updated backend project generation so static files, views, static-serving bootstrap code, and related resources are conditional on the standard backend scaffold instead of being required for API-only services.
 
 Updated generated WebSocket module metadata to record the selected workflow in `vix.module`.
 
@@ -90,6 +105,7 @@ Updated documentation for:
 - `vix modules` CLI workflows
 - WebSocket module workflows
 - Backend template static assets and WebSocket connection status
+- Backend API-only mode for separately hosted frontends
 - Generated module registration and runtime behavior
 
 # Vix.cpp v2.7.2
