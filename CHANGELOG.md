@@ -5,6 +5,93 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# Vix.cpp v2.7.3
+
+Vix.cpp v2.7.3 is a WebSocket application-module release. It fixes the generated WebSocket module workflow, makes WebSocket module names customizable, and updates the backend template so developers can immediately see whether the browser is connected to the generated WebSocket runtime.
+
+The core identity of v2.7.3 is:
+
+- Generated WebSocket application modules
+- Custom WebSocket module names with `--name`
+- Runtime-safe WebSocket workflows for `vix.app` and backend projects
+- Backend static WebSocket connection status UI
+- Updated documentation for application modules, `vix.app`, CLI modules, and WebSocket workflows
+
+## Added
+
+### WebSocket application modules
+
+Added generated WebSocket module workflows to `vix modules add`.
+
+```bash
+vix modules add live_chat --websocket --workflow attached
+```
+
+Added supported WebSocket workflows:
+
+```text
+attached
+standalone
+bridge
+client
+```
+
+The `attached`, `standalone`, and `bridge` workflows generate runtime-capable modules. The `client` workflow generates support code only and does not take over application startup.
+
+### Custom module names for generator flags
+
+Added explicit module naming with `--name` for option-driven module generation.
+
+```bash
+vix modules add --websocket --name live_chat --workflow attached
+```
+
+This makes WebSocket module generation usable in scripts and templates where the module name is supplied as an option instead of a positional argument.
+
+### Backend WebSocket status panel
+
+Added a static WebSocket status panel to generated backend assets. The generated browser page now checks the local WebSocket endpoint and shows whether the connection is open, closed, or unavailable.
+
+This gives backend and WebSocket module projects a quick visual confirmation after:
+
+```bash
+vix build
+vix run
+```
+
+## Changed
+
+Updated `vix modules add --websocket` so generated modules use the current WebSocket runtime API and headers.
+
+Updated the generated application module runtime selection so non-runtime WebSocket client modules are ignored by runtime generation.
+
+Updated `vix.app` module handling so WebSocket modules can be generated and built across application and backend workflows.
+
+Updated generated WebSocket module metadata to record the selected workflow in `vix.module`.
+
+Updated CLI help and module documentation paths to describe `--websocket`, `--workflow`, and `--name` together.
+
+## Fixed
+
+Fixed generated WebSocket modules failing to build because they referenced outdated runtime symbols such as `vix::websocket::Server` and `vix::run_http_and_ws` in generated code paths that no longer matched the current WebSocket runtime API.
+
+Fixed WebSocket module generation defaulting too strongly to a `realtime` module name when the developer wanted to choose a different module name.
+
+Fixed runtime generation treating WebSocket client modules like runtime modules.
+
+Fixed backend and application module workflows so generated WebSocket modules compile through the normal `vix build` flow.
+
+## Documentation
+
+Updated documentation for:
+
+- Application modules
+- `vix.app` module declarations
+- `vix modules` CLI workflows
+- WebSocket module workflows
+- Backend template static assets and WebSocket connection status
+- Generated module registration and runtime behavior
+
 # Vix.cpp v2.7.2
 
 Vix.cpp v2.7.2 is a focused module-dependency release that completes the next step of Vix App Modules: registry packages can now be declared inside a specific module while the application keeps one global dependency resolution and one root `vix.lock`.
