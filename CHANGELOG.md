@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Vix.cpp v2.7.3
 
-Vix.cpp v2.7.3 is a WebSocket application-module and backend-template release. It fixes the generated WebSocket module workflow, makes WebSocket module names customizable, adds an API-only backend scaffold for separately hosted frontends, and updates the standard backend template so developers can immediately see whether the browser is connected to the generated WebSocket runtime.
+Vix.cpp v2.7.3 is a WebSocket, backend-template, and Softadastra Cloud integration release. It fixes the generated WebSocket module workflow, makes WebSocket module names customizable, adds an API-only backend scaffold for separately hosted frontends, and introduces the first Vix CLI workflow for connecting local Vix projects to Softadastra Cloud.
 
 The core identity of v2.7.3 is:
 
@@ -16,9 +16,99 @@ The core identity of v2.7.3 is:
 - Runtime-safe WebSocket workflows for `vix.app` and backend projects
 - API-only backend project generation with `vix new <name> --template backend --api-only`
 - Backend static WebSocket connection status UI
-- Updated documentation for application modules, `vix.app`, CLI modules, backend templates, and WebSocket workflows
+- Softadastra Cloud CLI authentication and workspace linking
+- Cloud lockfile upload and build reports
+- Cloud package publishing with `vix publish --cloud`
+- Updated documentation for application modules, `vix.app`, CLI modules, backend templates, WebSocket workflows, and Softadastra Cloud workflows
 
 ## Added
+
+### Softadastra Cloud CLI integration
+
+Added the first Softadastra Cloud workflow to the Vix CLI.
+
+```bash
+vix login
+vix cloud status
+vix cloud init
+vix cloud sync
+vix logout
+```
+
+This lets a developer connect the local Vix CLI to Softadastra Cloud, link a project to a cloud workspace, check cloud status, and keep project metadata synchronized without changing the local-first Vix workflow.
+
+Cloud session data is stored globally under the user's Vix configuration, while project cloud links are stored locally in the project under `.vix/cloud.json`.
+
+### Cloud lockfile upload
+
+Added lockfile upload support for cloud-linked projects.
+
+```bash
+vix cloud lockfile upload
+```
+
+Alias:
+
+```bash
+vix cloud lock upload
+```
+
+The command uploads the project lockfile to Softadastra Cloud with checksum information so teams can keep a history of dependency state around a Vix project.
+
+Supported options include:
+
+```bash
+vix cloud lockfile upload --file vix.lock
+vix cloud lockfile upload --json
+```
+
+### Build reports for Softadastra Cloud
+
+Added build report submission through the Vix build command.
+
+```bash
+vix build --report
+```
+
+When a project is linked to Softadastra Cloud, the CLI can send build status, timing, and project context to the cloud after a local build. Build failures remain local build failures, but report submission errors do not change a successful build exit code.
+
+This keeps the C++ build workflow local while giving the cloud a useful history of build activity.
+
+### Cloud package publishing
+
+Added cloud package publishing through the existing publish command.
+
+```bash
+vix publish --cloud
+```
+
+Also added:
+
+```bash
+vix cloud publish
+```
+
+Cloud publishing is explicit. The normal public registry flow for `vix publish` remains unchanged unless `--cloud` is provided.
+
+Supported options include:
+
+```bash
+vix publish --cloud \
+  --package softadastra/example \
+  --version 0.1.0 \
+  --visibility private
+```
+
+Additional options include:
+
+- `--description`
+- `--repository-url`
+- `--archive`
+- `--manifest`
+- `--dry-run`
+- `--json`
+
+The cloud publish workflow can create the cloud package record, prepare a package archive, compute a checksum, enrich metadata from `vix.json` or `vix.app`, and upload the version archive to Softadastra Cloud.
 
 ### WebSocket application modules
 
@@ -57,9 +147,11 @@ Added `--api-only` for backend project generation.
 vix new api --template backend --api-only
 ```
 
-API-only backend projects keep the production backend shell: `src/main.cpp`, `AppBootstrap`, middleware and route registries, controllers, support helpers, storage, migrations, tests, `.env`, `.env.example`, `vix.app`, `vix.json`, and README. They omit `public/`, `views/`, generated static frontend files, template setup, static directory setup, static-file compression middleware, and `public` or `views` resource entries.
+API-only backend projects keep the production backend shell: `src/main.cpp`, `AppBootstrap`, middleware and route registries, controllers, support helpers, storage, migrations, tests, `.env`, `.env.example`, `vix.app`, `vix.json`, and `README`.
 
-This supports deployment setups where the C++ backend runs separately from a Vue, React, Next.js, or static frontend application.
+They omit `public/`, `views/`, generated static frontend files, template setup, static directory setup, static-file compression middleware, and `public` or `views` resource entries.
+
+This supports deployment setups where the C++ backend runs separately from a Vue, React, Next.js, SvelteKit, or static frontend application.
 
 ### Backend WebSocket status panel
 
@@ -74,6 +166,16 @@ vix run
 
 ## Changed
 
+Updated the Vix CLI so cloud commands use the existing `vix::requests` module for HTTP communication with Softadastra Cloud.
+
+Updated the CLI session model so cloud authentication is stored globally, while project cloud metadata remains project-local.
+
+Updated cloud command behavior to use clear API errors for unauthenticated access, missing project links, permission failures, missing files, and duplicate package versions.
+
+Updated `vix doctor --cloud` to include Softadastra Cloud connectivity, authentication, project link status, lockfile upload capability, and build report support.
+
+Updated `vix publish` so Softadastra Cloud publishing is explicit through `--cloud`, preserving the existing public registry publishing behavior.
+
 Updated `vix modules add --websocket` so generated modules use the current WebSocket runtime API and headers.
 
 Updated the generated application module runtime selection so non-runtime WebSocket client modules are ignored by runtime generation.
@@ -84,7 +186,7 @@ Updated backend project generation so static files, views, static-serving bootst
 
 Updated generated WebSocket module metadata to record the selected workflow in `vix.module`.
 
-Updated CLI help and module documentation paths to describe `--websocket`, `--workflow`, and `--name` together.
+Updated CLI help and module documentation paths to describe `--websocket`, `--workflow`, `--name`, and Softadastra Cloud commands together.
 
 ## Fixed
 
@@ -95,6 +197,12 @@ Fixed WebSocket module generation defaulting too strongly to a `realtime` module
 Fixed runtime generation treating WebSocket client modules like runtime modules.
 
 Fixed backend and application module workflows so generated WebSocket modules compile through the normal `vix build` flow.
+
+Fixed cloud build report behavior so a failed report submission does not incorrectly turn a successful local build into a failed command.
+
+Fixed cloud publish behavior so duplicate package versions return a clear conflict message instead of failing with an unclear API response.
+
+Fixed cloud lockfile upload behavior so missing lockfiles and unlinked projects are reported with direct user-facing errors.
 
 ## Documentation
 
@@ -107,6 +215,11 @@ Updated documentation for:
 - Backend template static assets and WebSocket connection status
 - Backend API-only mode for separately hosted frontends
 - Generated module registration and runtime behavior
+- Softadastra Cloud CLI login and project linking
+- Cloud lockfile upload
+- Cloud build reports
+- Cloud package publishing with `vix publish --cloud`
+- Cloud status and diagnostics through `vix doctor --cloud`
 
 # Vix.cpp v2.7.2
 
