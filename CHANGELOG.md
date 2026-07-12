@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Vix.cpp v2.7.3
 
-Vix.cpp v2.7.3 is a WebSocket, backend-template, and Softadastra Cloud integration release. It fixes the generated WebSocket module workflow, makes WebSocket module names customizable, adds an API-only backend scaffold for separately hosted frontends, and introduces the first Vix CLI workflow for connecting local Vix projects to Softadastra Cloud.
+Vix.cpp v2.7.3 is a CLI workflow, WebSocket, backend-template, package-management, and Softadastra Cloud integration release. It fixes the generated WebSocket module workflow, makes WebSocket module names customizable, adds an API-only backend scaffold for separately hosted frontends, introduces the first Vix CLI workflow for connecting local Vix projects to Softadastra Cloud, and significantly improves global package installs, Git dependencies, single-file runs, and public registry publishing.
 
 The core identity of v2.7.3 is:
 
@@ -19,7 +19,11 @@ The core identity of v2.7.3 is:
 - Softadastra Cloud CLI authentication and workspace linking
 - Cloud lockfile upload and build reports
 - Cloud package publishing with `vix publish --cloud`
-- Updated documentation for application modules, `vix.app`, CLI modules, backend templates, WebSocket workflows, and Softadastra Cloud workflows
+- User-space global C++ package installation with executable exposure
+- Git dependency installation, automatic dependency resolution, `vix init`, and temporary `vix run --dep` experiments
+- Fast `vix run <file.cpp>` path selection for standard-library-only scripts
+- Safer public registry publishing with durable package identity, tag validation, public-header scanning, and deterministic API metadata
+- Updated documentation for application modules, `vix.app`, CLI modules, backend templates, WebSocket workflows, Softadastra Cloud workflows, global installs, Git dependencies, and public publishing
 
 ## Added
 
@@ -164,6 +168,56 @@ vix build
 vix run
 ```
 
+### Global package installation for C++ CLIs
+
+Added a real user-space global install flow for packages that expose libraries and command-line executables.
+
+```bash
+vix install -g vixcpp/ovi
+ovi --version
+vix uninstall -g vixcpp/ovi
+```
+
+Global installs now use a Vix-managed prefix instead of `/usr/local` by default, install through CMake install rules when available, register installed files, detect executable ownership conflicts, and uninstall only files owned by the package.
+
+Global executable commands are exposed from the Vix global `bin` directory, with support for updates, multiple commands, and clean package manifests.
+
+### Git dependencies
+
+Added Git repository dependencies for Vix projects.
+
+```bash
+vix install https://github.com/fmtlib/fmt
+vix install https://github.com/nlohmann/json.git
+```
+
+`vix.app` can now declare Git dependencies with tags, branches, commits, CMake targets, CMake options, include roots, subdirectories, and header-only mode. Resolved commits are recorded in `vix.lock`, sources are materialized under `.vix/deps`, and `.vix/vix_deps.cmake` is generated for normal builds and runs.
+
+Supported first-version backends are CMake and header-only repositories.
+
+### `vix init`
+
+Added `vix init` for turning an existing folder into a minimal Vix project without creating a full template project.
+
+```bash
+mkdir fmt-test
+cd fmt-test
+touch main.cpp
+vix init
+```
+
+The command creates a minimal `vix.app`, derives a safe project name from the current directory, detects existing C++ sources, supports `--name`, `--lib`, `--standard`, and `--force`, and leaves `vix new` as the command for full project scaffolds.
+
+### Temporary dependencies for `vix run`
+
+Added temporary dependency experiments for single-file runs.
+
+```bash
+vix run main.cpp --dep https://github.com/fmtlib/fmt
+```
+
+This mode resolves and caches Git dependencies, builds through a temporary Vix environment when needed, and does not write `vix.app`, `vix.lock`, or `.vix/` into the current directory unless the dependency is explicitly saved.
+
 ## Changed
 
 Updated the Vix CLI so cloud commands use the existing `vix::requests` module for HTTP communication with Softadastra Cloud.
@@ -188,6 +242,16 @@ Updated generated WebSocket module metadata to record the selected workflow in `
 
 Updated CLI help and module documentation paths to describe `--websocket`, `--workflow`, `--name`, and Softadastra Cloud commands together.
 
+Updated `vix install <git-url>` so common repositories can be installed without requiring users to know the internal CMake target. Vix now normalizes Git URLs, selects the latest stable SemVer tag when no revision is provided, resolves the exact commit, inspects CMake or header-only layout, detects likely public targets, and writes the dependency into `vix.app` and `vix.lock`.
+
+Updated `vix run <file.cpp>` so it chooses the fastest path based on the file's actual includes. Standard-library-only scripts now use the direct compiler path even when a parent project contains Git dependencies, while scripts that include compiled dependencies still fall back to CMake and link `vix::deps`. Header-only dependencies can stay on the direct compile path with include directories only.
+
+Updated direct script-run caching so repeated `vix run <file.cpp>` calls reuse the compiled binary when the source, compiler, standard, flags, include directories, linked dependencies, and dependency commits have not changed.
+
+Updated `vix publish` for the public registry to validate the exact tagged source instead of relying on the current working tree. The command now creates a detached temporary checkout for the tag commit, reads `vix.json` from that checkout, scans public headers from declared include roots, generates deterministic API metadata, and keeps normal output short.
+
+Updated public publish preflight to treat package identity as durable: `namespace/name` from `vix.json` must remain consistent with the normalized repository URL already present in the registry. Accidental renames now fail instead of silently creating a second package for the same repository.
+
 ## Fixed
 
 Fixed generated WebSocket modules failing to build because they referenced outdated runtime symbols such as `vix::websocket::Server` and `vix::run_http_and_ws` in generated code paths that no longer matched the current WebSocket runtime API.
@@ -203,6 +267,24 @@ Fixed cloud build report behavior so a failed report submission does not incorre
 Fixed cloud publish behavior so duplicate package versions return a clear conflict message instead of failing with an unclear API response.
 
 Fixed cloud lockfile upload behavior so missing lockfiles and unlinked projects are reported with direct user-facing errors.
+
+Fixed global installs so packages that provide headers and CMake install rules, such as `rix/rix`, are installed through the Vix build/install pipeline instead of being configured as unrelated standalone CMake projects with missing internal targets.
+
+Fixed global uninstall so `vix uninstall -g` accepts the same package forms as install, including scoped names like `@rix/rix`, and prints a short npm-like success message with elapsed time instead of listing every removed file in normal mode.
+
+Fixed globally installed CLI packages so commands such as `ovi` are available after `vix install -g vixcpp/ovi` without requiring manual post-install steps from the user.
+
+Fixed Git dependency support for `vix run main.cpp` so dependencies declared in `vix.app` are prepared automatically during run; users do not need to run the deprecated `vix deps` workflow.
+
+Fixed CMake target selection for Git dependencies such as `fmt`, preferring stable namespaced targets like `fmt::fmt` when they are unambiguous and reporting a precise error when multiple public targets remain ambiguous.
+
+Fixed `vix run <file.cpp>` performance regressions caused by forcing CMake whenever `.vix/vix_deps.cmake` existed. The fallback is now selected only when the file actually uses a compiled dependency.
+
+Fixed public publish validation so repository mismatches are reported before network tag checks, and network/auth/repository failures from Git remote verification are no longer misreported as “tag not pushed”.
+
+Fixed public publish output so `--dry-run` no longer dumps the full registry JSON in normal mode. Use `--json` or `--verbose` for structured or detailed output.
+
+Fixed public publish metadata so the registry package type comes from the real manifest instead of being forced to `header-only`, and missing licenses are not silently replaced with `MIT`.
 
 ## Documentation
 
@@ -220,6 +302,11 @@ Updated documentation for:
 - Cloud build reports
 - Cloud package publishing with `vix publish --cloud`
 - Cloud status and diagnostics through `vix doctor --cloud`
+- Global package installation with `vix install -g`, global executable commands, and `vix uninstall -g`
+- Git dependencies in `vix.app`, automatic version and target detection, lockfiles, cache behavior, and header-only dependencies
+- `vix init` for existing folders
+- `vix run --dep` for temporary dependency experiments
+- Public `vix publish` prerequisites, immutable versions, identity checks, header scanning, API metadata, `--dry-run`, `--json`, and `--verbose`
 
 # Vix.cpp v2.7.2
 
