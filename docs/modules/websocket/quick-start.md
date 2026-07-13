@@ -101,6 +101,34 @@ host = 0.0.0.0
 port = 9090
 ```
 
+## Generate a WebSocket app module
+
+For `vix.app` projects, the CLI can generate the module wiring for you:
+
+```bash
+vix modules init
+vix modules add live_chat --websocket --workflow attached
+```
+
+You can choose any valid module name. The explicit form is also supported:
+
+```bash
+vix modules add --websocket --name notifications --workflow bridge
+```
+
+Generated server workflows use `vix::run_http_and_ws(...)` so HTTP and WebSocket start together. The generated module registers an HTTP status route at `/ws/status` and starts the WebSocket server on the configured WebSocket port, defaulting to `9090`.
+
+Supported generated workflows:
+
+| Workflow | Behavior |
+| --- | --- |
+| `attached` | HTTP app plus WebSocket server runtime. |
+| `standalone` | WebSocket server runtime using the same generated module contract. |
+| `bridge` | Server runtime plus long-polling bridge metadata. |
+| `client` | Client/support module; it is not selected as the app runtime. |
+
+Backend templates also include a static status panel in `public/index.html` that tries to connect from the browser to `ws://<host>:9090/` and displays the connection state.
+
 ## Run the example
 
 ```bash

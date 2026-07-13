@@ -88,6 +88,7 @@ If no `CMakeLists.txt` exists but `vix.app` exists, Vix uses `vix.app`.
 | `compile_features` | No | CMake compile features |
 | `packages` | No | Packages passed to `find_package(...)` |
 | `resources` | No | Files or directories copied after build |
+| `modules` | No | Internal application modules under `modules/` |
 | `output_dir` | No | Output directory inside the build tree |
 
 ## name
@@ -470,6 +471,62 @@ links links targets or libraries.
 ```
 
 `packages` does not link automatically.
+
+## modules
+
+Optional.
+
+The `modules` field lists internal application modules created with `vix modules`.
+
+```ini
+modules = [
+  auth,
+  live_chat,
+]
+```
+
+Each name maps to a folder under `modules/`:
+
+```txt
+modules/auth
+modules/live_chat
+```
+
+When Vix generates the internal app CMake project, it includes `cmake/vix_modules.cmake`, loads the enabled modules, and links their aliases to the application target.
+
+For a project named `api`, these modules expose aliases like:
+
+```txt
+api::auth
+api::live_chat
+```
+
+Do not use `modules` for registry packages. Use `deps` for registry packages, `packages` for `find_package(...)`, and `links` for CMake targets.
+
+### WebSocket modules in `vix.app`
+
+WebSocket application modules are generated with:
+
+```bash
+vix modules add live_chat --websocket --workflow attached
+```
+
+or with an explicit name option:
+
+```bash
+vix modules add --websocket --name live_chat
+```
+
+The generated module has a `vix.module` manifest. Vix reads this manifest to detect module metadata such as:
+
+```ini
+workflow = "websocket.attached"
+runtime = true
+```
+
+Runtime WebSocket workflows are wired through the generated `vix_app_modules.cpp` file. Vix supports one runtime application module at a time.
+
+The `websocket.client` workflow is not treated as the app runtime. It can register lightweight routes and support code while the normal application runtime remains in control.
 
 ## compile_options
 

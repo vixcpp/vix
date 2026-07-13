@@ -149,7 +149,7 @@ These commands are used while building and maintaining a Vix project.
 | ------------- | -------------------------------------------------------- |
 | `vix new`     | Create a new Vix project.                                |
 | `vix make`    | Generate C++ scaffolding.                                |
-| `vix modules` | Manage optional project modules.                         |
+| `vix modules` | Manage application modules, including generated WebSocket modules. |
 | `vix run`     | Build if needed, then run a project or file.             |
 | `vix dev`     | Run development mode with reload.                        |
 | `vix build`   | Configure and build a project or file.                   |

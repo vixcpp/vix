@@ -115,6 +115,7 @@ Common fields include:
 | `compile_options` | Extra compiler options.                                              |
 | `link_options`    | Extra linker options.                                                |
 | `resources`       | Files or directories copied with the target.                         |
+| `modules`         | Internal application modules loaded from `modules/`.                 |
 | `output_dir`      | Output directory for the generated artifact.                         |
 
 Example:
@@ -178,6 +179,32 @@ When Vix.cpp uses `vix.app`, it generates the internal CMake project under:
 ```
 
 Do not edit the generated file manually.
+
+## Application modules
+
+`vix.app` projects can load internal modules declared with the `modules` field.
+
+```ini
+modules = [
+  auth,
+  live_chat,
+]
+```
+
+Create modules with the CLI:
+
+```bash
+vix modules init
+vix modules add live_chat --websocket --workflow attached
+```
+
+The WebSocket module name is customizable. You can pass it positionally or with `--name`:
+
+```bash
+vix modules add --websocket --name notifications
+```
+
+Runtime WebSocket workflows are wired through the generated app integration. The `websocket.client` workflow is not selected as the app runtime.
 
 Edit `vix.app` instead.
 

@@ -121,6 +121,42 @@ The build workflow can then wire the right targets.
 
 The runtime workflow can then run an app that was built with the correct capabilities.
 
+### Generated application modules
+
+`vix modules` can create internal application modules under `modules/`.
+
+```bash
+vix modules init
+vix modules add auth
+vix modules add live_chat --websocket --workflow attached
+```
+
+The module name is yours. `live_chat`, `notifications`, `presence`, and `events` are all valid names. You can also use the explicit option form:
+
+```bash
+vix modules add --websocket --name live_chat
+```
+
+A WebSocket module named `live_chat` generates:
+
+```txt
+modules/live_chat/
+  include/live_chat/LiveChatModule.hpp
+  src/LiveChatModule.cpp
+  vix.module
+```
+
+The module manifest records whether the module is a runtime workflow:
+
+```ini
+workflow = "websocket.attached"
+runtime = true
+```
+
+For runtime workflows, the generated app integration calls the module `run(...)` entry point. For `websocket.client`, the module is not used as the app runtime.
+
+The current generated runtime model supports one runtime application module at a time.
+
 ## Why modules must be explicit
 
 Hidden modules create confusion.

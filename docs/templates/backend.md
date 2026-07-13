@@ -108,6 +108,27 @@ http://127.0.0.1:8080
 http://127.0.0.1:8080/status.html
 ```
 
+The home page includes a WebSocket status panel. It is a browser-side probe that tries to connect to:
+
+```txt
+ws://<current-host>:9090/
+```
+
+To make that panel turn green, add a WebSocket module and run the app:
+
+```bash
+vix modules init
+vix modules add live_chat --websocket --workflow attached
+vix build
+vix run
+```
+
+The module name is customizable. You can use `live_chat`, `notifications`, `presence`, or any valid module name. The explicit option form is:
+
+```bash
+vix modules add --websocket --name notifications
+```
+
 Check the API:
 
 ```bash

@@ -272,6 +272,102 @@ Run:
 vix run
 ```
 
+## WebSocket application modules
+
+`vix modules add` can generate a WebSocket application module for `vix.app` projects.
+
+The module name is not fixed. You can pass it positionally:
+
+```bash
+vix modules add live_chat --websocket
+```
+
+or explicitly with `--name`:
+
+```bash
+vix modules add --websocket --name live_chat
+```
+
+Both commands create a module named `live_chat`, not `realtime`:
+
+```txt
+modules/live_chat/
+├── CMakeLists.txt
+├── include/live_chat/LiveChatModule.hpp
+├── src/LiveChatModule.cpp
+├── tests/test_live_chat.cpp
+└── vix.module
+```
+
+The generated C++ namespace and CMake target use the selected name:
+
+```txt
+<project>::live_chat
+<project>_live_chat
+```
+
+### WebSocket workflows
+
+Use `--workflow` to choose the generated workflow:
+
+```bash
+vix modules add live_chat --websocket --workflow attached
+vix modules add notifications --websocket --workflow standalone
+vix modules add events --websocket --workflow bridge
+vix modules add ws_client --websocket --workflow client
+```
+
+| Workflow | Runtime behavior | Use when |
+| --- | --- | --- |
+| `attached` | Runs HTTP and WebSocket together through `vix::run_http_and_ws(...)`. | The app owns both HTTP routes and a WebSocket server. |
+| `standalone` | Generates a server runtime entry point using the same app module contract. | You want a dedicated WebSocket service module with the generated runtime hook. |
+| `bridge` | Same generated runtime hook, with `long_polling = true` in `vix.module`. | You want WebSocket plus long-polling bridge metadata. |
+| `client` | Registers HTTP-facing routes but does not become the app runtime. | The module describes client-side WebSocket integration or support code. |
+
+Server workflows open the HTTP app normally and start the WebSocket server on the configured WebSocket port, defaulting to `9090`.
+
+The `client` workflow intentionally does not generate `Module::run(...)`, so `vix.app` continues to run the normal HTTP app runtime.
+
+### Generated WebSocket manifest
+
+A WebSocket module writes its own `vix.module` file:
+
+```ini
+name = "live_chat"
+kind = "backend"
+workflow = "websocket.attached"
+runtime = true
+
+[routes]
+prefix = "/ws"
+
+[websocket]
+workflow = "attached"
+path = "/ws"
+host = "0.0.0.0"
+port = 9090
+long_polling = false
+metrics = false
+```
+
+For `websocket.client`, Vix reads the workflow first and does not treat the module as the app runtime, even if the manifest contains runtime metadata.
+
+### Static backend status panel
+
+Backend projects generated with `vix new <name> --template backend` include a static WebSocket status panel in `public/index.html`.
+
+The panel uses `public/app.js` to try a browser WebSocket connection to:
+
+```txt
+ws://<current-host>:9090/
+```
+
+It displays `connecting`, `connected`, or `disconnected`. This is only a visible frontend probe; the WebSocket server still comes from a generated WebSocket module such as:
+
+```bash
+vix modules add live_chat --websocket --workflow attached
+```
+
 ## Basic workflow with CMake
 
 For an existing CMake project:
