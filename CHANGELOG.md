@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.7.5
+
+### Fixed
+
+- Fixed composed Vix SDK generation for multi-profile installs such as `web + data`.
+  - SDK profiles now only create aliases for modules actually exported by that profile.
+  - `vix::validation` is now resolved from the official `web` provider instead of being shadowed by `data`.
+  - Composed targets now preserve the exact exported properties of their provider SDK target.
+  - Fixed target-property extraction so properties from unrelated targets, such as `vix::db`, cannot leak into `vix::websocket`.
+
+- Fixed `vix install` for old lockfiles using obsolete integrity metadata.
+  - `vix install` can now safely migrate old package hashes to canonical `vix-package-sha256` v2 metadata.
+  - The migration updates only `hash`, `hash_algorithm`, and `hash_version`.
+  - Registry synchronization is now performed internally when required, without asking users to run `vix registry sync`.
+  - Users no longer need to run `vix registry sync`, `vix update`, then `vix install` for this migration case.
+
+### Safety
+
+- Automatic integrity migration is only allowed when the locked package id, version, tag, commit, registry metadata, and local checkout all match.
+- `vix install` still fails without rewriting the lockfile when the checkout is dirty, the registry commit differs, the checkout is incomplete, or a modern v2 hash is
+  incorrect.
+
+### Validation
+
+- Added regression tests for composed SDK aliases, target property isolation, registry-backed hash migration, automatic registry sync, lockfile idempotence, dirty checkout
+  failures, registry commit mismatch failures, and bad v2 hash failures.
+- Validated Softadastra Cloud with only `vix install`, followed by `vix build --preset release`, producing `bin/cloud`.
+
 # Vix.cpp v2.7.4
 
 Vix.cpp v2.7.4 is an SDK composition and reliability release. It makes specialized SDK profiles composable, fixes projects that use modules from both the `web` and `data` profiles, and improves the build-time diagnostic when a known Vix module is requested but its SDK profile is not installed.
@@ -129,7 +157,6 @@ Added SDK composition coverage for:
 ## Documentation
 
 Updated CLI documentation for SDK profile composition, multiple installed SDK profiles, automatic module/profile selection, version compatibility, missing-module diagnostics, and when to use the heavier `all` profile.
-
 
 # Vix.cpp v2.7.3
 
