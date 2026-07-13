@@ -423,6 +423,7 @@ if (NOT _VIX_SDK_PROFILE_EFFECTIVE STREQUAL "legacy")
     vix_sdk_profile_default(VIX_ENABLE_CACHE ON)
     vix_sdk_profile_default(VIX_ENABLE_P2P ON)
     vix_sdk_profile_default(VIX_ENABLE_AGENT ON)
+    vix_sdk_profile_default(VIX_ENABLE_REQUESTS ON)
   endif()
 endif()
 
