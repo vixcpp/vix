@@ -211,10 +211,26 @@ if (VIX_WITH_UI_LINUX_WEBVIEW)
   endif()
 endif()
 
-# ---- third-party exported targets (aliases) ----
+# ---- exported aliases ----
 # Re-create ALIAS targets that are used in-tree, because ALIAS targets are not exported by CMake.
 if (TARGET vix_thirdparty_asio AND NOT TARGET vix::thirdparty_asio)
   add_library(vix::thirdparty_asio ALIAS vix_thirdparty_asio)
+endif()
+
+if (TARGET vix::vix_time AND NOT TARGET vix::time)
+  add_library(vix::time ALIAS vix::vix_time)
+endif()
+
+if (TARGET vix::vix_conversion AND NOT TARGET vix::conversion)
+  add_library(vix::conversion ALIAS vix::vix_conversion)
+endif()
+
+if (TARGET vix::vix_validation AND NOT TARGET vix::validation)
+  add_library(vix::validation ALIAS vix::vix_validation)
+endif()
+
+if (TARGET vix::vix_webrpc AND NOT TARGET vix::webrpc)
+  add_library(vix::webrpc ALIAS vix::vix_webrpc)
 endif()
 
 set(VIX_HAS_TESTS @VIX_HAS_TESTS@)
