@@ -235,7 +235,7 @@ vix note
 
 ## Softadastra Cloud
 
-Softadastra Cloud is the product layer built around Vix. It gives C++ projects a controlled cloud workspace for the parts of development that need to be shared: workspaces, private packages, package versions, lockfiles, build reports, permissions, access tokens, public profiles, and team activity.
+[Softadastra Cloud](https://cloud.softadastra.com) is the product layer built around Vix for private C++ packages and team project operations. It gives C++ projects a controlled cloud workspace for the parts of development that need to be shared: workspaces, private packages, package versions, lockfiles, build reports, permissions, access tokens, public profiles, and team activity.
 
 Vix keeps the project local. The compiler, source files, build outputs, and native workflow stay on the developer machine or inside the team’s own CI environment. Softadastra Cloud adds the shared state around that workflow, so a project can move from one developer to a team without losing visibility into what was published, which lockfile was used, which build failed, and who has access.
 
@@ -248,9 +248,11 @@ vix build --report
 vix publish --cloud
 ```
 
-This connection matters because Vix is not designed only from small examples. It is exercised through a real product workflow where the CLI, manifests, package archives, lockfiles, build reports, permissions, and project metadata have to work together.
+This connection matters because Vix is not designed only from small examples. It is exercised through a real product workflow where the CLI, manifests, private package archives, lockfiles, build reports, permissions, and project metadata have to work together.
 
-Softadastra Cloud keeps native C++ projects understandable after they leave a single machine. Developers can see what exists, what changed, what was published, what failed, and which parts of the project are private or public, while the local-first nature of Vix remains intact.
+Softadastra Cloud keeps native C++ projects understandable after they leave a single machine. Developers can see what exists, what changed, what private package was published, what failed, and which parts of the project are private or public, while the local-first nature of Vix remains intact.
+
+Use [cloud.softadastra.com](https://cloud.softadastra.com) to create a workspace, publish private packages, and connect a Vix project to the team workflow.
 
 ## Project direction
 
@@ -299,7 +301,8 @@ Vix.cpp is maintained by [Softadastra](https://softadastra.com), a company build
 ## Resources
 
 - [Vix.cpp documentation](https://docs.vixcpp.com): guides, commands, SDK profiles, modules, examples, and internals.
-- [Vix Registry](https://registry.vixcpp.com): reusable packages for Vix applications.
+- [Vix Registry](https://registry.vixcpp.com): reusable public packages for Vix applications.
+- [Softadastra Cloud](https://cloud.softadastra.com): private C++ packages, workspaces, lockfiles, build reports, access tokens, and team project activity.
 - [Rix](https://rix.vixcpp.com): optional userland libraries for Vix projects.
 - [Engineering Notes](https://blog.vixcpp.com): design decisions, releases, benchmarks, and technical articles.
 - [Softadastra](https://softadastra.com): the company maintaining Vix.cpp.
