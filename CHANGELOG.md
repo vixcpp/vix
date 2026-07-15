@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.7.6
+
+### Added
+
+- Added a modern Softadastra Cloud browser login flow for `vix login`.
+  - The CLI now lets users choose between opening the browser or entering email and password manually.
+  - Browser login starts a local `127.0.0.1` callback server, generates a secure state value, validates the returned state, and exchanges a short-lived authorization code with the real Cloud API.
+  - The local callback page now uses a polished Softadastra Cloud confirmation design with animated status feedback.
+  - The Cloud login page now sends the local callback in the background and keeps the main browser tab on `cloud.softadastra.com`, avoiding a visible dead `127.0.0.1` page after success.
+  - Sessions continue to be saved in `~/.vix/cloud/config.json` using the same format as manual login.
+  - `--email` and `--password` keep the existing terminal login behavior for scripts and fallback use.
+
+### Fixed
+
+- Fixed Softadastra Cloud API connectivity so the CLI targets `https://api.softadastra.com` instead of the frontend domain.
+- Fixed HTTPS transport lifetime handling that could surface as `network_error: std::bad_alloc` during Cloud requests.
+- Added a response-size guard in HTTPS transport to avoid unbounded response buffering.
+- Preserved clean `--json` output for `vix login` manual/scripted flows.
+
+### Cloud
+
+- Added backend support for secure CLI browser login.
+  - The browser receives only a short-lived authorization code, never a final session token in the URL.
+  - CLI auth codes are bound to `state`, `redirect_uri`, user session, and expiry.
+  - Codes expire quickly, are stored hashed, and can be exchanged only once.
+- Added the frontend `/cli/login` route used by the CLI browser flow.
+
+### Validation
+
+- Built the umbrella project with `vix build --build-target all -v -- -DVIX_ENABLE_DB=ON -DVIX_DB_USE_MYSQL=ON -DVIX_DB_USE_SQLITE=ON`.
+- Built the Softadastra Cloud backend and frontend, including the new `/cli/login` page.
+- Installed the final CLI with `sudo cmake --install build-ninja --prefix /usr/local`.
+- Verified manual login fallback, JSON login errors, `vix cloud status`, and backend-unavailable error handling.
+
 ## v2.7.5
 
 ### Fixed
