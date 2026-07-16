@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.7.7
+
+### Fixed
+
+- Fixed global package installs for header-only packages that build a CLI executable but do not provide CMake runtime install rules.
+  - `vix install -g` now detects the built command and stages it into the Vix global `bin` directory.
+  - Commands such as `cli_test` are available immediately from `~/.vix/global/bin` after install when that directory is already on `PATH`.
+  - Packages that already provide proper `install(TARGETS ... RUNTIME DESTINATION bin)` rules keep using the CMake install output as the source of truth.
+
+### Validation
+
+- Verified `vix install -g gaspardkirira/cli_test`, `command -v cli_test`, and `cli_test chain 5`.
+- Added and ran a global install regression fixture for a package that builds an executable but only installs headers through CMake.
+
 ## v2.7.6
 
 ### Added
