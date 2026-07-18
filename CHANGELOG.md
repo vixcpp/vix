@@ -10,54 +10,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added the first package-based extension system for Vix Note.
-  - Vix Note extensions are distributed as standard Vix registry packages.
-  - Added support for the `extensions.note` manifest field with API versioning, capabilities, custom cell types, runtime configuration, aliases, and permissions.
+  - Vix Note extensions are distributed as standard Vix packages through the Vix Registry.
+  - Added support for the `extensions.note` manifest section, including API versioning, capabilities, custom cell types, runtime configuration, aliases, and permissions.
   - Added discovery of built-in, project-local, and globally installed extensions.
-  - Project extensions take priority over global extensions, while built-in cell types remain protected.
+  - Project extensions take precedence over global extensions, while built-in cell types remain protected.
   - Added support for preserving custom cell types such as `python` when loading, saving, and exporting `.vixnote` documents.
-  - Added a generic external process runner using the `vix-note-extension-1` JSON protocol.
+  - Added a generic external runtime based on the `vix-note-extension-1` JSON protocol.
   - Added the `GET /api/extensions` endpoint and dynamic frontend discovery of available cell types.
-  - Existing Markdown, HTML, C++, and Reply cells continue to work through the new extension registry.
+  - Existing Markdown, HTML, C++, and Reply cells now run through the extension system.
 
-- Extended registry and package commands for extension-aware packages.
-  - `vix publish` now validates and preserves `extensions.note` metadata in registry entries and individual package versions.
+- Added extension management to the Vix Note interface.
+  - Browse installed, built-in, recommended, and registry extensions.
+  - Install, uninstall, enable, and disable extensions directly from the UI.
+  - Added a dedicated extension details page with runtime information and contribution metadata.
+
+- Extended registry and package commands for extension packages.
+  - `vix publish` now validates and preserves `extensions.note` metadata in published packages.
   - `vix search` now supports `--extension`, `--capability`, `--type`, and `--json`.
-  - Searches can now be performed using filters without requiring a text query.
+  - Extension searches can now be performed using filters without requiring a text query.
   - `vix install -g` now preserves extension metadata in the global installation registry.
-  - Added `vix note --list-extensions` for inspecting discovered Note extensions.
-
-- Added package manifests for additional Vix modules and published them to the Vix Registry.
-  - Added `vix.json` manifests for the Async, Env, Error, FS, IO, Log, Note, OS, Path, Process, Reply, Tests, and Utils modules.
-  - Updated the root repository to reference the new module revisions containing their registry metadata.
-  - These modules can now be discovered, versioned, and installed through the standard Vix package workflow.
+  - Added `vix note --list-extensions` for listing all discovered Note extensions.
 
 ### Fixed
 
-- Fixed global package installs for header-only packages that build a CLI executable but do not provide CMake runtime install rules.
-  - `vix install -g` now detects the built command and stages it into the Vix global `bin` directory.
-  - Commands such as `cli_test` are available immediately from `~/.vix/global/bin` after installation when that directory is already on `PATH`.
-  - Packages that already provide proper `install(TARGETS ... RUNTIME DESTINATION bin)` rules continue to use the CMake installation output as the source of truth.
+- Fixed global installation of header-only packages that build CLI executables without CMake runtime install rules.
+  - `vix install -g` now detects the generated executable and installs it into the Vix global `bin` directory.
+  - Commands become immediately available from `~/.vix/global/bin` when it is on `PATH`.
+  - Packages that provide proper `install(TARGETS ... RUNTIME DESTINATION bin)` rules continue to use the standard CMake installation process.
+
+- Fixed Vix Note asset resolution.
+  - Installed assets are now preferred over stale build-tree assets when launching `vix note`.
 
 ### Validation
 
 - Built the Vix Note module and the Vix CLI successfully.
-- Verified `vix note --list-extensions` with the four built-in extensions.
-- Verified custom cell type round-tripping with a Python cell.
+- Verified `vix note --list-extensions` with the built-in extensions.
+- Verified installation, enabling, disabling, and removal of Note extensions.
+- Verified custom cell type round-tripping with Python cells.
 - Verified the `/api/extensions` endpoint.
 - Verified execution through a temporary external Note extension runtime.
 - Verified extension-aware searches with:
   - `vix search --extension note --json`
   - `vix search json --json`
-
 - Verified `vix install -g gaspardkirira/cli_test`, `command -v cli_test`, and `cli_test chain 5`.
-- Added and ran a global install regression fixture for a package that builds an executable but only installs headers through CMake.
+- Added and executed a regression test covering global installation of header-only CLI packages.
 
 ### Known limitations
 
 - External Note extension runtimes currently use one-shot processes.
-- External process execution is currently implemented for POSIX platforms; Windows reports an explicit unsupported-runtime error.
-- Persistent kernels, interactive permissions, extension-provided JavaScript, native C ABI loading, and automatic local runtime builds are not yet included.
-- Permanent exhaustive CTest coverage for the extension system remains to be added.
+- External process execution is currently implemented only on POSIX platforms. Windows reports an explicit unsupported runtime error.
+- Persistent kernels, interactive permissions, extension-provided JavaScript, native C ABI loading, and automatic local runtime builds are not yet implemented.
+- Additional end-to-end CTest coverage for the extension system is planned.
 
 ## v2.7.6
 
