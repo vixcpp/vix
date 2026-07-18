@@ -7,17 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v2.7.7
 
+### Added
+
+- Added the first package-based extension system for Vix Note.
+  - Vix Note extensions are distributed as standard Vix registry packages.
+  - Added support for the `extensions.note` manifest field with API versioning, capabilities, custom cell types, runtime configuration, aliases, and permissions.
+  - Added discovery of built-in, project-local, and globally installed extensions.
+  - Project extensions take priority over global extensions, while built-in cell types remain protected.
+  - Added support for preserving custom cell types such as `python` when loading, saving, and exporting `.vixnote` documents.
+  - Added a generic external process runner using the `vix-note-extension-1` JSON protocol.
+  - Added the `GET /api/extensions` endpoint and dynamic frontend discovery of available cell types.
+  - Existing Markdown, HTML, C++, and Reply cells continue to work through the new extension registry.
+
+- Extended registry and package commands for extension-aware packages.
+  - `vix publish` now validates and preserves `extensions.note` metadata in registry entries and individual package versions.
+  - `vix search` now supports `--extension`, `--capability`, `--type`, and `--json`.
+  - Searches can now be performed using filters without requiring a text query.
+  - `vix install -g` now preserves extension metadata in the global installation registry.
+  - Added `vix note --list-extensions` for inspecting discovered Note extensions.
+
+- Added package manifests for additional Vix modules and published them to the Vix Registry.
+  - Added `vix.json` manifests for the Async, Env, Error, FS, IO, Log, Note, OS, Path, Process, Reply, Tests, and Utils modules.
+  - Updated the root repository to reference the new module revisions containing their registry metadata.
+  - These modules can now be discovered, versioned, and installed through the standard Vix package workflow.
+
 ### Fixed
 
 - Fixed global package installs for header-only packages that build a CLI executable but do not provide CMake runtime install rules.
   - `vix install -g` now detects the built command and stages it into the Vix global `bin` directory.
-  - Commands such as `cli_test` are available immediately from `~/.vix/global/bin` after install when that directory is already on `PATH`.
-  - Packages that already provide proper `install(TARGETS ... RUNTIME DESTINATION bin)` rules keep using the CMake install output as the source of truth.
+  - Commands such as `cli_test` are available immediately from `~/.vix/global/bin` after installation when that directory is already on `PATH`.
+  - Packages that already provide proper `install(TARGETS ... RUNTIME DESTINATION bin)` rules continue to use the CMake installation output as the source of truth.
 
 ### Validation
 
+- Built the Vix Note module and the Vix CLI successfully.
+- Verified `vix note --list-extensions` with the four built-in extensions.
+- Verified custom cell type round-tripping with a Python cell.
+- Verified the `/api/extensions` endpoint.
+- Verified execution through a temporary external Note extension runtime.
+- Verified extension-aware searches with:
+  - `vix search --extension note --json`
+  - `vix search json --json`
+
 - Verified `vix install -g gaspardkirira/cli_test`, `command -v cli_test`, and `cli_test chain 5`.
 - Added and ran a global install regression fixture for a package that builds an executable but only installs headers through CMake.
+
+### Known limitations
+
+- External Note extension runtimes currently use one-shot processes.
+- External process execution is currently implemented for POSIX platforms; Windows reports an explicit unsupported-runtime error.
+- Persistent kernels, interactive permissions, extension-provided JavaScript, native C ABI loading, and automatic local runtime builds are not yet included.
+- Permanent exhaustive CTest coverage for the extension system remains to be added.
 
 ## v2.7.6
 
