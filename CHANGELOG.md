@@ -5,6 +5,95 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.7.7
+
+### Added
+
+- Added the first package-based extension system for Vix Note.
+  - Vix Note extensions are distributed as standard Vix packages through the Vix Registry.
+  - Added support for the `extensions.note` manifest section, including API versioning, capabilities, custom cell types, runtime configuration, aliases, and permissions.
+  - Added discovery of built-in, project-local, and globally installed extensions.
+  - Project extensions take precedence over global extensions, while built-in cell types remain protected.
+  - Added support for preserving custom cell types such as `python` when loading, saving, and exporting `.vixnote` documents.
+  - Added a generic external runtime based on the `vix-note-extension-1` JSON protocol.
+  - Added the `GET /api/extensions` endpoint and dynamic frontend discovery of available cell types.
+  - Existing Markdown, HTML, C++, and Reply cells now run through the extension system.
+
+- Added extension management to the Vix Note interface.
+  - Browse installed, built-in, recommended, and registry extensions.
+  - Install, uninstall, enable, and disable extensions directly from the UI.
+  - Added a dedicated extension details page with runtime information and contribution metadata.
+
+- Extended registry and package commands for extension packages.
+  - `vix publish` now validates and preserves `extensions.note` metadata in published packages.
+  - `vix search` now supports `--extension`, `--capability`, `--type`, and `--json`.
+  - Extension searches can now be performed using filters without requiring a text query.
+  - `vix install -g` now preserves extension metadata in the global installation registry.
+  - Added `vix note --list-extensions` for listing all discovered Note extensions.
+
+- Modernized the Vix Reply interactive terminal.
+  - Added a new Vix-branded banner and prompt with compiler, platform, and keyboard shortcut information.
+  - Added a dedicated modern prompt for native C++ snippet mode.
+  - Added real-time C++ syntax highlighting for directives, headers, keywords, types, strings, numbers, comments, namespaces, macros, and function calls.
+  - Added automatic indentation based on C++ block depth.
+  - Added automatic dedentation when entering closing braces.
+  - Added code-mode `Tab` and `Shift+Tab` indentation.
+  - Added editable cursor positioning with left and right arrow navigation.
+  - Added insertion and deletion at the current cursor position instead of restricting edits to the end of the line.
+  - Added support for `Home`, `End`, `Delete`, `Ctrl+A`, `Ctrl+E`, `Ctrl+U`, and `Ctrl+K`.
+  - Added an optional Vi-style keymap through `VIX_REPLY_KEYMAP=vi`.
+  - Added initial Vi navigation commands including `h`, `l`, `0`, `$`, `w`, `b`, `i`, `a`, `I`, `A`, and `x`.
+  - Added terminal color detection with support for `NO_COLOR` and non-interactive terminals.
+
+### Fixed
+
+- Fixed global installation of header-only packages that build CLI executables without CMake runtime install rules.
+  - `vix install -g` now detects the generated executable and installs it into the Vix global `bin` directory.
+  - Commands become immediately available from `~/.vix/global/bin` when it is on `PATH`.
+  - Packages that provide proper `install(TARGETS ... RUNTIME DESTINATION bin)` rules continue to use the standard CMake installation process.
+
+- Fixed Vix Note asset resolution.
+  - Installed assets are now preferred over stale build-tree assets when launching `vix note`.
+
+- Fixed C++ editing behavior in Vix Reply.
+  - C++ indentation is no longer removed before snippets are stored or executed.
+  - Pressing `Tab` in C++ mode no longer opens the regular Reply command completion menu.
+  - Continuation prompts now align correctly with the first C++ input line.
+  - Empty lines inside C++ snippets are preserved without storing indentation-only whitespace.
+  - Backspace now removes indentation levels correctly at the beginning of a code line.
+  - Cursor navigation now works across the complete line while syntax highlighting remains active.
+
+### Validation
+
+- Built the Vix Note module and the Vix CLI successfully.
+- Verified `vix note --list-extensions` with the built-in extensions.
+- Verified installation, enabling, disabling, and removal of Note extensions.
+- Verified custom cell type round-tripping with Python cells.
+- Verified the `/api/extensions` endpoint.
+- Verified execution through a temporary external Note extension runtime.
+- Verified extension-aware searches with:
+  - `vix search --extension note --json`
+  - `vix search json --json`
+- Verified `vix install -g gaspardkirira/cli_test`, `command -v cli_test`, and `cli_test chain 5`.
+- Added and executed a regression test covering global installation of header-only CLI packages.
+- Built the complete Vix project with the updated Reply module.
+- Verified C++ syntax highlighting in the interactive terminal.
+- Verified automatic indentation and closing-brace dedentation.
+- Verified `Tab`, `Shift+Tab`, Backspace, arrow-key navigation, `Home`, `End`, and `Delete`.
+- Verified editing and inserting code in the middle of an existing line.
+- Verified native C++ snippet execution and structured compiler diagnostics.
+- Verified the optional Vi keymap with `VIX_REPLY_KEYMAP=vi`.
+- Verified that the updated Reply editor builds without unused-function warnings.
+
+### Known limitations
+
+- External Note extension runtimes currently use one-shot processes.
+- External process execution is currently implemented only on POSIX platforms. Windows reports an explicit unsupported runtime error.
+- Persistent kernels, interactive permissions, extension-provided JavaScript, native C ABI loading, and automatic local runtime builds are not yet implemented.
+- Additional end-to-end CTest coverage for the extension system is planned.
+- Real-time C++ highlighting in Vix Reply is lexical and does not perform full compiler-backed semantic analysis.
+- The Vi keymap currently provides a focused initial command set rather than complete Vim compatibility.
+
 ## v2.7.6
 
 ### Added

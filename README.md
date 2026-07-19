@@ -95,6 +95,18 @@ vix help <command>
 
 The README intentionally does not reproduce the complete command reference. Detailed command behavior, options, examples, and project formats are maintained in the [official documentation](https://docs.vixcpp.com).
 
+## Vix Reply
+
+<p align="center">
+  <img
+    src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1784487655/vix-repl_cxqsj2.png"
+    width="100%"
+    alt="Vix Reply interactive C++ REPL"
+  />
+</p>
+
+Vix Reply provides an interactive terminal for experimenting with C++, running native snippets, and receiving structured compiler diagnostics without creating a project first.
+
 ## Native C++ remains visible
 
 Vix is not a successor to C++, a new language syntax, or a separate compiler model. It does not turn C++ into an interpreted environment, and it does not place applications inside a closed runtime.
@@ -209,6 +221,18 @@ vix modules add client --websocket --workflow client
 
 See the [module documentation](https://docs.vixcpp.com), [vix.app guide](https://docs.vixcpp.com/guides/vix-app), and [application modules guide](https://docs.vixcpp.com/app-modules) for the complete reference.
 
+## Production deployment workflows
+
+Vix provides production workflows for building, testing, restarting services, checking application health, validating Nginx configuration, inspecting failure logs, and rolling back failed Git deployments.
+
+```bash
+vix deploy --dry-run
+vix deploy
+vix doctor production
+```
+
+Deployment behavior is configured in `vix.json`, while the application, compiler, service, and production infrastructure remain under the developer’s control.
+
 ## SDK profiles and the Vix Registry
 
 SDK profiles define coherent development environments for different kinds of Vix applications. They allow the CLI, runtime modules, build configuration, and supporting tools to be installed and upgraded together instead of being assembled manually on every machine.
@@ -221,13 +245,13 @@ Together, SDK profiles and the registry make it easier to reproduce the same pro
 
 <p align="center">
   <img
-    src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1782674915/vix-note_ly72av.png"
+    src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1784487655/vix-note_zwo1er.png"
     width="100%"
     alt="Vix Note interface"
   />
 </p>
 
-Vix Note provides a visual space for executable C++ notes, examples, experiments, and diagnostics. It uses the normal Vix workflow underneath, so code explored in a note remains connected to the same runtime and toolchain used by a project.
+Vix Note is a visual workspace for executable notes, experiments, and diagnostics. Its extension system allows packages to add new cell types, runtimes, and developer tools such as Python execution or C++ memory visualization.
 
 ```bash
 vix note
@@ -272,13 +296,15 @@ New capabilities can still be added, but they should solve a practical applicati
 
 ## Projects around Vix.cpp
 
-Vix.cpp remains the native foundation. Higher-level libraries and runtimes can grow around it without making the core platform lose focus.
+Vix.cpp remains the native foundation. Higher-level libraries, runtimes, and developer tools can grow around it without making the core platform lose focus.
 
 **[Rix](https://rix.vixcpp.com)** is the optional userland library layer for Vix applications. It provides application-level packages and a unified facade above the core Vix runtime.
 
 **[Cnerium](https://github.com/softadastra/cnerium)** is a reliability-first backend layer for Vix. It provides a place for backend structure and production-oriented patterns to evolve without turning the core runtime into a large opinionated framework.
 
 **[Kordex](https://github.com/softadastra/kordex)** is a JavaScript runtime for reliable local-first applications built on Vix.cpp. It demonstrates how the native platform can support higher-level runtimes while preserving a C++ foundation.
+
+**[Cgride](https://github.com/cgride/cgride)** is an embeddable native C++ build engine configured in C++. It provides project modeling, toolchain discovery, build graphs, incremental compilation, caching, and a minimal CLI. It is also designed for integration into runtimes and developer tools such as Vix.cpp.
 
 ## Working on this repository
 
@@ -309,4 +335,5 @@ Vix.cpp is maintained by [Softadastra](https://softadastra.com), a company build
 
 ## License
 
-Vix.cpp is available under the MIT License. See [LICENSE](LICENSE) for details.
+Vix.cpp is available under the MIT License. \
+See [LICENSE](LICENSE) for details.
