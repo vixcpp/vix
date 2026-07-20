@@ -448,7 +448,10 @@ jobs:
 
           BIN=""
           for p in "build/vix" "build/bin/vix" "build/Release/vix"; do
-            if [ -f "$p" ]; then BIN="$p"; break; fi
+            if [ -f "$p" ]; then
+              BIN="$p"
+              break
+            fi
           done
 
           if [ -z "$BIN" ]; then
@@ -458,22 +461,55 @@ jobs:
             exit 1
           fi
 
-          mkdir -p dist
-          cp "$BIN" dist/vix
-          chmod +x dist/vix
-
+          PACKAGE_DIR="package-${{ matrix.vixos }}-${{ matrix.arch }}"
           ASSET="vix-${{ matrix.vixos }}-${{ matrix.arch }}.tar.gz"
-          tar -C dist -czf "dist/$ASSET" vix
-          rm -f dist/vix
 
-      - name: Validate packaged binary (Linux)
+          rm -rf "$PACKAGE_DIR"
+          mkdir -p \
+            "$PACKAGE_DIR/share/vix/note/assets" \
+            dist
+
+          cp "$BIN" "$PACKAGE_DIR/vix"
+          chmod +x "$PACKAGE_DIR/vix"
+
+          cp modules/note/assets/index.html \
+            "$PACKAGE_DIR/share/vix/note/index.html"
+
+          cp modules/note/assets/note.css \
+            "$PACKAGE_DIR/share/vix/note/assets/note.css"
+
+          cp modules/note/assets/note.js \
+            "$PACKAGE_DIR/share/vix/note/assets/note.js"
+
+          test -x "$PACKAGE_DIR/vix"
+          test -f "$PACKAGE_DIR/share/vix/note/index.html"
+          test -f "$PACKAGE_DIR/share/vix/note/assets/note.css"
+          test -f "$PACKAGE_DIR/share/vix/note/assets/note.js"
+
+          tar -C "$PACKAGE_DIR" -czf "dist/$ASSET" .
+
+          echo "Archive content:"
+          tar -tzf "dist/$ASSET"
+
+          rm -rf "$PACKAGE_DIR"
+
+      - name: Validate packaged runtime (Linux)
         if: runner.os == 'Linux'
         shell: bash
         run: |
           set -euxo pipefail
 
+          rm -rf smoke
           mkdir -p smoke
-          tar -xzf "dist/vix-${{ matrix.vixos }}-${{ matrix.arch }}.tar.gz" -C smoke
+
+          tar -xzf \
+            "dist/vix-${{ matrix.vixos }}-${{ matrix.arch }}.tar.gz" \
+            -C smoke
+
+          test -x smoke/vix
+          test -f smoke/share/vix/note/index.html
+          test -f smoke/share/vix/note/assets/note.css
+          test -f smoke/share/vix/note/assets/note.js
 
           file smoke/vix
           ldd smoke/vix || true
@@ -485,6 +521,8 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
+
           $candidates = @(
             "build\vix.exe",
             "build\Release\vix.exe",
@@ -493,29 +531,118 @@ jobs:
           )
 
           $bin = $null
+
           foreach ($p in $candidates) {
-            if (Test-Path $p) { $bin = $p; break }
+            if (Test-Path -LiteralPath $p) {
+              $bin = $p
+              break
+            }
           }
 
-          if (!$bin) {
+          if (-not $bin) {
             Write-Host "Expected vix.exe not found in build outputs"
-            if (Test-Path "build") { Get-ChildItem -Recurse build | Select-Object FullName }
+
+            if (Test-Path -LiteralPath "build") {
+              Get-ChildItem -LiteralPath "build" -Recurse |
+                Select-Object FullName
+            }
+
             exit 1
           }
 
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Copy-Item $bin dist\vix.exe
+          $packageDir = "package-windows-${{ matrix.arch }}"
+          $noteDir = Join-Path $packageDir "share\vix\note"
+          $noteAssetsDir = Join-Path $noteDir "assets"
 
-          & dist\vix.exe --version
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Remove-Item `
+            -LiteralPath $packageDir `
+            -Recurse `
+            -Force `
+            -ErrorAction SilentlyContinue
 
-          & dist\vix.exe note --help | Select-Object -First 80
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item `
+            -ItemType Directory `
+            -Force `
+            -Path "dist" |
+            Out-Null
+
+          New-Item `
+            -ItemType Directory `
+            -Force `
+            -Path $noteAssetsDir |
+            Out-Null
+
+          Copy-Item `
+            -LiteralPath $bin `
+            -Destination (Join-Path $packageDir "vix.exe") `
+            -Force
+
+          Copy-Item `
+            -LiteralPath "modules\note\assets\index.html" `
+            -Destination (Join-Path $noteDir "index.html") `
+            -Force
+
+          Copy-Item `
+            -LiteralPath "modules\note\assets\note.css" `
+            -Destination (Join-Path $noteAssetsDir "note.css") `
+            -Force
+
+          Copy-Item `
+            -LiteralPath "modules\note\assets\note.js" `
+            -Destination (Join-Path $noteAssetsDir "note.js") `
+            -Force
+
+          $packagedExe = Join-Path $packageDir "vix.exe"
+
+          $requiredFiles = @(
+            $packagedExe,
+            (Join-Path $noteDir "index.html"),
+            (Join-Path $noteAssetsDir "note.css"),
+            (Join-Path $noteAssetsDir "note.js")
+          )
+
+          foreach ($requiredFile in $requiredFiles) {
+            if (-not (Test-Path -LiteralPath $requiredFile -PathType Leaf)) {
+              Write-Host "Missing package file: $requiredFile"
+              exit 1
+            }
+          }
+
+          & $packagedExe --version
+
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
+          & $packagedExe note --help |
+            Select-Object -First 80
+
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
 
           $asset = "vix-windows-${{ matrix.arch }}.zip"
-          Compress-Archive -Path dist\vix.exe -DestinationPath "dist\$asset" -Force
-          Remove-Item dist\vix.exe -Force
 
+          Compress-Archive `
+            -Path "$packageDir\*" `
+            -DestinationPath "dist\$asset" `
+            -Force
+
+          Write-Host "Packaged archive content:"
+
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+          [System.IO.Compression.ZipFile]::OpenRead(
+            (Resolve-Path "dist\$asset")
+          ).Entries |
+            ForEach-Object {
+              Write-Host $_.FullName
+            }
+
+          Remove-Item `
+            -LiteralPath $packageDir `
+            -Recurse `
+            -Force
       - name: Upload dist
         uses: actions/upload-artifact@v4
         with:

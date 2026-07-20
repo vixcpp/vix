@@ -2185,8 +2185,10 @@ if (VIX_ENABLE_INSTALL)
 
   # ---- Install CLI executable (not exported) ----
   if (TARGET vix_cli)
-    install(TARGETS vix_cli
+    install(
+      TARGETS vix_cli
       RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+      COMPONENT Runtime
     )
     message(STATUS "CLI install: installing target 'vix_cli' as 'vix'")
   else()
