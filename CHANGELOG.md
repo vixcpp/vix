@@ -5,6 +5,149 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# Vix v2.7.8
+
+## Added
+
+### Package moves and namespace migrations
+
+Added first-class support for package moves and namespace migrations across the Vix Registry.
+
+- `vix publish` now detects when an existing package has moved to a new repository, namespace, or package name.
+- Package moves are detected using shared Git history and repository identity.
+- Existing versions are preserved under the new package identity.
+- The previous registry package is automatically marked as deprecated.
+- Added `movedTo` metadata pointing users to the new package ID.
+- Added `migratedFrom` metadata to the new registry package.
+- Package descriptions, maintainers, keywords, documentation, repository metadata, and version history are preserved during migration.
+
+### Moved-package support in `vix add`
+
+- Adding a replacement package now removes the previous package identity from `vix.json`.
+- Old package dependencies are removed before the lockfile is regenerated.
+- Transitive dependencies from the old package identity are no longer retained unnecessarily.
+- Module dependencies declared in `vix.module` are also migrated.
+- Adding a package through its old ID can redirect to the package declared by `movedTo`.
+
+The command now displays the package replacement:
+
+```text
+replaced: old/package -> new/package
+```
+
+### Moved-package reporting in `vix outdated`
+
+- Deprecated package identities now follow their `movedTo` destination.
+- The command compares the installed version with the latest version of the replacement package.
+
+Moved packages are displayed with their destination:
+
+```text
+moved -> new/package
+```
+
+- JSON output now includes migration information through `moved` and `moved_to`.
+- The final summary now reports moved packages separately from regular outdated packages.
+
+### Moved-package migration in `vix update`
+
+- `vix update` now follows registry `movedTo` metadata.
+- The old dependency is replaced in `vix.json`.
+- The lockfile is regenerated using the new package identity.
+- Versions and hashes are read from the replacement package after migration.
+- Dry-run mode now reports package migrations before applying them.
+- JSON output now includes the original ID, target ID, and migration state.
+
+### Workspace package publishing
+
+- `vix publish` now accepts `"type": "workspace"`.
+- Workspace packages can aggregate dependencies without providing public headers.
+- Header validation remains required for `library`, `header-only`, and `header-and-source` packages.
+
+## Improved
+
+### Registry pull request automation
+
+Improved registry pull request automation in `vix publish`.
+
+- The command now creates the registry pull request automatically after pushing the publication branch.
+- Existing open pull requests for the same publication branch are reused.
+- The pull request URL is displayed after submission.
+- JSON output now includes the pull request URL.
+- Registry validation and automatic merge can begin immediately after publication.
+
+### Publication messages for migrated packages
+
+- Pull request titles now describe package moves instead of presenting them as unrelated new packages.
+- Pull request descriptions include the previous package ID, new package ID, version, tag, and commit.
+- Registry commit messages now clearly identify package migrations.
+
+## Fixed
+
+### Registry pull request submission
+
+Fixed `vix publish` reporting a package as submitted when no registry pull request had been created.
+
+- Publishing now fails clearly when GitHub CLI is unavailable.
+- Publishing now fails clearly when `gh` is not authenticated.
+- Publishing no longer silently ignores failures from `gh pr create`.
+
+### Duplicate dependencies after package moves
+
+Fixed duplicate dependencies after moving a package to a new namespace.
+
+- `vix add` no longer keeps both the previous and replacement package IDs in `vix.json`.
+- The generated `vix.lock` no longer contains both the old and new dependency trees.
+
+### Incorrect moved-package status in `vix outdated`
+
+Fixed `vix outdated` incorrectly reporting moved packages as current.
+
+- The command now follows the replacement package and reports its latest version.
+
+### Lockfile lookup after migration
+
+Fixed `vix update` attempting to read the old package ID from the regenerated lockfile.
+
+- Lockfile versions and hashes are now read using the resolved replacement package ID.
+
+### Package version ordering
+
+Fixed package version ordering in `vix update`.
+
+- Registry versions are now selected using semantic version comparison rather than lexical string ordering.
+
+### Workspace package validation
+
+Fixed publishing of dependency-only workspace packages being blocked by the public-header requirement.
+
+## Validation
+
+Verified migration of the Kordex packages from the `softadastra` namespace to `kordexjs`:
+
+```text
+softadastra/kordex-runtime  -> kordexjs/runtime
+softadastra/kordex-bindings -> kordexjs/bindings
+softadastra/kordex-std      -> kordexjs/std
+softadastra/kordex-cli      -> kordexjs/cli
+softadastra/kordex          -> kordexjs/kordex
+```
+
+Also verified:
+
+- `vix publish --dry-run --verbose` detects package moves correctly.
+- Migrated registry entries preserve previous versions.
+- Registry branches and pull requests are created automatically.
+- Previous package entries are deprecated and point to their replacements.
+- `vix add` automatically replaces old dependency IDs.
+- Regenerated lockfiles contain only the new package identities.
+- Moved packages are handled correctly for direct and transitive dependencies.
+- `vix outdated` reports moved packages and replacement versions.
+- `vix update --dry-run` reports package migrations.
+- `vix update` migrates both `vix.json` and `vix.lock`.
+- Workspace packages can be published without public headers.
+- The complete Vix project builds successfully with the updated CLI module.
+
 ## v2.7.7
 
 ### Added
