@@ -11,119 +11,139 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Package moves and namespace migrations
 
-Added first-class support for package moves and namespace migrations across the Vix Registry.
+Vix Registry packages can now move between repositories, namespaces, or package names without losing their history.
 
-- `vix publish` now detects when an existing package has moved to a new repository, namespace, or package name.
-- Package moves are detected using shared Git history and repository identity.
-- Existing versions are preserved under the new package identity.
-- The previous registry package is automatically marked as deprecated.
-- Added `movedTo` metadata pointing users to the new package ID.
-- Added `migratedFrom` metadata to the new registry package.
-- Package descriptions, maintainers, keywords, documentation, repository metadata, and version history are preserved during migration.
+`vix publish` detects package moves using repository identity and shared Git history. The new registry entry preserves:
 
-### Moved-package support in `vix add`
+- existing versions;
+- package metadata;
+- documentation;
+- maintainers;
+- keywords;
+- repository information.
 
-- Adding a replacement package now removes the previous package identity from `vix.json`.
-- Old package dependencies are removed before the lockfile is regenerated.
-- Transitive dependencies from the old package identity are no longer retained unnecessarily.
-- Module dependencies declared in `vix.module` are also migrated.
-- Adding a package through its old ID can redirect to the package declared by `movedTo`.
+The previous package is automatically deprecated and linked to its replacement through:
 
-The command now displays the package replacement:
+- `movedTo` on the previous package;
+- `migratedFrom` on the replacement package.
+
+### Migration support across package commands
+
+Package migrations are now supported throughout the CLI.
+
+#### `vix add`
+
+- Redirects old package IDs to their `movedTo` destination.
+- Replaces the previous dependency in `vix.json`.
+- Migrates dependencies declared in `vix.module`.
+- Removes the old dependency tree before regenerating `vix.lock`.
 
 ```text
 replaced: old/package -> new/package
 ```
 
-### Moved-package reporting in `vix outdated`
+#### `vix outdated`
 
-- Deprecated package identities now follow their `movedTo` destination.
-- The command compares the installed version with the latest version of the replacement package.
-
-Moved packages are displayed with their destination:
+- Follows moved packages to their replacement.
+- Compares the installed version with the latest replacement version.
+- Reports moved packages separately from regular outdated packages.
+- JSON output includes `moved` and `moved_to`.
 
 ```text
 moved -> new/package
 ```
 
-- JSON output now includes migration information through `moved` and `moved_to`.
-- The final summary now reports moved packages separately from regular outdated packages.
+#### `vix update`
 
-### Moved-package migration in `vix update`
+- Migrates old package IDs in `vix.json`.
+- Regenerates the lockfile using the replacement identity.
+- Supports migration reporting in dry-run and JSON modes.
+- Reads versions and hashes from the replacement package after migration.
 
-- `vix update` now follows registry `movedTo` metadata.
-- The old dependency is replaced in `vix.json`.
-- The lockfile is regenerated using the new package identity.
-- Versions and hashes are read from the replacement package after migration.
-- Dry-run mode now reports package migrations before applying them.
-- JSON output now includes the original ID, target ID, and migration state.
+### Workspace packages
 
-### Workspace package publishing
+`vix publish` now supports workspace packages:
 
-- `vix publish` now accepts `"type": "workspace"`.
-- Workspace packages can aggregate dependencies without providing public headers.
-- Header validation remains required for `library`, `header-only`, and `header-and-source` packages.
+```json
+{
+  "type": "workspace"
+}
+```
+
+Workspace packages can aggregate dependencies without providing public headers. Header validation remains enabled for packages that expose source code or libraries.
 
 ## Improved
 
-### Registry pull request automation
+### Registry publication workflow
 
-Improved registry pull request automation in `vix publish`.
+`vix publish` now creates the registry pull request automatically after pushing the publication branch.
 
-- The command now creates the registry pull request automatically after pushing the publication branch.
-- Existing open pull requests for the same publication branch are reused.
-- The pull request URL is displayed after submission.
-- JSON output now includes the pull request URL.
-- Registry validation and automatic merge can begin immediately after publication.
+- Existing pull requests for the same branch are reused.
+- The pull request URL is displayed and included in JSON output.
+- Migration pull requests identify both the previous and replacement package IDs.
+- Commit messages and pull request descriptions now clearly describe package moves.
 
-### Publication messages for migrated packages
+### SDK discovery in `vix build`
 
-- Pull request titles now describe package moves instead of presenting them as unrelated new packages.
-- Pull request descriptions include the previous package ID, new package ID, version, tag, and commit.
-- Registry commit messages now clearly identify package migrations.
+Managed SDK profiles are no longer required for every Vix-based project.
+
+`vix build` now preserves normal CMake package discovery when no compatible managed profile is installed. This maintains compatibility with:
+
+- system and local Vix installations;
+- Vix installations created before SDK profiles;
+- custom installation prefixes;
+- `Vix_DIR` and `CMAKE_PREFIX_PATH`;
+- Conan, vcpkg, and custom CMake toolchains.
+
+Managed profiles are still used automatically when a complete compatible profile set is available, but missing profiles no longer block configuration before CMake runs.
 
 ## Fixed
 
 ### Registry pull request submission
 
-Fixed `vix publish` reporting a package as submitted when no registry pull request had been created.
+Fixed `vix publish` reporting success when no registry pull request had been created.
 
-- Publishing now fails clearly when GitHub CLI is unavailable.
-- Publishing now fails clearly when `gh` is not authenticated.
-- Publishing no longer silently ignores failures from `gh pr create`.
+Publishing now fails clearly when:
+
+- GitHub CLI is unavailable;
+- `gh` is not authenticated;
+- pull request creation fails.
 
 ### Duplicate dependencies after package moves
 
-Fixed duplicate dependencies after moving a package to a new namespace.
+Fixed migrations retaining both the previous and replacement package IDs.
 
-- `vix add` no longer keeps both the previous and replacement package IDs in `vix.json`.
-- The generated `vix.lock` no longer contains both the old and new dependency trees.
+`vix.json` and `vix.lock` now contain only the replacement dependency and its required dependency tree.
 
-### Incorrect moved-package status in `vix outdated`
+### Moved-package status
 
-Fixed `vix outdated` incorrectly reporting moved packages as current.
-
-- The command now follows the replacement package and reports its latest version.
+Fixed `vix outdated` reporting moved packages as current instead of checking the replacement package.
 
 ### Lockfile lookup after migration
 
-Fixed `vix update` attempting to read the old package ID from the regenerated lockfile.
-
-- Lockfile versions and hashes are now read using the resolved replacement package ID.
+Fixed `vix update` reading the previous package ID after regenerating the lockfile with the replacement identity.
 
 ### Package version ordering
 
-Fixed package version ordering in `vix update`.
-
-- Registry versions are now selected using semantic version comparison rather than lexical string ordering.
+Registry versions are now selected using semantic version comparison instead of lexical string ordering.
 
 ### Workspace package validation
 
-Fixed publishing of dependency-only workspace packages being blocked by the public-header requirement.
+Fixed dependency-only workspace packages being rejected because they did not contain public headers.
+
+### Legacy and system SDK builds
+
+Fixed `vix build` rejecting projects that used a valid Vix installation outside `~/.vix/sdk`.
+
+Projects using system, custom-prefix, or legacy Vix installations can now be configured through normal CMake discovery without running:
+
+```bash
+vix upgrade --sdk default
+```
 
 ## Validation
 
-Verified migration of the Kordex packages from the `softadastra` namespace to `kordexjs`:
+Package migration was verified with the Kordex namespace move:
 
 ```text
 softadastra/kordex-runtime  -> kordexjs/runtime
@@ -133,20 +153,18 @@ softadastra/kordex-cli      -> kordexjs/cli
 softadastra/kordex          -> kordexjs/kordex
 ```
 
-Also verified:
+The release was also validated for:
 
-- `vix publish --dry-run --verbose` detects package moves correctly.
-- Migrated registry entries preserve previous versions.
-- Registry branches and pull requests are created automatically.
-- Previous package entries are deprecated and point to their replacements.
-- `vix add` automatically replaces old dependency IDs.
-- Regenerated lockfiles contain only the new package identities.
-- Moved packages are handled correctly for direct and transitive dependencies.
-- `vix outdated` reports moved packages and replacement versions.
-- `vix update --dry-run` reports package migrations.
-- `vix update` migrates both `vix.json` and `vix.lock`.
-- Workspace packages can be published without public headers.
-- The complete Vix project builds successfully with the updated CLI module.
+- migration detection during publication;
+- preservation of package versions and metadata;
+- automatic registry pull request creation;
+- dependency replacement in `vix.json` and `vix.module`;
+- clean lockfile regeneration;
+- direct and transitive package migrations;
+- migration reporting in `vix outdated` and `vix update`;
+- workspace package publication;
+- builds using managed, system, local, and legacy Vix SDK installations;
+- a complete Vix project build with the updated CLI module.
 
 ## v2.7.7
 
