@@ -87,3 +87,5 @@ issues_audit.json
 # ======================================================
 registry/
 .vix/
+scripts/publish-engine-issues.sh
+issues/
