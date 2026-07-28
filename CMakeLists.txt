@@ -1540,10 +1540,17 @@ if (VIX_ENABLE_CLI AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/cli/CMakeList
   set(VIX_CLI_ENABLE_DESKTOP ${VIX_CLI_ENABLE_DESKTOP}
       CACHE BOOL "Build vix desktop CLI support through vix::ui" FORCE)
   add_subdirectory(modules/cli cli_build)
-  if (VIX_BUILD_TESTS AND TARGET vix_cli AND TARGET vix_engine_model_tests AND TARGET vix_engine_parser_tests)
+  if (VIX_BUILD_TESTS
+      AND TARGET vix_cli
+      AND TARGET vix_engine_model_tests
+      AND TARGET vix_engine_parser_tests
+      AND TARGET vix_engine_ninja_tests
+      AND TARGET vix_engine_graph_tests)
     add_dependencies(vix_cli
       vix_engine_model_tests
       vix_engine_parser_tests
+      vix_engine_ninja_tests
+      vix_engine_graph_tests
     )
   endif()
 else()
