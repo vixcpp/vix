@@ -1545,12 +1545,16 @@ if (VIX_ENABLE_CLI AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/cli/CMakeList
       AND TARGET vix_engine_model_tests
       AND TARGET vix_engine_parser_tests
       AND TARGET vix_engine_ninja_tests
-      AND TARGET vix_engine_graph_tests)
+      AND TARGET vix_engine_graph_tests
+      AND TARGET vix_engine_scheduler_tests
+      AND TARGET vix_cli_build_task_process_executor_tests)
     add_dependencies(vix_cli
       vix_engine_model_tests
       vix_engine_parser_tests
       vix_engine_ninja_tests
       vix_engine_graph_tests
+      vix_engine_scheduler_tests
+      vix_cli_build_task_process_executor_tests
     )
   endif()
 else()
