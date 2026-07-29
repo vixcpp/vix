@@ -337,3 +337,11 @@ Vix.cpp is maintained by [Softadastra](https://softadastra.com), a company build
 
 Vix.cpp is available under the MIT License. \
 See [LICENSE](LICENSE) for details.
+
+## Setup
+
+Copy the example environment file and adjust values:
+
+```bash
+cp .env.example .env
+```
