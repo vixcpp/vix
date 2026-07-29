@@ -92,6 +92,7 @@ set(_VIX_SDK_PROFILE_OPTION_VARS
   VIX_CLI_ENABLE_DESKTOP
   VIX_ENABLE_NOTE
   VIX_ENABLE_PROCESS
+  VIX_ENABLE_ENGINE
   VIX_ENABLE_THREADPOOL
   VIX_ENABLE_KV
   VIX_ENABLE_AGENT
@@ -296,6 +297,7 @@ option(VIX_NOTE_BUILD_TESTS        "Build vix::note tests"                      
 option(VIX_NOTE_BUILD_EXAMPLES     "Build vix::note examples"                                     OFF)
 
 option(VIX_ENABLE_PROCESS          "Build Vix Process module"                                     ON)
+option(VIX_ENABLE_ENGINE           "Build Vix Engine module"                                      ON)
 
 option(VIX_ENABLE_THREADPOOL       "Build Vix ThreadPool module"                                  ON)
 option(VIX_THREADPOOL_BUILD_EXAMPLES   "Build vix::threadpool examples"                           OFF)
@@ -353,6 +355,7 @@ function(vix_sdk_profile_common)
   vix_sdk_profile_default(VIX_CLI_ENABLE_DESKTOP OFF)
   vix_sdk_profile_default(VIX_ENABLE_NOTE ON)
   vix_sdk_profile_default(VIX_ENABLE_PROCESS ON)
+  vix_sdk_profile_default(VIX_ENABLE_ENGINE ON)
   vix_sdk_profile_default(VIX_ENABLE_THREADPOOL ON)
   vix_sdk_profile_default(VIX_ENABLE_KV OFF)
   vix_sdk_profile_default(VIX_ENABLE_AGENT OFF)
@@ -516,6 +519,7 @@ set(VIX_CLI_ENABLE_DESKTOP     ${VIX_CLI_ENABLE_DESKTOP} CACHE BOOL "Build vix d
 set(VIX_WEBSOCKET_BUILD_TESTS  ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::websocket tests")
 set(VIX_UI_BUILD_TESTS         ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::ui tests")
 set(VIX_NOTE_BUILD_TESTS       ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::note tests")
+set(VIX_ENGINE_BUILD_TESTS     ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::engine tests")
 
 # Some modules use their own public option names.
 set(TEMPLATE_BUILD_TESTS       ${VIX_TEMPLATE_BUILD_TESTS} CACHE BOOL "Build template tests")
@@ -790,6 +794,22 @@ else()
   message(FATAL_ERROR "Missing 'modules/fs'. Run: git submodule update --init --recursive")
 endif()
 
+# --- Utils ---
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/utils/CMakeLists.txt")
+  message(STATUS "Adding 'modules/utils'...")
+  add_subdirectory(modules/utils utils_build)
+else()
+  message(FATAL_ERROR "Missing 'modules/utils'. Run: git submodule update --init --recursive")
+endif()
+
+# --- Log ---
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/log/CMakeLists.txt")
+  message(STATUS "Adding 'modules/log'...")
+  add_subdirectory(modules/log log_build)
+else()
+  message(FATAL_ERROR "Missing 'modules/log'. Run: git submodule update --init --recursive")
+endif()
+
 # --- IO ---
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/io/CMakeLists.txt")
   message(STATUS "Adding 'modules/io'...")
@@ -910,22 +930,6 @@ if (VIX_ENABLE_REQUESTS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/requests
   endif()
 else()
   message(STATUS "Requests: disabled or not present.")
-endif()
-
-# --- Utils ---
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/utils/CMakeLists.txt")
-  message(STATUS "Adding 'modules/utils'...")
-  add_subdirectory(modules/utils utils_build)
-else()
-  message(FATAL_ERROR "Missing 'modules/utils'. Run: git submodule update --init --recursive")
-endif()
-
-# --- Log ---
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/log/CMakeLists.txt")
-  message(STATUS "Adding 'modules/log'...")
-  add_subdirectory(modules/log log_build)
-else()
-  message(FATAL_ERROR "Missing 'modules/log'. Run: git submodule update --init --recursive")
 endif()
 
 # --- Tests (optional) ---
@@ -1522,12 +1526,49 @@ else()
   message(STATUS "WebSocket: disabled or not present.")
 endif()
 
+# --- Engine (optional, before CLI) ---
+if (VIX_ENABLE_ENGINE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/engine/CMakeLists.txt")
+  message(STATUS "Adding 'modules/engine'...")
+  add_subdirectory(modules/engine engine_build)
+else()
+  message(STATUS "Engine: disabled or not present.")
+endif()
+
 # --- CLI (optional) ---
 if (VIX_ENABLE_CLI AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/cli/CMakeLists.txt")
   message(STATUS "Adding 'modules/cli'...")
   set(VIX_CLI_ENABLE_DESKTOP ${VIX_CLI_ENABLE_DESKTOP}
       CACHE BOOL "Build vix desktop CLI support through vix::ui" FORCE)
   add_subdirectory(modules/cli cli_build)
+  if (VIX_BUILD_TESTS
+      AND TARGET vix_cli
+      AND TARGET vix_engine_model_tests
+      AND TARGET vix_engine_parser_tests
+      AND TARGET vix_engine_ninja_tests
+      AND TARGET vix_engine_graph_tests
+      AND TARGET vix_engine_scheduler_tests
+      AND TARGET vix_engine_process_tests
+      AND TARGET vix_engine_object_cache_tests
+      AND TARGET vix_engine_graph_executor_tests
+      AND TARGET vix_engine_artifact_cache_tests
+      AND TARGET vix_engine_execution_plan_tests
+      AND TARGET vix_cli_build_context_compat_tests
+      AND TARGET vix_cli_build_task_process_executor_tests)
+    add_dependencies(vix_cli
+      vix_engine_model_tests
+      vix_engine_parser_tests
+      vix_engine_ninja_tests
+      vix_engine_graph_tests
+      vix_engine_scheduler_tests
+      vix_engine_process_tests
+      vix_engine_object_cache_tests
+      vix_engine_graph_executor_tests
+      vix_engine_artifact_cache_tests
+      vix_engine_execution_plan_tests
+      vix_cli_build_context_compat_tests
+      vix_cli_build_task_process_executor_tests
+    )
+  endif()
 else()
   message(STATUS "CLI: disabled or not present.")
 endif()
@@ -1628,6 +1669,10 @@ endif()
 
 if (TARGET vix::process)
   target_link_libraries(vix INTERFACE vix::process)
+endif()
+
+if (TARGET vix::engine)
+  target_link_libraries(vix INTERFACE vix::engine)
 endif()
 
 if (TARGET vix::threadpool)

@@ -163,3 +163,7 @@
 	path = modules/requests
 	url = https://github.com/vixcpp/requests.git
 	branch = dev
+[submodule "modules/engine"]
+	path = modules/engine
+	url = https://github.com/vixcpp/engine.git
+	branch = dev
