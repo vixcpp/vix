@@ -794,6 +794,22 @@ else()
   message(FATAL_ERROR "Missing 'modules/fs'. Run: git submodule update --init --recursive")
 endif()
 
+# --- Utils ---
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/utils/CMakeLists.txt")
+  message(STATUS "Adding 'modules/utils'...")
+  add_subdirectory(modules/utils utils_build)
+else()
+  message(FATAL_ERROR "Missing 'modules/utils'. Run: git submodule update --init --recursive")
+endif()
+
+# --- Log ---
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/log/CMakeLists.txt")
+  message(STATUS "Adding 'modules/log'...")
+  add_subdirectory(modules/log log_build)
+else()
+  message(FATAL_ERROR "Missing 'modules/log'. Run: git submodule update --init --recursive")
+endif()
+
 # --- IO ---
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/io/CMakeLists.txt")
   message(STATUS "Adding 'modules/io'...")
@@ -914,22 +930,6 @@ if (VIX_ENABLE_REQUESTS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/requests
   endif()
 else()
   message(STATUS "Requests: disabled or not present.")
-endif()
-
-# --- Utils ---
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/utils/CMakeLists.txt")
-  message(STATUS "Adding 'modules/utils'...")
-  add_subdirectory(modules/utils utils_build)
-else()
-  message(FATAL_ERROR "Missing 'modules/utils'. Run: git submodule update --init --recursive")
-endif()
-
-# --- Log ---
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/log/CMakeLists.txt")
-  message(STATUS "Adding 'modules/log'...")
-  add_subdirectory(modules/log log_build)
-else()
-  message(FATAL_ERROR "Missing 'modules/log'. Run: git submodule update --init --recursive")
 endif()
 
 # --- Tests (optional) ---

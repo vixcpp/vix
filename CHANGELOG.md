@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Vix Registry packages can now move between repositories, namespaces, or package names without losing their history.
 
-`vix publish` detects package moves using repository identity and shared Git history. The new registry entry preserves:
+`vix publish` detects package moves using repository identity and shared Git history. The replacement package preserves:
 
 - existing versions;
 - package metadata;
@@ -27,16 +27,14 @@ The previous package is automatically deprecated and linked to its replacement t
 - `movedTo` on the previous package;
 - `migratedFrom` on the replacement package.
 
-### Migration support across package commands
-
-Package migrations are now supported throughout the CLI.
+Package migrations are supported across the CLI.
 
 #### `vix add`
 
 - Redirects old package IDs to their `movedTo` destination.
 - Replaces the previous dependency in `vix.json`.
 - Migrates dependencies declared in `vix.module`.
-- Removes the old dependency tree before regenerating `vix.lock`.
+- Removes the previous dependency tree before regenerating `vix.lock`.
 
 ```text
 replaced: old/package -> new/package
@@ -46,8 +44,8 @@ replaced: old/package -> new/package
 
 - Follows moved packages to their replacement.
 - Compares the installed version with the latest replacement version.
-- Reports moved packages separately from regular outdated packages.
-- JSON output includes `moved` and `moved_to`.
+- Reports package moves separately from regular updates.
+- Includes `moved` and `moved_to` in JSON output.
 
 ```text
 moved -> new/package
@@ -56,13 +54,13 @@ moved -> new/package
 #### `vix update`
 
 - Migrates old package IDs in `vix.json`.
-- Regenerates the lockfile using the replacement identity.
-- Supports migration reporting in dry-run and JSON modes.
-- Reads versions and hashes from the replacement package after migration.
+- Regenerates `vix.lock` using the replacement identity.
+- Reads versions and hashes from the replacement package.
+- Reports migrations in regular, dry-run, and JSON modes.
 
 ### Workspace packages
 
-`vix publish` now supports workspace packages:
+`vix publish` now supports dependency-only workspace packages:
 
 ```json
 {
@@ -70,7 +68,7 @@ moved -> new/package
 }
 ```
 
-Workspace packages can aggregate dependencies without providing public headers. Header validation remains enabled for packages that expose source code or libraries.
+Workspace packages can aggregate dependencies without exposing public headers. Header validation remains enabled for source and library packages.
 
 ### Fast incremental build watch mode
 
@@ -80,21 +78,20 @@ Added persistent incremental builds through:
 vix build --watch
 ```
 
-Watch mode performs the initial build, keeps the build session alive, and rebuilds the project whenever relevant files change.
+Watch mode performs the initial build, keeps the build session alive, and rebuilds the project when relevant files change.
 
 It supports:
 
 - standard CMake projects;
-- generated `vix.app` projects;
-- native `vix.app` projects;
+- generated and native `vix.app` projects;
 - single C++ source builds;
-- source and header change detection;
+- source and header changes;
 - structural project changes;
 - CMake configuration changes;
-- continued watching after compiler or linker failures;
+- recovery after compiler or linker failures;
 - clean shutdown with `Ctrl+C`.
 
-For ordinary source and header edits, Vix preserves the execution plan and build graph in memory. It avoids project rediscovery and unnecessary CMake configuration, then delegates only the required incremental work to the graph executor or Ninja.
+For ordinary source and header edits, Vix keeps the build graph and execution plan in memory. It avoids unnecessary project discovery and CMake configuration, then delegates only the required incremental work to the graph executor or Ninja.
 
 ```text
 watching shop
@@ -103,9 +100,15 @@ src/main.cpp rebuilt in 0.3s
 include/shop.hpp rebuilt in 0.2s
 ```
 
-The native Linux watcher uses `inotify` with recursive directory monitoring, event coalescing, rename handling, ignored build paths, and duplicate-event suppression.
+On Linux, watch mode uses `inotify` with:
 
-Detailed watcher, graph, and build-system information remains available through:
+- recursive directory monitoring;
+- event coalescing;
+- rename handling;
+- ignored build and generated paths;
+- duplicate-event suppression.
+
+Detailed watcher and build-system information remains available through:
 
 ```bash
 vix build --watch --verbose
@@ -119,28 +122,31 @@ vix build --watch --verbose
 
 - Existing pull requests for the same branch are reused.
 - The pull request URL is displayed and included in JSON output.
-- Migration pull requests identify both the previous and replacement package IDs.
-- Commit messages and pull request descriptions now clearly describe package moves.
+- Migration pull requests identify both package IDs.
+- Commit messages and pull request descriptions clearly describe package moves.
 
 ### SDK discovery in `vix build`
 
 Managed SDK profiles are no longer required for every Vix-based project.
 
-`vix build` now preserves normal CMake package discovery when no compatible managed profile is installed. This maintains compatibility with:
+When no complete compatible managed profile is installed, `vix build` preserves normal CMake package discovery. This maintains compatibility with:
 
 - system and local Vix installations;
-- Vix installations created before SDK profiles;
+- installations created before SDK profiles;
 - custom installation prefixes;
-- `Vix_DIR` and `CMAKE_PREFIX_PATH`;
-- Conan, vcpkg, and custom CMake toolchains.
+- `Vix_DIR`;
+- `CMAKE_PREFIX_PATH`;
+- Conan;
+- vcpkg;
+- custom CMake toolchains.
 
-Managed profiles are still used automatically when a complete compatible profile set is available, but missing profiles no longer block configuration before CMake runs.
+Managed profiles are still selected automatically when a compatible profile set is available.
 
 ### Build watch output
 
 The default `vix build --watch` output is now compact and focused on useful information.
 
-Successful builds no longer display:
+Successful rebuilds no longer display:
 
 - raw Ninja progress;
 - object file paths;
@@ -148,7 +154,7 @@ Successful builds no longer display:
 - progress bars;
 - build-system implementation details.
 
-Each successful rebuild is summarized on one line. Full details remain available with `--verbose`.
+Each successful rebuild is summarized on one line. Full diagnostics remain available with `--verbose`.
 
 ## Fixed
 
@@ -162,19 +168,15 @@ Publishing now fails clearly when:
 - `gh` is not authenticated;
 - pull request creation fails.
 
-### Duplicate dependencies after package moves
+### Package migration consistency
 
-Fixed migrations retaining both the previous and replacement package IDs.
+Fixed several migration issues:
 
-`vix.json` and `vix.lock` now contain only the replacement dependency and its required dependency tree.
+- `vix.json` and `vix.lock` retaining both the previous and replacement package IDs;
+- `vix outdated` reporting moved packages as current without checking the replacement;
+- `vix update` reading the previous package identity after lockfile regeneration.
 
-### Moved-package status
-
-Fixed `vix outdated` reporting moved packages as current instead of checking the replacement package.
-
-### Lockfile lookup after migration
-
-Fixed `vix update` reading the previous package ID after regenerating the lockfile with the replacement identity.
+After migration, only the replacement package and its required dependency tree remain.
 
 ### Package version ordering
 
@@ -186,9 +188,9 @@ Fixed dependency-only workspace packages being rejected because they did not con
 
 ### Legacy and system SDK builds
 
-Fixed `vix build` rejecting projects that used a valid Vix installation outside `~/.vix/sdk`.
+Fixed `vix build` rejecting valid Vix installations outside `~/.vix/sdk`.
 
-Projects using system, custom-prefix, or legacy Vix installations can now be configured through normal CMake discovery without running:
+Projects using system, local, custom-prefix, or legacy installations can now rely on normal CMake discovery without running:
 
 ```bash
 vix upgrade --sdk default
@@ -196,15 +198,15 @@ vix upgrade --sdk default
 
 ### Duplicate watch rebuilds
 
-Fixed a single file save occasionally triggering an additional unnecessary rebuild.
+Fixed a single file save occasionally triggering an unnecessary second rebuild.
 
 Watch mode now:
 
 - coalesces related filesystem events;
-- suppresses duplicate events for unchanged file states;
+- suppresses events whose file state did not change;
 - avoids invoking Ninja when graph invalidation produces no work;
-- preserves real edits received while another rebuild is running;
-- ignores build outputs and Vix-generated state files.
+- preserves edits received while another rebuild is running;
+- ignores build outputs, caches, and Vix-generated state files.
 
 ## Validation
 
@@ -218,27 +220,27 @@ softadastra/kordex-cli      -> kordexjs/cli
 softadastra/kordex          -> kordexjs/kordex
 ```
 
-The release was also validated for:
+The release was validated for:
 
 - migration detection during publication;
-- preservation of package versions and metadata;
+- package history and metadata preservation;
 - automatic registry pull request creation;
 - dependency replacement in `vix.json` and `vix.module`;
 - clean lockfile regeneration;
 - direct and transitive package migrations;
 - migration reporting in `vix outdated` and `vix update`;
 - workspace package publication;
-- builds using managed, system, local, and legacy Vix SDK installations;
-- a complete Vix project build with the updated CLI module;
+- managed, system, local, custom-prefix, and legacy SDK discovery;
+- a complete Vix project build with the updated CLI;
 - persistent `vix build --watch` sessions;
 - incremental source and header rebuilds;
 - structural and CMake configuration changes;
 - recovery after compiler failures;
-- duplicate filesystem event suppression;
+- duplicate-event suppression;
 - ignored build-directory and cache events;
-- clean watcher shutdown with `Ctrl+C`;
-- compact default watch output;
-- detailed watch diagnostics with `--verbose`.
+- clean watcher shutdown;
+- compact default output;
+- detailed diagnostics with `--verbose`.
 
 ## v2.7.7
 
