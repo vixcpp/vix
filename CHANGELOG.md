@@ -72,6 +72,45 @@ moved -> new/package
 
 Workspace packages can aggregate dependencies without providing public headers. Header validation remains enabled for packages that expose source code or libraries.
 
+### Fast incremental build watch mode
+
+Added persistent incremental builds through:
+
+```bash
+vix build --watch
+```
+
+Watch mode performs the initial build, keeps the build session alive, and rebuilds the project whenever relevant files change.
+
+It supports:
+
+- standard CMake projects;
+- generated `vix.app` projects;
+- native `vix.app` projects;
+- single C++ source builds;
+- source and header change detection;
+- structural project changes;
+- CMake configuration changes;
+- continued watching after compiler or linker failures;
+- clean shutdown with `Ctrl+C`.
+
+For ordinary source and header edits, Vix preserves the execution plan and build graph in memory. It avoids project rediscovery and unnecessary CMake configuration, then delegates only the required incremental work to the graph executor or Ninja.
+
+```text
+watching shop
+ready in 1.4s
+src/main.cpp rebuilt in 0.3s
+include/shop.hpp rebuilt in 0.2s
+```
+
+The native Linux watcher uses `inotify` with recursive directory monitoring, event coalescing, rename handling, ignored build paths, and duplicate-event suppression.
+
+Detailed watcher, graph, and build-system information remains available through:
+
+```bash
+vix build --watch --verbose
+```
+
 ## Improved
 
 ### Registry publication workflow
@@ -96,6 +135,20 @@ Managed SDK profiles are no longer required for every Vix-based project.
 - Conan, vcpkg, and custom CMake toolchains.
 
 Managed profiles are still used automatically when a complete compatible profile set is available, but missing profiles no longer block configuration before CMake runs.
+
+### Build watch output
+
+The default `vix build --watch` output is now compact and focused on useful information.
+
+Successful builds no longer display:
+
+- raw Ninja progress;
+- object file paths;
+- repeated project headers;
+- progress bars;
+- build-system implementation details.
+
+Each successful rebuild is summarized on one line. Full details remain available with `--verbose`.
 
 ## Fixed
 
@@ -141,6 +194,18 @@ Projects using system, custom-prefix, or legacy Vix installations can now be con
 vix upgrade --sdk default
 ```
 
+### Duplicate watch rebuilds
+
+Fixed a single file save occasionally triggering an additional unnecessary rebuild.
+
+Watch mode now:
+
+- coalesces related filesystem events;
+- suppresses duplicate events for unchanged file states;
+- avoids invoking Ninja when graph invalidation produces no work;
+- preserves real edits received while another rebuild is running;
+- ignores build outputs and Vix-generated state files.
+
 ## Validation
 
 Package migration was verified with the Kordex namespace move:
@@ -164,7 +229,16 @@ The release was also validated for:
 - migration reporting in `vix outdated` and `vix update`;
 - workspace package publication;
 - builds using managed, system, local, and legacy Vix SDK installations;
-- a complete Vix project build with the updated CLI module.
+- a complete Vix project build with the updated CLI module;
+- persistent `vix build --watch` sessions;
+- incremental source and header rebuilds;
+- structural and CMake configuration changes;
+- recovery after compiler failures;
+- duplicate filesystem event suppression;
+- ignored build-directory and cache events;
+- clean watcher shutdown with `Ctrl+C`;
+- compact default watch output;
+- detailed watch diagnostics with `--verbose`.
 
 ## v2.7.7
 
