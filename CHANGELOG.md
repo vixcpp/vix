@@ -5,6 +5,458 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# Vix v2.8.0
+
+## Added
+
+### Stateful realtime applications
+
+Added the new `vix::realtime` module for building authoritative, stateful realtime applications in C++.
+
+The module introduces a transport-independent runtime based on:
+
+- stateful rooms;
+- serialized commands;
+- deterministic events;
+- logical sessions;
+- room membership;
+- presence;
+- snapshots;
+- event replay;
+- reconnection;
+- interchangeable persistence stores.
+
+Applications can now define their own room state and command handlers while the runtime manages command execution, event persistence, state application, room versions, snapshots, recovery, and session routing.
+
+### Authoritative rooms
+
+Added rooms with one authoritative state and one serialized command execution path.
+
+Rooms support:
+
+- explicit opening and closing;
+- application-defined room types;
+- custom state implementations;
+- custom command handlers;
+- session joins and leaves;
+- queued and immediate commands;
+- event broadcasting;
+- command backpressure;
+- room metadata;
+- configurable lifecycle behavior;
+- deterministic failure handling.
+
+Commands are executed serially to prevent concurrent mutations of authoritative room state.
+
+### Commands and events
+
+Added typed room commands with:
+
+- room identifiers;
+- session identifiers;
+- request identifiers;
+- correlation identifiers;
+- expected room versions;
+- JSON payloads;
+- metadata;
+- creation timestamps;
+- validation.
+
+Accepted commands can produce one or more events.
+
+Events receive authoritative event identifiers and room versions before being persisted and applied to room state.
+
+### Event audiences
+
+Added event audience controls for delivering events to:
+
+- the complete room;
+- only the sending session;
+- every session except the sender;
+- selected sessions.
+
+The room runtime remains independent from the network transport responsible for delivering those events.
+
+### Snapshots and event replay
+
+Added snapshot-based room recovery.
+
+Rooms can now:
+
+- create snapshots after a configured number of events;
+- create snapshots explicitly;
+- create a final snapshot when closing;
+- retain a configurable number of recent snapshots;
+- restore the latest available snapshot;
+- replay events created after the snapshot;
+- replay the complete history when no snapshot exists.
+
+Recovery preserves:
+
+- authoritative room state;
+- room version;
+- latest event identifier;
+- deterministic event ordering.
+
+Reopening a room does not duplicate already persisted events.
+
+### Logical sessions
+
+Added logical sessions that are independent from individual network connections.
+
+Sessions support:
+
+- stable session identifiers;
+- identity information;
+- metadata;
+- room memberships;
+- connection attachment and detachment;
+- connection replacement;
+- resume tokens;
+- per-room acknowledgement positions.
+
+A session can remain recoverable after its underlying transport connection is lost.
+
+### Session reconnection
+
+Added session recovery using resume tokens and acknowledged event positions.
+
+Reconnect flows can now:
+
+- validate a resume token;
+- replace the previous connection;
+- restore session memberships;
+- replay missing room events;
+- continue from the last acknowledged event;
+- maintain independent replay positions across rooms.
+
+### Snapshot fallback
+
+Added snapshot fallback for clients that are too far behind for a bounded event replay.
+
+The recovery flow can send:
+
+1. the latest available room snapshot;
+2. events persisted after that snapshot;
+3. the final replay position.
+
+This allows stale clients to recover without replaying the entire room history.
+
+### Presence
+
+Added local presence tracking for room sessions.
+
+Presence records support:
+
+- room and session identifiers;
+- identity;
+- node ownership;
+- connection identifiers;
+- metadata;
+- heartbeat timestamps;
+- present, detached, and left states;
+- expiration and stale-record cleanup.
+
+### Room management
+
+Added `RoomManager` for coordinating rooms, sessions, factories, stores, presence, and command routing.
+
+The manager supports:
+
+- room factory registration;
+- opening and locating rooms;
+- closing rooms;
+- creating and locating sessions;
+- joining and leaving rooms;
+- attaching and detaching connections;
+- routing room commands;
+- configured room and session limits;
+- inactive room cleanup;
+- controlled runtime shutdown.
+
+### Room directory and ownership
+
+Added room directory and ownership abstractions.
+
+Active rooms can be associated with the node responsible for their authoritative execution, providing the foundation for future multi-process and distributed routing.
+
+### Persistence stores
+
+Added persistence interfaces for:
+
+- room events;
+- room snapshots;
+- presence records.
+
+The initial runtime includes:
+
+- `MemoryEventStore`;
+- `MemorySnapshotStore`;
+- local in-memory presence storage.
+
+Event and snapshot stores can be replaced without changing application room state or command handlers.
+
+### Optional PostgreSQL persistence
+
+Added optional PostgreSQL event and snapshot store support.
+
+PostgreSQL persistence is disabled by default and can be enabled independently from the realtime transport layer.
+
+### Optional WebSocket adapter
+
+Added an optional adapter between `vix::realtime` and `vix::websocket`.
+
+The adapter handles:
+
+- connection lifecycle events;
+- realtime protocol parsing;
+- session opening and resumption;
+- room joins and leaves;
+- command forwarding;
+- event delivery;
+- acknowledgements;
+- protocol errors;
+- connection backpressure.
+
+The authoritative realtime core can be built and used without WebSocket support.
+
+### Realtime protocol
+
+Added a versioned protocol envelope for communication between realtime clients and servers.
+
+Protocol messages cover:
+
+- session opening;
+- session resumption;
+- room joining;
+- room leaving;
+- room commands;
+- command acceptance;
+- command rejection;
+- room events;
+- room snapshots;
+- event acknowledgements;
+- replay completion;
+- presence updates;
+- ping and pong;
+- protocol errors;
+- server draining notifications.
+
+Protocol messages include version validation and structured parsing errors.
+
+### Public API
+
+Added the stable realtime umbrella header:
+
+```cpp
+#include <vix/realtime.hpp>
+```
+
+Advanced APIs remain available through module-specific headers:
+
+```cpp
+#include <vix/realtime/...>
+```
+
+The public CMake targets are:
+
+```cmake
+vix_realtime
+vix::realtime
+```
+
+### Realtime package
+
+Added standalone package metadata for:
+
+```text
+vix/realtime
+```
+
+The first standalone module version is:
+
+```text
+0.1.0
+```
+
+Added:
+
+- `vix.json`;
+- CMake package configuration;
+- package version generation;
+- exported CMake target definitions;
+- optional dependency configuration;
+- standalone install preparation.
+
+### Examples
+
+Added four complete realtime examples.
+
+#### Counter
+
+Demonstrates:
+
+- room commands;
+- deterministic events;
+- automatic snapshots;
+- state restoration;
+- continued event and room versions.
+
+#### Shared room
+
+Demonstrates:
+
+- multiple sessions in one room;
+- authoritative shared state;
+- room membership;
+- object placement and removal;
+- room-wide event broadcasting.
+
+#### Chat
+
+Demonstrates:
+
+- persistent chat messages;
+- session membership;
+- room history;
+- snapshots;
+- room restoration;
+- continued message state.
+
+#### Reconnect
+
+Demonstrates:
+
+- event acknowledgements;
+- temporary disconnection;
+- replay of missing events;
+- resume-token validation;
+- snapshot fallback;
+- restoration of authoritative state.
+
+### Realtime strict CI
+
+Added a dedicated strict CI workflow for the realtime module.
+
+The workflow validates:
+
+- GCC and Clang builds;
+- Debug and Release configurations;
+- WebSocket enabled and disabled builds;
+- examples enabled and disabled builds;
+- AddressSanitizer and UndefinedBehaviorSanitizer;
+- the complete realtime test suite;
+- compiler warning enforcement;
+- execution of all four examples;
+- static analysis with `clang-tidy`;
+- static analysis with `cppcheck`;
+- Valgrind memory checks;
+- PostgreSQL store compilation;
+- package metadata consistency;
+- CMake package contract consistency.
+
+## Improved
+
+### Realtime transport separation
+
+Realtime application state is no longer coupled to WebSocket-specific behavior.
+
+Rooms, sessions, commands, events, snapshots, replay, and presence belong to the transport-independent runtime. WebSocket is implemented as an optional adapter around that runtime.
+
+This allows additional transports to reuse the same authoritative application model.
+
+### Deterministic recovery
+
+Room restoration now follows one consistent recovery sequence:
+
+1. load the latest snapshot when available;
+2. restore the snapshot state and schema version;
+3. replay persisted events after the snapshot;
+4. restore the latest room version and event identifier;
+5. continue accepting new commands from the recovered position.
+
+Multiple restorations from the same persisted history produce the same state and version.
+
+### Realtime configuration
+
+Added configuration for:
+
+- maximum active rooms;
+- maximum sessions per room;
+- maximum queued commands;
+- snapshot frequency;
+- snapshot creation during room shutdown;
+- retained snapshot count;
+- room restoration during opening;
+- session recovery windows;
+- replay limits;
+- presence expiration.
+
+## Validation
+
+The realtime module was validated with:
+
+- identifier and version tests;
+- command and event tests;
+- protocol parsing tests;
+- protocol validation tests;
+- protocol round-trip tests;
+- room state tests;
+- event application tests;
+- memory event store tests;
+- memory snapshot store tests;
+- snapshot policy tests;
+- logical session tests;
+- session disconnection tests;
+- presence join, leave, heartbeat, expiration, and visibility tests;
+- room construction and opening tests;
+- room command tests;
+- room event tests;
+- room membership tests;
+- room broadcast tests;
+- room snapshot and restoration tests;
+- room lifecycle tests;
+- command backpressure tests;
+- room shutdown and failure tests;
+- room directory and ownership tests;
+- room manager tests;
+- WebSocket adapter tests;
+- resume-token tests;
+- reconnection replay tests;
+- snapshot fallback tests;
+- complete realtime session flow tests;
+- deterministic snapshot and replay integration tests.
+
+The complete module builds successfully with tests and examples enabled.
+
+The following example flows were executed successfully:
+
+```text
+counter
+shared_room
+chat
+reconnect
+```
+
+Validation confirmed:
+
+- deterministic command execution;
+- monotonic room versions;
+- monotonic event identifiers;
+- event persistence;
+- automatic snapshots;
+- snapshot restoration;
+- replay after snapshots;
+- complete replay without snapshots;
+- no duplicated persisted events after reopening;
+- continued command execution after recovery;
+- session membership changes;
+- shared authoritative room state;
+- persistent chat history;
+- replay from acknowledged positions;
+- snapshot fallback for stale clients;
+- restoration of the final authoritative state.
+
 # Vix v2.7.8
 
 ## Added
