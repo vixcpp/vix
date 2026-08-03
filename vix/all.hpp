@@ -52,6 +52,7 @@
 #include <vix/p2p_http.hpp>
 #include <vix/path.hpp>
 #include <vix/process.hpp>
+#include <vix/realtime.hpp>
 #include <vix/reply.hpp>
 #include <vix/requests.hpp>
 #include <vix/sync.hpp>

@@ -90,6 +90,7 @@ jobs:
           test -f modules/ui/CMakeLists.txt
           test -f modules/note/CMakeLists.txt
           test -f modules/requests/CMakeLists.txt
+          test -f modules/realtime/CMakeLists.txt
 
       - name: Select compiler
         run: |
@@ -148,6 +149,11 @@ jobs:
             -DVIX_ENABLE_REQUESTS=ON \
             -DVIX_REQUESTS_BUILD_TESTS=ON \
             -DVIX_REQUESTS_BUILD_EXAMPLES=OFF \
+            -DVIX_ENABLE_REALTIME=ON \
+            -DVIX_REALTIME_BUILD_TESTS=ON \
+            -DVIX_REALTIME_BUILD_EXAMPLES=OFF \
+            -DVIX_REALTIME_WITH_WEBSOCKET=ON \
+            -DVIX_REALTIME_WITH_POSTGRES=OFF \
             -DVIX_ENABLE_VALIDATION=ON \
             -DVIX_ENABLE_CACHE=ON \
             -DVIX_ENABLE_P2P=ON \
@@ -211,6 +217,7 @@ jobs:
           test -f modules/ui/CMakeLists.txt
           test -f modules/note/CMakeLists.txt
           test -f modules/requests/CMakeLists.txt
+          test -f modules/realtime/CMakeLists.txt
 
       - name: Configure light module tests
         run: |
@@ -264,7 +271,12 @@ jobs:
             -DVIX_ENABLE_WEBSOCKET=OFF \
             -DVIX_ENABLE_REQUESTS=ON \
             -DVIX_REQUESTS_BUILD_TESTS=ON \
-            -DVIX_REQUESTS_BUILD_EXAMPLES=OFF
+            -DVIX_REQUESTS_BUILD_EXAMPLES=OFF \
+            -DVIX_ENABLE_REALTIME=ON \
+            -DVIX_REALTIME_BUILD_TESTS=ON \
+            -DVIX_REALTIME_BUILD_EXAMPLES=OFF \
+            -DVIX_REALTIME_WITH_WEBSOCKET=OFF \
+            -DVIX_REALTIME_WITH_POSTGRES=OFF
 
       - name: Build light module tests
         run: |
