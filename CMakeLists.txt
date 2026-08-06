@@ -251,7 +251,7 @@ option(VIX_ENABLE_CPPCHECK         "Enable cppcheck if available"               
 option(VIX_ENABLE_COVERAGE         "Enable coverage flags (Debug only)"                           OFF)
 option(VIX_ENABLE_SANITIZERS       "Enable ASan+UBSan (GCC/Clang only)"                           OFF)
 option(VIX_BUILD_EXAMPLES          "Build umbrella examples in ./examples"                        ON)
-option(VIX_BUILD_TESTS             "Build unit tests (GoogleTest)"                                ON)
+option(VIX_BUILD_TESTS             "Build unit tests (GoogleTest)"                                OFF)
 option(VIX_ENABLE_ORM              "Build Vix ORM module"                                         ON)
 option(VIX_ENABLE_WEBSOCKET        "Build Vix WebSocket module"                                   ON)
 option(VIX_ENABLE_CLI              "Build Vix CLI module"                                         ON)

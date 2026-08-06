@@ -54,6 +54,7 @@ env:
     libspdlog-dev
     libfmt-dev
     libmysqlcppconn-dev
+    libgtest-dev
   BUILD_JOBS: 2
 
 jobs:

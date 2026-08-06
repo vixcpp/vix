@@ -75,6 +75,7 @@ env:
     libfmt-dev
     libmysqlcppconn-dev
     libgtk-3-dev
+    libgtest-dev
 
   BUILD_JOBS: 2
 
