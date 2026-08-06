@@ -12,12 +12,21 @@ on:
       - dev
       - release/**
 
+permissions:
+  contents: read
+
+concurrency:
+  group: build-safety-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-safety:
+    name: Build safety (Ubuntu)
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
@@ -25,6 +34,8 @@ jobs:
 
       - name: Install system dependencies
         run: |
+          set -euxo pipefail
+
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential \
@@ -58,6 +69,8 @@ jobs:
 
       - name: Configure Vix CLI
         run: |
+          set -euxo pipefail
+
           cmake -S . -B build-ci -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
@@ -81,22 +94,32 @@ jobs:
 
       - name: Build Vix CLI
         run: |
+          set -euxo pipefail
           cmake --build build-ci --target vix -- -j"$(nproc)"
 
       - name: Show Vix version
         run: |
+          set -x
           ./build-ci/vix --version || ./build-ci/vix version || true
 
       - name: Run build safety tests
         run: |
+          set -euxo pipefail
           VIX_BIN="$PWD/build-ci/vix" scripts/test-build-safety.sh
 
       - name: Run build benchmark smoke test
         run: |
-          VIX_BIN="$PWD/build-ci/vix" RUNS=3 WARMUP=1 TARGET=vix scripts/bench-build.sh
+          set -euxo pipefail
+          VIX_BIN="$PWD/build-ci/vix" \
+            RUNS=3 \
+            WARMUP=1 \
+            TARGET=vix \
+            scripts/bench-build.sh
 
       - name: Upload benchmark report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: vix-build-benchmark
+          name: vix-build-benchmark-${{ github.run_id }}
           path: .vix/bench/reports/
+          if-no-files-found: warn
