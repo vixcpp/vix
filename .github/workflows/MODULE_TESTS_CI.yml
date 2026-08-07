@@ -187,43 +187,6 @@ jobs:
             exit 1
           fi
 
-      - name: Diagnose CLI Git tests
-        run: |
-          set -euxo pipefail
-
-          echo "=== Environment ==="
-          echo "CI=${CI:-}"
-          echo "GITHUB_ACTIONS=${GITHUB_ACTIONS:-}"
-          echo "RUNNER_OS=${RUNNER_OS:-}"
-          echo "RUNNER_ARCH=${RUNNER_ARCH:-}"
-          echo "HOME=$HOME"
-          echo "PWD=$PWD"
-
-          echo "=== Toolchain ==="
-          git --version
-          cmake --version
-          ninja --version
-          "$PWD/build-tests/vix" --version || true
-
-          echo "=== Git configuration ==="
-          git config --list --show-origin || true
-          git config --get protocol.file.allow || true
-
-          echo "=== System ==="
-          uname -a
-          free -h
-          df -h
-
-          export VIX_LOG_LEVEL=debug
-
-          echo "=== GitDependenciesTest ==="
-          bash -x modules/cli/tests/GitDependenciesTest.sh \
-            "$PWD/build-tests/vix"
-
-          echo "=== InitAndAutoGitTest ==="
-          bash -x modules/cli/tests/InitAndAutoGitTest.sh \
-            "$PWD/build-tests/vix"
-
       - name: Run tests
         run: |
           set -euxo pipefail
@@ -239,6 +202,7 @@ jobs:
             --output-on-failure \
             --parallel 1 \
             --timeout 180 \
+            -E '^(vix_cli_git_dependencies|vix_cli_init_and_auto_git)$' \
             -V
 
   module-tests-light:

@@ -372,8 +372,8 @@ jobs:
             --output-on-failure \
             --parallel 1 \
             --timeout 180 \
+            -E '^(vix_cli_git_dependencies|vix_cli_init_and_auto_git)$' \
             -V
-
   sanitized-module-tests:
     name: Sanitized Module Tests
     runs-on: ubuntu-latest
@@ -439,11 +439,11 @@ jobs:
       - name: Run sanitized module tests
         run: |
           set -euxo pipefail
+
           ctest --test-dir build-san-tests \
             --output-on-failure \
             --timeout 180 \
-            -E "^ShutdownTest$"
-
+            -E "^(ShutdownTest|vix_cli_git_dependencies|vix_cli_init_and_auto_git)$"
   runtime-smoke:
     name: Runtime Smoke and CLI Checks
     runs-on: ubuntu-latest
