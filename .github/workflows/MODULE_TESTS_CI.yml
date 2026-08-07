@@ -61,6 +61,7 @@ jobs:
   umbrella-tests:
     name: Umbrella Tests (${{ matrix.compiler }})
     runs-on: ubuntu-latest
+    timeout-minutes: 90
 
     strategy:
       fail-fast: false
@@ -188,11 +189,25 @@ jobs:
 
       - name: Run tests
         run: |
-          ctest --test-dir build-tests --output-on-failure
+          set -euxo pipefail
+
+          echo "=== Runner resources ==="
+          free -h
+          df -h
+          nproc
+          ulimit -a
+
+          stdbuf -oL -eL ctest \
+            --test-dir build-tests \
+            --output-on-failure \
+            --parallel 1 \
+            --timeout 180 \
+            -V
 
   module-tests-light:
     name: Module Tests Light Profile
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
       - name: Checkout umbrella repository
@@ -294,4 +309,17 @@ jobs:
 
       - name: Run light module tests
         run: |
-          ctest --test-dir build-module-light --output-on-failure
+          set -euxo pipefail
+
+          echo "=== Runner resources ==="
+          free -h
+          df -h
+          nproc
+          ulimit -a
+
+          stdbuf -oL -eL ctest \
+            --test-dir build-module-light \
+            --output-on-failure \
+            --parallel 1 \
+            --timeout 180 \
+            -V
