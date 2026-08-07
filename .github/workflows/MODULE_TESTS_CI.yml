@@ -54,12 +54,14 @@ env:
     libspdlog-dev
     libfmt-dev
     libmysqlcppconn-dev
+    libgtest-dev
   BUILD_JOBS: 2
 
 jobs:
   umbrella-tests:
     name: Umbrella Tests (${{ matrix.compiler }})
     runs-on: ubuntu-latest
+    timeout-minutes: 90
 
     strategy:
       fail-fast: false
@@ -90,6 +92,7 @@ jobs:
           test -f modules/ui/CMakeLists.txt
           test -f modules/note/CMakeLists.txt
           test -f modules/requests/CMakeLists.txt
+          test -f modules/realtime/CMakeLists.txt
 
       - name: Select compiler
         run: |
@@ -148,6 +151,11 @@ jobs:
             -DVIX_ENABLE_REQUESTS=ON \
             -DVIX_REQUESTS_BUILD_TESTS=ON \
             -DVIX_REQUESTS_BUILD_EXAMPLES=OFF \
+            -DVIX_ENABLE_REALTIME=ON \
+            -DVIX_REALTIME_BUILD_TESTS=ON \
+            -DVIX_REALTIME_BUILD_EXAMPLES=OFF \
+            -DVIX_REALTIME_WITH_WEBSOCKET=ON \
+            -DVIX_REALTIME_WITH_POSTGRES=OFF \
             -DVIX_ENABLE_VALIDATION=ON \
             -DVIX_ENABLE_CACHE=ON \
             -DVIX_ENABLE_P2P=ON \
@@ -181,11 +189,26 @@ jobs:
 
       - name: Run tests
         run: |
-          ctest --test-dir build-tests --output-on-failure
+          set -euxo pipefail
+
+          echo "=== Runner resources ==="
+          free -h
+          df -h
+          nproc
+          ulimit -a
+
+          stdbuf -oL -eL ctest \
+            --test-dir build-tests \
+            --output-on-failure \
+            --parallel 1 \
+            --timeout 180 \
+            -E '^(vix_cli_git_dependencies|vix_cli_init_and_auto_git)$' \
+            -V
 
   module-tests-light:
     name: Module Tests Light Profile
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
       - name: Checkout umbrella repository
@@ -211,6 +234,7 @@ jobs:
           test -f modules/ui/CMakeLists.txt
           test -f modules/note/CMakeLists.txt
           test -f modules/requests/CMakeLists.txt
+          test -f modules/realtime/CMakeLists.txt
 
       - name: Configure light module tests
         run: |
@@ -264,7 +288,12 @@ jobs:
             -DVIX_ENABLE_WEBSOCKET=OFF \
             -DVIX_ENABLE_REQUESTS=ON \
             -DVIX_REQUESTS_BUILD_TESTS=ON \
-            -DVIX_REQUESTS_BUILD_EXAMPLES=OFF
+            -DVIX_REQUESTS_BUILD_EXAMPLES=OFF \
+            -DVIX_ENABLE_REALTIME=ON \
+            -DVIX_REALTIME_BUILD_TESTS=ON \
+            -DVIX_REALTIME_BUILD_EXAMPLES=OFF \
+            -DVIX_REALTIME_WITH_WEBSOCKET=OFF \
+            -DVIX_REALTIME_WITH_POSTGRES=OFF
 
       - name: Build light module tests
         run: |
@@ -281,4 +310,17 @@ jobs:
 
       - name: Run light module tests
         run: |
-          ctest --test-dir build-module-light --output-on-failure
+          set -euxo pipefail
+
+          echo "=== Runner resources ==="
+          free -h
+          df -h
+          nproc
+          ulimit -a
+
+          stdbuf -oL -eL ctest \
+            --test-dir build-module-light \
+            --output-on-failure \
+            --parallel 1 \
+            --timeout 180 \
+            -V

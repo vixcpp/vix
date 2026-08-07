@@ -167,3 +167,7 @@
 	path = modules/engine
 	url = https://github.com/vixcpp/engine.git
 	branch = dev
+[submodule "modules/realtime"]
+	path = modules/realtime
+	url = https://github.com/vixcpp/realtime.git
+	branch = dev
