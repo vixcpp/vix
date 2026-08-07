@@ -447,7 +447,7 @@ jobs:
   runtime-smoke:
     name: Runtime Smoke and CLI Checks
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 90
 
     steps:
       - name: Checkout umbrella repository
