@@ -54,6 +54,7 @@ cmd.txt
 # ======================================================
 scripts/changelog-release.sh
 scripts/update_changelog.sh
+scripts/publish-markdown-issues.sh
 
 # ======================================================
 # 🔧 Local test & reference builds

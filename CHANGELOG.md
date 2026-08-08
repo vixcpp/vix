@@ -5,7 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-# Vix v2.8.0
+# Vix v2.8.4
+
+## Fixed
+
+### `vix run` stability and performance
+
+This release fixes important regressions introduced in v2.8.3.
+
+- Standalone C++ scripts no longer enable ASan and UBSan implicitly.
+- Vix runtime scripts now use the reliable CMake fallback link path.
+- Linker errors now preserve missing symbols and provide clearer diagnostics with source locations and actionable hints.
+- Failed Direct script builds are cached and replayed without recompiling when the build fingerprint has not changed.
+- Negative-cache tracing now correctly reports matching failure metadata.
+
+v2.8.4 restores fast and reliable standalone C++ execution while keeping explicit sanitizer support unchanged.
+
+# Vix v2.8.3, v2.8.2, v2.8.1
 
 ## Added
 
