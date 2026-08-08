@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Vix v2.8.4
 
+## Added
+
+### Live `vix build` progress
+
+`vix build` now provides a cleaner real-time build experience with structured progress instead of exposing raw compiler and Ninja output by default.
+
+- Build phases are now reported as semantic events for project preparation, configuration, compilation, linking, success, and failure.
+- Compilation progress is displayed live with the current source file and progress counters when available.
+- CMake and Ninja output is parsed in real time to detect compilation and linking phases.
+- Native `vix.app` builds now use the same live build presentation.
+- Parallel graph compilation reports progress safely across scheduler workers.
+- Raw build output remains available through verbose and debug modes.
+
+Example:
+
+```text
+Compiling my-app (dev)
+  ✓ Project ready  my-app
+  ✓ Build configured
+  ✓ Compilation finished
+  ✓ Linked  my-app
+  ✓ Build completed  my-app
+```
+
 ## Fixed
 
 ### `vix run` stability and performance
@@ -19,7 +43,17 @@ This release fixes important regressions introduced in v2.8.3.
 - Failed Direct script builds are cached and replayed without recompiling when the build fingerprint has not changed.
 - Negative-cache tracing now correctly reports matching failure metadata.
 
-v2.8.4 restores fast and reliable standalone C++ execution while keeping explicit sanitizer support unchanged.
+### Build diagnostics
+
+- Compilation failures now preserve the active build phase and display a clear `Compilation failed` status before the diagnostic.
+- Linking failures now display a clear `Linking failed` status before Vix explains the missing symbol.
+- Missing function implementations now produce clearer linker diagnostics with actionable hints.
+- CMake and Ninja output is captured for diagnostics without flooding normal terminal output.
+- Build graph progress events now include current and total operation counts.
+- Native `vix.app`, `BuildGraphExecutor`, and CMake/Ninja build paths now share the same live build reporting infrastructure.
+- `VIX_LOG_LEVEL=debug` and `VIX_LOG_LEVEL=trace` retain access to deeper technical build information.
+
+v2.8.4 restores fast and reliable standalone C++ execution while making `vix build` easier to follow and debug.
 
 # Vix v2.8.3, v2.8.2, v2.8.1
 
