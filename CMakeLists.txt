@@ -2134,6 +2134,12 @@ if (VIX_ENABLE_INSTALL)
 
   install(TARGETS vix EXPORT VixTargets)
 
+  # Public build-tree exports retain this interface dependency.  Export it as
+  # well so `VixTargets.cmake` is valid both before and after installation.
+  if (TARGET vix_warnings)
+    install(TARGETS vix_warnings EXPORT VixTargets)
+  endif()
+
   if (TARGET vix_thirdparty_asio)
     install(TARGETS vix_thirdparty_asio EXPORT VixTargets)
   endif()
@@ -2297,6 +2303,15 @@ if (VIX_ENABLE_INSTALL)
   install(EXPORT VixTargets
           NAMESPACE vix::
           DESTINATION "${VIX_INSTALL_CMAKEDIR}")
+
+  # Make the configured build tree consumable by integration tests and local
+  # tools before installation.  VixConfig.cmake is generated in the build
+  # directory too; without this companion export it points at a target file
+  # that exists only after `cmake --install`, causing consumers to silently
+  # fall back to an unrelated system Vix package.
+  export(EXPORT VixTargets
+         FILE "${CMAKE_CURRENT_BINARY_DIR}/VixTargets.cmake"
+         NAMESPACE vix::)
 
   install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/VixConfig.cmake"
