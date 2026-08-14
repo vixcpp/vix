@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Vix v2.8.4
 
-Vix v2.8.4 improves the everyday C++ development loop with faster builds, lighter public headers, safer caching, better diagnostics, and more consistent `build`, `run`, and `dev` behavior.
+Vix v2.8.4 improves the everyday C++ development loop with faster compilation and rebuilds, lighter public headers, safer caching, better diagnostics, and more consistent `build`, `run`, and `dev` behavior.
 
 ## Added
 
@@ -15,26 +15,26 @@ Vix v2.8.4 improves the everyday C++ development loop with faster builds, lighte
 
 `vix build` now uses a compact and consistent live build interface across native, graph-executor, and CMake/Ninja builds.
 
-* `vix build` and `vix build -v` share the same presentation.
-* `-v` adds useful toolchain and build information.
-* `--debug` exposes structured Vix diagnostics.
-* `--cmake-verbose` remains available for raw CMake/Ninja/compiler output.
-* Build logs can be inspected directly with `vix build --log`.
+- `vix build` and `vix build -v` share the same presentation.
+- `-v` adds useful toolchain and build information.
+- `--debug` exposes structured Vix diagnostics.
+- `--cmake-verbose` remains available for raw CMake/Ninja/compiler output.
+- Build logs can be inspected directly with `vix build --log`.
 
 ### Better cross-compilation support
 
-* `--target native` explicitly selects the host platform.
-* `--targets` discovers available native and cross toolchains.
-* `--sysroot` is available for target toolchains.
+- `--target native` explicitly selects the host platform.
+- `--targets` discovers available native and cross toolchains.
+- `--sysroot` is available for target toolchains.
 
 ### Explicit `vix run` controls
 
 Added documented CLI options for runtime behavior previously controlled primarily through internal or environment-based configuration:
 
-* `--ui` / `--no-ui`
-* `--env-hint` / `--no-env-hint`
-* `--trace-cache` / `--no-trace-cache`
-* `--compiler-fingerprint <fast|strict>`
+- `--ui` / `--no-ui`
+- `--env-hint` / `--no-env-hint`
+- `--trace-cache` / `--no-trace-cache`
+- `--compiler-fingerprint <fast|strict>`
 
 ## Improved
 
@@ -42,66 +42,108 @@ Added documented CLI options for runtime behavior previously controlled primaril
 
 Vix public headers have been significantly reduced and decoupled from heavy implementation details.
 
-* `App` no longer exposes Router, HTTPServer, RequestHandler, runtime executor, or Asio internals unnecessarily.
-* `core.hpp` no longer pulls advanced HTTP/router implementation headers into every `<vix.hpp>` consumer.
-* JSON-heavy `Config` and response implementation has been moved out of public headers where possible.
-* Logger internals no longer expose spdlog throughout user translation units.
-* Public APIs such as GET routes, POST JSON, middleware, Config, and logging remain compatible.
+- `App` no longer exposes Router, HTTPServer, RequestHandler, runtime executor, or Asio internals unnecessarily.
+- `core.hpp` no longer pulls advanced HTTP/router implementation headers into every `<vix.hpp>` consumer.
+- JSON-heavy `Config` and response implementation has been moved out of public headers where possible.
+- Logger internals no longer expose spdlog throughout user translation units.
+- `RuntimeExecutor` lifecycle implementation is now kept out of user translation units where possible.
+- Public APIs such as GET routes, POST JSON, middleware, Config, logging, and runtime executors remain compatible.
 
-This substantially reduces compiler CPU time and memory usage for applications using `<vix.hpp>`.
+These changes reduce compiler work and memory pressure for applications using Vix public headers.
 
 ### Faster `vix run`
 
 Standalone C++ programs keep the lightweight direct compilation path, while programs requiring compiled Vix runtime functionality use the correct CMake-backed path.
 
-Warm executions reuse validated build state and compiled artifacts without unnecessary recompilation.
+- Warm executions reuse validated build state and compiled artifacts.
+- Cache validation avoids redundant work in the direct script path.
+- Local and transitive dependencies remain correctly tracked.
+- Unchanged scripts can run without invoking the compiler or linker.
+
+### Faster and cleaner `vix dev`
+
+`vix dev` now provides a faster and more focused development loop for both standalone C++ files and full Vix projects.
+
+For standalone files, the normal output is intentionally minimal:
+
+```text
+Watching test.cpp
+Hello, world
+Rebuilt test.cpp in 488ms
+Hello, world
+```
+
+- Single-file rebuilds reuse the optimized direct compilation path.
+- Rebuild output no longer exposes unnecessary process IDs, absolute paths, or internal reload messages.
+- Build progress is shown only when useful instead of cluttering fast rebuilds.
+- Rebuild duration is reported directly in the terminal.
+- Application output follows rebuild status without unnecessary blank lines.
+- Source and transitive-header changes trigger a single rebuild/restart.
+- Failed builds recover cleanly after the source is corrected.
+
+Project `vix dev` also reports the real rebuild duration while retaining the full project build experience:
+
+```text
+Dev shop (dev)
+
+  changed: src/main.cpp
+
+  build [============================] done
+
+  ✔ Rebuilt in 7.3s · Started pid=49809
+```
+
+`vix dev` and `vix build --watch` now follow the same underlying build behavior rather than maintaining fragmented rebuild paths.
 
 ### Dependency-aware caching
 
 Script caching now correctly tracks source files and local/transitive headers by content.
 
-* Header changes invalidate affected builds.
-* Touching an unchanged file does not unnecessarily rebuild.
-* Failed compilations are not reused as cache hits.
-* Compiled dependency graphs are rebuilt only when required.
+- Header changes invalidate affected builds.
+- Touching an unchanged file does not unnecessarily rebuild.
+- Failed compilations are not reused as cache hits.
+- Compiled dependency graphs are rebuilt only when required.
+- Previously compiled source states can be restored efficiently through the compiler cache.
 
-### Better `vix dev`
+### Safer build parallelism
 
-`vix dev` now handles source and transitive-header changes more reliably.
+Automatic build parallelism now keeps part of the machine available instead of consuming every hardware thread by default.
 
-* Dependency changes trigger a single rebuild/restart.
-* Content changes are detected even on filesystems with coarse timestamps.
-* Dependency sets are refreshed after successful rebuilds.
-* Shutdown and interruption handling is more predictable.
+- Build jobs adapt to the available CPU resources.
+- Interactive development remains more responsive during large builds.
+- Explicit `--jobs` values continue to override the automatic recommendation.
 
 ## Fixed
 
-* Fixed incomplete linkage when running code that depends on compiled Vix libraries.
-* Fixed transitive compiled dependency rebuilding.
-* Fixed stale script/build cache decisions.
-* Fixed generated CMake target handling for script builds.
-* Fixed `--fast` builds incorrectly missing reusable configuration state.
-* Fixed graph-executor builds being bypassed by unrelated cache paths.
-* Fixed linker diagnostics for missing implementations and libraries.
-* Fixed build-log selection when a build directory is provided.
-* Fixed server startup reporting so `READY` is emitted only after successful startup.
-* Fixed port configuration and bind-error propagation.
-* Fixed local build-tree CMake package exports so Vix can be consumed directly from the current build without falling back to an installed runtime.
+- Fixed incomplete linkage when running code that depends on compiled Vix libraries.
+- Fixed transitive compiled dependency rebuilding.
+- Fixed stale script/build cache decisions.
+- Fixed redundant cache validation in standalone script execution.
+- Fixed generated CMake target handling for script builds.
+- Fixed `--fast` builds incorrectly missing reusable configuration state.
+- Fixed graph-executor builds being bypassed by unrelated cache paths.
+- Fixed linker diagnostics for missing implementations and libraries.
+- Fixed build-log selection when a build directory is provided.
+- Fixed server startup reporting so `READY` is emitted only after successful startup.
+- Fixed port configuration and bind-error propagation.
+- Fixed local build-tree CMake package exports so Vix can be consumed directly from the current build without falling back to an installed runtime.
+- Fixed missing direct header dependencies exposed after reducing public transitive includes.
 
 ## Summary
 
-Vix v2.8.4 makes the development loop faster and more predictable:
+Vix v2.8.4 makes the C++ development loop faster and more predictable:
 
-* lighter C++ compilation;
-* fast warm `vix run`;
-* safer dependency-aware caching;
-* more reliable `vix dev`;
-* correct compiled-library linkage;
-* clearer build and linker diagnostics;
-* consistent build output;
-* improved local and cross-platform tooling.
-
-
+- lighter public headers and faster C++ compilation;
+- faster standalone rebuilds;
+- fast warm `vix run`;
+- compact and timed `vix dev` reloads;
+- safer dependency-aware caching;
+- adaptive build parallelism;
+- reliable source and header watching;
+- correct compiled-library linkage;
+- clearer build and linker diagnostics;
+- consistent behavior across `build`, `run`, and `dev`;
+- improved local and cross-platform tooling.
 
 # Vix v2.8.3, v2.8.2, v2.8.1
 
