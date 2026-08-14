@@ -9,7 +9,7 @@
 <h1 align="center">Vix.cpp</h1>
 
 <p align="center">
-  <strong>A modern C++ runtime for building fast and reliable applications.</strong>
+  <strong>A C++ developer platform for building native applications.</strong>
 </p>
 
 <p align="center">
@@ -22,9 +22,17 @@
   <a href="https://blog.vixcpp.com">Engineering Notes</a>
 </p>
 
-Vix.cpp brings the work around native C++ applications into one coherent workflow. It provides a runtime, a command-line interface, SDK profiles, package management, diagnostics, testing, packaging, and production-oriented tooling without changing the language or hiding the native toolchain.
+Vix.cpp brings the tools around a C++ application into one coherent workflow. You can use it to run and build projects, manage dependencies, work with application modules, run tests, inspect problems, package applications and prepare them for production.
 
-A Vix project remains an ordinary C++ project. It is compiled by a C++ compiler, can interoperate with CMake and existing build systems, and produces native executables and libraries. Vix exists to make the path from source code to a working application more direct, repeatable, and understandable.
+Vix does not introduce a new language or hide the native C++ toolchain. A Vix project is still compiled by a C++ compiler, can work with CMake and existing libraries, and produces normal native executables and libraries.
+
+## Why Vix exists
+
+C++ already gives developers excellent compilers, native performance and a large ecosystem. The difficult part often starts when a program becomes an application.
+
+A project needs a build configuration. Then dependencies, tests, development commands, diagnostics, packaging and eventually production tooling appear. There are good tools for each of these problems, but developers still have to assemble them and maintain the workflow between them.
+
+Vix exists to make that workflow more consistent without replacing the C++ ecosystem underneath it.
 
 <p align="center">
   <img
@@ -34,94 +42,64 @@ A Vix project remains an ordinary C++ project. It is compiled by a C++ compiler,
   />
 </p>
 
-## Why Vix exists
+## Try it
 
-C++ already provides mature compilers, native performance, a large ecosystem, and decades of production use. The difficult part is often everything that must be assembled around the language before a project feels like a complete application.
-
-Even a small project quickly accumulates decisions about directory layout, build configuration, dependency resolution, test execution, development mode, diagnostics, packaging, deployment, CI, and reproducibility across machines. Each tool can solve part of that problem, but the developer is still responsible for turning those separate parts into a consistent workflow.
-
-Vix exists to provide that workflow. It gives C++ projects a common way to be created, run, built, tested, checked, packaged, upgraded, and prepared for production while keeping the underlying compiler, build files, dependencies, and native outputs visible.
-
-## Install Vix
-
-Vix is installed in two stages. The install script bootstraps the CLI, then the CLI installs the SDK profile required by the project.
-
-### Linux and macOS
+Install Vix on Linux or macOS:
 
 ```bash
 curl -fsSL https://vixcpp.com/install.sh | bash
 ```
 
-### Windows PowerShell
+On Windows PowerShell:
 
 ```powershell
 irm https://vixcpp.com/install.ps1 | iex
 ```
 
-Confirm the installation:
+Check the installation:
 
 ```bash
 vix --version
 ```
 
-Then inspect the available SDK profiles and install the one that matches the application you are building:
+You can start with a normal C++ file.
 
-```bash
-vix upgrade --sdk list
-vix upgrade --sdk info web
-vix upgrade --sdk web
+```cpp
+#include <iostream>
+
+int main()
+{
+    std::cout << "Hello from Vix.cpp\n";
+}
 ```
 
-The [installation guide](https://docs.vixcpp.com) covers platform requirements, PATH configuration, SDK profiles, upgrades, and troubleshooting.
-
-## The Vix workflow
-
-The Vix CLI is the main entry point into the platform. It understands Vix projects, standalone C++ files, application manifests, SDK profiles, registry dependencies, build state, diagnostics, tests, and production workflows.
-
-<p align="center">
-  <img
-    src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1782677397/vix-cli_igxm7y.png"
-    width="100%"
-    alt="Vix.cpp CLI commands"
-  />
-</p>
-
-The command surface follows the lifecycle of an application. The same tool can create a project, run it during development, build native outputs, execute tests, inspect problems, manage packages, prepare releases, and update the installed SDK.
+Run it with:
 
 ```bash
-vix --help
-vix help <command>
+vix run main.cpp
 ```
 
-The README intentionally does not reproduce the complete command reference. Detailed command behavior, options, examples, and project formats are maintained in the [official documentation](https://docs.vixcpp.com).
+There is no separate execution model here. Vix builds and runs native C++.
 
-## Vix Reply
+When the project becomes larger, the same CLI can work with complete applications:
 
-<p align="center">
-  <img
-    src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1784487655/vix-repl_cxqsj2.png"
-    width="100%"
-    alt="Vix Reply interactive C++ REPL"
-  />
-</p>
+```bash
+vix init
+vix run
+vix build
+vix tests
+vix check
+```
 
-Vix Reply provides an interactive terminal for experimenting with C++, running native snippets, and receiving structured compiler diagnostics without creating a project first.
+The [installation guide](https://docs.vixcpp.com) explains SDK profiles, platform requirements and the complete setup process.
 
-## Native C++ remains visible
+## From a C++ project to an application
 
-Vix is not a successor to C++, a new language syntax, or a separate compiler model. It does not turn C++ into an interpreted environment, and it does not place applications inside a closed runtime.
+Vix is more than a command that invokes a compiler. The platform includes runtime modules and development tooling for the things real applications commonly need, including HTTP, middleware, asynchronous execution, WebSockets, configuration, filesystems, processes, databases, serialization, caching, validation and logging.
 
-It is also not a replacement for CMake. Existing CMake projects can keep their current structure and use Vix around it. New applications that do not need custom CMake logic can begin with a simpler Vix application manifest and still produce normal native build outputs.
+These parts are designed to work together instead of giving every library its own project structure and development workflow.
 
-This distinction is central to the project. Vix improves the application workflow around C++; it does not remove the tools, formats, or knowledge that make a C++ project portable and maintainable.
-
-## Runtime and application modules
-
-Vix is not only a CLI wrapped around a compiler. It ships runtime modules that cover the infrastructure real native applications usually have to assemble by hand: HTTP routing, middleware, async execution, WebSocket support, configuration, environment files, filesystems, processes, databases, serialization, caching, validation, logging, testing, packaging, and diagnostics.
-
-The important part is that these modules are designed to compose as one platform. A backend can use the HTTP runtime, middleware, database layer, validation, logging, environment loading, and tests without each piece introducing a different project model or error style. Existing CMake projects can adopt the modules directly. New Vix applications can use the app-first workflow.
-
-For generated applications, `vix.app` is the readable source of truth at the project root. It describes the native target, C++ standard, source files, include directories, linked Vix modules, registry dependencies, compile options, resources, output directory, and enabled application modules. Vix reads that manifest, generates an internal CMake project under `.vix/generated/app/`, and still builds through the normal native toolchain. The generated files are inspectable when debugging, but the project remains driven by the manifest.
+For Vix-managed applications, the project can be described with `vix.app`:
 
 ```ini
 name = "api"
@@ -130,13 +108,6 @@ standard = "c++20"
 
 sources = [
   "src/main.cpp",
-  "src/app/AppBootstrap.cpp",
-  "src/presentation/routes/RouteRegistry.cpp",
-]
-
-include_dirs = [
-  "include",
-  "src",
 ]
 
 packages = [
@@ -146,57 +117,33 @@ packages = [
 links = [
   "vix::vix",
 ]
-
-[module.auth]
-enabled = true
-path = "modules/auth"
-kind = "backend"
-depends = []
 ```
 
-### Git dependencies with `vix.app`
+Vix reads the application description and generates the native build it needs internally. The generated files remain inspectable, and projects that need custom CMake logic can continue using CMake directly.
 
-For an existing folder, `vix init` creates a minimal `vix.app` from the current project:
+## Dependencies
 
-```bash
-vix init
-```
+Existing C++ libraries can be used from a Vix project.
 
-A Git dependency can then be added directly from its repository:
+For example:
 
 ```bash
 vix install https://github.com/fmtlib/fmt
 ```
 
-Vix detects the latest stable version and the public CMake target, then records them in `vix.app`:
+Vix can detect the dependency information, add it to the application and preserve the resolved commit in `vix.lock`.
 
-```toml
-name = "fmt-test"
-type = "executable"
-standard = "c++20"
-sources = ["main.cpp"]
-
-[dependencies.fmt]
-git = "https://github.com/fmtlib/fmt"
-tag = "12.2.0"
-target = "fmt::fmt"
-```
-
-The exact commit is preserved in `vix.lock`, and the dependency is prepared automatically when the project is built or run:
-
-```bash
-vix run main.cpp
-```
-
-For a temporary test without modifying `vix.app`:
+A dependency can also be used temporarily without modifying the application:
 
 ```bash
 vix run main.cpp --dep https://github.com/fmtlib/fmt
 ```
 
-### Application modules
+The goal is not to create a separate library ecosystem. Dependencies remain native C++ dependencies and participate in the normal build.
 
-Application modules let a large Vix application remain a single native process while keeping features such as `auth`, `projects`, `billing`, `logs`, or `deployments` behind explicit public and private boundaries.
+## Application modules
+
+Large applications can be divided into modules while remaining a single native application.
 
 ```bash
 vix modules init
@@ -206,24 +153,41 @@ vix modules check
 vix build
 ```
 
-Each module owns its public headers, private implementation, tests, dependencies, metadata, route prefix, and CMake target. Enabled modules are declared in `vix.app`, and Vix generates the registration and linking code required by the application.
+A module can own its public interface, private implementation, tests and dependencies. Vix validates the relationships between modules and generates the registration and linking code required by the application.
 
-WebSocket modules can be created with dedicated workflows:
+This gives larger C++ applications explicit boundaries without requiring every feature to become a separate service or process.
+
+## Native C++ stays visible
+
+Vix is not a replacement for C++, CMake or the compiler.
+
+Existing CMake projects can keep their current structure and use Vix around them. New projects can start with `vix.app` when they do not need custom build logic.
+
+In both cases, the important parts remain accessible to the developer: compiler diagnostics, dependencies, generated build files and native outputs.
+
+Vix tries to remove repetitive work around C++ without making the underlying system mysterious.
+
+## Developer tools
+
+Vix also includes tools for working with C++ outside the normal edit, build and run cycle.
+
+**Vix Reply** is an interactive terminal for experimenting with native C++ and inspecting compiler diagnostics.
 
 ```bash
-vix modules add notifications --websocket --workflow attached
-vix modules add gateway --websocket --workflow standalone
-vix modules add bridge --websocket --workflow bridge
-vix modules add client --websocket --workflow client
+vix repl
 ```
 
-`vix modules check` validates module structure, explicit dependencies, enabled state, dependency cycles, duplicate route ownership, and public headers that expose private implementation paths.
+**Vix Note** is a visual workspace for executable notes, experiments and developer tooling.
 
-See the [module documentation](https://docs.vixcpp.com), [vix.app guide](https://docs.vixcpp.com/guides/vix-app), and [application modules guide](https://docs.vixcpp.com/app-modules) for the complete reference.
+```bash
+vix note
+```
 
-## Production deployment workflows
+They use the same C++ environment as the rest of the platform rather than introducing another language or runtime.
 
-Vix provides production workflows for building, testing, restarting services, checking application health, validating Nginx configuration, inspecting failure logs, and rolling back failed Git deployments.
+## Production
+
+The workflow continues beyond local development.
 
 ```bash
 vix deploy --dry-run
@@ -231,109 +195,34 @@ vix deploy
 vix doctor production
 ```
 
-Deployment behavior is configured in `vix.json`, while the application, compiler, service, and production infrastructure remain under the developer’s control.
+Vix can help with build and test checks, service restarts, application health, production diagnostics and deployment recovery while leaving the application infrastructure under the developer's control.
 
-## SDK profiles and the Vix Registry
+## Registry
 
-SDK profiles define coherent development environments for different kinds of Vix applications. They allow the CLI, runtime modules, build configuration, and supporting tools to be installed and upgraded together instead of being assembled manually on every machine.
+The [Vix Registry](https://registry.vixcpp.com) provides reusable C++ packages that can be installed through the Vix dependency workflow.
 
-The [Vix Registry](https://registry.vixcpp.com) provides reusable C++ packages that can be added to applications through the Vix dependency workflow. Registry packages remain native C++ dependencies and integrate with normal project builds.
+Packages remain normal native dependencies. Together with `vix.lock` and SDK profiles, this makes it easier to reproduce the same project environment on another machine or in CI.
 
-Together, SDK profiles and the registry make it easier to reproduce the same project environment locally, in CI, and across a team without turning the project into a closed ecosystem.
+## Documentation
 
-## Vix Note
+This README is only an introduction to the project.
 
-<p align="center">
-  <img
-    src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1784487655/vix-note_zwo1er.png"
-    width="100%"
-    alt="Vix Note interface"
-  />
-</p>
+The [Vix.cpp documentation](https://docs.vixcpp.com) covers the application model, CLI, build workflow, runtime, modules, dependencies, SDK profiles, testing, production workflows and internal architecture in more detail.
 
-Vix Note is a visual workspace for executable notes, experiments, and diagnostics. Its extension system allows packages to add new cell types, runtimes, and developer tools such as Python execution or C++ memory visualization.
-
-```bash
-vix note
-```
-
-## Softadastra Cloud
-
-[Softadastra Cloud](https://cloud.softadastra.com) is the product layer built around Vix for private C++ packages and team project operations. It gives C++ projects a controlled cloud workspace for the parts of development that need to be shared: workspaces, private packages, package versions, lockfiles, build reports, permissions, access tokens, public profiles, and team activity.
-
-Vix keeps the project local. The compiler, source files, build outputs, and native workflow stay on the developer machine or inside the team’s own CI environment. Softadastra Cloud adds the shared state around that workflow, so a project can move from one developer to a team without losing visibility into what was published, which lockfile was used, which build failed, and who has access.
-
-```bash
-vix login
-vix cloud init
-vix cloud status
-vix cloud lockfile upload
-vix build --report
-vix publish --cloud
-```
-
-This connection matters because Vix is not designed only from small examples. It is exercised through a real product workflow where the CLI, manifests, private package archives, lockfiles, build reports, permissions, and project metadata have to work together.
-
-Softadastra Cloud keeps native C++ projects understandable after they leave a single machine. Developers can see what exists, what changed, what private package was published, what failed, and which parts of the project are private or public, while the local-first nature of Vix remains intact.
-
-Use [cloud.softadastra.com](https://cloud.softadastra.com) to create a workspace, publish private packages, and connect a Vix project to the team workflow.
-
-## Project direction
-
-<p align="center">
-  <img
-    src="https://res.cloudinary.com/dwjbed2xb/image/upload/v1782674917/vix-roadmap_x1wuxm.png"
-    width="100%"
-    alt="Vix.cpp project direction"
-  />
-</p>
-
-Vix.cpp v2.7 marks an important foundation point for the project. The next phase is centered on improving what already exists rather than continuously expanding the platform with new modules.
-
-The work now focuses on module quality, registry reliability, SDK installation, diagnostics, tests, CI coverage, release quality, examples, documentation, and validation through real applications. This direction is about maturity: fewer unnecessary additions, more depth, better maintenance, and stronger confidence in the complete workflow.
-
-New capabilities can still be added, but they should solve a practical application problem, improve an existing workflow, or strengthen a part of the platform that developers already depend on.
-
-## Projects around Vix.cpp
-
-Vix.cpp remains the native foundation. Higher-level libraries, runtimes, and developer tools can grow around it without making the core platform lose focus.
-
-**[Rix](https://rix.vixcpp.com)** is the optional userland library layer for Vix applications. It provides application-level packages and a unified facade above the core Vix runtime.
-
-**[Cnerium](https://github.com/softadastra/cnerium)** is a reliability-first backend layer for Vix. It provides a place for backend structure and production-oriented patterns to evolve without turning the core runtime into a large opinionated framework.
-
-**[Kordex](https://github.com/softadastra/kordex)** is a JavaScript runtime for reliable local-first applications built on Vix.cpp. It demonstrates how the native platform can support higher-level runtimes while preserving a C++ foundation.
-
-**[Cgride](https://github.com/cgride/cgride)** is an embeddable native C++ build engine configured in C++. It provides project modeling, toolchain discovery, build graphs, incremental compilation, caching, and a minimal CLI. It is also designed for integration into runtimes and developer tools such as Vix.cpp.
-
-## Working on this repository
-
-This repository contains the Vix CLI, runtime, modules, SDK profiles, registry integration, tests, examples, release infrastructure, and documentation source. Users normally begin with the packaged CLI and the official documentation; contributors work directly from this repository.
-
-To build Vix.cpp from source, clone the repository with its submodules and follow the build and test instructions in the [developer documentation](https://docs.vixcpp.com). The documented workflow covers supported platforms, build options, SDK profiles, module tests, and release checks.
+Technical decisions, benchmarks and engineering work are published in the [Engineering Notes](https://blog.vixcpp.com).
 
 ## Contributing
 
-Contributions should improve the clarity, reliability, and maintainability of the existing platform. Fixes, tests, diagnostics, documentation, registry improvements, CI work, and careful refinements to current modules are especially valuable.
+Vix.cpp is developed in the open. Contributions to the runtime, modules, diagnostics, tests, documentation, registry, CI, portability and performance are welcome.
 
-For substantial changes, begin with an issue or discussion so the design can be considered in the context of the whole platform.
+For larger changes, opening an issue or discussion first makes it easier to consider the design in the context of the whole platform.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and [CHANGELOG.md](CHANGELOG.md) for project policies and release history.
+See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and [CHANGELOG.md](CHANGELOG.md).
 
 ## Maintained by Softadastra
 
-Vix.cpp is maintained by [Softadastra](https://softadastra.com), a company building tools that simplify modern C++ development.
-
-## Resources
-
-- [Vix.cpp documentation](https://docs.vixcpp.com): guides, commands, SDK profiles, modules, examples, and internals.
-- [Vix Registry](https://registry.vixcpp.com): reusable public packages for Vix applications.
-- [Softadastra Cloud](https://cloud.softadastra.com): private C++ packages, workspaces, lockfiles, build reports, access tokens, and team project activity.
-- [Rix](https://rix.vixcpp.com): optional userland libraries for Vix projects.
-- [Engineering Notes](https://blog.vixcpp.com): design decisions, releases, benchmarks, and technical articles.
-- [Softadastra](https://softadastra.com): the company maintaining Vix.cpp.
+Vix.cpp is maintained by [Softadastra](https://softadastra.com), a computing research and technology company.
 
 ## License
 
-Vix.cpp is available under the MIT License. \
-See [LICENSE](LICENSE) for details.
+Vix.cpp is available under the MIT License. See [LICENSE](LICENSE).

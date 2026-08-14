@@ -1,0 +1,266 @@
+name: Core benchmarks
+
+on:
+  pull_request:
+    branches:
+      - main
+      - dev
+      - release/**
+    paths:
+      - ".github/workflows/core-benchmarks.yml"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - "modules/**"
+      - ".gitmodules"
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: "Baseline Git ref (default: repository default branch)"
+        required: false
+        type: string
+      candidate_ref:
+        description: "Candidate Git ref (default: workflow commit)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: core-benchmarks-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compare:
+    name: Core runtime benchmark comparison
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CXX: g++
+      BUILD_JOBS: 2
+      ARTIFACT_DIR: ${{ github.workspace }}/core-benchmark-artifacts
+
+    steps:
+      - name: Checkout candidate repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install benchmark dependencies
+        run: |
+          set -euxo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build mold pkg-config python3 jq git \
+            libssl-dev zlib1g-dev nlohmann-json3-dev libspdlog-dev libfmt-dev
+
+      - name: Resolve BASE and candidate commits
+        id: refs
+        run: |
+          set -euxo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base_ref='${{ github.event.pull_request.base.sha }}'
+            candidate_ref='${{ github.event.pull_request.head.sha }}'
+          else
+            base_ref='${{ inputs.base_ref }}'
+            candidate_ref='${{ inputs.candidate_ref }}'
+            base_ref="${base_ref:-${{ github.event.repository.default_branch }}}"
+            candidate_ref="${candidate_ref:-${GITHUB_SHA}}"
+          fi
+
+          echo "base_sha=$(git rev-parse "${base_ref}^{commit}")" >> "$GITHUB_OUTPUT"
+          echo "candidate_sha=$(git rev-parse "${candidate_ref}^{commit}")" >> "$GITHUB_OUTPUT"
+
+      - name: Create isolated BASE and candidate worktrees
+        env:
+          BASE_SHA: ${{ steps.refs.outputs.base_sha }}
+          CANDIDATE_SHA: ${{ steps.refs.outputs.candidate_sha }}
+        run: |
+          set -euxo pipefail
+          base_dir=/tmp/vix-bench-base
+          candidate_dir=/tmp/vix-bench-candidate
+          rm -rf "$base_dir" "$candidate_dir"
+          git worktree add --detach "$base_dir" "$BASE_SHA"
+          git worktree add --detach "$candidate_dir" "$CANDIDATE_SHA"
+          git -C "$base_dir" submodule update --init --recursive
+          git -C "$candidate_dir" submodule update --init --recursive
+
+      - name: Benchmark BASE and candidate on this runner
+        id: benchmark
+        env:
+          BASE_SHA: ${{ steps.refs.outputs.base_sha }}
+          CANDIDATE_SHA: ${{ steps.refs.outputs.candidate_sha }}
+        run: |
+          set -euxo pipefail
+          mkdir -p "$ARTIFACT_DIR"
+
+          capture_environment() {
+            local source_dir="$1"
+            local label="$2"
+            local output="$3"
+            SOURCE_DIR="$source_dir" LABEL="$label" OUTPUT="$output" python3 - <<'PY'
+          import json, os, platform, subprocess
+          def command(*args):
+              return subprocess.check_output(args, text=True).strip()
+          data = {
+              "label": os.environ["LABEL"],
+              "commit": command("git", "-C", os.environ["SOURCE_DIR"], "rev-parse", "HEAD"),
+              "cpu_model": command("bash", "-lc", "lscpu | sed -n 's/^Model name:[[:space:]]*//p' | head -1"),
+              "cpu_count": os.cpu_count(),
+              "memory": command("bash", "-lc", "free -b | awk '/Mem:/ {print $2}'"),
+              "kernel": platform.release(),
+              "compiler_path": command("bash", "-lc", "command -v \"${CXX:-g++}\""),
+              "compiler": command(os.environ.get("CXX", "g++"), "--version").splitlines()[0],
+              "linker": command("bash", "-lc", "mold --version 2>/dev/null || ld --version | head -1"),
+              "cmake": command("cmake", "--version").splitlines()[0],
+              "ninja": command("ninja", "--version"),
+              "build_type": "Release",
+              "generator": "Ninja",
+              "build_jobs": os.environ.get("BUILD_JOBS"),
+          }
+          with open(os.environ["OUTPUT"], "w", encoding="utf-8") as f:
+              json.dump(data, f, indent=2)
+              f.write("\n")
+          PY
+          }
+
+          build_and_run() {
+            local label="$1"
+            local source_dir="$2"
+            local build_dir="/tmp/vix-bench-build-${label}"
+            local result_dir="$ARTIFACT_DIR/${label}/runtime"
+            rm -rf "$build_dir"
+            mkdir -p "$result_dir"
+
+            capture_environment "$source_dir" "$label" "$ARTIFACT_DIR/${label}/environment.json"
+            cmake -S "$source_dir/modules/core" -B "$build_dir" -G Ninja \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_CXX_COMPILER="$CXX" \
+              -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=mold \
+              -DVIX_CORE_BUILD_BENCHMARKS=ON \
+              -DVIX_CORE_BUILD_TESTS=OFF \
+              -DVIX_CORE_ENABLE_INSTALL=OFF
+            cmake --build "$build_dir" --target core_benchmarks --parallel "$BUILD_JOBS"
+            "$source_dir/modules/core/scripts/run_core_benchmarks.sh" \
+              --bin-dir "$build_dir/benchmarks/core" \
+              --out-dir "$result_dir" \
+              --version "$(git -C "$source_dir" rev-parse --short HEAD)" \
+              --runner "github-actions-${GITHUB_RUN_ID}" \
+              --machine "${RUNNER_OS}-${RUNNER_ARCH}"
+
+            # This is intentionally a compile-only consumer target: no ccache and no link.
+            local consumer_dir="/tmp/vix-bench-consumer-${label}"
+            rm -rf "$consumer_dir"
+            mkdir -p "$consumer_dir"
+            cat > "$consumer_dir/CMakeLists.txt" <<EOF
+          cmake_minimum_required(VERSION 3.20)
+          project(vix_core_compile_consumer LANGUAGES CXX)
+          add_subdirectory("$source_dir/modules/core" core)
+          add_executable(vix_compile_consumer main.cpp)
+          target_link_libraries(vix_compile_consumer PRIVATE vix::core)
+          target_compile_features(vix_compile_consumer PRIVATE cxx_std_20)
+          EOF
+            cat > "$consumer_dir/main.cpp" <<'EOF'
+          #include <vix.hpp>
+
+          int main()
+          {
+            vix::App app;
+            app.get("/health", [](vix::Request&, vix::ResponseWrapper&) {});
+            return 0;
+          }
+          EOF
+            cmake -S "$consumer_dir" -B "$consumer_dir/build" -G Ninja \
+              -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER="$CXX" \
+              -DVIX_CORE_BUILD_BENCHMARKS=OFF -DVIX_CORE_BUILD_TESTS=OFF \
+              -DVIX_CORE_ENABLE_INSTALL=OFF
+            CCACHE_DISABLE=1 /usr/bin/time -v ninja -C "$consumer_dir/build" \
+              CMakeFiles/vix_compile_consumer.dir/main.cpp.o \
+              > "$ARTIFACT_DIR/${label}/compile-consumer.stdout" \
+              2> "$ARTIFACT_DIR/${label}/compile-consumer.time"
+          }
+
+          build_and_run base /tmp/vix-bench-base
+          build_and_run candidate /tmp/vix-bench-candidate
+
+          cmp \
+            <(jq 'del(.label, .commit)' "$ARTIFACT_DIR/base/environment.json") \
+            <(jq 'del(.label, .commit)' "$ARTIFACT_DIR/candidate/environment.json")
+
+          set +e
+          python3 modules/core/scripts/compare_core_benchmarks.py \
+            "$ARTIFACT_DIR/base/runtime" "$ARTIFACT_DIR/candidate/runtime" \
+            --json-out "$ARTIFACT_DIR/comparison.json" \
+            > "$ARTIFACT_DIR/comparison.txt" 2>&1
+          comparison_exit=$?
+          set -e
+          echo "comparison_exit=$comparison_exit" >> "$GITHUB_OUTPUT"
+          if [ "$comparison_exit" -eq 2 ]; then
+            cat "$ARTIFACT_DIR/comparison.txt"
+            exit 2
+          fi
+
+      - name: Publish benchmark summary
+        if: always()
+        env:
+          BASE_SHA: ${{ steps.refs.outputs.base_sha }}
+          CANDIDATE_SHA: ${{ steps.refs.outputs.candidate_sha }}
+          COMPARISON_EXIT: ${{ steps.benchmark.outputs.comparison_exit }}
+        run: |
+          set -euo pipefail
+          if [ ! -f "$ARTIFACT_DIR/comparison.json" ]; then
+            echo "# Vix Core Benchmarks" >> "$GITHUB_STEP_SUMMARY"
+            echo "Benchmark comparison did not complete; inspect the uploaded logs." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, os, pathlib, re
+          from collections import defaultdict
+          root = pathlib.Path(os.environ["ARTIFACT_DIR"])
+          print("# Vix Core Benchmarks")
+          print()
+          print(f"Base: `{os.environ['BASE_SHA']}`  ")
+          print(f"Candidate: `{os.environ['CANDIDATE_SHA']}`")
+          report = json.loads((root / "comparison.json").read_text())
+          results = report["results"]
+          improved = sum(r["status"] == "OK" and r["change_percent"] > 0 for r in results)
+          stable = sum(r["status"] == "OK" and r["change_percent"] <= 0 for r in results)
+          print()
+          print(f"{len(results)} benchmarks — improved: {improved}, stable: {stable}, warn: {report['summary']['warn']}, regressed: {report['summary']['fail']}")
+          print()
+          groups = defaultdict(lambda: {"total": 0, "warn": 0, "regressed": 0})
+          for item in results:
+              group = item["benchmark"].split("/", 1)[0]
+              groups[group]["total"] += 1
+              groups[group]["warn"] += item["status"] == "WARN"
+              groups[group]["regressed"] += item["status"] == "FAIL"
+          print("| Group | Cases | Warn | Regressed |")
+          print("| --- | ---: | ---: | ---: |")
+          for group, counts in sorted(groups.items()):
+              print(f"| `{group}` | {counts['total']} | {counts['warn']} | {counts['regressed']} |")
+          print()
+          print("| Status | Delta | Benchmark |")
+          print("| --- | ---: | --- |")
+          for item in results:
+              status = "REGRESSED" if item["status"] == "FAIL" else item["status"]
+              delta = "-" if item["change_percent"] is None else f"{item['change_percent']:+.2f}%"
+              print(f"| {status} | {delta} | `{item['benchmark']}` |")
+          for label in ("base", "candidate"):
+              time_file = root / label / "compile-consumer.time"
+              text = time_file.read_text() if time_file.exists() else "unavailable"
+              wall = re.search(r"Elapsed \(wall clock\) time .*: (.+)", text)
+              rss = re.search(r"Maximum resident set size \(kbytes\): (\d+)", text)
+              print(f"\nCompile consumer ({label}, ccache disabled): wall={wall.group(1) if wall else 'n/a'}, max RSS={rss.group(1) if rss else 'n/a'} KiB")
+          PY
+          if [ "${COMPARISON_EXIT:-0}" = "1" ]; then
+            echo "::warning::Core benchmark comparison contains WARN/REGRESSED results; inspect the same-runner artifact."
+          fi
+
+      - name: Upload BASE, candidate, and comparison artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-benchmarks-${{ github.run_id }}-${{ github.run_attempt }}
+          path: core-benchmark-artifacts/
+          if-no-files-found: warn
