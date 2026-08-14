@@ -167,7 +167,7 @@ jobs:
           int main()
           {
             vix::App app;
-            app.get("/health", [](vix::Request&, vix::ResponseWrapper&) {});
+            app.get("/health", [](vix::Request&, vix::Response&) {});
             return 0;
           }
           EOF
