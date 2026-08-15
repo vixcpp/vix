@@ -2069,13 +2069,24 @@ if (VIX_ENABLE_INSTALL)
 
   foreach(_m IN LISTS _VIX_INSTALL_MODULES)
     if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/${_m}/include")
-      install(DIRECTORY "modules/${_m}/include/"
-        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
-        FILES_MATCHING
-          PATTERN "*.hpp"
-          PATTERN "*.h"
-          PATTERN "*.inc"
-      )
+      if (_m STREQUAL "realtime")
+        install(DIRECTORY "modules/${_m}/include/"
+          DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+          FILES_MATCHING
+            PATTERN "*.hpp"
+            PATTERN "*.h"
+            PATTERN "*.inc"
+            PATTERN "internal" EXCLUDE
+        )
+      else()
+        install(DIRECTORY "modules/${_m}/include/"
+          DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+          FILES_MATCHING
+            PATTERN "*.hpp"
+            PATTERN "*.h"
+            PATTERN "*.inc"
+        )
+      endif()
     endif()
   endforeach()
 

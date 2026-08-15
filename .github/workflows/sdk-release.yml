@@ -278,6 +278,10 @@ jobs:
           # --- web modules: web + all --------------------------------
           if has "web all"; then
             have_h "vix/websocket.hpp";  have_l "libvix_websocket.a"
+            have_h "vix/realtime.hpp";   have_l "libvix_realtime.a"
+            test -d "$ID/include/vix/realtime"
+            test ! -d "$ID/include/vix/realtime/internal"
+            grep -R "vix::realtime" "$ID/lib/cmake/Vix" -n
             have_h "vix/validation.hpp"
             have_h "vix/crypto.hpp"
             have_h "vix/webrpc.hpp"
@@ -288,6 +292,11 @@ jobs:
             nm -C "$ID/lib/libvix_websocket.a" | grep "vix::websocket::LowLevelServer::run"
             nm -C "$ID/lib/libvix_websocket.a" | grep "vix::websocket::Session::shutdown_now"
             nm -C "$ID/lib/libvix_websocket.a" | grep "vix::websocket::LongPollingManager::push_to"
+          fi
+
+          if ! has "web all"; then
+            no_h "vix/realtime.hpp"
+            no_l "libvix_realtime.a"
           fi
 
           # --- data modules: data + all ------------------------------
@@ -405,6 +414,7 @@ jobs:
             echo '#include <vix/note/note.hpp>'
             if has "web all"; then
               echo '#include <vix/websocket.hpp>'
+              echo '#include <vix/realtime.hpp>'
               echo '#include <vix/validation.hpp>'
               echo '#include <vix/crypto.hpp>'
               echo '#include <vix/webrpc.hpp>'
@@ -433,7 +443,8 @@ jobs:
             if has "web all"; then
               echo '  vix::websocket::Config ws_config{};'
               echo '  vix::websocket::Router ws_router{};'
-              echo '  (void)ws_config; (void)ws_router;'
+              echo '  vix::realtime::Config realtime_config{};'
+              echo '  (void)ws_config; (void)ws_router; (void)realtime_config;'
             fi
             echo '  std::cout << "Vix SDK consumer (profile='"$P"') build and link works\n";'
             echo '  return 0;'
