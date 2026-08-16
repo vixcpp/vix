@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# Vix v2.8.5
+
+Vix v2.8.5 stabilizes **Vix Realtime** and strengthens the Vix package workflow with faster, safer, and better-tested dependency installation.
+
+## Added
+
+### Vix Realtime
+
+- Authoritative stateful rooms with persisted events.
+- Replay, snapshots, session resume, presence, metrics, and health APIs.
+- In-memory and PostgreSQL persistence.
+- WebSocket integration and SDK packaging.
+
+### Install compatibility contracts
+
+- Deterministic tests for Git-hosted CMake dependencies.
+- Coverage for header-only, static, shared, alias targets, generated headers, nested subdirectories, CMake options, compile features, and transitive dependencies.
+
+## Improved
+
+- `vix install` now reconciles `vix.app` and `vix.lock`, resolving only new or changed dependencies.
+- Unchanged installs avoid remote Git resolution, unnecessary link recreation, and identical CMake rewrites.
+- Git checkouts are reused directly from the Vix cache.
+- Direct Git installs remain transactional on failure.
+- CMake dependency options are preserved through the lockfile and generated integration.
+- Vix no longer leaks its internal `SPDLOG_FMT_EXTERNAL` configuration into user dependencies.
+- Realtime configuration, recovery, snapshots, SDK integration, and CI coverage were stabilized.
+
+## Summary
+
+Vix v2.8.5 makes Realtime a first-class Vix module while significantly improving the reliability, performance, and compatibility guarantees of `vix install`.
+
 # Vix v2.8.4
 
 Vix v2.8.4 improves the everyday C++ development loop with faster compilation and rebuilds, lighter public headers, safer caching, better diagnostics, and more consistent `build`, `run`, and `dev` behavior.
