@@ -5,6 +5,86 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# Vix v2.8.5
+
+Vix v2.8.5 stabilizes **Vix Realtime** and significantly strengthens dependency management and modular application architecture.
+
+## Added
+
+### Vix Realtime
+
+- Authoritative stateful rooms with persisted events.
+- Transactional snapshots, replay, recovery, and session resume.
+- Presence lifecycle and session reconnection support.
+- In-memory and PostgreSQL persistence.
+- WebSocket and protocol integration.
+- Metrics and health APIs.
+- Public SDK packaging with isolated, installable headers.
+- Concurrency, persistence, recovery, and integration contracts.
+
+### Module-scoped Git dependencies
+
+Git dependencies can now belong to a specific application module.
+
+```bash
+vix install https://github.com/gabime/spdlog \
+  --tag v1.15.3 \
+  --target spdlog::spdlog \
+  --module auth
+```
+
+The dependency is declared in the module's `vix.module`, while the application continues to use a single root `vix.lock` and the shared Vix dependency cache.
+
+Module dependencies remain isolated from sibling modules and are linked only to the module that owns them.
+
+### Module architecture validation
+
+- Added a canonical `ModuleManifest` model for `vix.module`.
+- Added a canonical `ModuleGraph` for module identity, paths, dependencies, cycles, and deterministic dependency ordering.
+- Added dependency ownership tracking for application and module dependencies.
+- Added cross-module dependency constraint analysis.
+- Detects normalized module-name collisions, path collisions, invalid dependencies, disabled dependencies, self-dependencies, and dependency cycles.
+- Detects incompatible dependency requirements before they reach the generated CMake graph.
+
+### Atomic project mutations
+
+Dependency and module mutations now use project-scoped transactional updates.
+
+- Project mutation locking prevents concurrent commands from silently overwriting each other's state.
+- Multi-file mutations use staged writes and rollback.
+- Interrupted transactions can be recovered from `.vix/transactions`.
+- Failed operations restore previous project metadata byte-for-byte.
+- `vix add`, `vix remove`, `vix update`, `vix install`, and module mutation commands use the common mutation infrastructure.
+
+### Install compatibility contracts
+
+- Deterministic tests for Git-hosted CMake dependencies.
+- Coverage for header-only, static, shared, alias targets, generated headers, nested subdirectories, CMake options, compile features, and transitive dependencies.
+- Added strict module Git installation, rollback, ownership, constraint, graph, and transaction contracts.
+
+## Improved
+
+- `vix install` now reconciles `vix.app` and `vix.lock`, resolving only new or changed dependencies.
+- Unchanged installs avoid remote Git resolution, unnecessary link recreation, and identical CMake rewrites.
+- Git checkouts are reused directly from the Vix cache.
+- Direct Git installs remain transactional on failure.
+- Module-scoped Git installs validate the target module before performing remote work.
+- Dependency conflicts across the application and its active modules are detected instead of using last-write-wins behavior.
+- Multiple modules can share the same compatible dependency without requiring separate downloads or lockfiles.
+- Git dependency identity now normalizes repository-root subdirectories consistently, so omitted subdirectories and `.` are treated as the same source location.
+- CMake dependency options are preserved through the lockfile and generated integration.
+- Git installation progress now reports remote work immediately and displays real Git receiving progress without inventing global percentages.
+- `vix install` dependency operations no longer require a build-complete `vix.app`.
+- Vix no longer leaks its internal `SPDLOG_FMT_EXTERNAL` configuration into user dependencies.
+- Compiler-specific warning flags are now scoped correctly between GCC and Clang.
+- Realtime recovery, session resume, presence, snapshots, PostgreSQL support, SDK integration, and concurrency behavior were stabilized and validated.
+
+## Summary
+
+Vix v2.8.5 makes Realtime a first-class Vix module while making modular applications and dependency installation substantially safer.
+
+Applications can now assign Git dependencies to individual modules, detect dependency and graph conflicts before build generation, recover from interrupted metadata mutations, and reuse a single deterministic dependency graph across the application.
+
 # Vix v2.8.4
 
 Vix v2.8.4 improves the everyday C++ development loop with faster compilation and rebuilds, lighter public headers, safer caching, better diagnostics, and more consistent `build`, `run`, and `dev` behavior.

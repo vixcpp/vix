@@ -104,6 +104,9 @@ env:
     -DVIX_ENABLE_MIDDLEWARE=ON
     -DVIX_ENABLE_CLI=ON
     -DVIX_ENABLE_WEBSOCKET=ON
+    -DVIX_ENABLE_REALTIME=ON
+    -DVIX_REALTIME_WITH_WEBSOCKET=ON
+    -DVIX_REALTIME_WITH_POSTGRES=OFF
     -DVIX_ENABLE_TEMPLATE=ON
     -DVIX_ENABLE_UI=ON
     -DVIX_ENABLE_NOTE=ON
@@ -143,6 +146,9 @@ env:
     -DVIX_ENABLE_MIDDLEWARE=ON
     -DVIX_ENABLE_CLI=ON
     -DVIX_ENABLE_WEBSOCKET=ON
+    -DVIX_ENABLE_REALTIME=ON
+    -DVIX_REALTIME_WITH_WEBSOCKET=ON
+    -DVIX_REALTIME_WITH_POSTGRES=OFF
     -DVIX_ENABLE_TEMPLATE=ON
     -DVIX_ENABLE_UI=ON
     -DVIX_ENABLE_NOTE=ON
@@ -190,6 +196,7 @@ env:
     -DVIX_MIDDLEWARE_BUILD_TESTS=ON
     -DVIX_CLI_BUILD_TESTS=ON
     -DVIX_WEBSOCKET_BUILD_TESTS=ON
+    -DVIX_REALTIME_BUILD_TESTS=ON
     -DVIX_TEMPLATE_BUILD_TESTS=ON
     -DTEMPLATE_BUILD_TESTS=ON
     -DVIX_UI_BUILD_TESTS=ON
@@ -255,6 +262,7 @@ jobs:
           test -f modules/template/CMakeLists.txt
           test -f modules/ui/CMakeLists.txt
           test -f modules/note/CMakeLists.txt
+          test -f modules/realtime/CMakeLists.txt
 
       - name: Select compiler
         run: |
@@ -357,6 +365,11 @@ jobs:
             exit 1
           fi
 
+          if ! grep -Eq 'vix_realtime_' /tmp/vix_ctest_list.txt; then
+            echo "::error::Realtime tests were not registered."
+            exit 1
+          fi
+
       - name: Run module tests
         run: |
           set -euxo pipefail
@@ -433,6 +446,11 @@ jobs:
 
           if ! grep -Eq "Total Tests: [1-9][0-9]*" /tmp/vix_san_ctest_list.txt; then
             echo "::error::No sanitized tests were registered. Check module BUILD_TESTS options."
+            exit 1
+          fi
+
+          if ! grep -Eq 'vix_realtime_' /tmp/vix_san_ctest_list.txt; then
+            echo "::error::Sanitized Realtime tests were not registered."
             exit 1
           fi
 
@@ -1005,6 +1023,11 @@ jobs:
 
           if ! grep -Eq "Total Tests: [1-9][0-9]*" /tmp/vix_full_tests_list.txt; then
             echo "::error::Full test profile did not register tests."
+            exit 1
+          fi
+
+          if ! grep -Eq 'vix_realtime_' /tmp/vix_full_tests_list.txt; then
+            echo "::error::Full test profile did not register Realtime tests."
             exit 1
           fi
 
