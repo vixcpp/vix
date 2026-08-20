@@ -14,9 +14,13 @@ Vix v2.8.5 stabilizes **Vix Realtime** and significantly strengthens dependency 
 ### Vix Realtime
 
 - Authoritative stateful rooms with persisted events.
-- Replay, snapshots, session resume, presence, metrics, and health APIs.
+- Transactional snapshots, replay, recovery, and session resume.
+- Presence lifecycle and session reconnection support.
 - In-memory and PostgreSQL persistence.
-- WebSocket integration and SDK packaging.
+- WebSocket and protocol integration.
+- Metrics and health APIs.
+- Public SDK packaging with isolated, installable headers.
+- Concurrency, persistence, recovery, and integration contracts.
 
 ### Module-scoped Git dependencies
 
@@ -73,7 +77,7 @@ Dependency and module mutations now use project-scoped transactional updates.
 - `vix install` dependency operations no longer require a build-complete `vix.app`.
 - Vix no longer leaks its internal `SPDLOG_FMT_EXTERNAL` configuration into user dependencies.
 - Compiler-specific warning flags are now scoped correctly between GCC and Clang.
-- Realtime configuration, recovery, snapshots, SDK integration, and CI coverage were stabilized.
+- Realtime recovery, session resume, presence, snapshots, PostgreSQL support, SDK integration, and concurrency behavior were stabilized and validated.
 
 ## Summary
 
