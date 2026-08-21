@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# Vix v2.8.6
+
+Vix v2.8.6 strengthens **Vix Game** around a smaller set of composable runtime primitives and a cleaner project-to-export workflow.
+
+## Improved
+
+### Vix Game
+
+- Enforced a single canonical `GameRuntime` per `App`.
+- Clarified the `App → GameRuntime → GameContext` lifecycle.
+- Strengthened `Registry`, scenes, events, fixed updates, assets, and logical input actions.
+- Added `RuntimeDispatcher` for safely returning asynchronous work to the runtime thread.
+- Improved job and asynchronous asset lifecycle handling.
+- Scenes now own their registry directly.
+- Added safer multi-binding input actions.
+- Improved deterministic and portable game project exports.
+- Game exports now explicitly include source code, assets, project metadata, CMake files, and a portable manifest.
+- Added `tiny_adventure_reference` to demonstrate composition of scenes, entities, components, systems, events, assets, input, time, and 2D rendering.
+- Expanded runtime and architecture coverage to 124 passing tests.
+
+## Summary
+
+Vix Game now focuses on a small set of composable concepts rather than specialized gameplay systems, providing a stronger foundation for building C++ games and interactive applications.
+
 # Vix v2.8.5
 
 Vix v2.8.5 stabilizes **Vix Realtime** and significantly strengthens dependency management and modular application architecture.
