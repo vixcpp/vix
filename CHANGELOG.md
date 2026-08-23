@@ -7,27 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Vix v2.8.6
 
-Vix v2.8.6 strengthens **Vix Game** around a smaller set of composable runtime primitives and a cleaner project-to-export workflow.
+Vix v2.8.6 strengthens **Vix Game** around a smaller set of composable runtime primitives, clearer ownership rules, safer asynchronous execution, and a more deterministic project-to-export workflow.
 
 ## Improved
 
 ### Vix Game
 
 - Enforced a single canonical `GameRuntime` per `App`.
-- Clarified the `App → GameRuntime → GameContext` lifecycle.
-- Strengthened `Registry`, scenes, events, fixed updates, assets, and logical input actions.
-- Added `RuntimeDispatcher` for safely returning asynchronous work to the runtime thread.
-- Improved job and asynchronous asset lifecycle handling.
+- Clarified the `App → GameRuntime → GameContext` lifecycle and ownership model.
+- Strengthened the core composition model around registries, scenes, events, fixed updates, assets, input, time, and rendering.
 - Scenes now own their registry directly.
-- Added safer multi-binding input actions.
+- Added `RuntimeDispatcher` for safely returning asynchronous work to the runtime thread.
+- Improved job lifecycle and asynchronous asset loading.
+- Updated asynchronous asset loading examples to dispatch completion callbacks through the runtime thread correctly.
+- Added safer multi-binding support for logical input actions.
 - Improved deterministic and portable game project exports.
 - Game exports now explicitly include source code, assets, project metadata, CMake files, and a portable manifest.
-- Added `tiny_adventure_reference` to demonstrate composition of scenes, entities, components, systems, events, assets, input, time, and 2D rendering.
+- Strengthened exported project generation so standalone C++ game projects remain reproducible outside the original source tree.
+- Added `tiny_adventure_reference` as a compact reference demonstrating composition of scenes, entities, components, systems, events, assets, input, time, and 2D rendering.
 - Expanded runtime and architecture coverage to 124 passing tests.
 
 ## Summary
 
-Vix Game now focuses on a small set of composable concepts rather than specialized gameplay systems, providing a stronger foundation for building C++ games and interactive applications.
+Vix Game now centers on a small set of general, composable concepts instead of accumulating specialized gameplay systems.
+
+The module provides a clearer foundation for building C++ games and interactive applications by keeping the runtime model small:
+
+`App → GameRuntime → GameContext`
+
+Higher-level behavior is then built by composing scenes, registries, entities, components, systems, events, assets, input, time, jobs, and rendering rather than introducing dedicated abstractions for every gameplay feature.
 
 # Vix v2.8.5
 
