@@ -57,20 +57,72 @@ jobs:
 
       - name: Resolve BASE and candidate commits
         id: refs
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          INPUT_BASE_REF: ${{ inputs.base_ref }}
+          INPUT_CANDIDATE_REF: ${{ inputs.candidate_ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euxo pipefail
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            base_ref='${{ github.event.pull_request.base.sha }}'
-            candidate_ref='${{ github.event.pull_request.head.sha }}'
+
+          # actions/checkout checks out the workflow ref, but a branch such as
+          # "main" is not guaranteed to exist as a local branch on the runner.
+          # Fetch remote branch and tag refs explicitly so workflow_dispatch can
+          # compare any branch/tag/SHA without requiring a merge.
+          git fetch --force --prune --tags origin             '+refs/heads/*:refs/remotes/origin/*'
+
+          resolve_commit() {
+            local ref="$1"
+            local sha=""
+
+            if [ -z "$ref" ]; then
+              echo "error: empty Git ref" >&2
+              return 1
+            fi
+
+            # SHA, local ref, remote ref, or already-resolved tag.
+            if sha="$(git rev-parse --verify "${ref}^{commit}" 2>/dev/null)"; then
+              printf '%s\n' "$sha"
+              return 0
+            fi
+
+            # Plain branch name such as "main" or "release/v2.8.6".
+            if sha="$(git rev-parse --verify "refs/remotes/origin/${ref}^{commit}" 2>/dev/null)"; then
+              printf '%s\n' "$sha"
+              return 0
+            fi
+
+            # Plain tag name.
+            if sha="$(git rev-parse --verify "refs/tags/${ref}^{commit}" 2>/dev/null)"; then
+              printf '%s\n' "$sha"
+              return 0
+            fi
+
+            # Last resort for an explicit ref accepted by the remote.
+            git fetch --force --no-tags origin "$ref"
+            git rev-parse --verify "FETCH_HEAD^{commit}"
+          }
+
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            base_ref="$PR_BASE_SHA"
+            candidate_ref="$PR_HEAD_SHA"
           else
-            base_ref='${{ inputs.base_ref }}'
-            candidate_ref='${{ inputs.candidate_ref }}'
-            base_ref="${base_ref:-${{ github.event.repository.default_branch }}}"
-            candidate_ref="${candidate_ref:-${GITHUB_SHA}}"
+            base_ref="${INPUT_BASE_REF:-$DEFAULT_BRANCH}"
+            candidate_ref="${INPUT_CANDIDATE_REF:-$GITHUB_SHA}"
           fi
 
-          echo "base_sha=$(git rev-parse "${base_ref}^{commit}")" >> "$GITHUB_OUTPUT"
-          echo "candidate_sha=$(git rev-parse "${candidate_ref}^{commit}")" >> "$GITHUB_OUTPUT"
+          base_sha="$(resolve_commit "$base_ref")"
+          candidate_sha="$(resolve_commit "$candidate_ref")"
+
+          {
+            echo "base_sha=$base_sha"
+            echo "candidate_sha=$candidate_sha"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "BASE:      $base_ref -> $base_sha"
+          echo "CANDIDATE: $candidate_ref -> $candidate_sha"
 
       - name: Create isolated BASE and candidate worktrees
         env:
@@ -189,7 +241,7 @@ jobs:
             <(jq 'del(.label, .commit)' "$ARTIFACT_DIR/candidate/environment.json")
 
           set +e
-          python3 modules/core/scripts/compare_core_benchmarks.py \
+          python3 /tmp/vix-bench-candidate/modules/core/scripts/compare_core_benchmarks.py \
             "$ARTIFACT_DIR/base/runtime" "$ARTIFACT_DIR/candidate/runtime" \
             --json-out "$ARTIFACT_DIR/comparison.json" \
             > "$ARTIFACT_DIR/comparison.txt" 2>&1
