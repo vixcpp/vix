@@ -517,6 +517,42 @@ jobs:
           smoke/vix note --help >/tmp/vix-note-help.txt
           head -n 80 /tmp/vix-note-help.txt
 
+      - name: Validate packaged runtime (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          smoke_root="$(mktemp -d)"
+          trap 'rm -rf "$smoke_root"' EXIT
+
+          archive="dist/vix-${{ matrix.vixos }}-${{ matrix.arch }}.tar.gz"
+          extract_dir="$smoke_root/extract"
+          install_dir="$smoke_root/install"
+
+          test -f "$archive"
+          tar -tzf "$archive"
+          mkdir -p "$extract_dir"
+          tar -xzf "$archive" -C "$extract_dir"
+
+          test -f "$extract_dir/vix"
+          test -x "$extract_dir/vix"
+          test -f "$extract_dir/share/vix/note/index.html"
+          test -f "$extract_dir/share/vix/note/assets/note.css"
+          test -f "$extract_dir/share/vix/note/assets/note.js"
+          "$extract_dir/vix" --version
+
+          mkdir -p "$install_dir/bin" "$install_dir/share/vix"
+          cp "$extract_dir/vix" "$install_dir/bin/vix"
+          cp -R "$extract_dir/share/vix/note" "$install_dir/share/vix/note"
+          test -x "$install_dir/bin/vix"
+          test -f "$install_dir/share/vix/note/index.html"
+          test -f "$install_dir/share/vix/note/assets/note.css"
+          test -f "$install_dir/share/vix/note/assets/note.js"
+          "$install_dir/bin/vix" --version
+          "$install_dir/bin/vix" note --help >/tmp/vix-note-help.txt
+          head -n 80 /tmp/vix-note-help.txt
+
       - name: Package (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -643,6 +679,61 @@ jobs:
             -LiteralPath $packageDir `
             -Recurse `
             -Force
+
+      - name: Validate packaged runtime (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $smokeRoot = Join-Path `
+            ([System.IO.Path]::GetTempPath()) `
+            ("vix-release-smoke-" + [System.Guid]::NewGuid().ToString("N"))
+          $archive = "dist\vix-windows-${{ matrix.arch }}.zip"
+          $extractDir = Join-Path $smokeRoot "extract"
+          $installDir = Join-Path $smokeRoot "install"
+
+          try {
+            if (-not (Test-Path -LiteralPath $archive -PathType Leaf)) {
+              throw "missing release archive: $archive"
+            }
+
+            Expand-Archive -LiteralPath $archive -DestinationPath $extractDir -Force
+
+            $sourceExe = Join-Path $extractDir "vix.exe"
+            $sourceNote = Join-Path $extractDir "share\vix\note"
+
+            foreach ($requiredFile in @(
+              $sourceExe,
+              (Join-Path $sourceNote "index.html"),
+              (Join-Path $sourceNote "assets\note.css"),
+              (Join-Path $sourceNote "assets\note.js")
+            )) {
+              if (-not (Test-Path -LiteralPath $requiredFile -PathType Leaf)) {
+                throw "missing package file: $requiredFile"
+              }
+            }
+
+            & $sourceExe --version
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+            $installBin = Join-Path $installDir "bin"
+            $installNoteParent = Join-Path $installDir "share\vix"
+            $installedExe = Join-Path $installBin "vix.exe"
+            $installedNote = Join-Path $installNoteParent "note"
+
+            New-Item -ItemType Directory -Force -Path $installBin, $installNoteParent | Out-Null
+            Copy-Item -LiteralPath $sourceExe -Destination $installedExe -Force
+            Copy-Item -LiteralPath $sourceNote -Destination $installedNote -Recurse -Force
+
+            & $installedExe --version
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            & $installedExe note --help | Select-Object -First 80
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          finally {
+            Remove-Item -LiteralPath $smokeRoot -Recurse -Force -ErrorAction SilentlyContinue
+          }
       - name: Upload dist
         uses: actions/upload-artifact@v4
         with:
