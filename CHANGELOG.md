@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Vix v2.8.6
 
-Vix v2.8.6 strengthens **Vix Game** around a smaller set of composable runtime primitives, clearer ownership rules, safer asynchronous execution, and a more deterministic project-to-export workflow.
+Vix v2.8.6 strengthens **Vix Game** and **Vix Async** around smaller composable runtime primitives, clearer ownership rules, safer asynchronous execution, and more deterministic runtime behavior.
 
 ## Improved
 
@@ -27,6 +27,30 @@ Vix v2.8.6 strengthens **Vix Game** around a smaller set of composable runtime p
 - Added `tiny_adventure_reference` as a compact reference demonstrating composition of scenes, entities, components, systems, events, assets, input, time, and 2D rendering.
 - Expanded runtime and architecture coverage to 124 passing tests.
 
+### Vix Async
+
+- Stabilized the coroutine runtime around `task<T>`, `scheduler`, `io_context`, and explicit asynchronous services.
+- Improved cancellation registration and callback lifetime handling.
+- Strengthened scheduler behavior so detached callback failures do not terminate the event loop.
+- Improved `io_context` shutdown ordering across timers, CPU work, signals, networking, and scheduler execution.
+- Stabilized timer scheduling so newly registered earlier deadlines can preempt the current wait.
+- Improved `sleep_for()` cancellation so suspended operations can resume promptly instead of waiting for the original deadline.
+- Separated CPU fire-and-forget execution from coroutine result submission through explicit `post()` and `submit()` behavior.
+- Improved CPU pool shutdown and lifetime handling, including destruction initiated from worker execution.
+- Stabilized `when_all` and `when_any`, including empty composition behavior, `task<void>` support, result lifetime, and safe completion of losing `when_any` tasks.
+- Clarified `when_any` semantics: the first completed task determines the returned result while remaining tasks continue independently.
+- Improved signal handling with explicit single-waiter semantics, correct signal delivery, cancellation, and bounded shutdown.
+- Improved Asio operation cancellation for TCP, UDP, and DNS operations.
+- Strengthened network service lifetime so sockets and other network objects cannot outlive the backend they depend on.
+- Ensured network continuations return through the Vix scheduler instead of unexpectedly resuming coroutine code on the Asio thread.
+- Improved shutdown behavior for active network operations.
+- Added the public `<vix/async.hpp>` umbrella header.
+- Added the TCP echo server example to the module example build.
+- Aligned Async module version declarations with `1.2.1`.
+- Fixed sanitizer integration so AddressSanitizer and UndefinedBehaviorSanitizer instrumentation is actually applied when enabled.
+- Added regression coverage for timers, CPU execution, signals, `io_context`, network cancellation, and normal TCP, UDP, and DNS operation.
+- Expanded the Async module to 10 passing tests.
+
 ## Summary
 
 Vix Game now centers on a small set of general, composable concepts instead of accumulating specialized gameplay systems.
@@ -36,6 +60,14 @@ The module provides a clearer foundation for building C++ games and interactive 
 `App → GameRuntime → GameContext`
 
 Higher-level behavior is then built by composing scenes, registries, entities, components, systems, events, assets, input, time, jobs, and rendering rather than introducing dedicated abstractions for every gameplay feature.
+
+Vix Async follows the same principle with a small execution model:
+
+`task<T> → scheduler → io_context`
+
+Timers, CPU work, signals, networking, cancellation, and higher-level composition build on that foundation instead of introducing separate execution models.
+
+The result is a more predictable asynchronous runtime with clearer execution boundaries, safer service lifetimes, stronger cancellation behavior, and better coverage of shutdown and concurrency paths.
 
 # Vix v2.8.5
 
