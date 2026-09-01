@@ -309,7 +309,7 @@ jobs:
 
       - name: Upload logs (Unix)
         if: always() && runner.os != 'Windows'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: logs-${{ matrix.vixos }}-${{ matrix.arch }}
           path: logs/${{ matrix.vixos }}-${{ matrix.arch }}/*
@@ -431,7 +431,7 @@ jobs:
 
       - name: Upload logs (Windows)
         if: always() && runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: logs-${{ matrix.vixos }}-${{ matrix.arch }}
           path: logs/${{ matrix.vixos }}-${{ matrix.arch }}/*
@@ -735,7 +735,7 @@ jobs:
             Remove-Item -LiteralPath $smokeRoot -Recurse -Force -ErrorAction SilentlyContinue
           }
       - name: Upload dist
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: dist-${{ matrix.vixos }}-${{ matrix.arch }}
           path: dist/*
