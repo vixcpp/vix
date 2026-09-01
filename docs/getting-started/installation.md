@@ -29,6 +29,18 @@ Windows PowerShell:
 irm https://vixcpp.com/install.ps1 | iex
 ```
 
+## Supported release platforms
+
+The public Vix CLI release channel supports:
+
+| Operating system | Architectures |
+| --- | --- |
+| Linux | x86_64, aarch64 |
+| macOS | x86_64, aarch64 |
+| Windows | x86_64 |
+
+Windows ARM64 is not supported by the public release channel.
+
 After installation, restart your terminal.
 
 Then verify the CLI:
