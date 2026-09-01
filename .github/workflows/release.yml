@@ -175,7 +175,9 @@ jobs:
         run: |
           set -euxo pipefail
 
-          brew update
+          export HOMEBREW_NO_AUTO_UPDATE=1
+          export HOMEBREW_NO_INSTALL_UPGRADE=1
+          export HOMEBREW_NO_INSTALL_CLEANUP=1
 
           brew install \
             cmake \
