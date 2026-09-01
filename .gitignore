@@ -90,3 +90,4 @@ registry/
 .vix/
 scripts/publish-engine-issues.sh
 issues/
+notes/

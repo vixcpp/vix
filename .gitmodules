@@ -171,3 +171,7 @@
 	path = modules/realtime
 	url = https://github.com/vixcpp/realtime.git
 	branch = dev
+[submodule "modules/standard"]
+	path = modules/standard
+	url = https://github.com/vixcpp/standard.git
+	branch = dev
