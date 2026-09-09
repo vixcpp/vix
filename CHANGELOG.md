@@ -7,148 +7,157 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Vix v2.9.0
 
-Vix v2.9.0 significantly improves the **C++ build path** by reducing unnecessary work between the user command and the underlying build backend.
+Vix v2.9.0 improves the development loop across **builds, diagnostics, and networking**.
 
-The release clarifies ownership between Vix and CMake/Ninja, makes expensive build features lazy, stabilizes build configuration identity, and restores a fast incremental development loop.
+This release focuses on a simple principle:
+
+> Vix should add value to the build, not duplicate work already owned by the build backend.
 
 ## Improved
 
 ### Build system
 
-- Simplified the normal CMake/Ninja execution path:
+The normal build path is now much simpler:
 
 ```text
 vix build
     ↓
-resolve build configuration
+resolve project and build configuration
     ↓
-configure if necessary
+configure when necessary
     ↓
 CMake / Ninja
 ```
 
-- Removed unconditional `BuildGraph` construction from normal CMake/Ninja builds.
-- `BuildGraph` is now created only when a feature actually requires it, including:
-  - `--explain`
-  - watch mode
-  - eligible graph executor paths
-- Avoided unnecessary imports of:
-  - `compile_commands.json`
-  - `build.ninja`
-  - dependency `.d` files
-  - previous build graphs
-- Removed redundant dirty propagation when Ninja is responsible for incremental compilation.
-- Stopped scanning and hashing C++ sources and headers before normal Ninja builds.
-- Moved C++ incremental ownership back to the backend that already owns the concrete compilation graph.
-- Normal CMake/Ninja builds no longer maintain Vix build-state snapshots unnecessarily.
-- Isolated input snapshots, explicit glob verification, and Vix build-state tracking to `--fast`.
-- Removed the additional `VerifyGlobs.cmake` invocation from normal builds and let CMake/Ninja handle `CONFIGURE_DEPENDS`.
-- Reduced duplicated dependency, toolchain, and CMake bridge work during build planning.
-- `ResolvedBuildPlan` now carries already-resolved information through the build pipeline instead of recalculating it later.
-- Reused dependency bridge state, toolchain content, and CMake integration information within the same build invocation.
+Vix owns the build intent, project configuration, dependencies, toolchain selection, and user experience.
 
-### Incremental builds
+CMake and Ninja own the concrete compilation graph, dependency tracking, dirty detection, and incremental execution.
 
-- Improved no-op build performance substantially.
-- Normal `vix build` now reaches Ninja without first maintaining a second incremental build model inside Vix.
-- `.cpp` and header changes remain tracked by Ninja through its normal dependency graph.
-- Source additions and removals continue to work with CMake `CONFIGURE_DEPENDS`.
-- CMake configuration changes remain independently detected by Vix.
-- Added generic regression coverage for:
-  - no-op builds
-  - source modifications
-  - header modifications
-  - source additions and removals
-  - `CONFIGURE_DEPENDS`
-  - `CMakeLists.txt` changes
-  - effective CMake variable changes
+This removes the previous duplication where Vix could build and inspect its own graph before invoking Ninja, which then performed the same dependency analysis again.
 
-Local validation reduced a no-op build of a larger Vix-based project to approximately `0.2s`, while a small generic CMake fixture reached approximately `0.02s`.
+As a result:
 
-### Build configuration
+- `BuildGraph` is now created only when a feature actually needs it.
+- Normal builds no longer scan and hash sources and headers before Ninja.
+- `compile_commands.json`, `build.ninja`, `.d` files, and previous build graphs are no longer imported unnecessarily.
+- Normal builds no longer maintain a second build-state model inside Vix.
+- Dependency, toolchain, and CMake resolution results are reused throughout a single build invocation.
+- `--explain`, watch mode, and specialized graph execution remain available without adding cost to ordinary builds.
 
-- Stabilized `ConfigurationSignature` around properties that can actually affect build configuration or generated artifacts.
-- Removed presentation-only options from build identity:
-  - `verbose`
-  - `cmakeVerbose`
-- Removed execution-policy state that should not define a different build configuration:
-  - `useCache`
-  - launcher metadata already represented through effective CMake configuration
-- `vix build`, `vix build --verbose`, and `vix build --cmake-verbose` now share the same underlying build configuration when no artifact-affecting option changes.
-- Preserved configuration-sensitive values including:
-  - preset
-  - generator
-  - build type
-  - target triple
-  - sysroot
-  - toolchain
-  - effective CMake variables
-  - CMake arguments
-  - linker configuration
-  - project fingerprint
-
-### CLI build experience
-
-- Restored live build progress for normal CMake/Ninja builds.
-- `vix build` once again shows compilation progress instead of remaining silent until completion.
-- Improved structured compiler diagnostics.
-- Improved compiler source code frames and diagnostic ranges.
-- `--verbose` now provides additional Vix-level build information without changing the build itself.
-- `--cmake-verbose` remains the explicit path for raw backend output.
-- Preserved concise warning summaries during normal builds.
-
-## Architecture
-
-Vix v2.9.0 establishes a clearer boundary between build intent and build execution.
-
-Vix owns:
-
-```text
-project intent
-dependency resolution
-toolchain
-configuration
-diagnostics
-backend selection
-```
-
-When Ninja is the backend, Ninja owns:
-
-```text
-concrete build graph
-dependency files
-dirty detection
-incrementality
-build ordering
-parallel execution
-no-op detection
-```
-
-Additional Vix capabilities such as `BuildGraph`, graph execution, build-state snapshots, explanation, and watch behavior are activated only when they are actually required.
-
-This avoids maintaining two competing incremental build systems during every invocation.
-
-## Summary
-
-Vix v2.9.0 makes the build system follow a simpler rule:
+The rule is now simple:
 
 > A capability that is not being used should not have a cost.
 
-The normal CMake/Ninja path no longer scans the project, imports the backend graph, hashes dependencies, builds a Vix graph, and then asks Ninja to repeat the same work.
+Incremental and no-op builds are consequently much faster. Local validation on a larger Vix project reduced a normal no-op `vix build` to around `0.2s`.
 
-Instead:
+### Build configuration
+
+Build identity now represents only properties that can actually change the resulting configuration or artifacts.
+
+Presentation and execution options such as:
+
+```text
+--verbose
+--cmake-verbose
+cache policy
+```
+
+no longer create different configuration signatures.
+
+This means:
 
 ```text
 vix build
-    ↓
-understand the configuration
-    ↓
-delegate execution
+vix build --verbose
+vix build --cmake-verbose
 ```
 
-Vix continues to provide the higher-level build interface, dependency model, toolchain configuration, diagnostics, and optional advanced build capabilities, while allowing the selected backend to do the work it already performs well.
+operate on the same underlying build configuration unless an artifact-affecting option changes.
 
-The result is a smaller build pipeline, faster no-op builds, clearer ownership, and a stronger foundation for future Vix build backends.
+### Build experience
+
+The build interface was also refined around three levels:
+
+```text
+vix build
+    concise Vix build experience
+
+vix build --verbose
+    additional useful Vix-level information
+
+vix build --cmake-verbose
+    raw CMake, Ninja, and compiler output
+```
+
+Live build progress is restored and now presents the current compilation action without exposing unnecessary backend paths.
+
+Compiler diagnostics, source frames, warning summaries, and terminal colors were also improved while keeping normal output concise.
+
+### Requests
+
+`vix::requests` received major async and connection-lifecycle improvements.
+
+The asynchronous request path now remains asynchronous through DNS resolution, connection establishment, TLS, write, and response reading.
+
+Request and URL lifetimes were also hardened across coroutine suspension points.
+
+HTTP and HTTPS connections can now be reused safely through an internal connection pool:
+
+```text
+origin
+    ↓
+acquire idle connection or create one
+    ↓
+request / response
+    ↓
+release if reusable
+    ↓
+discard if state is unsafe
+```
+
+Connections are never shared concurrently by multiple requests, and a new connection can be created immediately when no compatible idle connection is available.
+
+The implementation handles:
+
+- HTTP and HTTPS keep-alive
+- stale idle connections
+- safe reconnect for eligible requests
+- `Connection: close`
+- incomplete or ambiguous responses
+- timeout and cancellation
+- connection isolation by origin
+
+Local HTTPS tests validate 10 sequential requests using one connection with 9 reuses.
+
+In a real Vix Stress HTTPS workload, connection reuse reached approximately `93%` and reduced median latency from roughly:
+
+```text
+959 ms
+↓
+221 ms
+```
+
+without exposing the connection pool as a new public API.
+
+## Summary
+
+Vix v2.9.0 continues moving complexity behind a smaller interface.
+
+For builds:
+
+```text
+Vix describes what should be built.
+The backend decides how to execute the concrete build graph.
+```
+
+For networking:
+
+```text
+The user sends requests.
+Vix manages connection lifetime and reuse internally.
+```
+
+The result is less duplicated work, faster development feedback, and stronger runtime behavior without requiring users to understand the machinery underneath.
 
 # Vix v2.8.6
 
