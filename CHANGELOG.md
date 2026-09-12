@@ -7,157 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Vix v2.9.0
 
-Vix v2.9.0 improves the development loop across **builds, diagnostics, and networking**.
-
-This release focuses on a simple principle:
-
-> Vix should add value to the build, not duplicate work already owned by the build backend.
+Vix v2.9.0 focuses on a cleaner development loop, more capable networking, and SDKs that better match the modules and dependencies users actually consume.
 
 ## Improved
 
-### Build system
+### Build
 
-The normal build path is now much simpler:
+The normal build path now lets each layer own the work it is best placed to perform. Vix resolves project intent, configuration, toolchains, dependencies, and the command-line experience; CMake and Ninja own the concrete compilation graph, dependency tracking, and incremental execution.
 
-```text
-vix build
-    ↓
-resolve project and build configuration
-    ↓
-configure when necessary
-    ↓
-CMake / Ninja
-```
+Ordinary `vix build` no longer prepares a second source and header graph before invoking the backend. Build-graph work remains available for features that need it, while normal, incremental, and no-op builds avoid unnecessary scanning and state reconstruction. Build identity also now excludes presentation and execution flags such as `--verbose` and `--cmake-verbose`, so they do not create unnecessary configuration variants.
 
-Vix owns the build intent, project configuration, dependencies, toolchain selection, and user experience.
-
-CMake and Ninja own the concrete compilation graph, dependency tracking, dirty detection, and incremental execution.
-
-This removes the previous duplication where Vix could build and inspect its own graph before invoking Ninja, which then performed the same dependency analysis again.
-
-As a result:
-
-- `BuildGraph` is now created only when a feature actually needs it.
-- Normal builds no longer scan and hash sources and headers before Ninja.
-- `compile_commands.json`, `build.ninja`, `.d` files, and previous build graphs are no longer imported unnecessarily.
-- Normal builds no longer maintain a second build-state model inside Vix.
-- Dependency, toolchain, and CMake resolution results are reused throughout a single build invocation.
-- `--explain`, watch mode, and specialized graph execution remain available without adding cost to ordinary builds.
-
-The rule is now simple:
-
-> A capability that is not being used should not have a cost.
-
-Incremental and no-op builds are consequently much faster. Local validation on a larger Vix project reduced a normal no-op `vix build` to around `0.2s`.
-
-### Build configuration
-
-Build identity now represents only properties that can actually change the resulting configuration or artifacts.
-
-Presentation and execution options such as:
-
-```text
---verbose
---cmake-verbose
-cache policy
-```
-
-no longer create different configuration signatures.
-
-This means:
-
-```text
-vix build
-vix build --verbose
-vix build --cmake-verbose
-```
-
-operate on the same underlying build configuration unless an artifact-affecting option changes.
-
-### Build experience
-
-The build interface was also refined around three levels:
-
-```text
-vix build
-    concise Vix build experience
-
-vix build --verbose
-    additional useful Vix-level information
-
-vix build --cmake-verbose
-    raw CMake, Ninja, and compiler output
-```
-
-Live build progress is restored and now presents the current compilation action without exposing unnecessary backend paths.
-
-Compiler diagnostics, source frames, warning summaries, and terminal colors were also improved while keeping normal output concise.
+The CLI presents clearer live progress and compiler diagnostics, including improved source frames, warning summaries, and terminal color hierarchy, while retaining direct backend output when requested.
 
 ### Requests
 
-`vix::requests` received major async and connection-lifecycle improvements.
+`vix::requests` now keeps asynchronous work asynchronous across DNS, connection establishment, TLS, writes, and response reading. Connection and request lifetimes were strengthened, and compatible HTTP and HTTPS connections can be safely reused through an internal, origin-scoped pool.
 
-The asynchronous request path now remains asynchronous through DNS resolution, connection establishment, TLS, write, and response reading.
+Responses can now stream decoded body bytes through a generic incremental body sink. This allows consumers such as the CLI updater to write large downloads directly to disk without first materializing the full response in memory.
 
-Request and URL lifetimes were also hardened across coroutine suspension points.
+The CLI progressively moved GitHub requests, health checks, metadata lookups, and downloads away from external `curl`, `wget`, and PowerShell commands to `vix::requests`. `RunCommand` intentionally retains its `curl` HTTP URI passthrough, so this is a targeted migration rather than a removal of curl from every CLI behavior.
 
-HTTP and HTTPS connections can now be reused safely through an internal connection pool:
+### SDK and dependencies
 
-```text
-origin
-    ↓
-acquire idle connection or create one
-    ↓
-request / response
-    ↓
-release if reusable
-    ↓
-discard if state is unsafe
-```
+SDK packaging is now driven by the selected profile instead of modules that happen to be built for the CLI. SDK archives no longer include a second `vix` executable, and profile metadata now follows the targets and headers actually exported to consumers.
 
-Connections are never shared concurrently by multiple requests, and a new connection can be created immediately when no compatible idle connection is available.
+Vix now bundles dependencies that exist solely to implement Vix modules: nlohmann-json, fmt, spdlog, SQLite, zlib, and Brotli. Their headers and libraries are packaged with the relevant SDK capabilities, reducing machine-level prerequisites and preventing internal CMake targets or system-library paths from leaking to consumers. OpenSSL remains a platform provider only for profiles that actually export an OpenSSL-dependent capability; core server TLS is opt-in.
 
-The implementation handles:
+The SDK contract was tightened further: curl and wget are no longer generic SDK prerequisites, Reply is a public dependency of Note rather than a second implementation embedded in Note, and the `all` profile ships its public tests module alongside its aggregate header.
 
-- HTTP and HTTPS keep-alive
-- stale idle connections
-- safe reconnect for eligible requests
-- `Connection: close`
-- incomplete or ambiguous responses
-- timeout and cancellation
-- connection isolation by origin
+### Mobile
 
-Local HTTPS tests validate 10 sequential requests using one connection with 9 reuses.
+`vix::ui` gained Android and iOS project generation and build support through a shared mobile application model. Android projects use the native Gradle and WebView stack; iOS projects use Xcode and WKWebView. The CLI exposes matching mobile init, build, and run commands while keeping project generation in the UI module.
 
-In a real Vix Stress HTTPS workload, connection reuse reached approximately `93%` and reduced median latency from roughly:
+The generated projects are validated against their native toolchains: Android through Gradle and emulator workflows, and iOS through Xcode simulator builds on macOS. The mobile layer deliberately complements rather than replaces those platform toolchains.
 
-```text
-959 ms
-↓
-221 ms
-```
+### Developer experience
 
-without exposing the connection pool as a new public API.
+SDK release validation now checks installed artifacts and external consumer projects, including bundled dependency ownership and profile-specific capabilities. This makes the packaged SDK, rather than only the source-tree build, the contract being checked.
 
 ## Summary
 
-Vix v2.9.0 continues moving complexity behind a smaller interface.
-
-For builds:
-
-```text
-Vix describes what should be built.
-The backend decides how to execute the concrete build graph.
-```
-
-For networking:
-
-```text
-The user sends requests.
-Vix manages connection lifetime and reuse internally.
-```
-
-The result is less duplicated work, faster development feedback, and stronger runtime behavior without requiring users to understand the machinery underneath.
+Vix v2.9.0 removes duplicated work from ordinary builds, strengthens native HTTP behavior, and makes SDK contents and requirements more faithful to the modules users select. It also broadens `vix::ui` with practical Android and iOS project support while preserving native platform integration.
 
 # Vix v2.8.6
 

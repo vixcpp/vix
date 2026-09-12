@@ -4,8 +4,10 @@ include(CMakeFindDependencyMacro)
 
 # ---- deps that exported targets may reference ----
 find_dependency(Threads REQUIRED)
-find_dependency(fmt CONFIG REQUIRED)
-find_dependency(spdlog CONFIG REQUIRED)
+if (NOT @VIX_LOGGING_DEPS_BUNDLED@)
+  find_dependency(fmt CONFIG REQUIRED)
+  find_dependency(spdlog CONFIG REQUIRED)
+endif()
 
 # ---- OpenSSL ----
 if (@VIX_WITH_OPENSSL@)
@@ -57,12 +59,12 @@ if (@VIX_WITH_OPENSSL@)
 endif()
 
 # ---- JSON backend ----
-if (@VIX_WITH_JSON@)
+if (@VIX_WITH_JSON@ AND NOT @VIX_JSON_BUNDLED@)
   find_dependency(nlohmann_json CONFIG REQUIRED)
 endif()
 
 # ---- SQLite ----
-if (@VIX_WITH_SQLITE@)
+if (@VIX_WITH_SQLITE@ AND NOT @VIX_SQLITE_BUNDLED@)
   find_dependency(SQLite3 REQUIRED)
 
   # CMake < 4.3 commonly provides SQLite::SQLite3.
@@ -102,7 +104,7 @@ if (@VIX_WITH_SQLITE@)
 endif()
 
 # ---- ZLIB (gzip) ----
-if (@VIX_WITH_ZLIB@)
+if (@VIX_WITH_ZLIB@ AND NOT @VIX_ZLIB_BUNDLED@)
   # If Vix was built with gzip support, zlib must be present.
   find_dependency(ZLIB REQUIRED)
 

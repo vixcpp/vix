@@ -76,14 +76,14 @@ jobs:
             curl \
             unzip \
             zip \
-            tar \
-            nlohmann-json3-dev \
-            libssl-dev \
-            zlib1g-dev \
-            libsqlite3-dev \
-            libbrotli-dev \
-            libspdlog-dev \
-            libfmt-dev
+            tar
+
+      - name: Install OpenSSL build deps (web/p2p/agent/all)
+        if: ${{ matrix.profile == 'web' || matrix.profile == 'p2p' || matrix.profile == 'agent' || matrix.profile == 'all' }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get install -y --no-install-recommends libssl-dev
 
       # ----------------------------------------------------------------
       # Heavy deps installed ONLY for profiles that need them.
@@ -137,6 +137,9 @@ jobs:
             -DCMAKE_INSTALL_PREFIX="${GITHUB_WORKSPACE}/${INSTALL_DIR}"
             -DVIX_SDK_PROFILE="${VIX_SDK_PROFILE}"
             -DVIX_ENABLE_INSTALL=ON
+            -DVIX_ENABLE_CLI=OFF
+            -DVIX_JSON_FORCE_BUNDLED=ON
+            -DVIX_UTILS_FORCE_BUNDLED_LOGGING_DEPS=ON
             -DVIX_BUILD_EXAMPLES=OFF
             -DVIX_BUILD_TESTS=OFF
             -DVIX_ENABLE_WARNINGS=ON
@@ -146,10 +149,25 @@ jobs:
           case "$VIX_SDK_PROFILE" in
             all)
               CMAKE_ARGS+=(
+                -DVIX_ZLIB_FORCE_BUNDLED=ON
+                -DVIX_BROTLI_FORCE_BUNDLED=ON
+                -DVIX_SQLITE_FORCE_BUNDLED=ON
                 -DVIX_DB_USE_MYSQL=ON
                 -DVIX_UI_ENABLE_LINUX_WEBVIEW=ON
                 -DVIX_GAME_ENABLE_SDL=ON
                 -DVIX_GAME_ENABLE_SDL_OPENGL=ON
+              )
+              ;;
+            web)
+              CMAKE_ARGS+=(
+                -DVIX_ZLIB_FORCE_BUNDLED=ON
+                -DVIX_BROTLI_FORCE_BUNDLED=ON
+                -DVIX_SQLITE_FORCE_BUNDLED=ON
+              )
+              ;;
+            data)
+              CMAKE_ARGS+=(
+                -DVIX_SQLITE_FORCE_BUNDLED=ON
               )
               ;;
             desktop)
@@ -178,6 +196,155 @@ jobs:
         run: |
           set -euxo pipefail
           cmake --install "$BUILD_DIR"
+
+      - name: Validate bundled SDK dependency ownership
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          test -f "$INSTALL_DIR/include/nlohmann/json.hpp"
+          test -f "$INSTALL_DIR/include/nlohmann/json_fwd.hpp"
+          test -f "$INSTALL_DIR/include/fmt/format.h"
+
+          if rg -n 'find_dependency\\(nlohmann_json|nlohmann_json::nlohmann_json' "$INSTALL_DIR/lib/cmake"; then
+            echo "Bundled JSON SDK must not export an external nlohmann_json dependency" >&2
+            exit 1
+          fi
+          if rg -n -e 'fmt::fmt(-header-only)?' -e 'spdlog::spdlog(_header_only)?' "$INSTALL_DIR/lib/cmake"; then
+            echo "Bundled logging SDK must not export external fmt or spdlog targets" >&2
+            exit 1
+          fi
+
+          SQLITE_CONSUMER_ARGS=()
+          ZLIB_CONSUMER_ARGS=()
+          case "$VIX_SDK_PROFILE" in
+            web|all)
+              test -f "$INSTALL_DIR/include/zlib.h"
+              test -f "$INSTALL_DIR/include/zconf.h"
+              test -f "$INSTALL_DIR/lib/libvix_zlib.a"
+              if rg -n --glob 'VixTargets*.cmake' \
+                -e 'ZLIB::ZLIB' \
+                "$INSTALL_DIR/lib/cmake"; then
+                echo "Bundled zlib SDK must not export ZLIB::ZLIB" >&2
+                exit 1
+              fi
+              ZLIB_CONSUMER_ARGS+=(
+                -DCMAKE_DISABLE_FIND_PACKAGE_ZLIB=TRUE
+              )
+              test -f "$INSTALL_DIR/lib/libvix_brotli.a"
+              test -f "$INSTALL_DIR/include/brotli/encode.h"
+              test -f "$INSTALL_DIR/include/brotli/port.h"
+              test -f "$INSTALL_DIR/include/brotli/shared_dictionary.h"
+              test -f "$INSTALL_DIR/include/brotli/types.h"
+              if rg -n --glob 'VixTargets*.cmake' \
+                -e 'brotlienc' \
+                -e 'brotlicommon' \
+                -e '/usr/[^[:space:]"]*brotli' \
+                "$INSTALL_DIR/lib/cmake"; then
+                echo "Bundled Brotli SDK must not export system Brotli libraries" >&2
+                exit 1
+              fi
+              ;;
+          esac
+
+          case "$VIX_SDK_PROFILE" in
+            web|data|all)
+              test -f "$INSTALL_DIR/include/sqlite3.h"
+              test -f "$INSTALL_DIR/lib/libvix_sqlite3.a"
+              if rg -n --glob 'VixTargets*.cmake' \
+                -e 'SQLite::SQLite3' \
+                -e 'SQLite3::SQLite3' \
+                -e 'unofficial-sqlite3::sqlite3' \
+                "$INSTALL_DIR/lib/cmake"; then
+                echo "Bundled SQLite SDK must not export an external SQLite target" >&2
+                exit 1
+              fi
+              SQLITE_CONSUMER_ARGS+=(
+                -DCMAKE_DISABLE_FIND_PACKAGE_SQLite3=TRUE
+              )
+              ;;
+          esac
+
+          rm -rf json-sdk-consumer
+          mkdir -p json-sdk-consumer
+
+          cat > json-sdk-consumer/main.cpp <<'EOF'
+          #include <vix/json/json.hpp>
+          #include <vix/utils/Logger.hpp>
+          #include <nlohmann/json.hpp>
+          #include <fmt/format.h>
+
+          #ifdef VIX_SDK_HAS_ZLIB
+          #include <vix/middleware/performance/compression.hpp>
+          #include <zlib.h>
+          #endif
+
+          #ifdef VIX_SDK_HAS_BROTLI
+          #include <brotli/encode.h>
+          #endif
+
+          #ifdef VIX_SDK_HAS_SQLITE
+          #include <sqlite3.h>
+          #endif
+
+          int main()
+          {
+            nlohmann::json value{{"bundled", true}};
+            const auto message = fmt::format("{}", value.at("bundled").get<bool>());
+            if (message != "true")
+              return 1;
+          #ifdef VIX_SDK_HAS_ZLIB
+            std::string compressed;
+            if (!vix::middleware::performance::gzip_compress("vix", compressed, 6) || compressed.empty())
+              return 1;
+          #endif
+          #ifdef VIX_SDK_HAS_BROTLI
+            const char brotli_input[] = "vix";
+            uint8_t brotli_output[64];
+            size_t brotli_size = sizeof(brotli_output);
+            if (!BrotliEncoderCompress(6, BROTLI_DEFAULT_WINDOW, BROTLI_MODE_GENERIC,
+                sizeof(brotli_input) - 1,
+                reinterpret_cast<const uint8_t *>(brotli_input),
+                &brotli_size, brotli_output) || brotli_size == 0)
+              return 1;
+          #endif
+          #ifdef VIX_SDK_HAS_SQLITE
+            if (sqlite3_libversion_number() != 3045001)
+              return 1;
+          #endif
+            return 0;
+          }
+          EOF
+
+          cat > json-sdk-consumer/CMakeLists.txt <<'EOF'
+          cmake_minimum_required(VERSION 3.20)
+          project(vix_json_sdk_consumer LANGUAGES CXX)
+          find_package(Vix CONFIG REQUIRED)
+          add_executable(app main.cpp)
+          target_link_libraries(app PRIVATE vix::json vix::utils)
+          if (VIX_SDK_PROFILE STREQUAL "data")
+            target_link_libraries(app PRIVATE vix::db vix::orm)
+            target_compile_definitions(app PRIVATE VIX_SDK_HAS_SQLITE=1)
+          elseif (VIX_SDK_PROFILE STREQUAL "web")
+            target_link_libraries(app PRIVATE vix::websocket vix::middleware)
+            target_compile_definitions(app PRIVATE VIX_SDK_HAS_SQLITE=1 VIX_SDK_HAS_ZLIB=1 VIX_SDK_HAS_BROTLI=1)
+          elseif (VIX_SDK_PROFILE STREQUAL "all")
+            target_link_libraries(app PRIVATE vix::db vix::orm vix::websocket vix::middleware)
+            target_compile_definitions(app PRIVATE VIX_SDK_HAS_SQLITE=1 VIX_SDK_HAS_ZLIB=1 VIX_SDK_HAS_BROTLI=1)
+          endif()
+          EOF
+
+          cmake -S json-sdk-consumer -B json-sdk-consumer/build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/${INSTALL_DIR}" \
+            -DVIX_SDK_PROFILE="${VIX_SDK_PROFILE}" \
+            -DCMAKE_DISABLE_FIND_PACKAGE_nlohmann_json=TRUE \
+            -DCMAKE_DISABLE_FIND_PACKAGE_fmt=TRUE \
+            -DCMAKE_DISABLE_FIND_PACKAGE_spdlog=TRUE \
+            "${ZLIB_CONSUMER_ARGS[@]}" \
+            "${SQLITE_CONSUMER_ARGS[@]}"
+          cmake --build json-sdk-consumer/build -j2
+          json-sdk-consumer/build/app
 
       - name: Normalize vendored Asio headers
         shell: bash
@@ -228,7 +395,7 @@ jobs:
 
           # --- foundation: every profile ------------------------------
           test -d "$ID"
-          test -f "$ID/bin/vix"
+          test ! -f "$ID/bin/vix"
           have_h "vix.hpp"
           have_h "vix/core.hpp"
           have_h "vix/json/Simple.hpp"
@@ -373,18 +540,6 @@ jobs:
           mkdir -p dist
           tar -C "$INSTALL_DIR" -czf "dist/$ASSET" .
           ls -lah dist
-
-      - name: Validate packaged SDK binary
-        shell: bash
-        run: |
-          set -euxo pipefail
-          rm -rf smoke-bin
-          mkdir -p smoke-bin
-          tar -xzf "dist/$ASSET" -C smoke-bin
-          test -f smoke-bin/bin/vix
-          file smoke-bin/bin/vix
-          ldd smoke-bin/bin/vix || true
-          smoke-bin/bin/vix --version
 
       # ----------------------------------------------------------------
       # Consumer link smoke test, scoped per profile. A generated main.cpp
