@@ -1,0 +1,412 @@
+name: SDK Consumer CI
+
+"on":
+  push:
+    branches: [main, dev, "release/**"]
+    paths:
+      - ".github/workflows/sdk-consumer-ci.yml"
+      - "ci/sdk-consumer/**"
+      - "examples/conversion/**"
+      - "examples/CMakeLists.txt"
+      - "examples/error/**"
+      - "examples/fs/**"
+      - "examples/json/**"
+      - "examples/os/**"
+      - "examples/time/**"
+      - "examples/validation/**"
+      - "examples/log/**"
+      - "examples/io/**"
+      - "examples/threadpool/**"
+      - "examples/async/**"
+      - "examples/env/**"
+      - "examples/cache/**"
+      - "examples/kv/**"
+      - "examples/sync/**"
+      - "examples/db/**"
+      - "examples/orm/**"
+      - "examples/templates/**"
+      - "examples/tests/**"
+      - "examples/requests/**"
+      - "examples/http/**"
+      - "examples/config/**"
+      - "examples/cookies/**"
+      - "examples/session/**"
+      - "examples/auth/**"
+      - "examples/body_limit/**"
+      - "examples/cache_http/**"
+      - "examples/compression/**"
+      - "examples/cors/**"
+      - "examples/csrf/**"
+      - "examples/etag/**"
+      - "examples/headers/**"
+      - "examples/ip_filter/**"
+      - "examples/middleware_http/**"
+      - "examples/rate_limit/**"
+      - "examples/static_files/**"
+      - "examples/group_builder/**"
+      - "examples/form/**"
+      - "examples/websocket/**"
+      - "examples/http_ws/**"
+      - "examples/p2p/**"
+      - "examples/p2p_http/**"
+      - "examples/tls/**"
+      - "examples/process/**"
+      - "modules/realtime/examples/**"
+      - "modules/path/examples/**"
+      - "modules/game/examples/**"
+      - "modules/ui/examples/**"
+      - "modules/agent/examples/**"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - "vix/**"
+      - "modules/**"
+      - "third_party/**"
+      - ".gitmodules"
+      - "vcpkg.json"
+  pull_request:
+    branches: [main, dev, "release/**"]
+    paths:
+      - ".github/workflows/sdk-consumer-ci.yml"
+      - "ci/sdk-consumer/**"
+      - "examples/conversion/**"
+      - "examples/CMakeLists.txt"
+      - "examples/error/**"
+      - "examples/fs/**"
+      - "examples/json/**"
+      - "examples/os/**"
+      - "examples/time/**"
+      - "examples/validation/**"
+      - "examples/log/**"
+      - "examples/io/**"
+      - "examples/threadpool/**"
+      - "examples/async/**"
+      - "examples/env/**"
+      - "examples/cache/**"
+      - "examples/kv/**"
+      - "examples/sync/**"
+      - "examples/db/**"
+      - "examples/orm/**"
+      - "examples/templates/**"
+      - "examples/tests/**"
+      - "examples/requests/**"
+      - "examples/http/**"
+      - "examples/config/**"
+      - "examples/cookies/**"
+      - "examples/session/**"
+      - "examples/auth/**"
+      - "examples/body_limit/**"
+      - "examples/cache_http/**"
+      - "examples/compression/**"
+      - "examples/cors/**"
+      - "examples/csrf/**"
+      - "examples/etag/**"
+      - "examples/headers/**"
+      - "examples/ip_filter/**"
+      - "examples/middleware_http/**"
+      - "examples/rate_limit/**"
+      - "examples/static_files/**"
+      - "examples/group_builder/**"
+      - "examples/form/**"
+      - "examples/websocket/**"
+      - "examples/http_ws/**"
+      - "examples/p2p/**"
+      - "examples/p2p_http/**"
+      - "examples/tls/**"
+      - "examples/process/**"
+      - "modules/realtime/examples/**"
+      - "modules/path/examples/**"
+      - "modules/game/examples/**"
+      - "modules/ui/examples/**"
+      - "modules/agent/examples/**"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - "vix/**"
+      - "modules/**"
+      - "third_party/**"
+      - ".gitmodules"
+      - "vcpkg.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  installed-sdk-consumer:
+    name: installed-sdk-consumer (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-24.04
+          - name: macos-x86_64
+            os: macos-15-intel
+          - name: windows-x86_64
+            os: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Prepare temporary paths (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          echo "VIX_BUILD_DIR=$RUNNER_TEMP/vix-sdk-build-${{ matrix.name }}" >> "$GITHUB_ENV"
+          echo "VIX_INSTALL_DIR=$RUNNER_TEMP/vix-sdk-install-${{ matrix.name }}" >> "$GITHUB_ENV"
+          echo "VIX_CONSUMER_DIR=$RUNNER_TEMP/vix-sdk-consumer-${{ matrix.name }}" >> "$GITHUB_ENV"
+
+      - name: Prepare temporary paths (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          "VIX_BUILD_DIR=$env:RUNNER_TEMP\vix-sdk-build-${{ matrix.name }}" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "VIX_INSTALL_DIR=$env:RUNNER_TEMP\vix-sdk-install-${{ matrix.name }}" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "VIX_CONSUMER_DIR=$env:RUNNER_TEMP\vix-sdk-consumer-${{ matrix.name }}" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Verify source public-header contracts
+        if: ${{ matrix.name == 'linux-x86_64' }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cmake -DVIX_SOURCE_DIR="$GITHUB_WORKSPACE" \
+            -P "$GITHUB_WORKSPACE/ci/sdk-consumer/SourcePublicContracts.cmake"
+
+      - name: Install build dependencies (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config libssl-dev
+
+      - name: Install build dependencies (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export HOMEBREW_NO_AUTO_UPDATE=1
+          export HOMEBREW_NO_INSTALL_UPGRADE=1
+          export HOMEBREW_NO_INSTALL_CLEANUP=1
+          brew install cmake ninja pkg-config openssl@3 nlohmann-json spdlog fmt
+
+      - name: Setup vcpkg (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$env:GITHUB_WORKSPACE\vcpkg"
+          "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Append
+          & "$env:GITHUB_WORKSPACE\vcpkg\bootstrap-vcpkg.bat"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Install vcpkg manifest dependencies (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & "$env:VCPKG_ROOT\vcpkg.exe" install --triplet x64-windows --x-manifest-root "$env:GITHUB_WORKSPACE"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Configure SDK (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          rm -rf "$VIX_BUILD_DIR" "$VIX_INSTALL_DIR"
+
+          CMAKE_ARGS=(
+            -S "$GITHUB_WORKSPACE" -B "$VIX_BUILD_DIR" -G Ninja
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_INSTALL_PREFIX="$VIX_INSTALL_DIR"
+            -DVIX_SDK_PROFILE=all
+            -DVIX_ENABLE_INSTALL=ON
+            -DVIX_ENABLE_CLI=OFF
+            -DVIX_BUILD_EXAMPLES=OFF
+            -DVIX_BUILD_TESTS=OFF
+            -DVIX_JSON_FORCE_BUNDLED=ON
+            -DVIX_UTILS_FORCE_BUNDLED_LOGGING_DEPS=ON
+            -DVIX_SQLITE_FORCE_BUNDLED=ON
+            -DVIX_ZLIB_FORCE_BUNDLED=ON
+            -DVIX_BROTLI_FORCE_BUNDLED=ON
+            -DVIX_DB_USE_MYSQL=OFF
+            -DVIX_CORE_WITH_MYSQL=OFF
+            -DVIX_UI_ENABLE_LINUX_WEBVIEW=OFF
+            -DVIX_GAME_ENABLE_SDL=OFF
+            -DVIX_GAME_ENABLE_SDL_OPENGL=OFF
+          )
+
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            CMAKE_ARGS+=(
+              -DOPENSSL_ROOT_DIR="$(brew --prefix openssl@3)"
+              -DCMAKE_PREFIX_PATH="$(brew --prefix)"
+            )
+          fi
+
+          cmake "${CMAKE_ARGS[@]}"
+
+      - name: Configure SDK (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $env:VIX_BUILD_DIR, $env:VIX_INSTALL_DIR
+          cmake -S "$env:GITHUB_WORKSPACE" -B "$env:VIX_BUILD_DIR" -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_INSTALL_PREFIX="$env:VIX_INSTALL_DIR" `
+            -DVIX_SDK_PROFILE=all `
+            -DVIX_ENABLE_INSTALL=ON `
+            -DVIX_ENABLE_CLI=OFF `
+            -DVIX_BUILD_EXAMPLES=OFF `
+            -DVIX_BUILD_TESTS=OFF `
+            -DVIX_JSON_FORCE_BUNDLED=ON `
+            -DVIX_UTILS_FORCE_BUNDLED_LOGGING_DEPS=ON `
+            -DVIX_SQLITE_FORCE_BUNDLED=ON `
+            -DVIX_ZLIB_FORCE_BUNDLED=ON `
+            -DVIX_BROTLI_FORCE_BUNDLED=ON `
+            -DVIX_DB_USE_MYSQL=OFF `
+            -DVIX_CORE_WITH_MYSQL=OFF `
+            -DVIX_UI_ENABLE_LINUX_WEBVIEW=OFF `
+            -DVIX_GAME_ENABLE_SDL=OFF `
+            -DVIX_GAME_ENABLE_SDL_OPENGL=OFF `
+            -DVCPKG_TARGET_TRIPLET=x64-windows `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build SDK (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: cmake --build "$VIX_BUILD_DIR" --config Release --parallel 2
+
+      - name: Install SDK (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: cmake --install "$VIX_BUILD_DIR" --config Release
+
+      - name: Build SDK (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cmake --build "$env:VIX_BUILD_DIR" --config Release --parallel 2
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Install SDK (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cmake --install "$env:VIX_BUILD_DIR" --config Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Configure isolated installed-SDK consumer (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          rm -rf "$VIX_CONSUMER_DIR"
+          cmake -E copy_directory "$GITHUB_WORKSPACE/ci/sdk-consumer" "$VIX_CONSUMER_DIR"
+          cmake -S "$VIX_CONSUMER_DIR" -B "$VIX_CONSUMER_DIR/build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DVIX_SDK_PREFIX="$VIX_INSTALL_DIR"
+
+      - name: Configure isolated installed-SDK consumer (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $env:VIX_CONSUMER_DIR
+          cmake -E copy_directory "$env:GITHUB_WORKSPACE\ci\sdk-consumer" "$env:VIX_CONSUMER_DIR"
+          cmake -S "$env:VIX_CONSUMER_DIR" -B "$env:VIX_CONSUMER_DIR\build" -G "Visual Studio 17 2022" -A x64 `
+            -DVIX_SDK_PREFIX="$env:VIX_INSTALL_DIR" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build isolated installed-SDK consumer (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: cmake --build "$VIX_CONSUMER_DIR/build" --config Release --parallel 2
+
+      - name: Build isolated installed-SDK consumer (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cmake --build "$env:VIX_CONSUMER_DIR\build" --config Release --parallel 2
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build and run installed-SDK examples (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          for family in conversion error fs json os time validation log io threadpool async path env cache kv sync db orm templates tests core_root requests http config cookies session auth body_limit cache_http compression cors csrf etag headers ip_filter middleware_http rate_limit static_files group_builder form websocket http_ws realtime p2p p2p_http game ui agent tls process; do
+            source_dir="$GITHUB_WORKSPACE/examples/$family"
+            if [ "$family" = "core_root" ]; then
+              source_dir="$GITHUB_WORKSPACE/examples"
+            fi
+            if [ "$family" = "path" ]; then
+              source_dir="$GITHUB_WORKSPACE/modules/path/examples"
+            fi
+            if [ "$family" = "realtime" ]; then
+              source_dir="$GITHUB_WORKSPACE/modules/realtime/examples"
+            fi
+            if [ "$family" = "game" ]; then
+              source_dir="$GITHUB_WORKSPACE/modules/game/examples"
+            fi
+            if [ "$family" = "ui" ]; then
+              source_dir="$GITHUB_WORKSPACE/modules/ui/examples"
+            fi
+            if [ "$family" = "agent" ]; then
+              source_dir="$GITHUB_WORKSPACE/modules/agent/examples"
+            fi
+            example_dir="$RUNNER_TEMP/vix-sdk-example-${family}-${{ matrix.name }}"
+            rm -rf "$example_dir"
+            cmake -E copy_directory "$source_dir" "$example_dir"
+            cmake -S "$example_dir" -B "$example_dir/build" -G Ninja \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DVix_DIR="$VIX_INSTALL_DIR/lib/cmake/Vix" \
+              -DCMAKE_FIND_USE_PACKAGE_REGISTRY=FALSE \
+              -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=FALSE
+            cmake --build "$example_dir/build" --parallel 2
+            ctest --test-dir "$example_dir/build" --output-on-failure
+          done
+
+      - name: Build and run installed-SDK examples (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          foreach ($family in "conversion", "error", "fs", "json", "os", "time", "validation", "log", "io", "threadpool", "async", "path", "env", "cache", "kv", "sync", "db", "orm", "templates", "tests", "core_root", "requests", "http", "config", "cookies", "session", "auth", "body_limit", "cache_http", "compression", "cors", "csrf", "etag", "headers", "ip_filter", "middleware_http", "rate_limit", "static_files", "group_builder", "form", "websocket", "http_ws", "realtime", "p2p", "p2p_http", "game", "ui", "agent", "tls", "process") {
+            $sourceDir = "$env:GITHUB_WORKSPACE\examples\$family"
+            if ($family -eq "core_root") {
+              $sourceDir = "$env:GITHUB_WORKSPACE\examples"
+            }
+            if ($family -eq "path") {
+              $sourceDir = "$env:GITHUB_WORKSPACE\modules\path\examples"
+            }
+            if ($family -eq "realtime") {
+              $sourceDir = "$env:GITHUB_WORKSPACE\modules\realtime\examples"
+            }
+            if ($family -eq "game") {
+              $sourceDir = "$env:GITHUB_WORKSPACE\modules\game\examples"
+            }
+            if ($family -eq "ui") {
+              $sourceDir = "$env:GITHUB_WORKSPACE\modules\ui\examples"
+            }
+            if ($family -eq "agent") {
+              $sourceDir = "$env:GITHUB_WORKSPACE\modules\agent\examples"
+            }
+            $exampleDir = "$env:RUNNER_TEMP\vix-sdk-example-$family-${{ matrix.name }}"
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $exampleDir
+            cmake -E copy_directory $sourceDir $exampleDir
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            cmake -S $exampleDir -B "$exampleDir\build" -G "Visual Studio 17 2022" -A x64 `
+              -DVix_DIR="$env:VIX_INSTALL_DIR\lib\cmake\Vix" `
+              -DCMAKE_FIND_USE_PACKAGE_REGISTRY=FALSE `
+              -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=FALSE `
+              -DVCPKG_TARGET_TRIPLET=x64-windows `
+              -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            cmake --build "$exampleDir\build" --config Release --parallel 2
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            ctest --test-dir "$exampleDir\build" -C Release --output-on-failure
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }

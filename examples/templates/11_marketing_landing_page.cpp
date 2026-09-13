@@ -25,13 +25,14 @@
 //   examples/templates/views/11_marketing_landing_page/index.html
 
 #include <vix.hpp>
+#include <vix/template.hpp>
 
 using namespace vix;
 
 int main()
 {
   App app;
-  app.templates("./examples/templates/views/11_marketing_landing_page");
+  app.templates("./views/11_marketing_landing_page");
 
   app.get("/", [](Request &, Response &res)
           {

@@ -82,9 +82,9 @@ int main()
   SyncEngine engine(
       SyncEngine::Config{
           .worker_count = 1,
-          .batch_limit = 10,
           .idle_sleep_ms = 0,
           .offline_sleep_ms = 0,
+          .batch_limit = 10,
           .inflight_timeout_ms = 50},
       outbox,
       probe,

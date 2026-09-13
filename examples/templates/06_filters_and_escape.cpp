@@ -23,13 +23,14 @@
 //   examples/templates/views/06_filters/index.html
 
 #include <vix.hpp>
+#include <vix/template.hpp>
 
 using namespace vix;
 
 int main()
 {
   App app;
-  app.templates("./examples/templates/views/06_filters");
+  app.templates("./views/06_filters");
 
   app.get("/", [](Request &, Response &res)
           {

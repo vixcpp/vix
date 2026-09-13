@@ -1,0 +1,13 @@
+cmake_minimum_required(VERSION 3.20)
+project(vix_example_ip_filter LANGUAGES CXX)
+find_package(Vix CONFIG REQUIRED)
+file(GLOB _vix_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+foreach (_source IN LISTS _vix_sources)
+  get_filename_component(_name "${_source}" NAME_WE)
+  add_executable("ip_filter_${_name}" "${_source}")
+  target_compile_features("ip_filter_${_name}" PRIVATE cxx_std_20)
+  target_link_libraries("ip_filter_${_name}" PRIVATE vix::middleware)
+endforeach()
+
+enable_testing()
+add_test(NAME ip_filter.pipeline_demo COMMAND ip_filter_ip_filter_pipeline_demo)

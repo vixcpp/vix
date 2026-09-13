@@ -22,8 +22,9 @@ if (POLICY CMP0167)
   cmake_policy(SET CMP0167 NEW)
 endif()
 
-# Resolve umbrella version from git (preferred)
-set(_VIX_VERSION_FALLBACK "0.0.0")
+# Release/package semantic version. The umbrella identity below may carry
+# additional Git metadata for development builds.
+set(_VIX_VERSION_FALLBACK "2.9.0")
 
 find_package(Git QUIET)
 set(_VIX_GIT_DESCRIBE "")
@@ -37,12 +38,9 @@ if(Git_FOUND)
   )
 endif()
 
-# Compute PROJECT_VERSION (must be numeric for CMake packaging)
-# If describe returns: v1.20.1-4-gXXXX -> numeric is 1.20.1
+# PROJECT_VERSION is the stable numeric package version, independent of the
+# Git-derived umbrella identity used by development builds.
 set(_VIX_PROJECT_VERSION "${_VIX_VERSION_FALLBACK}")
-if(_VIX_GIT_DESCRIBE MATCHES "^v([0-9]+\\.[0-9]+\\.[0-9]+)")
-  set(_VIX_PROJECT_VERSION "${CMAKE_MATCH_1}")
-endif()
 
 project(vix VERSION ${_VIX_PROJECT_VERSION} LANGUAGES C CXX)
 
@@ -74,7 +72,6 @@ set(_VIX_SDK_PROFILE_OPTION_VARS
   VIX_ENABLE_DB
   VIX_DB_USE_MYSQL
   VIX_DB_USE_SQLITE
-  VIX_DB_USE_POSTGRES
   VIX_DB_USE_REDIS
   VIX_ENABLE_P2P
   VIX_ENABLE_P2P_HTTP
@@ -265,7 +262,6 @@ option(VIX_ENABLE_DB               "Build Vix DB module (core anti-ORM)"        
 option(VIX_DB_USE_MYSQL            "Enable MySQL backend in vix_db"                               ON)
 option(VIX_DB_USE_SQLITE           "Enable SQLite backend in vix_db"                              OFF)
 option(VIX_SQLITE_FORCE_BUNDLED    "Use Vix-owned SQLite amalgamation"                             OFF)
-option(VIX_DB_USE_POSTGRES         "Enable PostgreSQL backend in vix_db"                          OFF)
 option(VIX_DB_USE_REDIS            "Enable Redis backend in vix_db"                               OFF)
 option(VIX_ENABLE_P2P              "Build Vix P2P module"                                         ON)
 option(VIX_ENABLE_P2P_HTTP         "Build Vix P2P HTTP adapter module"                            ON)
@@ -346,7 +342,6 @@ function(vix_sdk_profile_common)
   vix_sdk_profile_default(VIX_ENABLE_DB OFF)
   vix_sdk_profile_default(VIX_DB_USE_MYSQL OFF)
   vix_sdk_profile_default(VIX_DB_USE_SQLITE OFF)
-  vix_sdk_profile_default(VIX_DB_USE_POSTGRES OFF)
   vix_sdk_profile_default(VIX_DB_USE_REDIS OFF)
   vix_sdk_profile_default(VIX_ENABLE_P2P OFF)
   vix_sdk_profile_default(VIX_ENABLE_P2P_HTTP OFF)
@@ -1237,6 +1232,13 @@ endif()
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/core/CMakeLists.txt")
   message(STATUS "Adding 'modules/core'...")
   add_subdirectory(modules/core core_build)
+
+  vix_resolve_real_target(_VIX_CORE_REAL vix_core)
+  if (_VIX_CORE_REAL)
+    target_compile_definitions(${_VIX_CORE_REAL} PUBLIC
+      VIX_CORE_RUNTIME_VERSION="${VIX_UMBRELLA_VERSION}"
+    )
+  endif()
 else()
   message(FATAL_ERROR "Missing 'modules/core'. Run: git submodule update --init --recursive")
 endif()

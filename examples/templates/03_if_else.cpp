@@ -23,13 +23,14 @@
 //   examples/templates/views/03_if/index.html
 
 #include <vix.hpp>
+#include <vix/template.hpp>
 
 using namespace vix;
 
 int main()
 {
   App app;
-  app.templates("./examples/templates/views/03_if");
+  app.templates("./views/03_if");
 
   app.get("/", [](Request &, Response &res)
           {

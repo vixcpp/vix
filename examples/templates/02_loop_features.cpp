@@ -23,13 +23,14 @@
 //   examples/templates/views/02_loop/index.html
 
 #include <vix.hpp>
+#include <vix/template.hpp>
 
 using namespace vix;
 
 int main()
 {
   App app;
-  app.templates("./examples/templates/views/02_loop");
+  app.templates("./views/02_loop");
 
   app.get("/", [](Request &, Response &res)
           {

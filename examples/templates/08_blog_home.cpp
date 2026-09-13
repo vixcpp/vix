@@ -25,13 +25,14 @@
 //   examples/templates/views/08_blog_home/index.html
 
 #include <vix.hpp>
+#include <vix/template.hpp>
 
 using namespace vix;
 
 int main()
 {
   App app;
-  app.templates("./examples/templates/views/08_blog_home");
+  app.templates("./views/08_blog_home");
 
   app.get("/", [](Request &, Response &res)
           {

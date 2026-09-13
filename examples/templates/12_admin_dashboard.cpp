@@ -25,13 +25,14 @@
 //   examples/templates/views/12_admin_dashboard/dashboard.html
 
 #include <vix.hpp>
+#include <vix/template.hpp>
 
 using namespace vix;
 
 int main()
 {
   App app;
-  app.templates("./examples/templates/views/12_admin_dashboard");
+  app.templates("./views/12_admin_dashboard");
 
   app.get("/", [](Request &, Response &res)
           {

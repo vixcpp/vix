@@ -1,34 +1,66 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(vix_http_crud_examples LANGUAGES CXX)
+project(vix_example_orm LANGUAGES CXX)
 
-set(_HTTP_CRUD_EXAMPLES
-  delete_user.cpp
-  post_create_user.cpp
-  put_update_user.cpp
-  user_crud_with_validation.cpp
-  users_crud_internal.cpp
-  users_crud.cpp
-  repository_crud_full.cpp
+find_package(Vix CONFIG REQUIRED)
+
+set(_vix_orm_examples
+  01_basic_repository
+  02_repository_crud
+  03_find_all_and_count
+  04_exists_and_delete
+  05_unit_of_work
+  06_batch_insert_tx
+  07_query_builder_select
+  08_query_builder_update
+  09_error_handling
+  10_custom_repository
+  11_sqlite_repository
+  12_mysql_repository
+  13_migrations_code
+  14_migrations_files
+  15_entity_identity
+  16_manual_sql_with_orm
 )
 
-foreach(EXAMPLE_SRC IN LISTS _HTTP_CRUD_EXAMPLES)
-  get_filename_component(_raw_name "${EXAMPLE_SRC}" NAME_WE)
-  set(EXAMPLE_NAME "http_crud_${_raw_name}")
+set(_vix_orm_runnable_examples
+  01_basic_repository
+  02_repository_crud
+  03_find_all_and_count
+  04_exists_and_delete
+  05_unit_of_work
+  06_batch_insert_tx
+  07_query_builder_select
+  08_query_builder_update
+  09_error_handling
+  10_custom_repository
+  11_sqlite_repository
+  13_migrations_code
+  14_migrations_files
+  15_entity_identity
+  16_manual_sql_with_orm
+)
 
-  add_executable("${EXAMPLE_NAME}" "${EXAMPLE_SRC}")
-  target_link_libraries("${EXAMPLE_NAME}" PRIVATE vix::vix)
+enable_testing()
 
-  if (TARGET vix_warnings)
-    target_link_libraries("${EXAMPLE_NAME}" PRIVATE vix_warnings)
+foreach (_example IN LISTS _vix_orm_examples)
+  add_executable("orm_${_example}" "${_example}.cpp")
+  target_compile_features("orm_${_example}" PRIVATE cxx_std_20)
+  target_link_libraries("orm_${_example}" PRIVATE vix::orm)
+endforeach()
+
+foreach (_example IN LISTS _vix_orm_runnable_examples)
+  set(_runtime_dir "${CMAKE_CURRENT_BINARY_DIR}/runtime/${_example}")
+  file(MAKE_DIRECTORY "${_runtime_dir}")
+
+  if (_example STREQUAL "14_migrations_files")
+    file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/migrations" DESTINATION "${_runtime_dir}")
   endif()
-  if (TARGET vix_coverage)
-    target_link_libraries("${EXAMPLE_NAME}" PRIVATE vix_coverage)
+
+  add_test(NAME "orm.${_example}" COMMAND "orm_${_example}")
+  set_tests_properties("orm.${_example}" PROPERTIES WORKING_DIRECTORY "${_runtime_dir}")
+
+  if (_example STREQUAL "09_error_handling")
+    set_tests_properties("orm.${_example}" PROPERTIES WILL_FAIL TRUE)
   endif()
-
-  set_target_properties("${EXAMPLE_NAME}" PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
-  )
-
-  message(STATUS "HTTP CRUD example added: ${EXAMPLE_NAME}  [${EXAMPLE_SRC}]")
 endforeach()
