@@ -139,12 +139,36 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: linux-x86_64
+          - name: linux-default-x86_64
             os: ubuntu-24.04
+            profile: default
+          - name: linux-web-x86_64
+            os: ubuntu-24.04
+            profile: web
+          - name: linux-data-x86_64
+            os: ubuntu-24.04
+            profile: data
+          - name: linux-desktop-x86_64
+            os: ubuntu-24.04
+            profile: desktop
+          - name: linux-p2p-x86_64
+            os: ubuntu-24.04
+            profile: p2p
+          - name: linux-game-x86_64
+            os: ubuntu-24.04
+            profile: game
+          - name: linux-agent-x86_64
+            os: ubuntu-24.04
+            profile: agent
+          - name: linux-all-x86_64
+            os: ubuntu-24.04
+            profile: all
           - name: macos-x86_64
             os: macos-15-intel
+            profile: all
           - name: windows-x86_64
             os: windows-2022
+            profile: all
 
     steps:
       - name: Checkout
@@ -169,7 +193,7 @@ jobs:
           "VIX_CONSUMER_DIR=$env:RUNNER_TEMP\vix-sdk-consumer-${{ matrix.name }}" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Verify source public-header contracts
-        if: ${{ matrix.name == 'linux-x86_64' }}
+        if: ${{ matrix.name == 'linux-default-x86_64' }}
         shell: bash
         run: |
           set -euxo pipefail
@@ -183,7 +207,33 @@ jobs:
           set -euxo pipefail
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build pkg-config libssl-dev
+            build-essential cmake ninja-build pkg-config
+
+      - name: Install OpenSSL build dependencies (Linux)
+        if: ${{ runner.os == 'Linux' && (matrix.profile == 'web' || matrix.profile == 'p2p' || matrix.profile == 'agent' || matrix.profile == 'all') }}
+        shell: bash
+        run: sudo apt-get install -y --no-install-recommends libssl-dev
+
+      - name: Install WebView build dependencies (Linux)
+        if: ${{ runner.os == 'Linux' && (matrix.profile == 'desktop' || matrix.profile == 'all') }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get install -y --no-install-recommends libgtk-3-dev libgl1-mesa-dev
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev || \
+            sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
+
+      - name: Install SDL build dependencies (Linux)
+        if: ${{ runner.os == 'Linux' && (matrix.profile == 'game' || matrix.profile == 'all') }}
+        shell: bash
+        run: |
+          sudo apt-get install -y --no-install-recommends \
+            libsdl2-dev libsdl2-image-dev libgl1-mesa-dev
+
+      - name: Install MySQL build dependencies (Linux)
+        if: ${{ runner.os == 'Linux' && matrix.profile == 'all' }}
+        shell: bash
+        run: sudo apt-get install -y --no-install-recommends libmysqlcppconn-dev
 
       - name: Install build dependencies (macOS)
         if: runner.os == 'macOS'
@@ -222,22 +272,60 @@ jobs:
             -S "$GITHUB_WORKSPACE" -B "$VIX_BUILD_DIR" -G Ninja
             -DCMAKE_BUILD_TYPE=Release
             -DCMAKE_INSTALL_PREFIX="$VIX_INSTALL_DIR"
-            -DVIX_SDK_PROFILE=all
+            -DVIX_SDK_PROFILE="${{ matrix.profile }}"
             -DVIX_ENABLE_INSTALL=ON
             -DVIX_ENABLE_CLI=OFF
             -DVIX_BUILD_EXAMPLES=OFF
             -DVIX_BUILD_TESTS=OFF
             -DVIX_JSON_FORCE_BUNDLED=ON
             -DVIX_UTILS_FORCE_BUNDLED_LOGGING_DEPS=ON
-            -DVIX_SQLITE_FORCE_BUNDLED=ON
-            -DVIX_ZLIB_FORCE_BUNDLED=ON
-            -DVIX_BROTLI_FORCE_BUNDLED=ON
-            -DVIX_DB_USE_MYSQL=OFF
-            -DVIX_CORE_WITH_MYSQL=OFF
-            -DVIX_UI_ENABLE_LINUX_WEBVIEW=OFF
-            -DVIX_GAME_ENABLE_SDL=OFF
-            -DVIX_GAME_ENABLE_SDL_OPENGL=OFF
+            -DVIX_ENABLE_HTTP_COMPRESSION=ON
           )
+
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            case "${{ matrix.profile }}" in
+              all)
+                CMAKE_ARGS+=(
+                  -DVIX_ZLIB_FORCE_BUNDLED=ON
+                  -DVIX_BROTLI_FORCE_BUNDLED=ON
+                  -DVIX_SQLITE_FORCE_BUNDLED=ON
+                  -DVIX_DB_USE_MYSQL=ON
+                  -DVIX_UI_ENABLE_LINUX_WEBVIEW=ON
+                  -DVIX_GAME_ENABLE_SDL=ON
+                  -DVIX_GAME_ENABLE_SDL_OPENGL=ON
+                )
+                ;;
+              web)
+                CMAKE_ARGS+=(
+                  -DVIX_ZLIB_FORCE_BUNDLED=ON
+                  -DVIX_BROTLI_FORCE_BUNDLED=ON
+                  -DVIX_SQLITE_FORCE_BUNDLED=ON
+                )
+                ;;
+              data)
+                CMAKE_ARGS+=(-DVIX_SQLITE_FORCE_BUNDLED=ON)
+                ;;
+              desktop)
+                CMAKE_ARGS+=(-DVIX_UI_ENABLE_LINUX_WEBVIEW=ON)
+                ;;
+              game)
+                CMAKE_ARGS+=(
+                  -DVIX_GAME_ENABLE_SDL=ON
+                  -DVIX_GAME_ENABLE_SDL_OPENGL=ON
+                )
+                ;;
+            esac
+          else
+            CMAKE_ARGS+=(
+              -DVIX_SQLITE_FORCE_BUNDLED=ON
+              -DVIX_ZLIB_FORCE_BUNDLED=ON
+              -DVIX_BROTLI_FORCE_BUNDLED=ON
+              -DVIX_DB_USE_MYSQL=OFF
+              -DVIX_UI_ENABLE_LINUX_WEBVIEW=OFF
+              -DVIX_GAME_ENABLE_SDL=OFF
+              -DVIX_GAME_ENABLE_SDL_OPENGL=OFF
+            )
+          fi
 
           if [ "$RUNNER_OS" = "macOS" ]; then
             CMAKE_ARGS+=(
@@ -255,7 +343,7 @@ jobs:
           Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $env:VIX_BUILD_DIR, $env:VIX_INSTALL_DIR
           cmake -S "$env:GITHUB_WORKSPACE" -B "$env:VIX_BUILD_DIR" -G "Visual Studio 17 2022" -A x64 `
             -DCMAKE_INSTALL_PREFIX="$env:VIX_INSTALL_DIR" `
-            -DVIX_SDK_PROFILE=all `
+            -DVIX_SDK_PROFILE="${{ matrix.profile }}" `
             -DVIX_ENABLE_INSTALL=ON `
             -DVIX_ENABLE_CLI=OFF `
             -DVIX_BUILD_EXAMPLES=OFF `
@@ -266,7 +354,6 @@ jobs:
             -DVIX_ZLIB_FORCE_BUNDLED=ON `
             -DVIX_BROTLI_FORCE_BUNDLED=ON `
             -DVIX_DB_USE_MYSQL=OFF `
-            -DVIX_CORE_WITH_MYSQL=OFF `
             -DVIX_UI_ENABLE_LINUX_WEBVIEW=OFF `
             -DVIX_GAME_ENABLE_SDL=OFF `
             -DVIX_GAME_ENABLE_SDL_OPENGL=OFF `
@@ -305,9 +392,20 @@ jobs:
           set -euxo pipefail
           rm -rf "$VIX_CONSUMER_DIR"
           cmake -E copy_directory "$GITHUB_WORKSPACE/ci/sdk-consumer" "$VIX_CONSUMER_DIR"
-          cmake -S "$VIX_CONSUMER_DIR" -B "$VIX_CONSUMER_DIR/build" -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
+          CONSUMER_ARGS=(
+            -DCMAKE_BUILD_TYPE=Release
             -DVIX_SDK_PREFIX="$VIX_INSTALL_DIR"
+            -DVIX_CONSUMER_PROFILE="${{ matrix.profile }}"
+          )
+          if [ "$RUNNER_OS" = "Linux" ] && \
+             { [ "${{ matrix.profile }}" = "game" ] || [ "${{ matrix.profile }}" = "all" ]; }; then
+            CONSUMER_ARGS+=(-DVIX_CONSUMER_GAME_BACKENDS=ON)
+          fi
+          if [ "$RUNNER_OS" = "Linux" ] && [ "${{ matrix.profile }}" = "all" ]; then
+            CONSUMER_ARGS+=(-DVIX_CONSUMER_MYSQL_BACKEND=ON)
+          fi
+          cmake -S "$VIX_CONSUMER_DIR" -B "$VIX_CONSUMER_DIR/build" -G Ninja \
+            "${CONSUMER_ARGS[@]}"
 
       - name: Configure isolated installed-SDK consumer (Windows)
         if: runner.os == 'Windows'
@@ -317,6 +415,7 @@ jobs:
           cmake -E copy_directory "$env:GITHUB_WORKSPACE\ci\sdk-consumer" "$env:VIX_CONSUMER_DIR"
           cmake -S "$env:VIX_CONSUMER_DIR" -B "$env:VIX_CONSUMER_DIR\build" -G "Visual Studio 17 2022" -A x64 `
             -DVIX_SDK_PREFIX="$env:VIX_INSTALL_DIR" `
+            -DVIX_CONSUMER_PROFILE="${{ matrix.profile }}" `
             -DVCPKG_TARGET_TRIPLET=x64-windows `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -333,12 +432,40 @@ jobs:
           cmake --build "$env:VIX_CONSUMER_DIR\build" --config Release --parallel 2
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Run installed MySQL backend probe (Linux all)
+        if: ${{ runner.os == 'Linux' && matrix.profile == 'all' }}
+        shell: bash
+        run: ctest --test-dir "$VIX_CONSUMER_DIR/build" --output-on-failure
+
       - name: Build and run installed-SDK examples (Unix)
         if: runner.os != 'Windows'
         shell: bash
         run: |
           set -euxo pipefail
-          for family in conversion error fs json os time validation log io threadpool async path env cache kv sync db orm templates tests core_root requests http config cookies session auth body_limit cache_http compression cors csrf etag headers ip_filter middleware_http rate_limit static_files group_builder form websocket http_ws realtime p2p p2p_http game ui agent tls process; do
+          families=(conversion error fs json os time log io threadpool async path env sync templates core_root process ui)
+
+          case "${{ matrix.profile }}" in
+            web)
+              families+=(validation requests http cookies session auth body_limit cache_http compression cors csrf etag headers ip_filter middleware_http rate_limit static_files group_builder form websocket http_ws realtime)
+              ;;
+            data)
+              families+=(cache kv db orm)
+              ;;
+            p2p)
+              families+=(cache p2p p2p_http)
+              ;;
+            game)
+              families+=(game)
+              ;;
+            agent)
+              families+=(cache agent)
+              ;;
+            all)
+              families+=(validation cache kv db orm tests requests http config cookies session auth body_limit cache_http compression cors csrf etag headers ip_filter middleware_http rate_limit static_files group_builder form websocket http_ws realtime p2p p2p_http game agent tls)
+              ;;
+          esac
+
+          for family in "${families[@]}"; do
             source_dir="$GITHUB_WORKSPACE/examples/$family"
             if [ "$family" = "core_root" ]; then
               source_dir="$GITHUB_WORKSPACE/examples"
@@ -367,7 +494,12 @@ jobs:
               -DCMAKE_FIND_USE_PACKAGE_REGISTRY=FALSE \
               -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=FALSE
             cmake --build "$example_dir/build" --parallel 2
-            ctest --test-dir "$example_dir/build" --output-on-failure
+            if [ "$RUNNER_OS" = "Linux" ] && [ "${{ matrix.profile }}" = "all" ] && \
+               { [ "$family" = "db" ] || [ "$family" = "orm" ]; }; then
+              echo "Skipping SQLite-only CTests for Linux all profile: $family"
+            else
+              ctest --test-dir "$example_dir/build" --output-on-failure
+            fi
           done
 
       - name: Build and run installed-SDK examples (Windows)

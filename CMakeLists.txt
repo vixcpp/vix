@@ -375,6 +375,7 @@ if (NOT _VIX_SDK_PROFILE_EFFECTIVE STREQUAL "legacy")
   if (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "web")
     vix_sdk_profile_default(VIX_ENABLE_WEBSOCKET ON)
     vix_sdk_profile_default(VIX_ENABLE_MIDDLEWARE ON)
+    vix_sdk_profile_default(VIX_ENABLE_CACHE ON)
     vix_sdk_profile_default(VIX_ENABLE_VALIDATION ON)
     vix_sdk_profile_default(VIX_ENABLE_CRYPTO ON)
     vix_sdk_profile_default(VIX_ENABLE_WEBRPC ON)
@@ -531,6 +532,10 @@ set(VIX_UTILS_BUILD_TESTS      ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::utils t
 set(VIX_JSON_BUILD_TESTS       ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::json tests")
 set(VIX_CORE_BUILD_TESTS       ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::core tests")
 set(VIX_ASYNC_BUILD_TESTS      ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::async tests")
+# Async consumes its standalone ASYNC_BUILD_TESTS option.  In an umbrella
+# build, bridge it from the umbrella-owned policy (or its explicit
+# VIX_ASYNC_BUILD_TESTS override) before modules/async is added.
+set(ASYNC_BUILD_TESTS          ${VIX_ASYNC_BUILD_TESTS} CACHE BOOL "Build Async tests (set by Vix umbrella)" FORCE)
 set(VIX_CRYPTO_BUILD_TESTS     ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::crypto tests")
 set(VIX_CONVERSION_BUILD_TESTS ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::conversion tests")
 set(VIX_VALIDATION_BUILD_TESTS ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::validation tests")
