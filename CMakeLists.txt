@@ -2161,6 +2161,15 @@ if (VIX_ENABLE_INSTALL)
             PATTERN "*.inc"
             PATTERN "internal" EXCLUDE
         )
+      elseif (_m STREQUAL "game" AND NOT VIX_GAME_ENABLE_SDL)
+        install(DIRECTORY "modules/${_m}/include/"
+          DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+          FILES_MATCHING
+            PATTERN "*.hpp"
+            PATTERN "*.h"
+            PATTERN "*.inc"
+            REGEX "/backends/sdl(/|$)" EXCLUDE
+        )
       else()
         install(DIRECTORY "modules/${_m}/include/"
           DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"

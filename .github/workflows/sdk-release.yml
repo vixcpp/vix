@@ -466,12 +466,16 @@ jobs:
             no_l "libvix_realtime.a"
           fi
 
+          # --- cache: web + data + all -------------------------------
+          if has "web data all"; then
+            have_h "vix/cache.hpp"; have_l "libvix_cache.a"
+          fi
+
           # --- data modules: data + all ------------------------------
           if has "data all"; then
             have_h "vix/db.hpp"
             have_h "vix/orm.hpp"
             have_h "vix/kv.hpp";    have_l "libvix_kv.a"
-            have_h "vix/cache.hpp"; have_l "libvix_cache.a"
           fi
 
           # --- p2p modules: p2p + all --------------------------------

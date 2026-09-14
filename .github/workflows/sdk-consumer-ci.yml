@@ -321,6 +321,7 @@ jobs:
               -DVIX_ZLIB_FORCE_BUNDLED=ON
               -DVIX_BROTLI_FORCE_BUNDLED=ON
               -DVIX_DB_USE_MYSQL=OFF
+              -DVIX_DB_USE_SQLITE=ON
               -DVIX_UI_ENABLE_LINUX_WEBVIEW=OFF
               -DVIX_GAME_ENABLE_SDL=OFF
               -DVIX_GAME_ENABLE_SDL_OPENGL=OFF
@@ -354,6 +355,7 @@ jobs:
             -DVIX_ZLIB_FORCE_BUNDLED=ON `
             -DVIX_BROTLI_FORCE_BUNDLED=ON `
             -DVIX_DB_USE_MYSQL=OFF `
+            -DVIX_DB_USE_SQLITE=ON `
             -DVIX_UI_ENABLE_LINUX_WEBVIEW=OFF `
             -DVIX_GAME_ENABLE_SDL=OFF `
             -DVIX_GAME_ENABLE_SDL_OPENGL=OFF `
