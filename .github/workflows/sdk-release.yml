@@ -346,30 +346,6 @@ jobs:
           cmake --build json-sdk-consumer/build -j2
           json-sdk-consumer/build/app
 
-      - name: Normalize vendored Asio headers
-        shell: bash
-        run: |
-          set -euxo pipefail
-
-          ASIO_INCLUDE_DIR="third_party/asio-src/asio/include"
-
-          test -d "$ASIO_INCLUDE_DIR/asio"
-          test -f "$ASIO_INCLUDE_DIR/asio.hpp"
-
-          mkdir -p "$INSTALL_DIR/include"
-          mkdir -p "$INSTALL_DIR/include/vix/third_party/asio"
-
-          cp -a "$ASIO_INCLUDE_DIR/asio" "$INSTALL_DIR/include/"
-          cp -a "$ASIO_INCLUDE_DIR/asio.hpp" "$INSTALL_DIR/include/"
-
-          cp -a "$ASIO_INCLUDE_DIR/asio" "$INSTALL_DIR/include/vix/third_party/asio/"
-          cp -a "$ASIO_INCLUDE_DIR/asio.hpp" "$INSTALL_DIR/include/vix/third_party/asio/"
-
-          test -f "$INSTALL_DIR/include/asio/io_context.hpp"
-          test -f "$INSTALL_DIR/include/asio.hpp"
-          test -f "$INSTALL_DIR/include/vix/third_party/asio/asio/io_context.hpp"
-          test -f "$INSTALL_DIR/include/vix/third_party/asio/asio.hpp"
-
       # ----------------------------------------------------------------
       # Verification. A shared shell library expresses each check once;
       # each profile asserts only what it should contain. Checks for the
@@ -418,8 +394,6 @@ jobs:
 
           test -f "$ID/include/asio/io_context.hpp"
           test -f "$ID/include/asio.hpp"
-          test -f "$ID/include/vix/third_party/asio/asio/io_context.hpp"
-          test -f "$ID/include/vix/third_party/asio/asio.hpp"
 
           test -f "$ID/lib/cmake/Vix/VixConfig.cmake"
           test -f "$ID/lib/cmake/Vix/VixConfigVersion.cmake"

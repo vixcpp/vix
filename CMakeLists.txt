@@ -715,7 +715,7 @@ if (EXISTS "${VIX_THIRDPARTY_ASIO_DIR}/asio.hpp")
 
   target_include_directories(vix_thirdparty_asio SYSTEM INTERFACE
     $<BUILD_INTERFACE:${VIX_THIRDPARTY_ASIO_DIR}>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/vix/third_party/asio>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   )
 
 else()
@@ -2232,14 +2232,12 @@ if (VIX_ENABLE_INSTALL)
     message(FATAL_ERROR "Asio submodule missing: third_party/asio-src. Run: git submodule update --init --recursive")
   endif()
 
-  file(GLOB_RECURSE _VIX_ASIO_HEADERS
-    CONFIGURE_DEPENDS
-    "${_VIX_ASIO_INSTALL_SRC}/*.hpp"
-    "${_VIX_ASIO_INSTALL_SRC}/*.h"
+  install(DIRECTORY "${_VIX_ASIO_INSTALL_SRC}/asio"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+    FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h" PATTERN "*.ipp"
   )
-
-  install(FILES ${_VIX_ASIO_HEADERS}
-    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/vix/third_party/asio"
+  install(FILES "${_VIX_ASIO_INSTALL_SRC}/asio.hpp"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
   )
 
   install(TARGETS vix EXPORT VixTargets)

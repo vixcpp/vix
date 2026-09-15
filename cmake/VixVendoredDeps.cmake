@@ -15,57 +15,35 @@ function(vix_add_vendored_spdlog)
 endfunction()
 
 function(vix_add_vendored_zlib)
-  if (TARGET vix_zlib)
+  if (TARGET vix::zlib)
     return()
   endif()
 
   set(_vix_zlib_source_dir "${CMAKE_SOURCE_DIR}/third_party/zlib")
-  set(_vix_zlib_sources
-    adler32.c
-    compress.c
-    crc32.c
-    deflate.c
-    gzclose.c
-    gzlib.c
-    gzread.c
-    gzwrite.c
-    inflate.c
-    infback.c
-    inftrees.c
-    inffast.c
-    trees.c
-    uncompr.c
-    zutil.c
-  )
+  set(_vix_zlib_binary_dir "${CMAKE_CURRENT_BINARY_DIR}/vix_zlib")
+  set(_vix_zlib_zconf_header "${_vix_zlib_binary_dir}/zconf.h")
 
-  foreach(_vix_zlib_file IN LISTS _vix_zlib_sources)
-    if (NOT EXISTS "${_vix_zlib_source_dir}/${_vix_zlib_file}")
-      message(FATAL_ERROR
-        "Vendored zlib source is missing ${_vix_zlib_file}: ${_vix_zlib_source_dir}"
-      )
-    endif()
-  endforeach()
-  foreach(_vix_zlib_header IN ITEMS zlib.h zconf.h)
-    if (NOT EXISTS "${_vix_zlib_source_dir}/${_vix_zlib_header}")
-      message(FATAL_ERROR
-        "Vendored zlib header is missing ${_vix_zlib_header}: ${_vix_zlib_source_dir}"
-      )
-    endif()
-  endforeach()
+  # Delegate platform probes and zconf.h generation to zlib's own CMake
+  # project. The Vix provider owns only the target/export naming and install.
+  set(ZLIB_BUILD_TESTING OFF)
+  set(ZLIB_BUILD_SHARED OFF)
+  set(ZLIB_BUILD_STATIC ON)
+  set(ZLIB_INSTALL OFF)
+  set(ZLIB_PREFIX OFF)
+  add_subdirectory("${_vix_zlib_source_dir}" "${_vix_zlib_binary_dir}" EXCLUDE_FROM_ALL)
 
-  list(TRANSFORM _vix_zlib_sources PREPEND "${_vix_zlib_source_dir}/")
-  add_library(vix_zlib STATIC ${_vix_zlib_sources})
-  add_library(vix::zlib ALIAS vix_zlib)
-  set_target_properties(vix_zlib PROPERTIES EXPORT_NAME zlib)
+  if (NOT TARGET zlibstatic)
+    message(FATAL_ERROR "Vendored zlib did not create its static target.")
+  endif()
 
-  target_compile_definitions(vix_zlib PRIVATE ZLIB_BUILD)
-  target_include_directories(vix_zlib PUBLIC
-    $<BUILD_INTERFACE:${_vix_zlib_source_dir}>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+  add_library(vix::zlib ALIAS zlibstatic)
+  set_target_properties(zlibstatic PROPERTIES
+    EXPORT_NAME zlib
+    OUTPUT_NAME vix_zlib
   )
 
   if (VIX_ENABLE_INSTALL)
-    install(TARGETS vix_zlib
+    install(TARGETS zlibstatic
       EXPORT VixTargets
       ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
       LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -74,7 +52,7 @@ function(vix_add_vendored_zlib)
     )
     install(FILES
       "${_vix_zlib_source_dir}/zlib.h"
-      "${_vix_zlib_source_dir}/zconf.h"
+      "${_vix_zlib_zconf_header}"
       DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     )
   endif()

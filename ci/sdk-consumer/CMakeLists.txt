@@ -152,6 +152,7 @@ list(SORT _vix_installed_headers)
 
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/headers")
 set(_vix_header_sources "")
+set(_vix_header_modules "")
 foreach (_header IN LISTS _vix_installed_headers)
   file(RELATIVE_PATH _relative_header
     "${VIX_SDK_PREFIX}/include"
@@ -185,19 +186,45 @@ foreach (_header IN LISTS _vix_installed_headers)
     "#include <${_relative_header}>\n\nint main() { return 0; }\n"
   )
   list(APPEND _vix_header_sources "${_source}")
+  list(APPEND _vix_header_modules "${_header_module}")
+  list(APPEND _vix_header_sources_${_header_module} "${_source}")
 endforeach()
 
 if (NOT _vix_header_sources)
   message(FATAL_ERROR "No installed first-party Vix headers were discovered.")
 endif()
 
-# Every generated source remains a separate translation unit. The target uses
-# only the installed SDK include directory, never a source-tree include path.
-add_library(vix_installed_header_contract OBJECT ${_vix_header_sources})
-target_compile_features(vix_installed_header_contract PRIVATE cxx_std_20)
-target_include_directories(vix_installed_header_contract PRIVATE
-  "${VIX_SDK_PREFIX}/include"
-)
+# Every generated source remains a separate translation unit. Group them by
+# owning module and consume each module's installed public target, so headers
+# receive precisely that target's PUBLIC/INTERFACE usage requirements.
+list(REMOVE_DUPLICATES _vix_header_modules)
+foreach (_header_module IN LISTS _vix_header_modules)
+  if (_header_module STREQUAL "all")
+    set(_vix_header_owner_target vix::vix)
+  elseif (_header_module STREQUAL "agent")
+    set(_vix_header_owner_target vix::ai_agent)
+  else()
+    set(_vix_header_owner_target "vix::${_header_module}")
+  endif()
+
+  if (NOT TARGET "${_vix_header_owner_target}")
+    message(FATAL_ERROR
+      "Installed Vix header owner target is unavailable: ${_vix_header_owner_target}")
+  endif()
+
+  string(REPLACE "::" "__" _vix_header_target_id "${_vix_header_owner_target}")
+  add_library("vix_installed_${_vix_header_target_id}_header_contract" OBJECT
+    ${_vix_header_sources_${_header_module}}
+  )
+  target_compile_features(
+    "vix_installed_${_vix_header_target_id}_header_contract"
+    PRIVATE cxx_std_20
+  )
+  target_link_libraries(
+    "vix_installed_${_vix_header_target_id}_header_contract"
+    PRIVATE "${_vix_header_owner_target}"
+  )
+endforeach()
 
 foreach (_vix_public_target IN LISTS _vix_profile_targets)
   string(REPLACE "::" "__" _target_id "${_vix_public_target}")
