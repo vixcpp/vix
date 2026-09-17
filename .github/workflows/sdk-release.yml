@@ -698,3 +698,4 @@ jobs:
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           files: dist/*
+          preserve_order: true
