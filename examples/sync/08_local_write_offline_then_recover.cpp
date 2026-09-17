@@ -169,7 +169,8 @@ int main()
   auto network_online = std::make_shared<std::atomic<bool>>(false);
 
   auto probe = std::make_shared<vix::net::NetworkProbe>(
-      vix::net::NetworkProbe::Config{},
+      vix::net::NetworkProbe::Config{
+          .min_interval_ms = 0},
       [network_online]
       { return network_online->load(); });
 

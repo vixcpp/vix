@@ -1,55 +1,44 @@
-#  @file examples/CMakeLists.txt
-#  @author Gaspard Kirira
-#
-#  Copyright 2025, Gaspard Kirira. All rights reserved.
-#  https://github.com/vixcpp/vix
-#  Use of this source code is governed by a MIT license
-#  that can be found in the License file.
-#
-# ====================================================================
-# Vix.cpp - Threadpool Examples
-# ====================================================================
+cmake_minimum_required(VERSION 3.20)
 
-set(VIX_THREADPOOL_EXAMPLE_SOURCES
-  basic_post.cpp
-  custom_config.cpp
-  metrics.cpp
-  parallel_for.cpp
-  parallel_for_each.cpp
-  parallel_map.cpp
-  parallel_reduce.cpp
-  periodic_task.cpp
-  shutdown.cpp
-  submit_future.cpp
-  task_cancellation.cpp
-  task_group.cpp
-  task_priority.cpp
-  task_timeout.cpp
+project(vix_example_threadpool LANGUAGES CXX)
+
+find_package(Vix CONFIG REQUIRED)
+
+set(_vix_threadpool_examples
+  basic_post
+  custom_config
+  metrics
+  parallel_for
+  parallel_for_each
+  parallel_map
+  parallel_reduce
+  periodic_task
+  shutdown
+  submit_future
+  task_cancellation
+  task_group
+  task_priority
+  task_timeout
 )
 
-foreach(example_source IN LISTS VIX_THREADPOOL_EXAMPLE_SOURCES)
-  get_filename_component(example_name "${example_source}" NAME_WE)
+set(_vix_threadpool_runnable_examples
+  basic_post
+  parallel_for
+  parallel_for_each
+  parallel_map
+  parallel_reduce
+  submit_future
+  task_group
+)
 
-  add_executable(${example_name}
-    ${example_source}
-  )
+enable_testing()
 
-  target_link_libraries(${example_name}
-    PRIVATE
-      vix::threadpool
-  )
+foreach (_example IN LISTS _vix_threadpool_examples)
+  add_executable("threadpool_${_example}" "${_example}.cpp")
+  target_compile_features("threadpool_${_example}" PRIVATE cxx_std_20)
+  target_link_libraries("threadpool_${_example}" PRIVATE vix::threadpool)
+endforeach()
 
-  target_compile_features(${example_name}
-    PRIVATE
-      cxx_std_20
-  )
-
-  if (NOT MSVC)
-    target_compile_options(${example_name}
-      PRIVATE
-        -Wall
-        -Wextra
-        -Wpedantic
-    )
-  endif()
+foreach (_example IN LISTS _vix_threadpool_runnable_examples)
+  add_test(NAME "threadpool.${_example}" COMMAND "threadpool_${_example}")
 endforeach()

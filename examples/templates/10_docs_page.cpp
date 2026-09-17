@@ -25,13 +25,14 @@
 //   examples/templates/views/10_docs_page/docs.html
 
 #include <vix.hpp>
+#include <vix/template.hpp>
 
 using namespace vix;
 
 int main()
 {
   App app;
-  app.templates("./examples/templates/views/10_docs_page");
+  app.templates("./views/10_docs_page");
 
   app.get("/", [](Request &, Response &res)
           {

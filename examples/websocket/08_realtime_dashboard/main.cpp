@@ -114,7 +114,7 @@ namespace
   void register_asset_routes(DashboardRuntime &runtime)
   {
     const std::filesystem::path root =
-        "examples/websocket/08_realtime_dashboard/public";
+        "public";
 
     runtime.app.get(
         "/",

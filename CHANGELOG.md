@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# Vix v2.9.0
+
+Vix v2.9.0 focuses on a cleaner development loop, more capable networking, and SDKs that better match the modules and dependencies users actually consume.
+
+## Improved
+
+### Build
+
+The normal build path now lets each layer own the work it is best placed to perform. Vix resolves project intent, configuration, toolchains, dependencies, and the command-line experience; CMake and Ninja own the concrete compilation graph, dependency tracking, and incremental execution.
+
+Ordinary `vix build` no longer prepares a second source and header graph before invoking the backend. Build-graph work remains available for features that need it, while normal, incremental, and no-op builds avoid unnecessary scanning and state reconstruction. Build identity also now excludes presentation and execution flags such as `--verbose` and `--cmake-verbose`, so they do not create unnecessary configuration variants.
+
+The CLI presents clearer live progress and compiler diagnostics, including improved source frames, warning summaries, and terminal color hierarchy, while retaining direct backend output when requested.
+
+### Requests
+
+`vix::requests` now keeps asynchronous work asynchronous across DNS, connection establishment, TLS, writes, and response reading. Connection and request lifetimes were strengthened, and compatible HTTP and HTTPS connections can be safely reused through an internal, origin-scoped pool.
+
+Responses can now stream decoded body bytes through a generic incremental body sink. This allows consumers such as the CLI updater to write large downloads directly to disk without first materializing the full response in memory.
+
+The CLI progressively moved GitHub requests, health checks, metadata lookups, and downloads away from external `curl`, `wget`, and PowerShell commands to `vix::requests`. `RunCommand` intentionally retains its `curl` HTTP URI passthrough, so this is a targeted migration rather than a removal of curl from every CLI behavior.
+
+### SDK and dependencies
+
+SDK packaging is now driven by the selected profile instead of modules that happen to be built for the CLI. SDK archives no longer include a second `vix` executable, and profile metadata now follows the targets and headers actually exported to consumers.
+
+Vix now bundles dependencies that exist solely to implement Vix modules: nlohmann-json, fmt, spdlog, SQLite, zlib, and Brotli. Their headers and libraries are packaged with the relevant SDK capabilities, reducing machine-level prerequisites and preventing internal CMake targets or system-library paths from leaking to consumers. OpenSSL remains a platform provider only for profiles that actually export an OpenSSL-dependent capability; core server TLS is opt-in.
+
+The SDK contract was tightened further: curl and wget are no longer generic SDK prerequisites, Reply is a public dependency of Note rather than a second implementation embedded in Note, and the `all` profile ships its public tests module alongside its aggregate header.
+
+### Mobile
+
+`vix::ui` gained Android and iOS project generation and build support through a shared mobile application model. Android projects use the native Gradle and WebView stack; iOS projects use Xcode and WKWebView. The CLI exposes matching mobile init, build, and run commands while keeping project generation in the UI module.
+
+The generated projects are validated against their native toolchains: Android through Gradle and emulator workflows, and iOS through Xcode simulator builds on macOS. The mobile layer deliberately complements rather than replaces those platform toolchains.
+
+### Developer experience
+
+SDK release validation now checks installed artifacts and external consumer projects, including bundled dependency ownership and profile-specific capabilities. This makes the packaged SDK, rather than only the source-tree build, the contract being checked.
+
+## Summary
+
+Vix v2.9.0 removes duplicated work from ordinary builds, strengthens native HTTP behavior, and makes SDK contents and requirements more faithful to the modules users select. It also broadens `vix::ui` with practical Android and iOS project support while preserving native platform integration.
+
 # Vix v2.8.6
 
 Vix v2.8.6 strengthens **Vix Game** and **Vix Async** around smaller composable runtime primitives, clearer ownership rules, safer asynchronous execution, and more deterministic runtime behavior.

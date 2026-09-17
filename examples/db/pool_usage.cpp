@@ -20,7 +20,9 @@ int main()
 {
   try
   {
-    auto db = vix::db::Database::sqlite("vix.db");
+    // SQLite permits a single writer at a time. Limit this write-oriented
+    // example to one pooled connection so the pool serializes the writers.
+    auto db = vix::db::Database::sqlite("vix.db", {.min = 1, .max = 1});
 
     auto &pool = db.pool();
 

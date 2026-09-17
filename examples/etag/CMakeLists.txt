@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.20)
+project(vix_example_etag LANGUAGES CXX)
+find_package(Vix CONFIG REQUIRED)
+add_executable(etag_app_simple etag_app_simple.cpp)
+target_compile_features(etag_app_simple PRIVATE cxx_std_20)
+target_link_libraries(etag_app_simple PRIVATE vix::middleware)

@@ -1,60 +1,35 @@
-#  @file CMakeLists.txt
-#  @author Gaspard Kirira
-#
-#  Copyright 2026, Gaspard Kirira. All rights reserved.
-#  https://github.com/vixcpp/vix
-#  Use of this source code is governed by a MIT license
-#  that can be found in the License file.
-#
-#  Vix.cpp
-add_executable(vix_process_basic_spawn
-  basic_spawn.cpp
-)
-target_link_libraries(vix_process_basic_spawn PRIVATE vix::process)
+cmake_minimum_required(VERSION 3.20)
 
-add_executable(vix_process_wait_process
-  wait_process.cpp
-)
-target_link_libraries(vix_process_wait_process PRIVATE vix::process)
+project(vix_example_process LANGUAGES CXX)
 
-add_executable(vix_process_capture_output
-  capture_output.cpp
-)
-target_link_libraries(vix_process_capture_output PRIVATE vix::process)
+find_package(Vix CONFIG REQUIRED)
 
-add_executable(vix_process_check_status
-  check_status.cpp
-)
-target_link_libraries(vix_process_check_status PRIVATE vix::process)
-
-add_executable(vix_process_kill_process
-  kill_process.cpp
-)
-target_link_libraries(vix_process_kill_process PRIVATE vix::process)
-
-add_executable(vix_process_terminate_process
-  terminate_process.cpp
-)
-target_link_libraries(vix_process_terminate_process PRIVATE vix::process)
-
-add_executable(vix_process_pipeline_output
-  pipeline_output.cpp
+set(_vix_process_examples
+  basic_spawn
+  wait_process
+  capture_output
+  check_status
+  kill_process
+  terminate_process
+  pipeline_output
+  pipeline_basic
+  output_large
 )
 
-target_link_libraries(vix_process_pipeline_output
-  PRIVATE
-    vix::process
-)
+foreach (_example IN LISTS _vix_process_examples)
+  add_executable("process_${_example}" "${_example}.cpp")
+  target_compile_features("process_${_example}" PRIVATE cxx_std_20)
+  target_link_libraries("process_${_example}" PRIVATE vix::process)
+endforeach()
 
-add_executable(vix_process_pipeline_basic
-  pipeline_basic.cpp
-)
-target_link_libraries(vix_process_pipeline_basic PRIVATE vix::process)
+foreach (_example IN ITEMS async_output async_spawn_wait async_cancel async_pipeline)
+  add_executable("process_${_example}" "async/${_example}.cpp")
+  target_compile_features("process_${_example}" PRIVATE cxx_std_20)
+  target_link_libraries("process_${_example}" PRIVATE vix::process vix::async)
+endforeach()
 
-add_executable(vix_process_output_large
-  output_large.cpp
-)
-target_link_libraries(vix_process_output_large PRIVATE vix::process)
-
-# async examples
-add_subdirectory(async)
+# These two examples select their shell command for Unix or Windows at compile time.
+enable_testing()
+foreach (_example IN ITEMS pipeline_output output_large)
+  add_test(NAME "process.${_example}" COMMAND "process_${_example}")
+endforeach()

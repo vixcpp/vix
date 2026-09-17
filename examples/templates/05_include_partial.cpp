@@ -24,13 +24,14 @@
 //   examples/templates/views/05_include/header.html
 
 #include <vix.hpp>
+#include <vix/template.hpp>
 
 using namespace vix;
 
 int main()
 {
   App app;
-  app.templates("./examples/templates/views/05_include");
+  app.templates("./views/05_include");
 
   app.get("/", [](Request &, Response &res)
           {

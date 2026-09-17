@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.23)
 
 # ====================================================================
 # Vix.cpp — Umbrella CMake Configuration
@@ -22,8 +22,9 @@ if (POLICY CMP0167)
   cmake_policy(SET CMP0167 NEW)
 endif()
 
-# Resolve umbrella version from git (preferred)
-set(_VIX_VERSION_FALLBACK "0.0.0")
+# Release/package semantic version. The umbrella identity below may carry
+# additional Git metadata for development builds.
+set(_VIX_VERSION_FALLBACK "2.9.0")
 
 find_package(Git QUIET)
 set(_VIX_GIT_DESCRIBE "")
@@ -37,14 +38,11 @@ if(Git_FOUND)
   )
 endif()
 
-# Compute PROJECT_VERSION (must be numeric for CMake packaging)
-# If describe returns: v1.20.1-4-gXXXX -> numeric is 1.20.1
+# PROJECT_VERSION is the stable numeric package version, independent of the
+# Git-derived umbrella identity used by development builds.
 set(_VIX_PROJECT_VERSION "${_VIX_VERSION_FALLBACK}")
-if(_VIX_GIT_DESCRIBE MATCHES "^v([0-9]+\\.[0-9]+\\.[0-9]+)")
-  set(_VIX_PROJECT_VERSION "${CMAKE_MATCH_1}")
-endif()
 
-project(vix VERSION ${_VIX_PROJECT_VERSION} LANGUAGES CXX)
+project(vix VERSION ${_VIX_PROJECT_VERSION} LANGUAGES C CXX)
 
 set(VIX_SDK_PROFILE "" CACHE STRING "SDK profile to build (empty/legacy/default/web/data/desktop/p2p/game/agent/all)")
 set_property(CACHE VIX_SDK_PROFILE PROPERTY STRINGS
@@ -74,7 +72,6 @@ set(_VIX_SDK_PROFILE_OPTION_VARS
   VIX_ENABLE_DB
   VIX_DB_USE_MYSQL
   VIX_DB_USE_SQLITE
-  VIX_DB_USE_POSTGRES
   VIX_DB_USE_REDIS
   VIX_ENABLE_P2P
   VIX_ENABLE_P2P_HTTP
@@ -259,10 +256,12 @@ option(VIX_FORCE_FETCH_JSON        "Fetch JSON backend if modules/json missing" 
 option(VIX_BENCH_MODE              "Disable heavy security/logging checks for benchmarks"         OFF)
 option(VIX_ENABLE_MIDDLEWARE       "Build Vix middleware module"                                  ON)
 option(VIX_ENABLE_HTTP_COMPRESSION "Enable HTTP compression middleware deps (zlib/brotli)"        ON)
+option(VIX_ZLIB_FORCE_BUNDLED      "Use Vix-owned zlib sources"                                   OFF)
+option(VIX_BROTLI_FORCE_BUNDLED    "Use Vix-owned Brotli encoder sources"                         OFF)
 option(VIX_ENABLE_DB               "Build Vix DB module (core anti-ORM)"                          ON)
 option(VIX_DB_USE_MYSQL            "Enable MySQL backend in vix_db"                               ON)
 option(VIX_DB_USE_SQLITE           "Enable SQLite backend in vix_db"                              OFF)
-option(VIX_DB_USE_POSTGRES         "Enable PostgreSQL backend in vix_db"                          OFF)
+option(VIX_SQLITE_FORCE_BUNDLED    "Use Vix-owned SQLite amalgamation"                             OFF)
 option(VIX_DB_USE_REDIS            "Enable Redis backend in vix_db"                               OFF)
 option(VIX_ENABLE_P2P              "Build Vix P2P module"                                         ON)
 option(VIX_ENABLE_P2P_HTTP         "Build Vix P2P HTTP adapter module"                            ON)
@@ -343,7 +342,6 @@ function(vix_sdk_profile_common)
   vix_sdk_profile_default(VIX_ENABLE_DB OFF)
   vix_sdk_profile_default(VIX_DB_USE_MYSQL OFF)
   vix_sdk_profile_default(VIX_DB_USE_SQLITE OFF)
-  vix_sdk_profile_default(VIX_DB_USE_POSTGRES OFF)
   vix_sdk_profile_default(VIX_DB_USE_REDIS OFF)
   vix_sdk_profile_default(VIX_ENABLE_P2P OFF)
   vix_sdk_profile_default(VIX_ENABLE_P2P_HTTP OFF)
@@ -377,6 +375,7 @@ if (NOT _VIX_SDK_PROFILE_EFFECTIVE STREQUAL "legacy")
   if (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "web")
     vix_sdk_profile_default(VIX_ENABLE_WEBSOCKET ON)
     vix_sdk_profile_default(VIX_ENABLE_MIDDLEWARE ON)
+    vix_sdk_profile_default(VIX_ENABLE_CACHE ON)
     vix_sdk_profile_default(VIX_ENABLE_VALIDATION ON)
     vix_sdk_profile_default(VIX_ENABLE_CRYPTO ON)
     vix_sdk_profile_default(VIX_ENABLE_WEBRPC ON)
@@ -404,8 +403,10 @@ if (NOT _VIX_SDK_PROFILE_EFFECTIVE STREQUAL "legacy")
     vix_sdk_profile_default(VIX_GAME_ENABLE_SDL_OPENGL ON)
   elseif (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "agent")
     vix_sdk_profile_default(VIX_ENABLE_AGENT ON)
+    vix_sdk_profile_default(VIX_ENABLE_CRYPTO ON)
     vix_sdk_profile_default(VIX_ENABLE_CACHE ON)
   elseif (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "all")
+    vix_sdk_profile_default(VIX_ENABLE_TESTS_MODULE ON)
     vix_sdk_profile_default(VIX_ENABLE_ORM ON)
     vix_sdk_profile_default(VIX_ENABLE_WEBSOCKET ON)
     vix_sdk_profile_default(VIX_ENABLE_MIDDLEWARE ON)
@@ -451,6 +452,8 @@ endfunction()
 set(_VIX_SDK_PACKAGE_DB ON)
 set(_VIX_SDK_PACKAGE_ORM ON)
 set(_VIX_SDK_PACKAGE_WEBSOCKET ON)
+set(_VIX_SDK_PACKAGE_CRYPTO ON)
+set(_VIX_SDK_PACKAGE_REQUESTS ON)
 set(_VIX_SDK_PACKAGE_P2P ON)
 set(_VIX_SDK_PACKAGE_P2P_HTTP ON)
 set(_VIX_SDK_PACKAGE_AGENT ON)
@@ -461,6 +464,8 @@ if (NOT _VIX_SDK_PROFILE_EFFECTIVE STREQUAL "legacy")
   vix_sdk_profile_user_set(_VIX_SDK_USER_DB VIX_ENABLE_DB)
   vix_sdk_profile_user_set(_VIX_SDK_USER_ORM VIX_ENABLE_ORM)
   vix_sdk_profile_user_set(_VIX_SDK_USER_WEBSOCKET VIX_ENABLE_WEBSOCKET)
+  vix_sdk_profile_user_set(_VIX_SDK_USER_CRYPTO VIX_ENABLE_CRYPTO)
+  vix_sdk_profile_user_set(_VIX_SDK_USER_REQUESTS VIX_ENABLE_REQUESTS)
   vix_sdk_profile_user_set(_VIX_SDK_USER_P2P VIX_ENABLE_P2P)
   vix_sdk_profile_user_set(_VIX_SDK_USER_P2P_HTTP VIX_ENABLE_P2P_HTTP)
   vix_sdk_profile_user_set(_VIX_SDK_USER_AGENT VIX_ENABLE_AGENT)
@@ -470,6 +475,8 @@ if (NOT _VIX_SDK_PROFILE_EFFECTIVE STREQUAL "legacy")
   set(_VIX_SDK_PACKAGE_DB OFF)
   set(_VIX_SDK_PACKAGE_ORM OFF)
   set(_VIX_SDK_PACKAGE_WEBSOCKET OFF)
+  set(_VIX_SDK_PACKAGE_CRYPTO OFF)
+  set(_VIX_SDK_PACKAGE_REQUESTS OFF)
   set(_VIX_SDK_PACKAGE_P2P OFF)
   set(_VIX_SDK_PACKAGE_P2P_HTTP OFF)
   set(_VIX_SDK_PACKAGE_AGENT OFF)
@@ -484,6 +491,14 @@ if (NOT _VIX_SDK_PROFILE_EFFECTIVE STREQUAL "legacy")
   endif()
   if (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "web" OR _VIX_SDK_PROFILE_EFFECTIVE STREQUAL "all" OR (_VIX_SDK_USER_WEBSOCKET AND VIX_ENABLE_WEBSOCKET))
     set(_VIX_SDK_PACKAGE_WEBSOCKET ON)
+  endif()
+  # vix::ai_agent links vix::crypto publicly, so an SDK that packages Agent
+  # must package Crypto even when Crypto was enabled only to satisfy Agent.
+  if (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "web" OR _VIX_SDK_PROFILE_EFFECTIVE STREQUAL "p2p" OR _VIX_SDK_PROFILE_EFFECTIVE STREQUAL "agent" OR _VIX_SDK_PROFILE_EFFECTIVE STREQUAL "all" OR (_VIX_SDK_USER_CRYPTO AND VIX_ENABLE_CRYPTO) OR (_VIX_SDK_USER_AGENT AND VIX_ENABLE_AGENT))
+    set(_VIX_SDK_PACKAGE_CRYPTO ON)
+  endif()
+  if (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "web" OR _VIX_SDK_PROFILE_EFFECTIVE STREQUAL "all" OR (_VIX_SDK_USER_REQUESTS AND VIX_ENABLE_REQUESTS))
+    set(_VIX_SDK_PACKAGE_REQUESTS ON)
   endif()
   if (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "p2p" OR _VIX_SDK_PROFILE_EFFECTIVE STREQUAL "all" OR (_VIX_SDK_USER_P2P AND VIX_ENABLE_P2P))
     set(_VIX_SDK_PACKAGE_P2P ON)
@@ -517,6 +532,10 @@ set(VIX_UTILS_BUILD_TESTS      ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::utils t
 set(VIX_JSON_BUILD_TESTS       ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::json tests")
 set(VIX_CORE_BUILD_TESTS       ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::core tests")
 set(VIX_ASYNC_BUILD_TESTS      ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::async tests")
+# Async consumes its standalone ASYNC_BUILD_TESTS option.  In an umbrella
+# build, bridge it from the umbrella-owned policy (or its explicit
+# VIX_ASYNC_BUILD_TESTS override) before modules/async is added.
+set(ASYNC_BUILD_TESTS          ${VIX_ASYNC_BUILD_TESTS} CACHE BOOL "Build Async tests (set by Vix umbrella)" FORCE)
 set(VIX_CRYPTO_BUILD_TESTS     ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::crypto tests")
 set(VIX_CONVERSION_BUILD_TESTS ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::conversion tests")
 set(VIX_VALIDATION_BUILD_TESTS ${VIX_BUILD_TESTS} CACHE BOOL "Build vix::validation tests")
@@ -696,7 +715,9 @@ if (EXISTS "${VIX_THIRDPARTY_ASIO_DIR}/asio.hpp")
 
   target_include_directories(vix_thirdparty_asio SYSTEM INTERFACE
     $<BUILD_INTERFACE:${VIX_THIRDPARTY_ASIO_DIR}>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/vix/third_party/asio>
+  )
+  target_include_directories(vix_thirdparty_asio INTERFACE
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   )
 
 else()
@@ -715,6 +736,9 @@ else()
   target_include_directories(vix_thirdparty_asio SYSTEM INTERFACE
     $<BUILD_INTERFACE:${asio_SOURCE_DIR}/asio/include>
   )
+  target_include_directories(vix_thirdparty_asio INTERFACE
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+  )
 endif()
 
 target_compile_options(vix_thirdparty_asio INTERFACE
@@ -724,42 +748,6 @@ target_compile_options(vix_thirdparty_asio INTERFACE
 target_link_libraries(vix INTERFACE vix::thirdparty_asio)
 
 add_library(vix::vix ALIAS vix)
-
-# ----------------------------------------------------
-# Optional deps: HTTP compression (zlib + brotli)
-# Propagate defs/libs to all consumers through vix::vix
-# ----------------------------------------------------
-if (VIX_ENABLE_HTTP_COMPRESSION)
-  # ---- zlib (gzip) ----
-  find_package(ZLIB QUIET)
-  if (ZLIB_FOUND)
-    message(STATUS "Compression: zlib found -> gzip enabled")
-    target_compile_definitions(vix INTERFACE VIX_HAS_ZLIB=1)
-
-    if (TARGET ZLIB::ZLIB)
-      target_link_libraries(vix INTERFACE ZLIB::ZLIB)
-    else()
-      add_library(ZLIB::ZLIB INTERFACE IMPORTED)
-      target_include_directories(ZLIB::ZLIB INTERFACE "${ZLIB_INCLUDE_DIRS}")
-      target_link_libraries(ZLIB::ZLIB INTERFACE "${ZLIB_LIBRARIES}")
-      target_link_libraries(vix INTERFACE ZLIB::ZLIB)
-    endif()
-  else()
-    message(STATUS "Compression: zlib not found -> gzip disabled")
-  endif()
-
-  # ---- brotli (br) ----
-  find_library(BROTLI_ENC NAMES brotlienc)
-  find_library(BROTLI_COMMON NAMES brotlicommon)
-
-  if (BROTLI_ENC AND BROTLI_COMMON)
-    message(STATUS "Compression: brotli found -> br enabled")
-    target_compile_definitions(vix INTERFACE VIX_HAS_BROTLI=1)
-    target_link_libraries(vix INTERFACE ${BROTLI_ENC} ${BROTLI_COMMON})
-  else()
-    message(STATUS "Compression: brotli not found -> br disabled")
-  endif()
-endif()
 
 # Attach warnings/coverage only for local builds.
 # Do not export them through the installed package.
@@ -811,9 +799,11 @@ else()
 endif()
 
 # --- Utils ---
+set(VIX_LOGGING_DEPS_BUNDLED OFF)
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/utils/CMakeLists.txt")
   message(STATUS "Adding 'modules/utils'...")
   add_subdirectory(modules/utils utils_build)
+  get_property(VIX_LOGGING_DEPS_BUNDLED TARGET vix_utils PROPERTY VIX_LOGGING_DEPS_BUNDLED)
 else()
   message(FATAL_ERROR "Missing 'modules/utils'. Run: git submodule update --init --recursive")
 endif()
@@ -851,9 +841,12 @@ else()
 endif()
 
 # --- JSON ---
+set(VIX_JSON_BUNDLED OFF)
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/json/CMakeLists.txt")
   message(STATUS "Adding 'modules/json'...")
   add_subdirectory(modules/json json_build)
+  get_property(VIX_JSON_BUNDLED TARGET vix_json PROPERTY VIX_JSON_BUNDLED)
+  get_property(VIX_JSON_BUNDLED_HEADERS_DIR TARGET vix_json PROPERTY VIX_JSON_BUNDLED_INCLUDE_DIR)
   set(_VIX_JSON_BACKEND "submodule")
 elseif (VIX_FORCE_FETCH_JSON)
   message(WARNING "modules/json missing — fetching nlohmann/json fallback")
@@ -871,6 +864,8 @@ elseif (VIX_FORCE_FETCH_JSON)
     add_library(vix::json ALIAS vix_json)
   endif()
 
+  set(VIX_JSON_BUNDLED_HEADERS_DIR "${nlohmann_json_SOURCE_DIR}/single_include/nlohmann")
+  set(VIX_JSON_BUNDLED ON)
   set(_VIX_JSON_BACKEND "nlohmann_json")
 else()
   message(FATAL_ERROR "Missing 'modules/json'. Run: git submodule update --init --recursive")
@@ -933,6 +928,7 @@ if (VIX_ENABLE_REQUESTS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/requests
   set(VIX_REQUESTS_BUILD_TESTS ${VIX_REQUESTS_BUILD_TESTS} CACHE BOOL "Build vix::requests tests" FORCE)
   set(VIX_REQUESTS_BUILD_EXAMPLES ${VIX_REQUESTS_BUILD_EXAMPLES} CACHE BOOL "Build vix::requests examples" FORCE)
   set(VIX_REQUESTS_INSTALL OFF CACHE BOOL "Enable standalone install/package rules" FORCE)
+  set(VIX_REQUESTS_ENABLE_UMBRELLA_INSTALL ${_VIX_SDK_PACKAGE_REQUESTS} CACHE BOOL "Install/export vix::requests from the Vix umbrella" FORCE)
 
   add_subdirectory(modules/requests requests_build)
 
@@ -1006,6 +1002,8 @@ if (VIX_ENABLE_CRYPTO AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/crypto/CMa
     message(STATUS "Crypto: OpenSSL not found -> provider will be disabled")
   endif()
 
+  set(VIX_CRYPTO_ENABLE_INSTALL ${_VIX_SDK_PACKAGE_CRYPTO} CACHE BOOL "Install/export vix::crypto from the Vix umbrella" FORCE)
+
   add_subdirectory(modules/crypto crypto_build)
 
   if (TARGET vix::crypto OR TARGET vix_crypto)
@@ -1033,14 +1031,14 @@ endif()
 
 # Propagate transitive include dirs from deps (avoid warnings from 3rd-party headers)
 if (_VIX_UTILS_REAL AND NOT _VIX_UTILS_REAL STREQUAL "")
-  if (TARGET spdlog::spdlog)
+  if (TARGET spdlog::spdlog AND NOT VIX_LOGGING_DEPS_BUNDLED)
     get_target_property(_spdlog_inc spdlog::spdlog INTERFACE_INCLUDE_DIRECTORIES)
     if (_spdlog_inc)
       target_include_directories(${_VIX_UTILS_REAL} SYSTEM INTERFACE ${_spdlog_inc})
     endif()
   endif()
 
-  if (TARGET fmt::fmt)
+  if (TARGET fmt::fmt AND NOT VIX_LOGGING_DEPS_BUNDLED)
     get_target_property(_fmt_inc fmt::fmt INTERFACE_INCLUDE_DIRECTORIES)
     if (_fmt_inc)
       target_include_directories(${_VIX_UTILS_REAL} SYSTEM INTERFACE ${_fmt_inc})
@@ -1199,6 +1197,23 @@ else()
 endif()
 
 # --- Note (optional) ---
+set(VIX_HAS_REPLY OFF)
+
+if (VIX_ENABLE_NOTE)
+  if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/reply/CMakeLists.txt")
+    message(FATAL_ERROR "Vix Note requires modules/reply.")
+  endif()
+
+  message(STATUS "Adding 'modules/reply' required by vix::note...")
+  add_subdirectory(modules/reply reply_build)
+
+  if (TARGET vix::reply OR TARGET vix_reply)
+    set(VIX_HAS_REPLY ON)
+  else()
+    message(FATAL_ERROR "Reply module added but no vix::reply target was exported.")
+  endif()
+endif()
+
 set(VIX_HAS_NOTE OFF)
 
 if (VIX_ENABLE_NOTE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/note/CMakeLists.txt")
@@ -1227,6 +1242,13 @@ endif()
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/core/CMakeLists.txt")
   message(STATUS "Adding 'modules/core'...")
   add_subdirectory(modules/core core_build)
+
+  vix_resolve_real_target(_VIX_CORE_REAL vix_core)
+  if (_VIX_CORE_REAL)
+    target_compile_definitions(${_VIX_CORE_REAL} PUBLIC
+      VIX_CORE_RUNTIME_VERSION="${VIX_UMBRELLA_VERSION}"
+    )
+  endif()
 else()
   message(FATAL_ERROR "Missing 'modules/core'. Run: git submodule update --init --recursive")
 endif()
@@ -1451,7 +1473,25 @@ endif()
 
 # --- Middleware (optional) ---
 set(VIX_HAS_MIDDLEWARE OFF)
+set(VIX_HTTP_COMPRESSION_ZLIB OFF)
+set(VIX_ZLIB_BUNDLED OFF)
+set(VIX_BROTLI_BUNDLED OFF)
 if (VIX_ENABLE_MIDDLEWARE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/middleware/CMakeLists.txt")
+  if (VIX_ZLIB_FORCE_BUNDLED AND VIX_ENABLE_HTTP_COMPRESSION)
+    if (NOT COMMAND vix_add_vendored_zlib)
+      include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VixVendoredDeps.cmake")
+    endif()
+    vix_add_vendored_zlib()
+    set(VIX_ZLIB_BUNDLED ON)
+  endif()
+  if (VIX_BROTLI_FORCE_BUNDLED AND VIX_ENABLE_HTTP_COMPRESSION)
+    if (NOT COMMAND vix_add_vendored_brotli)
+      include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VixVendoredDeps.cmake")
+    endif()
+    vix_add_vendored_brotli()
+    set(VIX_BROTLI_BUNDLED ON)
+  endif()
+
   message(STATUS "Adding 'modules/middleware'...")
   add_subdirectory(modules/middleware middleware_build)
 
@@ -1461,6 +1501,10 @@ if (VIX_ENABLE_MIDDLEWARE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/middle
     if (TARGET vix_middleware AND NOT TARGET vix::middleware)
       add_library(vix::middleware ALIAS vix_middleware)
     endif()
+    get_property(VIX_HTTP_COMPRESSION_ZLIB
+      TARGET vix_middleware
+      PROPERTY VIX_HTTP_COMPRESSION_ZLIB
+    )
   else()
     message(WARNING "Middleware module added but no vix::middleware target was exported.")
   endif()
@@ -1512,6 +1556,15 @@ if (VIX_BENCH_MODE)
 endif()
 
 # --- DB (optional, required by ORM) ---
+set(VIX_SQLITE_BUNDLED OFF)
+if (VIX_SQLITE_FORCE_BUNDLED)
+  if (NOT COMMAND vix_add_vendored_sqlite3)
+    include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VixVendoredDeps.cmake")
+  endif()
+  vix_add_vendored_sqlite3()
+  set(VIX_SQLITE_BUNDLED ON)
+endif()
+
 set(VIX_HAS_DB OFF)
 if (VIX_ENABLE_DB AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/db/CMakeLists.txt")
   message(STATUS "Adding 'modules/db'...")
@@ -1708,7 +1761,7 @@ if (TARGET vix::validation)
   target_link_libraries(vix INTERFACE vix::validation)
 endif()
 
-if (TARGET vix::crypto)
+if (TARGET vix::crypto AND _VIX_SDK_PACKAGE_CRYPTO)
   target_link_libraries(vix INTERFACE vix::crypto)
 endif()
 
@@ -1768,7 +1821,7 @@ if (TARGET vix::webrpc)
   target_link_libraries(vix INTERFACE vix::webrpc)
 endif()
 
-if (TARGET vix::requests)
+if (TARGET vix::requests AND _VIX_SDK_PACKAGE_REQUESTS)
   target_link_libraries(vix INTERFACE vix::requests)
 endif()
 
@@ -1969,16 +2022,42 @@ endif()
 # Compute feature flags as real ON/OFF at configure-time (NO generator expressions)
 set(VIX_WITH_JSON     ON)
 set(VIX_WITH_OPENSSL  OFF)
-find_package(OpenSSL QUIET)
-if (OpenSSL_FOUND AND TARGET OpenSSL::Crypto)
-  set(VIX_WITH_OPENSSL ON)
+set(_VIX_OPENSSL_EXPORTED_TARGETS vix_core)
+if (_VIX_SDK_PACKAGE_CRYPTO)
+  list(APPEND _VIX_OPENSSL_EXPORTED_TARGETS vix_crypto)
+endif()
+if (_VIX_SDK_PACKAGE_REQUESTS)
+  list(APPEND _VIX_OPENSSL_EXPORTED_TARGETS vix_requests)
+endif()
+foreach(_vix_openssl_target IN LISTS _VIX_OPENSSL_EXPORTED_TARGETS)
+  if (TARGET ${_vix_openssl_target})
+    get_property(_vix_target_requires_openssl
+      TARGET ${_vix_openssl_target}
+      PROPERTY VIX_REQUIRES_OPENSSL
+    )
+    if (_vix_target_requires_openssl)
+      set(VIX_WITH_OPENSSL ON)
+      break()
+    endif()
+  endif()
+endforeach()
+
+# P2P is exported only for profiles that package it explicitly.
+if (NOT VIX_WITH_OPENSSL AND VIX_HAS_P2P AND _VIX_SDK_PACKAGE_P2P AND TARGET vix_p2p)
+  get_property(_vix_p2p_requires_openssl
+    TARGET vix_p2p
+    PROPERTY VIX_REQUIRES_OPENSSL
+  )
+  if (_vix_p2p_requires_openssl)
+    set(VIX_WITH_OPENSSL ON)
+  endif()
 endif()
 set(VIX_WITH_MYSQL    OFF)
 set(VIX_WITH_SQLITE   OFF)
 set(VIX_WITH_BOOST_FS OFF)
 
 set(VIX_WITH_ZLIB OFF)
-if (VIX_ENABLE_HTTP_COMPRESSION AND ZLIB_FOUND)
+if (VIX_HAS_MIDDLEWARE AND VIX_HTTP_COMPRESSION_ZLIB)
   set(VIX_WITH_ZLIB ON)
 endif()
 
@@ -2003,7 +2082,7 @@ if (VIX_HAS_P2P_HTTP AND _VIX_SDK_PACKAGE_P2P_HTTP)
 endif()
 
 set(VIX_WITH_REQUESTS OFF)
-if (VIX_HAS_REQUESTS)
+if (VIX_HAS_REQUESTS AND _VIX_SDK_PACKAGE_REQUESTS)
   set(VIX_WITH_REQUESTS ON)
 endif()
 
@@ -2019,13 +2098,22 @@ endif()
 if (VIX_ENABLE_INSTALL)
 
   if (_VIX_SDK_PROFILE_EFFECTIVE STREQUAL "legacy")
-    set(_VIX_INSTALL_MODULES error path fs io env os log tests core utils json websocket webrpc requests realtime crypto time conversion validation async process threadpool kv agent game net cache sync p2p p2p_http middleware db orm template ui note)
+    set(_VIX_INSTALL_MODULES error path fs io env os log tests core utils json websocket webrpc requests realtime crypto time conversion validation async process threadpool kv agent game net cache sync p2p p2p_http middleware db orm template ui note reply)
   else()
-    set(_VIX_INSTALL_MODULES error path fs io env os log core utils json time conversion async process threadpool template ui note net sync crypto)
+    set(_VIX_INSTALL_MODULES error path fs io env os log core utils json time conversion async process threadpool template ui note net sync)
+    if (VIX_HAS_REPLY)
+      list(APPEND _VIX_INSTALL_MODULES reply)
+    endif()
+    if (VIX_HAS_TESTS)
+      list(APPEND _VIX_INSTALL_MODULES tests)
+    endif()
+    if (VIX_HAS_CRYPTO AND _VIX_SDK_PACKAGE_CRYPTO)
+      list(APPEND _VIX_INSTALL_MODULES crypto)
+    endif()
     if (VIX_HAS_WEBRPC)
       list(APPEND _VIX_INSTALL_MODULES webrpc)
     endif()
-    if (VIX_HAS_REQUESTS)
+    if (VIX_HAS_REQUESTS AND _VIX_SDK_PACKAGE_REQUESTS)
       list(APPEND _VIX_INSTALL_MODULES requests)
     endif()
     if (VIX_HAS_REALTIME AND _VIX_SDK_PACKAGE_REALTIME)
@@ -2078,6 +2166,15 @@ if (VIX_ENABLE_INSTALL)
             PATTERN "*.inc"
             PATTERN "internal" EXCLUDE
         )
+      elseif (_m STREQUAL "game" AND NOT VIX_GAME_ENABLE_SDL)
+        install(DIRECTORY "modules/${_m}/include/"
+          DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+          FILES_MATCHING
+            PATTERN "*.hpp"
+            PATTERN "*.h"
+            PATTERN "*.inc"
+            REGEX "/backends/sdl(/|$)" EXCLUDE
+        )
       else()
         install(DIRECTORY "modules/${_m}/include/"
           DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
@@ -2089,6 +2186,13 @@ if (VIX_ENABLE_INSTALL)
       endif()
     endif()
   endforeach()
+
+  if (VIX_JSON_BUNDLED AND DEFINED VIX_JSON_BUNDLED_HEADERS_DIR)
+    install(DIRECTORY "${VIX_JSON_BUNDLED_HEADERS_DIR}"
+      DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+      FILES_MATCHING PATTERN "*.hpp"
+    )
+  endif()
 
   # ----------------------------------------------------
   # Install root umbrella header
@@ -2133,14 +2237,12 @@ if (VIX_ENABLE_INSTALL)
     message(FATAL_ERROR "Asio submodule missing: third_party/asio-src. Run: git submodule update --init --recursive")
   endif()
 
-  file(GLOB_RECURSE _VIX_ASIO_HEADERS
-    CONFIGURE_DEPENDS
-    "${_VIX_ASIO_INSTALL_SRC}/*.hpp"
-    "${_VIX_ASIO_INSTALL_SRC}/*.h"
+  install(DIRECTORY "${_VIX_ASIO_INSTALL_SRC}/asio"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+    FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h" PATTERN "*.ipp"
   )
-
-  install(FILES ${_VIX_ASIO_HEADERS}
-    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/vix/third_party/asio"
+  install(FILES "${_VIX_ASIO_INSTALL_SRC}/asio.hpp"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
   )
 
   install(TARGETS vix EXPORT VixTargets)
@@ -2210,11 +2312,11 @@ if (VIX_ENABLE_INSTALL)
   endif()
 
   set(VIX_WITH_CRYPTO OFF)
-  if (VIX_HAS_CRYPTO)
+  if (VIX_HAS_CRYPTO AND _VIX_SDK_PACKAGE_CRYPTO)
     set(VIX_WITH_CRYPTO ON)
   endif()
 
-  set(VIX_HAS_CRYPTO  ${VIX_HAS_CRYPTO})
+  set(VIX_HAS_CRYPTO  ${VIX_WITH_CRYPTO})
   set(VIX_WITH_CRYPTO ${VIX_WITH_CRYPTO})
 
   set(VIX_WITH_WEBRPC OFF)
@@ -2223,7 +2325,7 @@ if (VIX_ENABLE_INSTALL)
   endif()
 
   set(VIX_WITH_REQUESTS OFF)
-  if (VIX_HAS_REQUESTS)
+  if (VIX_HAS_REQUESTS AND _VIX_SDK_PACKAGE_REQUESTS)
     set(VIX_WITH_REQUESTS ON)
   endif()
 
@@ -2259,7 +2361,7 @@ if (VIX_ENABLE_INSTALL)
   set(VIX_HAS_NOTE ${VIX_HAS_NOTE})
   set(VIX_WITH_NOTE ${VIX_WITH_NOTE})
 
-  set(VIX_HAS_REQUESTS ${VIX_HAS_REQUESTS})
+  set(VIX_HAS_REQUESTS ${VIX_WITH_REQUESTS})
   set(VIX_WITH_REQUESTS ${VIX_WITH_REQUESTS})
 
   set(VIX_HAS_REALTIME ${VIX_WITH_REALTIME})
@@ -2310,6 +2412,24 @@ if (VIX_ENABLE_INSTALL)
     "${CMAKE_CURRENT_BINARY_DIR}/VixConfig.cmake"
     INSTALL_DESTINATION "${VIX_INSTALL_CMAKEDIR}"
   )
+
+  # CMake treats include directories on imported targets as SYSTEM by
+  # default.  Mark every build target in the umbrella tree as non-system for
+  # the generated VixTargets import.  Targets that are not part of VixTargets
+  # are harmless here and are ignored by install(EXPORT).
+  function(_vix_mark_exported_targets_non_system directory)
+    get_property(_vix_targets DIRECTORY "${directory}" PROPERTY BUILDSYSTEM_TARGETS)
+    foreach(_vix_target IN LISTS _vix_targets)
+      set_property(TARGET "${_vix_target}" PROPERTY IMPORTED_NO_SYSTEM TRUE)
+    endforeach()
+
+    get_property(_vix_subdirectories DIRECTORY "${directory}" PROPERTY SUBDIRECTORIES)
+    foreach(_vix_subdirectory IN LISTS _vix_subdirectories)
+      _vix_mark_exported_targets_non_system("${_vix_subdirectory}")
+    endforeach()
+  endfunction()
+
+  _vix_mark_exported_targets_non_system("${CMAKE_CURRENT_SOURCE_DIR}")
 
   install(EXPORT VixTargets
           NAMESPACE vix::
