@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.23)
 
 # ====================================================================
 # Vix.cpp — Umbrella CMake Configuration
@@ -715,6 +715,8 @@ if (EXISTS "${VIX_THIRDPARTY_ASIO_DIR}/asio.hpp")
 
   target_include_directories(vix_thirdparty_asio SYSTEM INTERFACE
     $<BUILD_INTERFACE:${VIX_THIRDPARTY_ASIO_DIR}>
+  )
+  target_include_directories(vix_thirdparty_asio INTERFACE
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   )
 
@@ -733,6 +735,9 @@ else()
 
   target_include_directories(vix_thirdparty_asio SYSTEM INTERFACE
     $<BUILD_INTERFACE:${asio_SOURCE_DIR}/asio/include>
+  )
+  target_include_directories(vix_thirdparty_asio INTERFACE
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   )
 endif()
 
@@ -2407,6 +2412,24 @@ if (VIX_ENABLE_INSTALL)
     "${CMAKE_CURRENT_BINARY_DIR}/VixConfig.cmake"
     INSTALL_DESTINATION "${VIX_INSTALL_CMAKEDIR}"
   )
+
+  # CMake treats include directories on imported targets as SYSTEM by
+  # default.  Mark every build target in the umbrella tree as non-system for
+  # the generated VixTargets import.  Targets that are not part of VixTargets
+  # are harmless here and are ignored by install(EXPORT).
+  function(_vix_mark_exported_targets_non_system directory)
+    get_property(_vix_targets DIRECTORY "${directory}" PROPERTY BUILDSYSTEM_TARGETS)
+    foreach(_vix_target IN LISTS _vix_targets)
+      set_property(TARGET "${_vix_target}" PROPERTY IMPORTED_NO_SYSTEM TRUE)
+    endforeach()
+
+    get_property(_vix_subdirectories DIRECTORY "${directory}" PROPERTY SUBDIRECTORIES)
+    foreach(_vix_subdirectory IN LISTS _vix_subdirectories)
+      _vix_mark_exported_targets_non_system("${_vix_subdirectory}")
+    endforeach()
+  endfunction()
+
+  _vix_mark_exported_targets_non_system("${CMAKE_CURRENT_SOURCE_DIR}")
 
   install(EXPORT VixTargets
           NAMESPACE vix::

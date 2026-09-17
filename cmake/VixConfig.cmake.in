@@ -1,5 +1,11 @@
 @PACKAGE_INIT@
 
+if (CMAKE_VERSION VERSION_LESS 3.23)
+  message(FATAL_ERROR
+    "Vix SDK packages require CMake 3.23 or newer."
+  )
+endif()
+
 include(CMakeFindDependencyMacro)
 
 # ---- deps that exported targets may reference ----
