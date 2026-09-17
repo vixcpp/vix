@@ -495,6 +495,46 @@ jobs:
               -DVix_DIR="$VIX_INSTALL_DIR/lib/cmake/Vix" \
               -DCMAKE_FIND_USE_PACKAGE_REGISTRY=FALSE \
               -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=FALSE
+            if [ "$RUNNER_OS" = "macOS" ] && [ "$family" = "core_root" ]; then
+              echo "=== installed nlohmann header ==="
+              ls -l "$VIX_INSTALL_DIR/include/nlohmann/json.hpp"
+              grep -n \
+                -E 'NLOHMANN_JSON_VERSION_(MAJOR|MINOR|PATCH)' \
+                "$VIX_INSTALL_DIR/include/nlohmann/detail/abi_macros.hpp" \
+                "$VIX_INSTALL_DIR/include/nlohmann/json.hpp" \
+                || true
+
+              echo "=== installed Vix JSON target ==="
+              grep -n -A12 -B6 \
+                -E 'vix::json|INTERFACE_INCLUDE_DIRECTORIES|INTERFACE_LINK_LIBRARIES' \
+                "$VIX_INSTALL_DIR/lib/cmake/Vix/VixTargets.cmake" \
+                || true
+
+              echo "=== Homebrew nlohmann ==="
+              brew --prefix nlohmann-json || true
+              brew list --versions nlohmann-json || true
+              if [ -f "$(brew --prefix nlohmann-json)/include/nlohmann/detail/abi_macros.hpp" ]; then
+                grep -n \
+                  -E 'NLOHMANN_JSON_VERSION_(MAJOR|MINOR|PATCH)' \
+                  "$(brew --prefix nlohmann-json)/include/nlohmann/detail/abi_macros.hpp" \
+                  || true
+              fi
+
+              echo "=== include environment ==="
+              env | grep -E \
+                '^(CPATH|CPLUS_INCLUDE_PATH|C_INCLUDE_PATH|CPPFLAGS|CXXFLAGS|CMAKE_PREFIX_PATH)=' \
+                || true
+
+              cmake --build "$example_dir/build" \
+                --target core_root_hello_routes \
+                --parallel 2 \
+                --verbose
+
+              hello_object="$(find "$example_dir/build" -name 'hello_routes.cpp.o' -print -quit)"
+              if [ -n "$hello_object" ]; then
+                nm -C "$hello_object" | grep 'ResponseWrapper::send' || true
+              fi
+            fi
             cmake --build "$example_dir/build" --parallel 2
             if [ "$RUNNER_OS" = "Linux" ] && [ "${{ matrix.profile }}" = "all" ] && \
                { [ "$family" = "db" ] || [ "$family" = "orm" ]; }; then
