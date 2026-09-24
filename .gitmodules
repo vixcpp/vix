@@ -1,0 +1,173 @@
+[submodule "modules/core"]
+  path = modules/core
+  url = https://github.com/vixcpp/core.git
+  branch = dev
+
+[submodule "modules/utils"]
+  path = modules/utils
+  url = https://github.com/vixcpp/utils.git
+  branch = dev
+
+[submodule "modules/cli"]
+  path = modules/cli
+  url = https://github.com/vixcpp/cli.git
+  branch = dev
+
+[submodule "modules/json"]
+  path = modules/json
+  url = https://github.com/vixcpp/json.git
+  branch = dev
+
+[submodule "modules/orm"]
+  path = modules/orm
+  url = https://github.com/vixcpp/orm.git
+  branch = dev
+
+[submodule "modules/websocket"]
+  path = modules/websocket
+  url = https://github.com/vixcpp/websocket.git
+  branch = dev
+
+[submodule "modules/middleware"]
+  path = modules/middleware
+  url = https://github.com/vixcpp/middleware.git
+  branch = dev
+
+[submodule "modules/p2p"]
+  path = modules/p2p
+  url = https://github.com/vixcpp/p2p.git
+  branch = dev
+
+[submodule "modules/net"]
+  path = modules/net
+  url = https://github.com/vixcpp/net.git
+  branch = dev
+
+[submodule "modules/sync"]
+  path = modules/sync
+  url = https://github.com/vixcpp/sync.git
+  branch = dev
+
+[submodule "modules/cache"]
+  path = modules/cache
+  url = https://github.com/vixcpp/cache.git
+  branch = dev
+
+[submodule "modules/db"]
+  path = modules/db
+  url = https://github.com/vixcpp/db.git
+  branch = dev
+
+[submodule "modules/p2p_http"]
+  path = modules/p2p_http
+  url = https://github.com/vixcpp/p2p_http.git
+  branch = dev
+
+[submodule "third_party/asio-src"]
+  path = third_party/asio-src
+  url = https://github.com/chriskohlhoff/asio.git
+
+[submodule "modules/async"]
+  path = modules/async
+  url = https://github.com/vixcpp/async.git
+  branch = dev
+[submodule "modules/conversion"]
+	path = modules/conversion
+	url = https://github.com/vixcpp/conversion.git
+	branch = dev
+[submodule "modules/validation"]
+	path = modules/validation
+	url = https://github.com/vixcpp/validation.git
+	branch = dev
+[submodule "modules/crypto"]
+	path = modules/crypto
+	url = https://github.com/vixcpp/crypto.git
+	branch = dev
+[submodule "modules/webrpc"]
+	path = modules/webrpc
+	url = https://github.com/vixcpp/webrpc.git
+	branch = dev
+[submodule "modules/time"]
+	path = modules/time
+	url = https://github.com/vixcpp/time.git
+	branch = dev
+[submodule "modules/template"]
+	path = modules/template
+	url = https://github.com/vixcpp/template.git
+	branch = dev
+[submodule "modules/error"]
+	path = modules/error
+	url = https://github.com/vixcpp/error.git
+	branch = dev
+[submodule "modules/path"]
+	path = modules/path
+	url = https://github.com/vixcpp/path.git
+	branch = dev
+[submodule "modules/log"]
+	path = modules/log
+	url = https://github.com/vixcpp/log.git
+	branch = dev
+[submodule "modules/fs"]
+	path = modules/fs
+	url = https://github.com/vixcpp/fs.git
+	branch = dev
+[submodule "modules/io"]
+	path = modules/io
+	url = https://github.com/vixcpp/io.git
+	branch = dev
+[submodule "modules/env"]
+	path = modules/env
+	url = https://github.com/vixcpp/env.git
+	branch = dev
+[submodule "modules/os"]
+	path = modules/os
+	url = https://github.com/vixcpp/os.git
+	branch = dev
+[submodule "modules/tests"]
+	path = modules/tests
+	url = https://github.com/vixcpp/tests.git
+	branch = dev
+[submodule "modules/process"]
+	path = modules/process
+	url = https://github.com/vixcpp/process.git
+	branch = dev
+[submodule "modules/threadpool"]
+	path = modules/threadpool
+	url = https://github.com/vixcpp/threadpool.git
+	branch = dev
+[submodule "modules/kv"]
+	path = modules/kv
+	url = https://github.com/vixcpp/kv.git
+	branch = dev
+[submodule "modules/agent"]
+	path = modules/agent
+	url = https://github.com/vixcpp/agent.git
+	branch = dev
+[submodule "modules/reply"]
+	path = modules/reply
+	url = https://github.com/vixcpp/reply.git
+	branch = dev
+[submodule "modules/game"]
+	path = modules/game
+	url = https://github.com/vixcpp/game.git
+	branch = dev
+[submodule "modules/ui"]
+	path = modules/ui
+	url = https://github.com/vixcpp/ui.git
+	branch = dev
+[submodule "modules/note"]
+	path = modules/note
+	url = https://github.com/vixcpp/note.git
+	branch = dev
+[submodule "modules/requests"]
+	path = modules/requests
+	url = https://github.com/vixcpp/requests.git
+	branch = dev
+[submodule "modules/engine"]
+	path = modules/engine
+	url = https://github.com/vixcpp/engine.git
+	branch = dev
+[submodule "modules/realtime"]
+	path = modules/realtime
+	url = https://github.com/vixcpp/realtime.git
+	branch = dev

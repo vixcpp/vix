@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ page_title }}</title>
+
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: #0f172a;
+        color: #e5e7eb;
+      }
+
+      main {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 56px 24px;
+      }
+
+      .card {
+        padding: 32px;
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        color: white;
+      }
+
+      p {
+        color: #94a3b8;
+        font-size: 18px;
+      }
+
+      code {
+        color: #fbbf24;
+      }
+    </style>
+  </head>
+
+  <body>
+    <main>
+      <section class="card">
+        <h1>{{ page_title }}</h1>
+        <p>{{ description }}</p>
+        <p>Framework: <code>{{ framework }}</code></p>
+        <p>Module: <code>{{ module }}</code></p>
+      </section>
+    </main>
+  </body>
+</html>

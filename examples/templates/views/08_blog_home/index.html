@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="card">
+  <div class="tag">{{ featured_post.category }}</div>
+  <h2 style="margin-top:0; font-size:32px; line-height:1.2;">
+    {{ featured_post.title }}
+  </h2>
+  <p class="muted" style="font-size:16px; line-height:1.7;">
+    {{ featured_post.excerpt }}
+  </p>
+  <p class="meta">
+    By {{ featured_post.author }} · {{ featured_post.date }}
+  </p>
+</section>
+
+<section>
+  <h2 style="margin-top:0; margin-bottom:18px;">Latest posts</h2>
+
+  <div class="post-grid">
+    {% for post in posts %}
+      <article class="card post-card">
+        <div class="tag">{{ post.category }}</div>
+        <h3>{{ post.title }}</h3>
+        <p>{{ post.excerpt }}</p>
+        <p class="meta">
+          By {{ post.author }} · {{ post.date }}
+        </p>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+
+{% endblock %}

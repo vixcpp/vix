@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>{{ page_title }}</title>
+
+    {{ pwa_meta | safe }}
+
+    <style>
+      {{ safe_area | safe }}
+
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: #0f172a;
+        color: #e5e7eb;
+      }
+
+      main {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 56px 24px;
+      }
+
+      .card {
+        padding: 32px;
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+
+      h1 {
+        color: white;
+      }
+    </style>
+  </head>
+
+  <body>
+    <main class="vix-safe-area">
+      <section class="card">
+        <h1>{{ page_title }}</h1>
+        <p>This page includes viewport, manifest and safe-area metadata.</p>
+      </section>
+    </main>
+  </body>
+</html>

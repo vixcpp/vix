@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ page_title }}</title>
+
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: #111827;
+        color: #e5e7eb;
+      }
+
+      main {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 56px 24px;
+      }
+
+      .card,
+      .flash,
+      .toast {
+        margin: 16px 0;
+        padding: 18px 20px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+
+      h1 {
+        color: white;
+      }
+
+      strong {
+        color: #fbbf24;
+      }
+    </style>
+  </head>
+
+  <body>
+    <main>
+      <h1>{{ page_title }}</h1>
+
+      {{ flash | safe }}
+
+      <section class="card">{{ fragment | safe }}</section>
+
+      {{ toast | safe }}
+    </main>
+  </body>
+</html>

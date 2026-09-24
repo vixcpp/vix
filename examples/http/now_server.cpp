@@ -1,0 +1,45 @@
+/**
+ *
+ *  @file now_server.cpp — Demo route: current time in ISO 8601 and milliseconds
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2025, Gaspard Kirira.  All rights reserved.
+ *  https://github.com/vixcpp/vix
+ *  Use of this source code is governed by a MIT license
+ *  that can be found in the License file.
+ *
+ *  Vix.cpp
+ *
+ */
+// ============================================================================
+// GET /now -> {"iso8601":"2025-10-09T10:34:12.123Z","ms":1696848852123}
+// ============================================================================
+
+#include <vix.hpp>
+#include <vix/utils/Env.hpp>
+#include <vix/utils/Time.hpp>
+#include <vix/utils/Logger.hpp>
+
+using namespace vix;
+using namespace vix::utils;
+
+int main()
+{
+  auto &log = Logger::getInstance();
+  log.setPattern("[%H:%M:%S.%e] [%^%l%$] %v");
+  log.setLevel(Logger::Level::Info);
+
+  const int port = utils::env_int("PORT", 8081);
+
+  App app;
+
+  // GET /now → returns current ISO 8601 timestamp and epoch ms
+  app.get("/now", [](Request &, Response &res)
+          { res.json({"iso8601", utils::iso8601_now(),
+                      "ms", static_cast<long long>(utils::now_ms())}); });
+
+  log.log(Logger::Level::Info, "Starting server on port {}", port);
+
+  app.run(port);
+  return 0;
+}

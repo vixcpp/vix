@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>{{ page_title }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f7f8fb;
+      color: #1f2937;
+    }
+
+    .container {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+      margin-bottom: 24px;
+    }
+
+    .muted {
+      color: #6b7280;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #4338ca;
+      font-size: 13px;
+      font-weight: bold;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+
+    .post-title {
+      font-size: 36px;
+      line-height: 1.2;
+      margin-top: 0;
+      margin-bottom: 14px;
+    }
+
+    .post-body p {
+      line-height: 1.8;
+      margin-bottom: 18px;
+      font-size: 16px;
+    }
+
+    .section-title {
+      margin-top: 0;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  {% include "header.html" %}
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "[Vix] post-rewrite hook → resync des sous-modules après rebase..."
+git submodule sync --recursive
+git submodule update --init --recursive

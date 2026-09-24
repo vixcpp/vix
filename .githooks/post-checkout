@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "[Vix] post-checkout hook → mise à jour des sous-modules..."
+git submodule sync --recursive
+git submodule update --init --recursive

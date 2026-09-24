@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Vix.cpp — body_limit playground</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <style>
+      body {
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        background: #0f1220;
+        color: #eaeaf0;
+        margin: 0;
+        padding: 24px;
+      }
+
+      h1 {
+        font-size: 1.6rem;
+        margin-bottom: 0.2em;
+      }
+
+      p {
+        color: #b8b9d4;
+        margin-top: 0;
+      }
+
+      .card {
+        background: #171a2e;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 16px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+      }
+
+      button {
+        background: #4f7cff;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 10px 14px;
+        font-size: 14px;
+        cursor: pointer;
+        margin-right: 8px;
+        margin-top: 8px;
+      }
+
+      button.secondary {
+        background: #3a3d5c;
+      }
+
+      button.danger {
+        background: #e05252;
+      }
+
+      button:hover {
+        opacity: 0.9;
+      }
+
+      pre {
+        background: #0b0d1a;
+        border-radius: 6px;
+        padding: 12px;
+        overflow-x: auto;
+        font-size: 13px;
+        line-height: 1.4;
+      }
+
+      .ok {
+        color: #7dff9a;
+      }
+      .err {
+        color: #ff7d7d;
+      }
+      .muted {
+        color: #8a8db3;
+      }
+
+      footer {
+        margin-top: 24px;
+        font-size: 13px;
+        color: #8a8db3;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Vix.cpp — body_limit playground</h1>
+    <p>
+      Frontend served on <code>http://localhost:5173</code><br />
+      API expected on <code>http://localhost:8080</code>
+    </p>
+
+    <div class="card">
+      <h2>GET (ignored by body_limit)</h2>
+      <button onclick="ping()">GET /api/ping</button>
+    </div>
+
+    <div class="card">
+      <h2>POST /api/echo (max 32 bytes)</h2>
+      <button onclick="postEcho(8)">POST 8 bytes (OK)</button>
+      <button onclick="postEcho(32)">POST 32 bytes (OK)</button>
+      <button class="danger" onclick="postEcho(64)">POST 64 bytes (413)</button>
+    </div>
+
+    <div class="card">
+      <h2>POST /api/strict (Content-Length required)</h2>
+      <button onclick="postStrict()">POST (normal)</button>
+      <button class="danger" onclick="postStrictChunked()">
+        POST chunked (411)
+      </button>
+    </div>
+
+    <div class="card">
+      <h2>Result</h2>
+      <pre id="output" class="muted">No request yet.</pre>
+    </div>
+
+    <footer>body_limit middleware demo — Vix.cpp</footer>
+
+    <script>
+      const API = "http://localhost:8080";
+
+      function log(status, headers, body) {
+        const out = document.getElementById("output");
+        out.className = status >= 200 && status < 300 ? "ok" : "err";
+
+        out.textContent =
+          `Status: ${status}\n\n` +
+          `Headers:\n${headers}\n\n` +
+          `Body:\n${body}`;
+      }
+
+      async function ping() {
+        const res = await fetch(`${API}/api/ping`, {
+          method: "GET",
+          credentials: "include",
+        });
+
+        log(
+          res.status,
+          [...res.headers.entries()].map((h) => h.join(": ")).join("\n"),
+          await res.text()
+        );
+      }
+
+      async function postEcho(size) {
+        const payload = "x".repeat(size);
+
+        const res = await fetch(`${API}/api/echo`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "text/plain",
+          },
+          body: payload,
+        });
+
+        log(
+          res.status,
+          [...res.headers.entries()].map((h) => h.join(": ")).join("\n"),
+          await res.text()
+        );
+      }
+
+      async function postStrict() {
+        const res = await fetch(`${API}/api/strict`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "text/plain",
+          },
+          body: "hello",
+        });
+
+        log(
+          res.status,
+          [...res.headers.entries()].map((h) => h.join(": ")).join("\n"),
+          await res.text()
+        );
+      }
+
+      async function postStrictChunked() {
+        const stream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode("hello"));
+            controller.close();
+          },
+        });
+
+        const res = await fetch(`${API}/api/strict`, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body: stream,
+          duplex: "half",
+        });
+
+        log(
+          res.status,
+          [...res.headers.entries()].map((h) => h.join(": ")).join("\n"),
+          await res.text()
+        );
+      }
+    </script>
+  </body>
+</html>
