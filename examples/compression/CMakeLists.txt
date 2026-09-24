@@ -1,6 +1,0 @@
-cmake_minimum_required(VERSION 3.20)
-project(vix_example_compression LANGUAGES CXX)
-find_package(Vix CONFIG REQUIRED)
-add_executable(compression_app_simple compression_app_simple.cpp)
-target_compile_features(compression_app_simple PRIVATE cxx_std_20)
-target_link_libraries(compression_app_simple PRIVATE vix::middleware)
