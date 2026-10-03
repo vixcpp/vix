@@ -37,4 +37,8 @@ foreach (_source IN LISTS _vix_websocket_sources)
   add_executable("websocket_${_name}" "${_source}")
   target_compile_features("websocket_${_name}" PRIVATE cxx_std_20)
   target_link_libraries("websocket_${_name}" PRIVATE vix::websocket)
+
+  if (_relative STREQUAL "07_client_runtime/main.cpp")
+    target_link_libraries("websocket_${_name}" PRIVATE vix::utils)
+  endif()
 endforeach()

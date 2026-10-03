@@ -5,6 +5,137 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## next
+
+### Added
+
+#### VixC frontend integration
+
+Vix can now optionally use VixC as a frontend before handing generated C++ to the normal C++ toolchain.
+
+```bash
+vix build main.cpp --frontend vixc
+vix run main.cpp --frontend vixc
+```
+
+VixC support is optional at build time through:
+
+```text
+VIX_ENABLE_VIXC_FRONTEND
+```
+
+When enabled, Vix links directly against the VixC library instead of invoking an external compiler process.
+
+Project-level `vix.app` builds can also use the VixC frontend. Application translation units are prepared individually before entering the normal Vix build pipeline.
+
+Generated sources are kept under:
+
+```text
+.vix/generated/vixc/
+```
+
+while preserving the original project-relative source structure.
+
+Third-party dependencies, registry dependencies, Git dependencies, and Vix framework sources are not transformed by VixC.
+
+### Changed
+
+#### Build progress experience
+
+`vix build` now has a new live build presentation for interactive terminals.
+
+The build interface keeps a compact view of active and recently completed work instead of continuously appending build-system output to the terminal.
+
+Completed builds collapse back to a concise final result, including no-op builds where nothing needed to be rebuilt.
+
+Redirected and non-interactive output uses a plain line-oriented representation instead of terminal cursor movement.
+
+#### Shared application source preparation
+
+Application sources are now prepared before selecting the underlying build path.
+
+The same prepared source set can therefore be consumed by both:
+
+- the generated CMake path
+- the native Vix build graph path
+
+This avoids maintaining separate frontend transformations for each build backend.
+
+#### Incremental VixC generation
+
+Generated VixC sources are written only when their content changes.
+
+This allows CMake, Ninja, and Vix's own incremental build mechanisms to continue avoiding unnecessary recompilation.
+
+### Fixed
+
+#### Runtime diagnostic false positives
+
+Vix no longer treats arbitrary application stderr text as proof of a runtime crash.
+
+For example, an application printing:
+
+```text
+error: division by zero
+```
+
+and intentionally returning a non-zero exit code is no longer incorrectly reported as:
+
+```text
+runtime error: division by zero
+```
+
+Runtime crash classification now requires stronger runtime evidence, such as an actual signal termination or recognized sanitizer diagnostics.
+
+Normal application failures remain normal application failures:
+
+```text
+error: division by zero
+  ✖ run (exit code 1).
+```
+
+#### Consistent runtime evidence handling
+
+Direct execution, CMake-backed execution, check, watch, and development paths now use the same runtime evidence rules instead of independently interpreting arbitrary output as a crash.
+
+#### VixC project run forwarding
+
+Using:
+
+```bash
+vix run --frontend vixc
+```
+
+for a Vix project now carries the frontend selection into the project build instead of losing it when `run` delegates to `build`.
+
+### Architecture
+
+VixC remains an optional frontend and does not replace the normal C++ workflow.
+
+Without:
+
+```bash
+--frontend vixc
+```
+
+Vix continues to build ordinary C++ through its existing toolchain.
+
+The build engine remains language-independent. VixC integration stays at the CLI/application-source preparation layer and does not introduce a VixC dependency into the core build engine.
+
+The current model is:
+
+```text
+C++ / VixC source
+        ↓
+optional VixC frontend
+        ↓
+ordinary generated C++
+        ↓
+existing Vix build pipeline
+        ↓
+GCC / Clang / MSVC
+```
+
 # Vix v2.9.0
 
 Vix v2.9.0 focuses on a cleaner development loop, more capable networking, and SDKs that better match the modules and dependencies users actually consume.

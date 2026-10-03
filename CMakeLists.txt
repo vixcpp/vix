@@ -561,18 +561,75 @@ set(TEMPLATE_BUILD_TESTS       ${VIX_TEMPLATE_BUILD_TESTS} CACHE BOOL "Build tem
 set(UI_BUILD_TESTS             ${VIX_UI_BUILD_TESTS} CACHE BOOL "Build ui tests")
 set(UI_BUILD_EXAMPLES          ${VIX_UI_BUILD_EXAMPLES} CACHE BOOL "Build ui examples")
 set(UI_BUILD_BENCHMARKS        ${VIX_UI_BUILD_BENCHMARKS} CACHE BOOL "Build ui benchmarks")
-set(VIX_AI_AGENT_BUILD_TESTS   ${VIX_AGENT_BUILD_TESTS} CACHE BOOL "Build vix ai agent tests")
+# Preserve an explicit native Agent test setting.  The umbrella option
+# initializes it only when callers have not selected the module option.
+if (NOT DEFINED VIX_AI_AGENT_BUILD_TESTS)
+  set(VIX_AI_AGENT_BUILD_TESTS ${VIX_AGENT_BUILD_TESTS}
+      CACHE BOOL "Build vix ai agent tests")
+endif()
 set(VIX_UI_ENABLE_LINUX_WEBVIEW ${VIX_UI_ENABLE_LINUX_WEBVIEW}
     CACHE BOOL "Enable Linux desktop WebView backend for vix::ui")
 
 # ----------------------------------------------------
 # Testing bootstrap
 # ----------------------------------------------------
-# Must happen before add_subdirectory(modules/*), otherwise module tests may
-# be built but not registered correctly in the umbrella CTest tree.
-if (VIX_BUILD_TESTS)
+# Must happen in the top-level source directory before module subdirectories
+# are added. Module-local enable_testing() calls create their own test files,
+# but CTest enters the tree through the top-level CTestTestfile.cmake.
+set(_VIX_MODULE_TEST_OPTIONS
+  VIX_ERROR_BUILD_TESTS
+  VIX_PATH_BUILD_TESTS
+  VIX_FS_BUILD_TESTS
+  VIX_IO_BUILD_TESTS
+  VIX_ENV_BUILD_TESTS
+  VIX_OS_BUILD_TESTS
+  VIX_LOG_BUILD_TESTS
+  VIX_UTILS_BUILD_TESTS
+  VIX_JSON_BUILD_TESTS
+  VIX_CORE_BUILD_TESTS
+  VIX_ASYNC_BUILD_TESTS
+  VIX_CRYPTO_BUILD_TESTS
+  VIX_CONVERSION_BUILD_TESTS
+  VIX_VALIDATION_BUILD_TESTS
+  VIX_WEBRPC_BUILD_TESTS
+  VIX_REQUESTS_BUILD_TESTS
+  VIX_REALTIME_BUILD_TESTS
+  VIX_NET_BUILD_TESTS
+  VIX_SYNC_BUILD_TESTS
+  VIX_CACHE_BUILD_TESTS
+  VIX_P2P_BUILD_TESTS
+  VIX_P2P_HTTP_BUILD_TESTS
+  VIX_DB_BUILD_TESTS
+  VIX_MIDDLEWARE_BUILD_TESTS
+  VIX_CLI_BUILD_TESTS
+  VIX_WEBSOCKET_BUILD_TESTS
+  VIX_TIME_BUILD_TESTS
+  VIX_TEMPLATE_BUILD_TESTS
+  VIX_UI_BUILD_TESTS
+  VIX_NOTE_BUILD_TESTS
+  VIX_ENGINE_BUILD_TESTS
+  VIX_THREADPOOL_BUILD_TESTS
+  VIX_KV_BUILD_TESTS
+  VIX_AGENT_BUILD_TESTS
+  VIX_AI_AGENT_BUILD_TESTS
+  VIX_GAME_BUILD_TESTS
+  VIX_ORM_BUILD_TESTS
+)
+
+set(_VIX_ENABLE_ROOT_CTEST OFF)
+foreach(_vix_test_option IN LISTS _VIX_MODULE_TEST_OPTIONS)
+  if (${_vix_test_option})
+    set(_VIX_ENABLE_ROOT_CTEST ON)
+    break()
+  endif()
+endforeach()
+
+if (VIX_BUILD_TESTS OR _VIX_ENABLE_ROOT_CTEST)
   include(CTest)
   enable_testing()
+endif()
+
+if (VIX_BUILD_TESTS)
 
   find_package(GTest QUIET)
   if (NOT GTest_FOUND)
@@ -798,16 +855,6 @@ else()
   message(FATAL_ERROR "Missing 'modules/fs'. Run: git submodule update --init --recursive")
 endif()
 
-# --- Utils ---
-set(VIX_LOGGING_DEPS_BUNDLED OFF)
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/utils/CMakeLists.txt")
-  message(STATUS "Adding 'modules/utils'...")
-  add_subdirectory(modules/utils utils_build)
-  get_property(VIX_LOGGING_DEPS_BUNDLED TARGET vix_utils PROPERTY VIX_LOGGING_DEPS_BUNDLED)
-else()
-  message(FATAL_ERROR "Missing 'modules/utils'. Run: git submodule update --init --recursive")
-endif()
-
 # --- Log ---
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/log/CMakeLists.txt")
   message(STATUS "Adding 'modules/log'...")
@@ -816,20 +863,29 @@ else()
   message(FATAL_ERROR "Missing 'modules/log'. Run: git submodule update --init --recursive")
 endif()
 
-# --- IO ---
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/io/CMakeLists.txt")
-  message(STATUS "Adding 'modules/io'...")
-  add_subdirectory(modules/io io_build)
-else()
-  message(FATAL_ERROR "Missing 'modules/io'. Run: git submodule update --init --recursive")
-endif()
-
 # --- Env ---
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/env/CMakeLists.txt")
   message(STATUS "Adding 'modules/env'...")
   add_subdirectory(modules/env env_build)
 else()
   message(FATAL_ERROR "Missing 'modules/env'. Run: git submodule update --init --recursive")
+endif()
+
+# --- Utils ---
+set(VIX_LOGGING_DEPS_BUNDLED OFF)
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/utils/CMakeLists.txt")
+  message(STATUS "Adding 'modules/utils'...")
+  add_subdirectory(modules/utils utils_build)
+else()
+  message(FATAL_ERROR "Missing 'modules/utils'. Run: git submodule update --init --recursive")
+endif()
+
+# --- IO ---
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/io/CMakeLists.txt")
+  message(STATUS "Adding 'modules/io'...")
+  add_subdirectory(modules/io io_build)
+else()
+  message(FATAL_ERROR "Missing 'modules/io'. Run: git submodule update --init --recursive")
 endif()
 
 # --- OS ---
@@ -1409,7 +1465,6 @@ endif()
 if (VIX_ENABLE_AGENT AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/agent/CMakeLists.txt")
   message(STATUS "Adding 'modules/agent'...")
 
-  set(VIX_AI_AGENT_BUILD_TESTS ${VIX_AGENT_BUILD_TESTS} CACHE BOOL "Build vix ai agent tests" FORCE)
   set(VIX_AI_AGENT_BUILD_EXAMPLES ${VIX_AGENT_BUILD_EXAMPLES} CACHE BOOL "Build vix ai agent examples" FORCE)
 
   set(VIX_AI_AGENT_ENABLE_INSTALL ${_VIX_SDK_PACKAGE_AGENT} CACHE BOOL "Enable install/export rules for vix ai agent" FORCE)

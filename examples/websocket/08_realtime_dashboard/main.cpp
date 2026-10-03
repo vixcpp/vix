@@ -379,7 +379,7 @@ namespace
           info.ws_port = runtime.ws.port();
           info.ws_path = "/";
 
-          vix::utils::RuntimeBanner::emit_server_ready(info);
+          vix::server::StartupPresentation::emit_server_ready(info);
         });
 
     runtime.app.wait();
