@@ -21,4 +21,5 @@ namespace vix::network
   inline constexpr auto peer_closed = vix::ErrorIdentity::define<"vix.network">(31);
   inline constexpr auto operation_in_progress = vix::ErrorIdentity::define<"vix.network">(32);
   inline constexpr auto write_shutdown = vix::ErrorIdentity::define<"vix.network">(33);
+  inline constexpr auto address_in_use = vix::ErrorIdentity::define<"vix.network">(34);
 }

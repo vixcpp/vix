@@ -1,4 +1,5 @@
 #include "Engine.hpp"
+#include "CoroutineTask.hpp"
 #include <vix/network/Address.hpp>
 #include <vix/network/Provider.hpp>
 #include <vix/network/TcpConnection.hpp>
@@ -22,7 +23,7 @@ using namespace vix::network;
 using namespace vix::network::detail;
 
 template<class T> struct Observation { std::mutex mutex;std::optional<vix::Completion<T>> completion;std::atomic<bool> done{}; };
-template<class T> struct Task { struct promise_type { Task get_return_object(){return Task{std::coroutine_handle<promise_type>::from_promise(*this)};}std::suspend_never initial_suspend()noexcept{return{};}std::suspend_always final_suspend()noexcept{return{};}void return_void()noexcept{}void unhandled_exception()noexcept{std::terminate();} };std::coroutine_handle<promise_type> h;explicit Task(std::coroutine_handle<promise_type> value):h(value){}~Task(){if(h)h.destroy();}Task(Task&&o)noexcept:h(std::exchange(o.h,{})){}Task(const Task&)=delete;};
+template<class T> struct Task { struct promise_type { std::mutex final_mutex;std::condition_variable final_cv;bool final_suspended{};Task get_return_object(){return Task{std::coroutine_handle<promise_type>::from_promise(*this)};}std::suspend_never initial_suspend()noexcept{return{};}vix::network::test_detail::FinalSuspendAwaiter<promise_type> final_suspend()noexcept{return{};}void return_void()noexcept{}void unhandled_exception()noexcept{std::terminate();} };std::coroutine_handle<promise_type> h;explicit Task(std::coroutine_handle<promise_type> value):h(value){}~Task(){vix::network::test_detail::destroy_after_final_suspend(h);}Task(Task&&o)noexcept:h(std::exchange(o.h,{})){}Task(const Task&)=delete;};
 template<class T> Task<T> await_connect(vix::network::Operation<T> op,std::shared_ptr<Observation<T>> observation){auto completion=co_await std::move(op);{std::lock_guard lock(observation->mutex);observation->completion.emplace(std::move(completion));}observation->done=true;}
 template<class T> static bool wait(const std::shared_ptr<Observation<T>>&o){for(int i=0;i<500&&!o->done;i++)std::this_thread::sleep_for(std::chrono::milliseconds(1));return o->done;}
 

@@ -1,4 +1,5 @@
 #include "TcpLoopbackFixture.hpp"
+#include "CoroutineTask.hpp"
 #include <vix/network/Address.hpp>
 #include <vix/network/Endpoint.hpp>
 #include <vix/network/Errors.hpp>
@@ -18,7 +19,7 @@
 using namespace vix::network;
 using namespace vix::network::detail;
 template<class T> struct Seen { std::mutex mutex;std::optional<vix::Completion<T>> value;std::atomic<bool> done{}; };
-template<class T> struct Task { struct promise_type { Task get_return_object(){return Task{std::coroutine_handle<promise_type>::from_promise(*this)};}std::suspend_never initial_suspend()noexcept{return{};}std::suspend_always final_suspend()noexcept{return{};}void return_void()noexcept{}void unhandled_exception()noexcept{std::terminate();} };std::coroutine_handle<promise_type> h;~Task(){if(h)h.destroy();} };
+template<class T> struct Task { struct promise_type { std::mutex final_mutex;std::condition_variable final_cv;bool final_suspended{};Task get_return_object(){return Task{std::coroutine_handle<promise_type>::from_promise(*this)};}std::suspend_never initial_suspend()noexcept{return{};}vix::network::test_detail::FinalSuspendAwaiter<promise_type> final_suspend()noexcept{return{};}void return_void()noexcept{}void unhandled_exception()noexcept{std::terminate();} };std::coroutine_handle<promise_type> h;~Task(){vix::network::test_detail::destroy_after_final_suspend(h);} };
 template<class T> Task<T> await(vix::network::Operation<T> operation,std::shared_ptr<Seen<T>> seen){auto completion=co_await std::move(operation);{std::lock_guard lock(seen->mutex);seen->value.emplace(std::move(completion));}seen->done=true;}
 template<class T> static bool done_for(const std::shared_ptr<Seen<T>>& seen,std::chrono::milliseconds timeout){auto end=std::chrono::steady_clock::now()+timeout;while(!seen->done&&std::chrono::steady_clock::now()<end)std::this_thread::sleep_for(std::chrono::milliseconds(1));return seen->done;}
 template<class T> static bool pending_for(const std::shared_ptr<Seen<T>>& seen,std::chrono::milliseconds duration){auto end=std::chrono::steady_clock::now()+duration;while(std::chrono::steady_clock::now()<end){if(seen->done)return false;std::this_thread::sleep_for(std::chrono::milliseconds(1));}return !seen->done;}

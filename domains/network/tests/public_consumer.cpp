@@ -2,6 +2,7 @@
 #include <vix/network/Address.hpp>
 #include <vix/network/Endpoint.hpp>
 #include <vix/network/TcpConnection.hpp>
+#include <vix/network/TcpListener.hpp>
 
 #include <type_traits>
 #include <array>
@@ -15,6 +16,18 @@ static void transport_spelling(vix::network::TcpConnection &connection)
   (void)receive;
   (void)send;
   (void)shutdown;
+}
+static void listener_spelling(vix::network::Provider &provider, const vix::network::Endpoint &endpoint)
+{
+  auto listener_result=provider.listen(endpoint);
+  if (!listener_result) return;
+  auto listener=listener_result.take();
+  auto local=listener.local_endpoint();
+  auto accept=listener.accept();
+  auto closed=listener.close();
+  (void)local;
+  (void)accept;
+  (void)closed;
 }
 
 int main()
@@ -35,5 +48,6 @@ int main()
   auto operation=provider.connect(endpoint);
   (void)operation;
   (void)&transport_spelling;
+  (void)&listener_spelling;
   return provider.shutdown() ? 0 : 1;
 }
