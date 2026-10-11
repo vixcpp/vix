@@ -1,0 +1,5 @@
+add_executable(vix_network_phase1_test phase1_test.cpp)
+target_compile_features(vix_network_phase1_test PRIVATE cxx_std_20)
+target_include_directories(vix_network_phase1_test PRIVATE ../src)
+target_link_libraries(vix_network_phase1_test PRIVATE vix_network_engine_phase1 vix::standard)
+add_test(NAME vix_network_phase1_test COMMAND vix_network_phase1_test)

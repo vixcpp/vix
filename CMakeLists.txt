@@ -249,6 +249,31 @@ option(VIX_ENABLE_COVERAGE         "Enable coverage flags (Debug only)"         
 option(VIX_ENABLE_SANITIZERS       "Enable ASan+UBSan (GCC/Clang only)"                           OFF)
 option(VIX_BUILD_EXAMPLES          "Build umbrella examples in ./examples"                        ON)
 option(VIX_BUILD_TESTS             "Build unit tests (GoogleTest)"                                OFF)
+option(VIX_BUILD_CANONICAL_ARCHITECTURE
+       "Build only the independent Standard -> Files -> Process architecture"                     OFF)
+
+# The canonical architecture is deliberately a distinct root configuration,
+# not an overlay on the legacy umbrella.  Legacy modules currently define
+# incompatible targets with the same identities (notably vix::process), so
+# loading both graphs would create two meanings for one public target name.
+# This path has no modules/* dependency and does not install/export targets;
+# packaging remains an explicit later boundary decision.
+if (VIX_BUILD_CANONICAL_ARCHITECTURE)
+  if (VIX_BUILD_TESTS)
+    enable_testing()
+  endif()
+
+  add_subdirectory(standard standard_build)
+  add_subdirectory(domains/files files_build)
+  add_subdirectory(domains/process canonical_process_build)
+
+  add_custom_target(vix_canonical_architecture
+    DEPENDS vix_standard_check vix_files vix_process)
+
+  message(STATUS "Canonical Vix architecture: Standard -> Files -> Process")
+  return()
+endif()
+
 option(VIX_ENABLE_ORM              "Build Vix ORM module"                                         ON)
 option(VIX_ENABLE_WEBSOCKET        "Build Vix WebSocket module"                                   ON)
 option(VIX_ENABLE_CLI              "Build Vix CLI module"                                         ON)
@@ -724,6 +749,17 @@ if (VIX_ENABLE_LTO AND CMAKE_BUILD_TYPE MATCHES "Release")
     message(WARNING "IPO/LTO not supported: ${ipo_err}")
   endif()
 endif()
+
+# ----------------------------------------------------
+# Vix Standard
+# ----------------------------------------------------
+# The Standard is an independent programming-model boundary.  It is added
+# before historical modules and must not acquire dependencies on them.
+add_subdirectory(standard standard_build)
+
+# The Files domain is independently layered on the Standard and deliberately
+# remains outside the historical modules/* aggregation.
+add_subdirectory(domains/files files_build)
 
 # ----------------------------------------------------
 # MSVC static runtime (/MT)
