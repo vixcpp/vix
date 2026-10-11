@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.23)
+include(GNUInstallDirs)
 if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   project(vix_network LANGUAGES CXX)
   set(CMAKE_CXX_STANDARD 20)
@@ -18,13 +19,13 @@ target_include_directories(vix_network
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../standard/include>
-    $<INSTALL_INTERFACE:include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   PRIVATE src)
 target_link_libraries(vix_network PRIVATE vix::standard PUBLIC Threads::Threads)
 install(TARGETS vix_network EXPORT VixTargets)
-install(DIRECTORY include/ DESTINATION include FILES_MATCHING PATTERN "*.hpp")
+install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}" FILES_MATCHING PATTERN "*.hpp")
 if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-  install(DIRECTORY ../../standard/include/ DESTINATION include FILES_MATCHING PATTERN "*.hpp")
+  install(DIRECTORY ../../standard/include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}" FILES_MATCHING PATTERN "*.hpp")
 endif()
 if (VIX_BUILD_TESTS)
   target_compile_definitions(vix_network PRIVATE VIX_NETWORK_TEST_CAPTURE=1)

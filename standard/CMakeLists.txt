@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.23)
+include(GNUInstallDirs)
 
 if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   project(vix_standard LANGUAGES CXX)
@@ -20,8 +21,12 @@ target_compile_features(vix_standard INTERFACE cxx_std_20)
 target_include_directories(vix_standard
   INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
+
+install(TARGETS vix_standard EXPORT VixTargets)
+install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+  FILES_MATCHING PATTERN "*.hpp")
 
 # The umbrella's existing test gate owns whether focused Standard tests are
 # configured.  No module test option or module dependency is involved.

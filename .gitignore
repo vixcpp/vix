@@ -67,6 +67,8 @@ hello_server
 # Keep only CMake package config template
 cmake/*
 !cmake/VixConfig.cmake.in
+!cmake/VixCanonicalConfig.cmake.in
+!cmake/VixSdkPackageTest.cmake
 !cmake/VixVendoredDeps.cmake
 *.bak
 db.sql

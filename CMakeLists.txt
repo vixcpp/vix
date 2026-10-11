@@ -250,14 +250,13 @@ option(VIX_ENABLE_SANITIZERS       "Enable ASan+UBSan (GCC/Clang only)"         
 option(VIX_BUILD_EXAMPLES          "Build umbrella examples in ./examples"                        ON)
 option(VIX_BUILD_TESTS             "Build unit tests (GoogleTest)"                                OFF)
 option(VIX_BUILD_CANONICAL_ARCHITECTURE
-       "Build only the independent Standard -> Files -> Process architecture"                     OFF)
+       "Build only the independent Standard -> Files -> Process -> Network architecture"          ON)
 
 # The canonical architecture is deliberately a distinct root configuration,
 # not an overlay on the legacy umbrella.  Legacy modules currently define
 # incompatible targets with the same identities (notably vix::process), so
 # loading both graphs would create two meanings for one public target name.
-# This path has no modules/* dependency and does not install/export targets;
-# packaging remains an explicit later boundary decision.
+# This path is the supported installable SDK boundary.
 if (VIX_BUILD_CANONICAL_ARCHITECTURE)
   if (VIX_BUILD_TESTS)
     enable_testing()
@@ -266,11 +265,42 @@ if (VIX_BUILD_CANONICAL_ARCHITECTURE)
   add_subdirectory(standard standard_build)
   add_subdirectory(domains/files files_build)
   add_subdirectory(domains/process canonical_process_build)
+  add_subdirectory(domains/network network_build)
 
   add_custom_target(vix_canonical_architecture
-    DEPENDS vix_standard_check vix_files vix_process)
+    DEPENDS vix_standard_check vix_files vix_process vix_network)
 
-  message(STATUS "Canonical Vix architecture: Standard -> Files -> Process")
+  set(VIX_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/Vix")
+  configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/VixCanonicalConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/VixConfig.cmake"
+    INSTALL_DESTINATION "${VIX_INSTALL_CMAKEDIR}"
+  )
+  write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/VixConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+  )
+  install(EXPORT VixTargets
+    NAMESPACE vix::
+    DESTINATION "${VIX_INSTALL_CMAKEDIR}"
+  )
+  install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/VixConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/VixConfigVersion.cmake"
+    DESTINATION "${VIX_INSTALL_CMAKEDIR}"
+  )
+  if (VIX_BUILD_TESTS)
+    add_test(
+      NAME vix_sdk_package_consumer_test
+      COMMAND "${CMAKE_COMMAND}"
+        "-DVIX_BINARY_DIR=${CMAKE_BINARY_DIR}"
+        "-DVIX_SOURCE_DIR=${CMAKE_SOURCE_DIR}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/VixSdkPackageTest.cmake"
+    )
+  endif()
+
+  message(STATUS "Canonical Vix SDK: Standard -> Files -> Process -> Network")
   return()
 endif()
 
