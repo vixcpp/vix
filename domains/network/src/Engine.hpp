@@ -21,6 +21,8 @@ inline constexpr auto timed_out = vix::ErrorIdentity::define<"vix.network">(21);
   public:
     static vix::Result<void> ensure();
     static void enqueue(std::function<void()>);
+    // Private test gate: lets abandonment tests hold a claimed queued ticket.
+    static void hold_for_test(bool) noexcept;
   };
   enum class ResumeState : std::uint8_t
   {
@@ -84,7 +86,12 @@ inline constexpr auto timed_out = vix::ErrorIdentity::define<"vix.network">(21);
     [[nodiscard]] std::uint64_t commands_executed_for_test() const noexcept;
     [[nodiscard]] std::uint64_t wake_events_for_test() const noexcept;
     [[nodiscard]] std::uint64_t wake_writes_for_test() const noexcept;
+    [[nodiscard]] unsigned active_operations_for_test() const noexcept;
     [[nodiscard]] std::size_t live_deadlines_for_test() const noexcept;
+    [[nodiscard]] std::size_t live_descriptor_registrations_for_test() const noexcept;
+    [[nodiscard]] std::uint64_t idle_generation_for_test() const noexcept;
+    [[nodiscard]] bool wait_for_idle_after_for_test(std::uint64_t) const noexcept;
+    [[nodiscard]] std::uint64_t maximum_consecutive_zero_waits_for_test() const noexcept;
 
   private:
     enum class CommandKind : std::uint8_t
@@ -131,12 +138,14 @@ inline constexpr auto timed_out = vix::ErrorIdentity::define<"vix.network">(21);
     void publish_native_for_test(vix::Completion<T> completion);
     void publish_cancellation_for_test();
     void publish_deadline_for_test();
+    void hold_evaluation_for_test(bool hold) noexcept { evaluation_held_.store(hold); }
+    void release_evaluation_for_test();
     void bind_descriptor_direction(std::uint64_t token, bool read) noexcept { descriptor_token_=token; descriptor_read_=read; }
     vix::Completion<T> take_completion();
     void abandon() noexcept;
     [[nodiscard]] Phase phase() const noexcept { return phase_.load(); }
     [[nodiscard]] bool native_access_allowed_for_test() const noexcept { return borrow_allowed_.load(); }
-    [[nodiscard]] std::vector<TerminalEvent> terminal_trace_for_test() const { std::lock_guard l(mutex_); return trace_; }
+    [[nodiscard]] std::vector<TerminalEvent> terminal_trace_for_test() const { std::lock_guard l(trace_mutex_); return trace_; }
 
   private:
     std::atomic<Phase> phase_{Phase::created};
@@ -150,10 +159,13 @@ inline constexpr auto timed_out = vix::ErrorIdentity::define<"vix.network">(21);
     std::uint64_t descriptor_token_{};
     bool descriptor_read_{};
     std::atomic<bool> borrow_allowed_{true};
+    void record_event(TerminalEvent event) { std::lock_guard l(trace_mutex_); trace_.push_back(event); }
+    mutable std::mutex trace_mutex_;
     std::vector<TerminalEvent> trace_;
     std::mutex facts_mutex_;
     std::optional<vix::Completion<T>> native_fact_;
     std::atomic<bool> cancellation_fact_{false}, deadline_fact_{false};
+    std::atomic<bool> evaluation_held_{false};
     void evaluate_pending_on_reactor();
   };
   template <class T>
@@ -184,18 +196,18 @@ inline constexpr auto timed_out = vix::ErrorIdentity::define<"vix.network">(21);
       {
         if (phase_.compare_exchange_weak(p, Phase::completed_before_suspend))
         {
-          trace_.push_back(TerminalEvent::readiness_revoked);
+          record_event(TerminalEvent::readiness_revoked);
           if (deadline_token_) { (void)provider_->invalidate_deadline(deadline_token_); deadline_token_=0; }
-          trace_.push_back(TerminalEvent::deadline_invalidated);
+          record_event(TerminalEvent::deadline_invalidated);
           if (descriptor_token_) (void)provider_->release_descriptor_direction(descriptor_token_,descriptor_read_);
-          trace_.push_back(TerminalEvent::slot_released);
-          cancellation_.reset(); trace_.push_back(TerminalEvent::cancellation_released);
-          borrow_allowed_=false; trace_.push_back(TerminalEvent::borrow_revoked);
+          record_event(TerminalEvent::slot_released);
+          cancellation_.reset(); record_event(TerminalEvent::cancellation_released);
+          borrow_allowed_=false; record_event(TerminalEvent::borrow_revoked);
           std::lock_guard l(mutex_);
           completion_.emplace(std::move(c));
-          trace_.push_back(TerminalEvent::completion_stored);
+          record_event(TerminalEvent::completion_stored);
           provider_->finish_operation();
-          trace_.push_back(TerminalEvent::provider_released);
+          record_event(TerminalEvent::provider_released);
           provider_.reset();
           return;
         }
@@ -205,24 +217,24 @@ inline constexpr auto timed_out = vix::ErrorIdentity::define<"vix.network">(21);
       {
         if (phase_.compare_exchange_weak(p, Phase::completed_scheduled))
         {
-          trace_.push_back(TerminalEvent::readiness_revoked);
+          record_event(TerminalEvent::readiness_revoked);
           if (deadline_token_) { (void)provider_->invalidate_deadline(deadline_token_); deadline_token_=0; }
-          trace_.push_back(TerminalEvent::deadline_invalidated);
+          record_event(TerminalEvent::deadline_invalidated);
           if (descriptor_token_) (void)provider_->release_descriptor_direction(descriptor_token_,descriptor_read_);
-          trace_.push_back(TerminalEvent::slot_released);
-          cancellation_.reset(); trace_.push_back(TerminalEvent::cancellation_released);
-          borrow_allowed_=false; trace_.push_back(TerminalEvent::borrow_revoked);
+          record_event(TerminalEvent::slot_released);
+          cancellation_.reset(); record_event(TerminalEvent::cancellation_released);
+          borrow_allowed_=false; record_event(TerminalEvent::borrow_revoked);
           {
             std::lock_guard l(mutex_);
             completion_.emplace(std::move(c));
-            trace_.push_back(TerminalEvent::completion_stored);
+            record_event(TerminalEvent::completion_stored);
             ticket_ = std::make_shared<ResumeTicket>(handle_);
           }
           provider_->finish_operation();
-          trace_.push_back(TerminalEvent::provider_released);
+          record_event(TerminalEvent::provider_released);
           provider_.reset();
           auto ticket = ticket_;
-          trace_.push_back(TerminalEvent::resume_queued);
+          record_event(TerminalEvent::resume_queued);
           Continuations::enqueue([ticket]
                                  {if(ticket->claim_resume())ticket->resume(); });
           return;
@@ -257,6 +269,7 @@ inline constexpr auto timed_out = vix::ErrorIdentity::define<"vix.network">(21);
   }
   template <class T> void OperationRecord<T>::evaluate_pending_on_reactor()
   {
+    if (evaluation_held_.load()) return;
     std::optional<vix::Completion<T>> native;
     { std::lock_guard l(facts_mutex_); if (native_fact_) native.emplace(std::move(*native_fact_)); }
     // Reactor observation precedence: native result, then cancellation, then reached deadline.
@@ -270,6 +283,8 @@ inline constexpr auto timed_out = vix::ErrorIdentity::define<"vix.network">(21);
   { cancellation_fact_=true; auto weak=this->weak_from_this(); auto provider=provider_; if(provider)(void)provider->post([weak]{if(auto p=weak.lock())p->evaluate_pending_on_reactor();}); }
   template <class T> void OperationRecord<T>::publish_deadline_for_test()
   { deadline_fact_=true; auto weak=this->weak_from_this(); auto provider=provider_; if(provider)(void)provider->post([weak]{if(auto p=weak.lock())p->evaluate_pending_on_reactor();}); }
+  template <class T> void OperationRecord<T>::release_evaluation_for_test()
+  { evaluation_held_=false; auto weak=this->weak_from_this(); auto provider=provider_; if(provider)(void)provider->post([weak]{if(auto p=weak.lock())p->evaluate_pending_on_reactor();}); }
   template <class T>
   vix::Completion<T> OperationRecord<T>::take_completion()
   {

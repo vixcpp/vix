@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <cerrno>
 #include <condition_variable>
+#include <chrono>
 #include <deque>
 #include <queue>
 #include <thread>
@@ -18,6 +19,7 @@ namespace vix::network::detail
       std::mutex m;
       std::condition_variable cv;
       std::deque<std::function<void()>> q;
+      bool held{};
     };
     Pool &pool()
     {
@@ -36,6 +38,7 @@ namespace vix::network::detail
                     { return !p.q.empty(); });
           f = std::move(p.q.front());
           p.q.pop_front();
+          p.cv.wait(l, [&] { return !p.held; });
         }
         f();
       }
@@ -74,6 +77,12 @@ namespace vix::network::detail
     }
     p.cv.notify_one();
   }
+  void Continuations::hold_for_test(bool hold) noexcept
+  {
+    auto &p = pool();
+    { std::lock_guard l(p.m); p.held = hold; }
+    if (!hold) p.cv.notify_all();
+  }
   struct ProviderCore::Impl
   {
     struct DeadlineEntry { vix::Deadline boundary; std::uint32_t timer_id, generation; std::function<void()> callback; };
@@ -109,6 +118,9 @@ namespace vix::network::detail
     std::priority_queue<DeadlineEntry, std::vector<DeadlineEntry>, DeadlineLater> deadlines;
     std::unordered_map<std::uint32_t, DeadlineControl> deadline_controls;
     std::atomic<std::uint64_t> adds{}, mods{}, dels{};
+    std::atomic<std::uint64_t> idle_generation{}, consecutive_zero_waits{}, maximum_consecutive_zero_waits{};
+    mutable std::mutex idle_m;
+    std::condition_variable idle_cv;
     std::atomic<bool> owner_only{true};
     std::thread::id owner{};
   };
@@ -264,10 +276,22 @@ namespace vix::network::detail
     while (impl_->running)
     {
       expire();
+      const int budget=wait_budget();
+      if (budget == 0)
+      {
+        // A boundary may be crossed after `expire()` but before budgeting.
+        // Process it in the next loop iteration instead of turning a stale
+        // head into a repeated epoll_wait(..., 0) busy-spin.
+        expire();
+        continue;
+      }
+      impl_->consecutive_zero_waits=0;
+      ++impl_->idle_generation;
+      impl_->idle_cv.notify_all();
       int n;
       do
       {
-        n = epoll_wait(impl_->ep, es, 16, wait_budget());
+        n = epoll_wait(impl_->ep, es, 16, budget);
       } while (n < 0 && errno == EINTR);
       if (n < 0)
         continue;
@@ -401,7 +425,22 @@ namespace vix::network::detail
   std::uint64_t ProviderCore::commands_executed_for_test() const noexcept { return impl_->executed; }
   std::uint64_t ProviderCore::wake_events_for_test() const noexcept { return impl_->wake_events; }
   std::uint64_t ProviderCore::wake_writes_for_test() const noexcept { return impl_->wake_writes; }
+  unsigned ProviderCore::active_operations_for_test() const noexcept { return impl_->ops.load(); }
   std::size_t ProviderCore::live_deadlines_for_test() const noexcept { std::size_t count{}; (void)command_and_wait(CommandKind::generic,[this,&count]{count=impl_->deadline_controls.size();}); return count; }
+  std::size_t ProviderCore::live_descriptor_registrations_for_test() const noexcept
+  {
+    std::size_t count{};
+    (void)command_and_wait(CommandKind::generic,[this,&count]{count=impl_->entries.size();});
+    return count;
+  }
+  std::uint64_t ProviderCore::idle_generation_for_test() const noexcept { return impl_->idle_generation.load(); }
+  bool ProviderCore::wait_for_idle_after_for_test(std::uint64_t generation) const noexcept
+  {
+    std::unique_lock lock(impl_->idle_m);
+    return impl_->idle_cv.wait_for(lock,std::chrono::seconds(1),[this,generation]
+                                   { return impl_->idle_generation.load()>generation || !impl_->running.load(); });
+  }
+  std::uint64_t ProviderCore::maximum_consecutive_zero_waits_for_test() const noexcept { return impl_->maximum_consecutive_zero_waits.load(); }
   void ProviderCore::add_operation() noexcept { ++impl_->ops; }
   void ProviderCore::finish_operation() noexcept { --impl_->ops; }
   void ProviderCore::add_resource() noexcept { ++impl_->resources; }
