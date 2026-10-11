@@ -761,6 +761,10 @@ add_subdirectory(standard standard_build)
 # remains outside the historical modules/* aggregation.
 add_subdirectory(domains/files files_build)
 
+# The verified Network baseline is independently layered on Standard.  It is
+# not the historical modules/net implementation and has no SDK profile gate.
+add_subdirectory(domains/network network_build)
+
 # ----------------------------------------------------
 # MSVC static runtime (/MT)
 # ----------------------------------------------------
@@ -1860,6 +1864,10 @@ if (TARGET vix::net)
   target_link_libraries(vix INTERFACE vix::net)
 endif()
 
+if (TARGET vix::network)
+  target_link_libraries(vix INTERFACE vix::network)
+endif()
+
 if (TARGET vix::cache)
   target_link_libraries(vix INTERFACE vix::cache)
 endif()
@@ -2278,6 +2286,10 @@ if (VIX_ENABLE_INSTALL)
     endif()
   endforeach()
 
+  # Standard and Network are Vix-owned domains, not optional legacy modules.
+  install(DIRECTORY "standard/include/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+    FILES_MATCHING PATTERN "*.hpp")
+
   if (VIX_JSON_BUNDLED AND DEFINED VIX_JSON_BUNDLED_HEADERS_DIR)
     install(DIRECTORY "${VIX_JSON_BUNDLED_HEADERS_DIR}"
       DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
@@ -2337,6 +2349,7 @@ if (VIX_ENABLE_INSTALL)
   )
 
   install(TARGETS vix EXPORT VixTargets)
+  install(TARGETS vix_standard EXPORT VixTargets)
 
   # Public build-tree exports retain this interface dependency.  Export it as
   # well so `VixTargets.cmake` is valid both before and after installation.

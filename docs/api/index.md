@@ -42,6 +42,7 @@ Use this section when you want to answer: which header to include, which class t
 | Logging | `<vix/log.hpp>` | Structured logs and log levels |
 | Validation | `<vix/validation.hpp>` | Field validation, schemas, models |
 | Filesystem | `<vix/fs.hpp>` | Filesystem helpers |
+| Network | `<vix/network/Provider.hpp>` | Numeric IPv4/IPv6 TCP connect and connection lifecycle; DNS, send/receive, listeners, and UDP are not available yet |
 
 ## The most common header
 

@@ -38,7 +38,8 @@ namespace vix::network::detail
                     { return !p.q.empty(); });
           f = std::move(p.q.front());
           p.q.pop_front();
-          p.cv.wait(l, [&] { return !p.held; });
+          p.cv.wait(l, [&]
+                    { return !p.held; });
         }
         f();
       }
@@ -80,14 +81,35 @@ namespace vix::network::detail
   void Continuations::hold_for_test(bool hold) noexcept
   {
     auto &p = pool();
-    { std::lock_guard l(p.m); p.held = hold; }
-    if (!hold) p.cv.notify_all();
+    {
+      std::lock_guard l(p.m);
+      p.held = hold;
+    }
+    if (!hold)
+      p.cv.notify_all();
   }
   struct ProviderCore::Impl
   {
-    struct DeadlineEntry { vix::Deadline boundary; std::uint32_t timer_id, generation; std::function<void()> callback; };
-    struct DeadlineLater { bool operator()(const DeadlineEntry &a, const DeadlineEntry &b) const noexcept { if (a.boundary.boundary() != b.boundary.boundary()) return a.boundary.boundary() > b.boundary.boundary(); return a.timer_id > b.timer_id; } };
-    struct DeadlineControl { std::uint32_t generation; bool active; };
+    struct DeadlineEntry
+    {
+      vix::Deadline boundary;
+      std::uint32_t timer_id, generation;
+      std::function<void()> callback;
+    };
+    struct DeadlineLater
+    {
+      bool operator()(const DeadlineEntry &a, const DeadlineEntry &b) const noexcept
+      {
+        if (a.boundary.boundary() != b.boundary.boundary())
+          return a.boundary.boundary() > b.boundary.boundary();
+        return a.timer_id > b.timer_id;
+      }
+    };
+    struct DeadlineControl
+    {
+      std::uint32_t generation;
+      bool active;
+    };
     struct DescriptorEntry
     {
       std::uint32_t registration_id, generation;
@@ -153,14 +175,19 @@ namespace vix::network::detail
     auto infra = Continuations::ensure();
     if (!infra)
       return infra.error();
-    int e = epoll_create1(EPOLL_CLOEXEC), w = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+    int e = epoll_create1(EPOLL_CLOEXEC);
+    const int epoll_error = e < 0 ? errno : 0;
+    int w = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+    const int eventfd_error = w < 0 ? errno : 0;
     if (e < 0 || w < 0)
     {
       if (e >= 0)
         close(e);
       if (w >= 0)
         close(w);
-      return vix::Error{resource_exhausted, "cannot create reactor"};
+      const int native = e < 0 ? epoll_error : eventfd_error;
+      const auto identity = native == EMFILE || native == ENFILE || native == ENOMEM || native == EAGAIN ? resource_exhausted : io_failure;
+      return vix::Error{identity, "cannot create reactor"};
     }
     auto p = std::shared_ptr<ProviderCore>(new ProviderCore(e, w));
     if (pthread_create(&p->impl_->thread, nullptr, [](void *x) -> void *
@@ -231,7 +258,11 @@ namespace vix::network::detail
   void ProviderCore::empty_wake_for_test() noexcept { (void)wake(); }
   bool ProviderCore::command_and_wait(CommandKind kind, std::function<void()> f) const
   {
-    if (std::this_thread::get_id()==impl_->owner) { f(); return true; }
+    if (std::this_thread::get_id() == impl_->owner)
+    {
+      f();
+      return true;
+    }
     std::mutex m;
     std::condition_variable cv;
     bool done = false;
@@ -276,7 +307,7 @@ namespace vix::network::detail
     while (impl_->running)
     {
       expire();
-      const int budget=wait_budget();
+      const int budget = wait_budget();
       if (budget == 0)
       {
         // A boundary may be crossed after `expire()` but before budgeting.
@@ -285,7 +316,7 @@ namespace vix::network::detail
         expire();
         continue;
       }
-      impl_->consecutive_zero_waits=0;
+      impl_->consecutive_zero_waits = 0;
       ++impl_->idle_generation;
       impl_->idle_cv.notify_all();
       int n;
@@ -321,19 +352,26 @@ namespace vix::network::detail
     if (it == impl_->entries.end() || !it->second.active || it->second.generation != g)
       return false;
     bool out = false;
+    bool relinquished = false;
     auto &e = it->second;
     bool rr = events & (EPOLLIN | terminal_events), wr = events & (EPOLLOUT | terminal_events);
     if (rr && e.read_slot)
     {
       out = true;
       if (!e.read_slot(events))
+      {
         e.read_slot = {};
+        relinquished = true;
+      }
     }
     if (wr && e.write_slot)
     {
       out = true;
       if (!e.write_slot(events))
+      {
         e.write_slot = {};
+        relinquished = true;
+      }
     }
     if (e.read_slot || e.write_slot)
     {
@@ -345,6 +383,18 @@ namespace vix::network::detail
         impl_->owner_only = false;
       if (epoll_ctl(impl_->ep, EPOLL_CTL_MOD, e.native_fd, &ev) == 0)
         ++impl_->mods;
+    }
+    else if (relinquished)
+    {
+      // A handler that declines rearm has relinquished the registration.
+      // Retire it before a successful operation hands the same native fd to a
+      // Resource, otherwise the Resource's EPOLL_CTL_ADD observes EEXIST.
+      if (std::this_thread::get_id() != impl_->owner)
+        impl_->owner_only = false;
+      if (epoll_ctl(impl_->ep, EPOLL_CTL_DEL, e.native_fd, nullptr) == 0)
+        ++impl_->dels;
+      e.active = false;
+      impl_->entries.erase(it);
     }
     return out;
   }
@@ -362,6 +412,19 @@ namespace vix::network::detail
                           {if(fd<0||!impl_->next_registration||!impl_->next_generation)return;auto id=impl_->next_registration++;auto g=impl_->next_generation++;auto t=encode_token(id,g);Impl::DescriptorEntry e{id,g,fd,std::move(r),std::move(w)};e.current_interest_mask=interest(bool(e.read_slot),bool(e.write_slot));epoll_event ev{};ev.events=e.current_interest_mask;ev.data.u64=t;if(std::this_thread::get_id()!=impl_->owner)impl_->owner_only=false;if(epoll_ctl(impl_->ep,EPOLL_CTL_ADD,fd,&ev)==0){++impl_->adds;impl_->entries.emplace(id,std::move(e));out=t;} }))
       return 0;
     return out;
+  }
+  bool ProviderCore::set_descriptor_handlers(std::uint64_t t, ReadinessHandler r, ReadinessHandler w)
+  {
+    bool out = false;
+    return command_and_wait(CommandKind::descriptor_mod, [&]
+                            { std::uint32_t id,g; if(!decode_token(t,id,g)) return; auto it=impl_->entries.find(id);
+      if(it==impl_->entries.end()||it->second.generation!=g) return;
+      auto &e=it->second; e.read_slot=std::move(r); e.write_slot=std::move(w);
+      if(!e.read_slot&&!e.write_slot) return;
+      e.current_interest_mask=interest(bool(e.read_slot),bool(e.write_slot)); epoll_event ev{};
+      ev.events=e.current_interest_mask; ev.data.u64=t;
+      if(epoll_ctl(impl_->ep,EPOLL_CTL_MOD,e.native_fd,&ev)==0) { ++impl_->mods; out=true; } }) &&
+           out;
   }
   std::uint64_t ProviderCore::register_descriptor(int fd, bool r, bool w)
   {
@@ -381,9 +444,10 @@ namespace vix::network::detail
   }
   bool ProviderCore::release_descriptor_direction(std::uint64_t t, bool read)
   {
-    bool out=false;
-    return command_and_wait(CommandKind::descriptor_mod,[&]
-                            {std::uint32_t id,g;if(!decode_token(t,id,g))return;auto it=impl_->entries.find(id);if(it==impl_->entries.end()||it->second.generation!=g)return;auto&e=it->second;if(read)e.read_slot={};else e.write_slot={};if(!e.read_slot&&!e.write_slot)return;e.current_interest_mask=interest(bool(e.read_slot),bool(e.write_slot));epoll_event ev{};ev.events=e.current_interest_mask;ev.data.u64=t;if(epoll_ctl(impl_->ep,EPOLL_CTL_MOD,e.native_fd,&ev)==0){++impl_->mods;out=true;}})&&out;
+    bool out = false;
+    return command_and_wait(CommandKind::descriptor_mod, [&]
+                            {std::uint32_t id,g;if(!decode_token(t,id,g))return;auto it=impl_->entries.find(id);if(it==impl_->entries.end()||it->second.generation!=g)return;auto&e=it->second;if(read)e.read_slot={};else e.write_slot={};if(!e.read_slot&&!e.write_slot)return;e.current_interest_mask=interest(bool(e.read_slot),bool(e.write_slot));epoll_event ev{};ev.events=e.current_interest_mask;ev.data.u64=t;if(epoll_ctl(impl_->ep,EPOLL_CTL_MOD,e.native_fd,&ev)==0){++impl_->mods;out=true;} }) &&
+           out;
   }
   void ProviderCore::retire(std::uint64_t t)
   {
@@ -392,17 +456,25 @@ namespace vix::network::detail
   }
   std::uint64_t ProviderCore::add_deadline(vix::Deadline deadline, std::function<void()> callback)
   {
-    struct Request { vix::Deadline deadline; std::function<void()> callback; std::uint64_t token{}; Request(vix::Deadline d,std::function<void()> c):deadline(d),callback(std::move(c)){} };
-    auto request=std::make_shared<Request>(deadline,std::move(callback));
-    if (!command_and_wait(CommandKind::deadline_add,[this,request]
-                          {if(!impl_->next_timer||!impl_->next_timer_generation)return;auto id=impl_->next_timer++;auto generation=impl_->next_timer_generation++;impl_->deadline_controls.emplace(id,Impl::DeadlineControl{generation,true});impl_->deadlines.push({request->deadline,id,generation,std::move(request->callback)});request->token=encode_token(id,generation);})) return 0;
+    struct Request
+    {
+      vix::Deadline deadline;
+      std::function<void()> callback;
+      std::uint64_t token{};
+      Request(vix::Deadline d, std::function<void()> c) : deadline(d), callback(std::move(c)) {}
+    };
+    auto request = std::make_shared<Request>(deadline, std::move(callback));
+    if (!command_and_wait(CommandKind::deadline_add, [this, request]
+                          {if(!impl_->next_timer||!impl_->next_timer_generation)return;auto id=impl_->next_timer++;auto generation=impl_->next_timer_generation++;impl_->deadline_controls.emplace(id,Impl::DeadlineControl{generation,true});impl_->deadlines.push({request->deadline,id,generation,std::move(request->callback)});request->token=encode_token(id,generation); }))
+      return 0;
     return request->token;
   }
   bool ProviderCore::invalidate_deadline(std::uint64_t token)
   {
-    bool invalidated=false;
-    return command_and_wait(CommandKind::deadline_invalidate,[this,token,&invalidated]
-                            {std::uint32_t id,generation;if(!decode_token(token,id,generation))return;auto it=impl_->deadline_controls.find(id);if(it==impl_->deadline_controls.end()||it->second.generation!=generation)return;it->second.active=false;impl_->deadline_controls.erase(it);invalidated=true;}) && invalidated;
+    bool invalidated = false;
+    return command_and_wait(CommandKind::deadline_invalidate, [this, token, &invalidated]
+                            {std::uint32_t id,generation;if(!decode_token(token,id,generation))return;auto it=impl_->deadline_controls.find(id);if(it==impl_->deadline_controls.end()||it->second.generation!=generation)return;it->second.active=false;impl_->deadline_controls.erase(it);invalidated=true; }) &&
+           invalidated;
   }
   bool ProviderCore::accepts(std::uint64_t t) const noexcept
   {
@@ -426,19 +498,29 @@ namespace vix::network::detail
   std::uint64_t ProviderCore::wake_events_for_test() const noexcept { return impl_->wake_events; }
   std::uint64_t ProviderCore::wake_writes_for_test() const noexcept { return impl_->wake_writes; }
   unsigned ProviderCore::active_operations_for_test() const noexcept { return impl_->ops.load(); }
-  std::size_t ProviderCore::live_deadlines_for_test() const noexcept { std::size_t count{}; (void)command_and_wait(CommandKind::generic,[this,&count]{count=impl_->deadline_controls.size();}); return count; }
+  unsigned ProviderCore::active_resources_for_test() const noexcept { return impl_->resources.load(); }
+  bool ProviderCore::has_dependencies() const noexcept { return impl_->ops.load() || impl_->resources.load(); }
+  bool ProviderCore::running() const noexcept { return impl_->running.load(); }
+  std::size_t ProviderCore::live_deadlines_for_test() const noexcept
+  {
+    std::size_t count{};
+    (void)command_and_wait(CommandKind::generic, [this, &count]
+                           { count = impl_->deadline_controls.size(); });
+    return count;
+  }
   std::size_t ProviderCore::live_descriptor_registrations_for_test() const noexcept
   {
     std::size_t count{};
-    (void)command_and_wait(CommandKind::generic,[this,&count]{count=impl_->entries.size();});
+    (void)command_and_wait(CommandKind::generic, [this, &count]
+                           { count = impl_->entries.size(); });
     return count;
   }
   std::uint64_t ProviderCore::idle_generation_for_test() const noexcept { return impl_->idle_generation.load(); }
   bool ProviderCore::wait_for_idle_after_for_test(std::uint64_t generation) const noexcept
   {
     std::unique_lock lock(impl_->idle_m);
-    return impl_->idle_cv.wait_for(lock,std::chrono::seconds(1),[this,generation]
-                                   { return impl_->idle_generation.load()>generation || !impl_->running.load(); });
+    return impl_->idle_cv.wait_for(lock, std::chrono::seconds(1), [this, generation]
+                                   { return impl_->idle_generation.load() > generation || !impl_->running.load(); });
   }
   std::uint64_t ProviderCore::maximum_consecutive_zero_waits_for_test() const noexcept { return impl_->maximum_consecutive_zero_waits.load(); }
   void ProviderCore::add_operation() noexcept { ++impl_->ops; }

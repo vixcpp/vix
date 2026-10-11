@@ -1,21 +1,33 @@
 cmake_minimum_required(VERSION 3.23)
 if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-  project(vix_network_phase1 LANGUAGES CXX)
+  project(vix_network LANGUAGES CXX)
   set(CMAKE_CXX_STANDARD 20)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
-  # A standalone private-engine build is expected to expose its focused CTest entry.
+  # Standalone builds expose only the focused Network test entry points.
   option(VIX_BUILD_TESTS "Build focused Vix Network phase tests" ON)
   add_subdirectory(../../standard standard_build)
 endif()
 if (NOT UNIX)
-  message(FATAL_ERROR "Vix Network Phase 1 currently requires POSIX/Linux.")
+  message(FATAL_ERROR "Vix Network currently requires POSIX/Linux.")
 endif()
 find_package(Threads REQUIRED)
-add_library(vix_network_engine_phase1 STATIC src/Engine.cpp)
-target_compile_features(vix_network_engine_phase1 PRIVATE cxx_std_20)
-target_include_directories(vix_network_engine_phase1 PRIVATE src)
-target_link_libraries(vix_network_engine_phase1 PRIVATE vix::standard Threads::Threads)
+add_library(vix_network STATIC src/Engine.cpp src/Address.cpp src/Network.cpp)
+add_library(vix::network ALIAS vix_network)
+target_compile_features(vix_network PUBLIC cxx_std_20)
+target_include_directories(vix_network
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../standard/include>
+    $<INSTALL_INTERFACE:include>
+  PRIVATE src)
+target_link_libraries(vix_network PRIVATE vix::standard PUBLIC Threads::Threads)
+install(TARGETS vix_network EXPORT VixTargets)
+install(DIRECTORY include/ DESTINATION include FILES_MATCHING PATTERN "*.hpp")
+if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+  install(DIRECTORY ../../standard/include/ DESTINATION include FILES_MATCHING PATTERN "*.hpp")
+endif()
 if (VIX_BUILD_TESTS)
+  target_compile_definitions(vix_network PRIVATE VIX_NETWORK_TEST_CAPTURE=1)
   if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     enable_testing()
   endif()
