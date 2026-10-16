@@ -160,6 +160,16 @@ option(VIX_ENABLE_COVERAGE         "Enable coverage flags (Debug only)"         
 option(VIX_ENABLE_SANITIZERS       "Enable ASan+UBSan (GCC/Clang only)"                           OFF)
 option(VIX_BUILD_EXAMPLES          "Build umbrella examples in ./examples"                        ON)
 option(VIX_BUILD_TESTS             "Build Vix SDK package tests"                                  OFF)
+option(VIX_BUILD_NETWORK           "Build the Network domain when its provider is available"      ON)
+if (CMAKE_SYSTEM_NAME STREQUAL "WASI")
+  set(VIX_WASMTIME_EXECUTABLE "" CACHE FILEPATH "Pinned Wasmtime 49.0.3 executable for WASI domain tests")
+  if (VIX_WASMTIME_EXECUTABLE STREQUAL "" AND DEFINED WASMTIME_EXECUTABLE)
+    set(VIX_WASMTIME_EXECUTABLE "${WASMTIME_EXECUTABLE}")
+  endif()
+  if (NOT VIX_WASMTIME_EXECUTABLE STREQUAL "")
+    set(WASMTIME_EXECUTABLE "${VIX_WASMTIME_EXECUTABLE}")
+  endif()
+endif()
 if (VIX_BUILD_TESTS)
   enable_testing()
 endif()
@@ -170,10 +180,27 @@ endif()
 add_subdirectory(standard standard_build)
 add_subdirectory(domains/files files_build)
 add_subdirectory(domains/process canonical_process_build)
-add_subdirectory(domains/network network_build)
+if (VIX_BUILD_NETWORK)
+  add_subdirectory(domains/network network_build)
+  set(VIX_HAS_NETWORK TRUE)
+else()
+  set(VIX_HAS_NETWORK FALSE)
+endif()
 
-add_custom_target(vix_canonical_architecture
-  DEPENDS vix_standard_check vix_files vix_process vix_network)
+set(_vix_canonical_targets vix_standard_check vix_files vix_process)
+if (VIX_HAS_NETWORK)
+  list(APPEND _vix_canonical_targets vix_network)
+endif()
+add_custom_target(vix_canonical_architecture DEPENDS ${_vix_canonical_targets})
+
+# POSIX Process and native Network providers require Threads. The WASI
+# Process contract is explicitly unsupported and its Network provider is
+# caller-driven/cooperative, so the complete WASI SDK stays threadless.
+if (CMAKE_SYSTEM_NAME STREQUAL "WASI")
+  set(VIX_PACKAGE_NEEDS_THREADS FALSE)
+else()
+  set(VIX_PACKAGE_NEEDS_THREADS TRUE)
+endif()
 
 set(VIX_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/Vix")
 configure_package_config_file(
@@ -196,13 +223,28 @@ install(FILES
   DESTINATION "${VIX_INSTALL_CMAKEDIR}"
 )
 if (VIX_BUILD_TESTS)
+  set(_vix_package_toolchain_file "${CMAKE_TOOLCHAIN_FILE}")
+  if (NOT _vix_package_toolchain_file STREQUAL "")
+    get_filename_component(_vix_package_toolchain_file "${_vix_package_toolchain_file}" REALPATH
+      BASE_DIR "${CMAKE_SOURCE_DIR}")
+  endif()
   add_test(
     NAME vix_sdk_package_consumer_test
     COMMAND "${CMAKE_COMMAND}"
       "-DVIX_BINARY_DIR=${CMAKE_BINARY_DIR}"
       "-DVIX_SOURCE_DIR=${CMAKE_SOURCE_DIR}"
+      "-DVIX_EXPECT_NETWORK=${VIX_HAS_NETWORK}"
+      "-DVIX_TARGET_SYSTEM=${CMAKE_SYSTEM_NAME}"
+      "-DVIX_WASMTIME_EXECUTABLE=${VIX_WASMTIME_EXECUTABLE}"
+      "-DVIX_WASI_SDK_ROOT=${VIX_WASI_SDK_ROOT}"
+      "-DVIX_TOOLCHAIN_FILE=${_vix_package_toolchain_file}"
+      "-DVIX_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}"
       -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/VixSdkPackageTest.cmake"
   )
 endif()
 
-message(STATUS "Vix SDK: Standard -> Files -> Process -> Network")
+if (VIX_HAS_NETWORK)
+  message(STATUS "Vix SDK: Standard -> Files -> Process -> Network")
+else()
+  message(STATUS "Vix SDK: Standard -> Files -> Process (Network unavailable/not requested)")
+endif()

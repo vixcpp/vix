@@ -1,5 +1,5 @@
 #include <vix/network/Address.hpp>
-#include <arpa/inet.h>
+#include "SocketPlatform.hpp"
 #include <cstring>
 #include <limits>
 
@@ -7,10 +7,10 @@ namespace vix::network
 {
   vix::Result<Address> Address::parse(std::string_view value)
   {
-    if (value.empty() || value.size() >= INET6_ADDRSTRLEN + 12)
+    if (value.empty() || value.size() >= detail::numeric_address_text_size + 12)
       return vix::Error{invalid_address, "invalid numeric address"};
     std::array<std::uint8_t, 16> bytes{};
-    char text[INET6_ADDRSTRLEN]{};
+    char text[detail::numeric_address_text_size]{};
     std::uint32_t scope{};
     const auto percent = value.find('%');
     const auto host = value.substr(0, percent);
@@ -33,17 +33,16 @@ namespace vix::network
       }
       scope = static_cast<std::uint32_t>(parsed);
     }
-    if (percent == std::string_view::npos && inet_pton(AF_INET, text, bytes.data()) == 1)
+    if (percent == std::string_view::npos && detail::parse_numeric_address(AddressFamily::ipv4, text, bytes.data()))
       return Address{AddressFamily::ipv4, bytes, 0};
-    if (inet_pton(AF_INET6, text, bytes.data()) == 1)
+    if (detail::parse_numeric_address(AddressFamily::ipv6, text, bytes.data()))
       return Address{AddressFamily::ipv6, bytes, scope};
     return vix::Error{invalid_address, "invalid numeric address"};
   }
   std::string Address::display() const
   {
-    char text[INET6_ADDRSTRLEN]{};
-    const int native_family = family_ == AddressFamily::ipv4 ? AF_INET : AF_INET6;
-    if (!inet_ntop(native_family, bytes_.data(), text, sizeof text))
+    char text[detail::numeric_address_text_size]{};
+    if (!detail::format_numeric_address(family_, bytes_.data(), text, sizeof text))
       std::terminate();
     std::string out{text};
     if (family_ == AddressFamily::ipv6 && scope_id_)

@@ -5,15 +5,15 @@
 #include <vix/Result.hpp>
 #include <vix/network/Errors.hpp>
 #include <vix/network/Operation.hpp>
+#include "Reactor.hpp"
 #include <atomic>
-#include <cerrno>
 #include <coroutine>
 #include <cstdint>
+#include <exception>
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <optional>
-#include <unistd.h>
 #include <vector>
 #include <variant>
 #include <utility>
@@ -35,6 +35,9 @@ namespace vix::network::detail
     static void enqueue(std::function<void()>);
     // Private test gate: lets abandonment tests hold a claimed queued ticket.
     static void hold_for_test(bool) noexcept;
+    // Private test hook: fail after starting this many workers during the next
+    // initialization attempt. The hook is consumed by that attempt.
+    static void fail_worker_creation_after_for_test(unsigned) noexcept;
   };
   enum class ResumeState : std::uint8_t
   {
@@ -66,12 +69,12 @@ namespace vix::network::detail
     std::atomic<ResumeState> state_{ResumeState::queued};
     std::coroutine_handle<> handle_{};
   };
-  // True retains this directional slot after its EPOLLONESHOT notification.
+  // True retains this directional slot after its one-shot readiness notification.
   using ReadinessHandler = std::function<bool(std::uint32_t)>;
   class ProviderCore : public std::enable_shared_from_this<ProviderCore>
   {
   public:
-    static vix::Result<std::shared_ptr<ProviderCore>> create();
+    static vix::Result<std::shared_ptr<ProviderCore>> create(bool cooperative = false);
     ~ProviderCore();
     vix::Result<void> shutdown();
     void add_operation() noexcept;
@@ -79,9 +82,13 @@ namespace vix::network::detail
     void add_resource() noexcept;
     void release_resource() noexcept;
     bool post(std::function<void()>);
-    std::uint64_t register_descriptor(int, ReadinessHandler, ReadinessHandler);
+    [[nodiscard]] bool cooperative() const noexcept;
+    [[nodiscard]] bool on_owner_thread() const noexcept;
+    vix::Result<std::size_t> poll();
+    void schedule_resume(std::shared_ptr<ResumeTicket>);
+    std::uint64_t register_descriptor(NativeSocket, ReadinessHandler, ReadinessHandler);
     bool set_descriptor_handlers(std::uint64_t, ReadinessHandler, ReadinessHandler);
-    std::uint64_t register_descriptor(int, bool, bool);
+    std::uint64_t register_descriptor(NativeSocket, bool, bool);
     bool rearm(std::uint64_t, bool, bool);
     bool release_descriptor_direction(std::uint64_t, bool read);
     void retire(std::uint64_t);
@@ -94,8 +101,9 @@ namespace vix::network::detail
     bool dispatch_for_test(std::uint64_t, std::uint32_t);
     bool post_for_test(std::function<void()>);
     void empty_wake_for_test() noexcept;
-    [[nodiscard]] std::uint64_t epoll_ctl_count_for_test(int) const noexcept;
-    [[nodiscard]] bool epoll_mutations_owned_by_reactor_for_test() const noexcept;
+    void hold_cooperative_resumes_for_test(bool) noexcept;
+    [[nodiscard]] std::uint64_t reactor_control_count_for_test(ReactorControl) const noexcept;
+    [[nodiscard]] bool reactor_mutations_owned_by_reactor_for_test() const noexcept;
     [[nodiscard]] std::uint64_t commands_executed_for_test() const noexcept;
     [[nodiscard]] std::uint64_t wake_events_for_test() const noexcept;
     [[nodiscard]] std::uint64_t wake_writes_for_test() const noexcept;
@@ -120,7 +128,7 @@ namespace vix::network::detail
       deadline_invalidate,
       shutdown
     };
-    ProviderCore(int, int) noexcept;
+    explicit ProviderCore(std::unique_ptr<Reactor>, bool cooperative);
     void run() noexcept;
     bool wake() noexcept;
     void stop_and_join() noexcept;
@@ -128,7 +136,6 @@ namespace vix::network::detail
     bool command_and_wait(CommandKind, std::function<void()>) const;
     bool dispatch_on_reactor(std::uint64_t, std::uint32_t);
     struct Impl;
-    static std::uint32_t interest(bool, bool);
     std::unique_ptr<Impl> impl_;
   };
   // Engine-private native ownership.  A descriptor has exactly one terminal
@@ -154,35 +161,35 @@ namespace vix::network::detail
       if (state_ == State::owned)
         release();
     }
-    bool adopt(int fd) noexcept
+    bool adopt(NativeSocket fd) noexcept
     {
-      if (state_ != State::none || fd < 0)
+      if (state_ != State::none || fd == invalid_socket)
         return false;
       fd_ = fd;
       state_ = State::owned;
       return true;
     }
-    int transfer() noexcept
+    NativeSocket transfer() noexcept
     {
       if (state_ != State::owned)
         std::terminate();
       state_ = State::transferred;
-      return std::exchange(fd_, -1);
+      return std::exchange(fd_, invalid_socket);
     }
     void release() noexcept
     {
       if (state_ != State::owned)
         std::terminate();
-      const int fd = std::exchange(fd_, -1);
+      const NativeSocket fd = std::exchange(fd_, invalid_socket);
       state_ = State::released;
       ++close_calls_;
-      (void)::close(fd);
+      (void)close_native_socket(fd);
     }
     [[nodiscard]] State state() const noexcept { return state_; }
     [[nodiscard]] unsigned close_calls() const noexcept { return close_calls_; }
 
   private:
-    int fd_{-1};
+    NativeSocket fd_{invalid_socket};
     State state_{State::none};
     unsigned close_calls_{};
   };
@@ -238,12 +245,12 @@ namespace vix::network::detail
     static void capture_next_receive_record_for_test(const TcpConnection &, std::shared_ptr<OperationRecord<std::size_t>> &);
     static void capture_next_send_record_for_test(const TcpConnection &, std::shared_ptr<OperationRecord<void>> &);
     static TransportCountersForTest transport_counters_for_test(const TcpConnection &);
-    static TcpConnection from_handoff(int, ProviderResourceLease);
+    static TcpConnection from_handoff(NativeSocket, ProviderResourceLease);
   };
   // Compatibility spelling for private focused tests only.  It is not in any
   // installed public header.
   using CandidateAccess = NetworkAccess;
-  TcpConnection make_tcp_connection(int, ProviderResourceLease);
+  TcpConnection make_tcp_connection(NativeSocket, ProviderResourceLease);
   // Private focused-test bridge; never installed.
   vix::Error transport_error_for_test(int) noexcept;
   // Temporary private test Resource; this is deliberately not a public TCP
@@ -251,24 +258,24 @@ namespace vix::network::detail
   class SyntheticResource
   {
   public:
-    SyntheticResource(int fd, ProviderResourceLease lease) noexcept : fd_(fd), lease_(std::move(lease)) {}
-    SyntheticResource(SyntheticResource &&other) noexcept : fd_(std::exchange(other.fd_, -1)), lease_(std::move(other.lease_)) {}
+    SyntheticResource(NativeSocket fd, ProviderResourceLease lease) noexcept : fd_(fd), lease_(std::move(lease)) {}
+    SyntheticResource(SyntheticResource &&other) noexcept : fd_(std::exchange(other.fd_, invalid_socket)), lease_(std::move(other.lease_)) {}
     SyntheticResource &operator=(SyntheticResource &&) = delete;
     SyntheticResource(const SyntheticResource &) = delete;
     SyntheticResource &operator=(const SyntheticResource &) = delete;
     ~SyntheticResource()
     {
-      if (fd_ >= 0)
+      if (fd_ != invalid_socket)
       {
         ++close_calls_;
-        (void)::close(fd_);
+        (void)close_native_socket(fd_);
       }
     }
-    [[nodiscard]] int native_fd_for_test() const noexcept { return fd_; }
+    [[nodiscard]] int native_fd_for_test() const noexcept { return static_cast<int>(fd_); }
     [[nodiscard]] unsigned close_calls_for_test() const noexcept { return close_calls_; }
 
   private:
-    int fd_{-1};
+    NativeSocket fd_{invalid_socket};
     ProviderResourceLease lease_{std::shared_ptr<ProviderCore>{}};
     unsigned close_calls_{};
   };
@@ -305,8 +312,8 @@ namespace vix::network::detail
     void publish_native_for_test(vix::Completion<T> completion);
     void publish_cancellation_for_test();
     void publish_deadline_for_test();
-    bool adopt_native_for_test(int fd) noexcept { return native_.adopt(fd); }
-    bool adopt_native_for_connect(int fd) noexcept { return native_.adopt(fd); }
+    bool adopt_native_for_test(NativeSocket fd) noexcept { return native_.adopt(fd); }
+    bool adopt_native_for_connect(NativeSocket fd) noexcept { return native_.adopt(fd); }
     [[nodiscard]] NativeFd::State native_state_for_test() const noexcept { return native_.state(); }
     [[nodiscard]] unsigned native_close_calls_for_test() const noexcept { return native_.close_calls(); }
     template <class Producer>
@@ -360,7 +367,7 @@ namespace vix::network::detail
     std::vector<TerminalEvent> trace_;
     std::mutex facts_mutex_;
     std::optional<vix::Completion<T>> native_fact_;
-    std::conditional_t<std::is_void_v<T>, std::monostate, std::optional<std::function<T(int, ProviderResourceLease)>>> native_success_builder_;
+    std::conditional_t<std::is_void_v<T>, std::monostate, std::optional<std::function<T(NativeSocket, ProviderResourceLease)>>> native_success_builder_;
     std::atomic<bool> cancellation_fact_{false}, deadline_fact_{false};
     std::atomic<bool> evaluation_held_{false};
     bool claim_terminal(bool &) noexcept;
@@ -448,12 +455,12 @@ namespace vix::network::detail
     }
     provider_->finish_operation();
     record_event(TerminalEvent::provider_released);
+    auto provider = provider_;
     provider_.reset();
     if (queue)
     {
       record_event(TerminalEvent::resume_queued);
-      Continuations::enqueue([ticket]
-                             {if(ticket->claim_resume())ticket->resume(); });
+      provider->schedule_resume(std::move(ticket));
     }
   }
   template <class T>
@@ -498,12 +505,12 @@ namespace vix::network::detail
   void OperationRecord<T>::observe_cancellation(vix::CancellationToken token)
   {
     auto weak = this->weak_from_this();
-    cancellation_.emplace(token.on_cancel([weak]
+    auto provider = provider_;
+    cancellation_.emplace(token.on_cancel([weak, provider = std::move(provider)]
                                           {
       if (auto record=weak.lock())
       {
         // Callback only posts; reactor owns terminalization and never resumes here.
-        auto provider=record->provider_;
         if (provider) (void)provider->post([weak]
         { if (auto pending=weak.lock()) { pending->cancellation_fact_=true; pending->evaluate_pending_on_reactor(); } });
       } }));
@@ -525,7 +532,7 @@ namespace vix::network::detail
     std::optional<vix::Completion<T>> native;
     if constexpr (!std::is_void_v<T>)
     {
-      std::optional<std::function<T(int, ProviderResourceLease)>> native_success;
+      std::optional<std::function<T(NativeSocket, ProviderResourceLease)>> native_success;
       {
         std::lock_guard l(facts_mutex_);
         if (native_fact_)

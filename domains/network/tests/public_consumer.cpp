@@ -1,4 +1,5 @@
 #include <vix/network/Provider.hpp>
+#include <vix/network/Errors.hpp>
 #include <vix/network/Address.hpp>
 #include <vix/network/Endpoint.hpp>
 #include <vix/network/TcpConnection.hpp>
@@ -33,7 +34,13 @@ static void listener_spelling(vix::network::Provider &provider, const vix::netwo
 int main()
 {
   static_assert(!std::is_copy_constructible_v<vix::network::Provider>);
+#if defined(__wasi__)
+  auto background_provider=vix::network::Provider::create();
+  if (background_provider || background_provider.error().identity()!=vix::network::unsupported) return 1;
+  auto provider_result=vix::network::Provider::create_cooperative();
+#else
   auto provider_result=vix::network::Provider::create();
+#endif
   if (!provider_result) return 1;
   auto provider=provider_result.take();
 

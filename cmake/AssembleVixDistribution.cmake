@@ -1,10 +1,17 @@
 # Assemble only outputs admitted by the current Vix distribution contract.
 # Invoke with -DVIX_CLI_BINARY=... -DVIX_SDK_PREFIX=... -DVIX_SDK_LIBRARIES=...
+# -DVIX_CLI_RUNTIME_LIBRARIES=... -DVIX_INSTALLER_RUNTIME_LIBRARIES=...
 # -DVIX_RELEASE_TRUST=...
 # -DVIX_DISTRIBUTION_SOURCE=... -DVIX_OUTPUT_ROOT=...
-foreach(required VIX_CLI_BINARY VIX_INSTALLER_BINARY VIX_SDK_PREFIX VIX_SDK_LIBRARIES VIX_RELEASE_TRUST VIX_DISTRIBUTION_SOURCE VIX_OUTPUT_ROOT VIX_BOOTSTRAP_OUTPUT_ROOT)
+foreach(required VIX_CLI_BINARY VIX_INSTALLER_BINARY VIX_SDK_PREFIX VIX_SDK_LIBRARIES VIX_RELEASE_TRUST
+    VIX_DISTRIBUTION_SOURCE VIX_OUTPUT_ROOT VIX_BOOTSTRAP_OUTPUT_ROOT)
   if (NOT DEFINED ${required} OR "${${required}}" STREQUAL "")
     message(FATAL_ERROR "${required} is required for Vix distribution assembly")
+  endif()
+endforeach()
+foreach(runtime_list VIX_CLI_RUNTIME_LIBRARIES VIX_INSTALLER_RUNTIME_LIBRARIES VIX_RUNTIME_LICENSE_FILES)
+  if (NOT DEFINED ${runtime_list})
+    message(FATAL_ERROR "${runtime_list} must be explicitly provided (an empty list is allowed)")
   endif()
 endforeach()
 
@@ -59,18 +66,37 @@ foreach(sdk_library IN LISTS VIX_SDK_LIBRARIES)
   get_filename_component(sdk_library_name "${sdk_library}" NAME)
   configure_file("${sdk_library}" "${VIX_OUTPUT_ROOT}/lib/${sdk_library_name}" COPYONLY)
 endforeach()
-# Only release-reviewed CLI runtime dependencies belong here; never sweep build
+# Only explicitly resolved runtime dependencies belong here; never sweep build
 # or repository module directories into the distribution by globbing.
-foreach(runtime_library IN LISTS VIX_CLI_RUNTIME_LIBRARIES)
-  if (NOT EXISTS "${runtime_library}" OR IS_DIRECTORY "${runtime_library}")
-    message(FATAL_ERROR "A listed CLI runtime dependency does not exist: ${runtime_library}")
-  endif()
-  get_filename_component(runtime_library_name "${runtime_library}" NAME)
-  if (EXISTS "${VIX_OUTPUT_ROOT}/lib/${runtime_library_name}")
-    message(FATAL_ERROR "CLI runtime dependency collides with an SDK library: ${runtime_library_name}")
-  endif()
-  configure_file("${runtime_library}" "${VIX_OUTPUT_ROOT}/lib/${runtime_library_name}" COPYONLY)
-endforeach()
+function(vix_copy_runtime_libraries libraries destination label)
+  foreach(runtime_library IN LISTS ${libraries})
+    if (NOT EXISTS "${runtime_library}" OR IS_DIRECTORY "${runtime_library}")
+      message(FATAL_ERROR "A listed ${label} runtime dependency does not exist: ${runtime_library}")
+    endif()
+    get_filename_component(runtime_library_name "${runtime_library}" NAME)
+    if (EXISTS "${destination}/lib/${runtime_library_name}")
+      message(FATAL_ERROR "${label} runtime dependency collides with a packaged library: ${runtime_library_name}")
+    endif()
+    configure_file("${runtime_library}" "${destination}/lib/${runtime_library_name}" COPYONLY)
+  endforeach()
+endfunction()
+
+function(vix_copy_runtime_license_files destination)
+  file(MAKE_DIRECTORY "${destination}/share/licenses/runtime")
+  foreach(license_file IN LISTS VIX_RUNTIME_LICENSE_FILES)
+    if (NOT EXISTS "${license_file}" OR IS_DIRECTORY "${license_file}")
+      message(FATAL_ERROR "A listed runtime license notice does not exist: ${license_file}")
+    endif()
+    get_filename_component(license_name "${license_file}" NAME)
+    if (EXISTS "${destination}/share/licenses/runtime/${license_name}")
+      message(FATAL_ERROR "Runtime license notice basename collision: ${license_name}")
+    endif()
+    configure_file("${license_file}" "${destination}/share/licenses/runtime/${license_name}" COPYONLY)
+  endforeach()
+endfunction()
+
+vix_copy_runtime_libraries(VIX_CLI_RUNTIME_LIBRARIES "${VIX_OUTPUT_ROOT}" "CLI")
+vix_copy_runtime_license_files("${VIX_OUTPUT_ROOT}")
 configure_file("${VIX_RELEASE_TRUST}" "${VIX_OUTPUT_ROOT}/share/vix/trust/releases.toml" COPYONLY)
 configure_file("${VIX_DISTRIBUTION_SOURCE}" "${VIX_OUTPUT_ROOT}/share/vix/distribution/source.toml" COPYONLY)
 configure_file("${CMAKE_CURRENT_LIST_DIR}/../modules/cli/share/completions/bash/vix"
@@ -79,6 +105,13 @@ configure_file("${CMAKE_CURRENT_LIST_DIR}/../modules/cli/share/completions/zsh/_
                "${VIX_OUTPUT_ROOT}/share/completions/zsh/_vix" COPYONLY)
 configure_file("${CMAKE_CURRENT_LIST_DIR}/../modules/cli/share/completions/fish/vix.fish"
                "${VIX_OUTPUT_ROOT}/share/completions/fish/vix.fish" COPYONLY)
+file(MAKE_DIRECTORY "${VIX_OUTPUT_ROOT}/share/doc/vix")
+configure_file("${CMAKE_CURRENT_LIST_DIR}/../modules/cli/README.md"
+               "${VIX_OUTPUT_ROOT}/share/doc/vix/README.md" COPYONLY)
+configure_file("${CMAKE_CURRENT_LIST_DIR}/../LICENSE"
+               "${VIX_OUTPUT_ROOT}/share/doc/vix/LICENSE" COPYONLY)
+configure_file("${CMAKE_CURRENT_LIST_DIR}/../modules/cli/LICENSE"
+               "${VIX_OUTPUT_ROOT}/share/doc/vix/CLI-LICENSE" COPYONLY)
 
 file(MAKE_DIRECTORY
   "${VIX_BOOTSTRAP_OUTPUT_ROOT}/bin"
@@ -87,5 +120,15 @@ file(MAKE_DIRECTORY
 configure_file("${VIX_INSTALLER_BINARY}" "${VIX_BOOTSTRAP_OUTPUT_ROOT}/bin/vix-installer" COPYONLY)
 file(CHMOD "${VIX_BOOTSTRAP_OUTPUT_ROOT}/bin/vix-installer"
   PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+file(MAKE_DIRECTORY "${VIX_BOOTSTRAP_OUTPUT_ROOT}/lib")
+vix_copy_runtime_libraries(VIX_INSTALLER_RUNTIME_LIBRARIES "${VIX_BOOTSTRAP_OUTPUT_ROOT}" "installer")
+vix_copy_runtime_license_files("${VIX_BOOTSTRAP_OUTPUT_ROOT}")
 configure_file("${VIX_RELEASE_TRUST}" "${VIX_BOOTSTRAP_OUTPUT_ROOT}/share/vix/trust/releases.toml" COPYONLY)
 configure_file("${VIX_DISTRIBUTION_SOURCE}" "${VIX_BOOTSTRAP_OUTPUT_ROOT}/share/vix/distribution/source.toml" COPYONLY)
+file(MAKE_DIRECTORY "${VIX_BOOTSTRAP_OUTPUT_ROOT}/share/doc/vix")
+configure_file("${CMAKE_CURRENT_LIST_DIR}/../modules/cli/README.md"
+               "${VIX_BOOTSTRAP_OUTPUT_ROOT}/share/doc/vix/README.md" COPYONLY)
+configure_file("${CMAKE_CURRENT_LIST_DIR}/../LICENSE"
+               "${VIX_BOOTSTRAP_OUTPUT_ROOT}/share/doc/vix/LICENSE" COPYONLY)
+configure_file("${CMAKE_CURRENT_LIST_DIR}/../modules/cli/LICENSE"
+               "${VIX_BOOTSTRAP_OUTPUT_ROOT}/share/doc/vix/CLI-LICENSE" COPYONLY)

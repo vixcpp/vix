@@ -1,0 +1,375 @@
+name: Canonical Vix CI
+
+"on":
+  push:
+    branches: [next]
+  pull_request:
+    branches: [main, next]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: canonical-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  foundations-native:
+    name: Foundations (${{ matrix.name }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64-glibc
+            runner: ubuntu-24.04
+          - name: linux-arm64-glibc
+            runner: ubuntu-24.04-arm
+          - name: macos-x86_64
+            runner: macos-15-intel
+          - name: macos-arm64
+            runner: macos-14
+          - name: windows-x86_64-msvc
+            runner: windows-2022
+    steps:
+      - name: Checkout exact root and submodule revisions
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Verify all submodules match pinned gitlinks
+        shell: bash
+        run: |
+          set -euo pipefail
+          git submodule status --recursive | tee "$RUNNER_TEMP/submodules.txt"
+          if grep -Eq '^[+-U]' "$RUNNER_TEMP/submodules.txt"; then
+            echo "A submodule is missing or differs from the root-pinned gitlink." >&2
+            exit 1
+          fi
+          pinned_cli="$(git ls-tree HEAD modules/cli | awk '{print $3}')"
+          checked_cli="$(git -C modules/cli rev-parse HEAD)"
+          test -n "$pinned_cli"
+          test "$checked_cli" = "$pinned_cli"
+
+      - name: Configure current SDK and all Foundation tests
+        shell: bash
+        run: >-
+          cmake -S . -B foundation-build
+          -DCMAKE_BUILD_TYPE=Debug
+          -DVIX_BUILD_TESTS=ON
+          -DVIX_BUILD_EXAMPLES=OFF
+          -DVIX_BUILD_NETWORK=ON
+          -DVIX_ENABLE_INSTALL=ON
+          -DVIX_ENABLE_WARNINGS=ON
+
+      - name: Build canonical SDK and test executables
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake --build foundation-build --target vix_canonical_architecture --parallel 2
+          cmake --build foundation-build --parallel 2
+
+      - name: Run all Foundation and installed-SDK tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          ctest --test-dir foundation-build --show-only | tee "$RUNNER_TEMP/foundation-test-list.txt"
+          grep -Eq 'Total Tests: [1-9][0-9]*' "$RUNNER_TEMP/foundation-test-list.txt"
+          grep -Fq 'vix_sdk_package_consumer_test' "$RUNNER_TEMP/foundation-test-list.txt"
+          set -o pipefail
+          ctest --test-dir foundation-build --output-on-failure --parallel 2 --timeout 180 \
+            2>&1 | tee "$RUNNER_TEMP/foundation-ctest.txt"
+          if grep -Eiq 'tests did not run|Skipped' "$RUNNER_TEMP/foundation-ctest.txt"; then
+            echo "A required Foundation or SDK test was skipped." >&2
+            exit 1
+          fi
+
+  foundations-sanitizers:
+    name: Foundations ASan + UBSan (Linux x86_64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Configure sanitized Foundation suite
+        run: >-
+          cmake -S . -B sanitizer-build
+          -DCMAKE_BUILD_TYPE=Debug
+          -DVIX_BUILD_TESTS=ON
+          -DVIX_BUILD_EXAMPLES=OFF
+          -DVIX_BUILD_NETWORK=ON
+          -DVIX_ENABLE_WARNINGS=ON
+          "-DCMAKE_CXX_FLAGS=-O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined"
+          "-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined"
+      - name: Build and run sanitizer suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake --build sanitizer-build --parallel 2
+          ctest --test-dir sanitizer-build --show-only | tee "$RUNNER_TEMP/sanitizer-test-list.txt"
+          grep -Eq 'Total Tests: [1-9][0-9]*' "$RUNNER_TEMP/sanitizer-test-list.txt"
+          ctest --test-dir sanitizer-build --output-on-failure --parallel 1 --timeout 180 \
+            2>&1 | tee "$RUNNER_TEMP/sanitizer-ctest.txt"
+          if grep -Eiq 'tests did not run|Skipped' "$RUNNER_TEMP/sanitizer-ctest.txt"; then
+            echo "A sanitizer test was skipped." >&2
+            exit 1
+          fi
+
+  static-analysis:
+    name: Clang-Tidy current Foundation and CLI targets
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Verify exact root-pinned submodule revisions
+        shell: bash
+        run: |
+          set -euo pipefail
+          git submodule status --recursive | tee "$RUNNER_TEMP/submodules.txt"
+          if grep -Eq '^[+-U]' "$RUNNER_TEMP/submodules.txt"; then
+            echo "A submodule differs from the root-pinned gitlink." >&2
+            exit 1
+          fi
+      - name: Install Clang-Tidy and current target dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential clang-tidy cmake ninja-build pkg-config git \
+            nlohmann-json3-dev libssl-dev zlib1g-dev libsqlite3-dev \
+            libbrotli-dev libspdlog-dev libfmt-dev libcurl4-openssl-dev
+      - name: Analyze canonical Foundation targets
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S . -B foundation-analysis -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug -DVIX_BUILD_TESTS=OFF \
+            -DVIX_BUILD_EXAMPLES=OFF -DVIX_BUILD_NETWORK=ON \
+            -DVIX_ENABLE_WARNINGS=ON \
+            "-DCMAKE_CXX_CLANG_TIDY=clang-tidy;-warnings-as-errors=*"
+          cmake --build foundation-analysis --target vix_canonical_architecture --parallel 2
+      - name: Analyze current CLI executable and release tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S modules/cli -B cli-analysis -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug -DVIX_CLI_BUILD_TESTS=OFF \
+            -DVIX_REQUESTS_BUILD_TESTS=OFF -DVIX_REQUESTS_BUILD_EXAMPLES=OFF \
+            -DVIX_CORE_WITH_UI=OFF -DVIX_CORE_FETCH_UI=OFF -DVIX_CORE_WITH_MYSQL=OFF \
+            "-DCMAKE_CXX_CLANG_TIDY=clang-tidy;-warnings-as-errors=*"
+          cmake --build cli-analysis --target vix_cli vix_installer vix_release_tool --parallel 2
+
+  cli-contracts:
+    name: Current CLI build and complete contracts (pinned submodule)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Verify CLI is the root-pinned gitlink
+        shell: bash
+        run: |
+          set -euo pipefail
+          pinned_cli="$(git ls-tree HEAD modules/cli | awk '{print $3}')"
+          checked_cli="$(git -C modules/cli rev-parse HEAD)"
+          test -n "$pinned_cli"
+          test "$checked_cli" = "$pinned_cli"
+          if git -C modules/cli status --porcelain | grep -q .; then
+            echo "CLI submodule worktree is not clean at its pinned revision." >&2
+            exit 1
+          fi
+      - name: Install CLI build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config git \
+            libssl-dev zlib1g-dev libsqlite3-dev libbrotli-dev \
+            libspdlog-dev libfmt-dev libcurl4-openssl-dev nlohmann-json3-dev
+      - name: Configure current CLI with its registered tests
+        run: >-
+          cmake -S modules/cli -B cli-build -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DVIX_CLI_BUILD_TESTS=ON
+          -DVIX_REQUESTS_BUILD_TESTS=OFF
+          -DVIX_REQUESTS_BUILD_EXAMPLES=OFF
+          -DVIX_CORE_WITH_UI=OFF
+          -DVIX_CORE_FETCH_UI=OFF
+          -DVIX_CORE_WITH_MYSQL=OFF
+      - name: Build CLI, distribution tools, and every registered test executable
+        run: |
+          cmake --build cli-build --target vix_cli vix_installer vix_release_tool --parallel 2
+          cmake --build cli-build --parallel 2
+      - name: Run complete registered CLI suite, including aggregate contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          ctest --test-dir cli-build --show-only | tee "$RUNNER_TEMP/cli-test-list.txt"
+          grep -Eq 'Total Tests: [1-9][0-9]*' "$RUNNER_TEMP/cli-test-list.txt"
+          grep -Fq 'vix_cli_all_contracts' "$RUNNER_TEMP/cli-test-list.txt"
+          ctest --test-dir cli-build --output-on-failure --parallel 1 --timeout 240 \
+            2>&1 | tee "$RUNNER_TEMP/cli-ctest.txt"
+          if grep -Eiq 'tests did not run|Skipped' "$RUNNER_TEMP/cli-ctest.txt"; then
+            echo "A registered CLI contract or regression test was skipped." >&2
+            exit 1
+          fi
+
+  linux-musl:
+    name: Foundations (Alpine musl, ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+            docker_platform: linux/amd64
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            docker_platform: linux/arm64
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Build and run native musl suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --platform '${{ matrix.docker_platform }}' \
+            -v "$GITHUB_WORKSPACE:/src" -w /src alpine:3.21.3 sh -euxc '
+              apk add --no-cache build-base cmake ninja linux-headers git
+              cmake -S . -B musl-build -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+                -DVIX_BUILD_TESTS=ON -DVIX_BUILD_EXAMPLES=OFF \
+                -DVIX_BUILD_NETWORK=ON -DVIX_ENABLE_WARNINGS=ON
+              cmake --build musl-build --parallel 2
+              ctest --test-dir musl-build --show-only > /tmp/vix-musl-tests.txt
+              grep -Eq "Total Tests: [1-9][0-9]*" /tmp/vix-musl-tests.txt
+              if ! ctest --test-dir musl-build --output-on-failure --parallel 1 --timeout 180 \
+                > /tmp/vix-musl-ctest.txt 2>&1; then
+                cat /tmp/vix-musl-ctest.txt
+                exit 1
+              fi
+              cat /tmp/vix-musl-ctest.txt
+              if grep -Eiq "tests did not run|Skipped" /tmp/vix-musl-ctest.txt; then
+                echo "A required musl Foundation or SDK test was skipped." >&2
+                exit 1
+              fi
+            '
+
+  android-cross:
+    name: Android NDK cross-build (${{ matrix.abi }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [arm64-v8a, x86_64]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: android-actions/setup-android@v3
+      - name: Install pinned Android NDK
+        run: sdkmanager "ndk;27.2.12479018"
+      - name: Configure and compile Android Foundation tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S . -B "android-${{ matrix.abi }}-build" -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/27.2.12479018/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI='${{ matrix.abi }}' -DANDROID_PLATFORM=android-21 \
+            -DCMAKE_BUILD_TYPE=Debug -DVIX_BUILD_TESTS=ON \
+            -DVIX_BUILD_EXAMPLES=OFF -DVIX_BUILD_NETWORK=ON
+          cmake --build "android-${{ matrix.abi }}-build" --parallel 2
+      - name: Report runtime execution as not provided by cross-build
+        run: echo "Cross-compilation only; Android emulator/device and Termux runtime qualification remain separate required evidence."
+
+  wasi-preview2:
+    name: WASI Preview 2 SDK and host-capability qualification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Install official wasi-sdk 34.0 and verify SHA-256
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/wasi-sdk-34.0-x86_64-linux.tar.gz"
+          curl --fail --location --retry 3 \
+            https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-34/wasi-sdk-34.0-x86_64-linux.tar.gz \
+            -o "$archive"
+          echo 'b761e3a0721dbae9c09a0059e5fdb2bf917d1b4a8a7b430fb3b5aafb0984b2c4  '"$archive" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/wasi-sdk"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/wasi-sdk" --strip-components=1
+          echo "VIX_WASI_SDK_ROOT=$RUNNER_TEMP/wasi-sdk" >> "$GITHUB_ENV"
+      - name: Install pinned Wasmtime CLI from its locked release crate
+        run: cargo install wasmtime-cli --version 49.0.3 --locked --root "$RUNNER_TEMP/wasmtime"
+      - name: Build combined WASI SDK and validate relocated public consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          toolchain="$GITHUB_WORKSPACE/domains/network/wasi-sdk-p2-toolchain.cmake"
+          wasmtime="$RUNNER_TEMP/wasmtime/bin/wasmtime"
+          test "$($wasmtime --version)" = "wasmtime 49.0.3"
+          cmake -S . -B wasi-sdk-build \
+            -DCMAKE_TOOLCHAIN_FILE="$toolchain" \
+            -DVIX_WASI_SDK_ROOT="$VIX_WASI_SDK_ROOT" \
+            -DVIX_WASMTIME_EXECUTABLE="$wasmtime" \
+            -DVIX_BUILD_TESTS=ON -DVIX_BUILD_EXAMPLES=OFF -DVIX_BUILD_NETWORK=ON
+          cmake --build wasi-sdk-build \
+            --target vix_canonical_architecture vix_network_public_consumer_test \
+                    vix_network_wasi_cooperative_test --parallel 2
+          cmake -DVIX_BINARY_DIR="$GITHUB_WORKSPACE/wasi-sdk-build" \
+            -DVIX_SOURCE_DIR="$GITHUB_WORKSPACE" -DVIX_EXPECT_NETWORK=ON \
+            -DVIX_TARGET_SYSTEM=WASI -DVIX_TOOLCHAIN_FILE="$toolchain" \
+            -DVIX_WASI_SDK_ROOT="$VIX_WASI_SDK_ROOT" \
+            -DVIX_WASMTIME_EXECUTABLE="$wasmtime" \
+            -P cmake/VixSdkPackageTest.cmake
+          ctest --test-dir wasi-sdk-build --show-only -R '^vix_network_wasi_' \
+            | tee "$RUNNER_TEMP/wasi-network-test-list.txt"
+          grep -Eq 'Total Tests: [1-9][0-9]*' "$RUNNER_TEMP/wasi-network-test-list.txt"
+          grep -Fq 'vix_network_wasi_public_consumer' "$RUNNER_TEMP/wasi-network-test-list.txt"
+          grep -Fq 'vix_network_wasi_host_denied' "$RUNNER_TEMP/wasi-network-test-list.txt"
+          grep -Fq 'vix_network_wasi_cooperative_loopback' "$RUNNER_TEMP/wasi-network-test-list.txt"
+          ctest --test-dir wasi-sdk-build --output-on-failure --parallel 1 --timeout 120 \
+            -R '^vix_network_wasi_' 2>&1 | tee "$RUNNER_TEMP/wasi-network-ctest.txt"
+          if grep -Eiq 'tests did not run|Skipped' "$RUNNER_TEMP/wasi-network-ctest.txt"; then
+            echo "A required WASI Network test was skipped." >&2
+            exit 1
+          fi
+      - name: Build and execute WASI Preview 2 socket capability tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          toolchain="$GITHUB_WORKSPACE/domains/network/wasi-sdk-p2-toolchain.cmake"
+          wasmtime="$RUNNER_TEMP/wasmtime/bin/wasmtime"
+          cmake -S domains/network/tests/wasi -B wasi-socket-tests \
+            -DCMAKE_TOOLCHAIN_FILE="$toolchain" -DVIX_WASI_SDK_ROOT="$VIX_WASI_SDK_ROOT" \
+            -DWASMTIME_EXECUTABLE="$wasmtime"
+          cmake --build wasi-socket-tests --parallel 2
+          ctest --test-dir wasi-socket-tests --show-only \
+            | tee "$RUNNER_TEMP/wasi-socket-test-list.txt"
+          grep -Eq 'Total Tests: [1-9][0-9]*' "$RUNNER_TEMP/wasi-socket-test-list.txt"
+          grep -Fq 'vix_wasi_p2_host_denies_network' "$RUNNER_TEMP/wasi-socket-test-list.txt"
+          grep -Fq 'vix_wasi_p2_loopback_tcp' "$RUNNER_TEMP/wasi-socket-test-list.txt"
+          ctest --test-dir wasi-socket-tests --output-on-failure --parallel 1 --timeout 120 \
+            2>&1 | tee "$RUNNER_TEMP/wasi-socket-ctest.txt"
+          if grep -Eiq 'tests did not run|Skipped' "$RUNNER_TEMP/wasi-socket-ctest.txt"; then
+            echo "A required WASI socket capability test was skipped." >&2
+            exit 1
+          fi

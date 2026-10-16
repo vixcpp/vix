@@ -6,7 +6,6 @@
 #include <vix/network/Provider.hpp>
 #include <vix/network/TcpConnection.hpp>
 #include <sys/socket.h>
-#include <sys/epoll.h>
 #include <sys/wait.h>
 #include <spawn.h>
 #include <fcntl.h>
@@ -103,14 +102,14 @@ int main(int argc,char **argv)
   // H1: a connect-style one-shot write handler that declines rearm retires
   // its registration before the same fd can become a TcpConnection resource.
   {
-    int fds[2];assert(pipe2(fds,O_NONBLOCK|O_CLOEXEC)==0);auto made_handoff=Provider::create();assert(made_handoff);auto handoff_provider=made_handoff.take();auto handoff_core=NetworkAccess::core_for_test(handoff_provider);auto old=handoff_core->register_descriptor(fds[0],ReadinessHandler{},ReadinessHandler{[](std::uint32_t){return false;}});assert(old);assert(handoff_core->dispatch_for_test(old,EPOLLOUT));assert(handoff_core->live_descriptor_registrations_for_test()==0);auto replacement=handoff_core->register_descriptor(fds[0],ReadinessHandler{[](std::uint32_t){return false;}},ReadinessHandler{});assert(replacement);handoff_core->retire(replacement);close(fds[0]);close(fds[1]);assert(handoff_provider.shutdown());
+    int fds[2];assert(pipe2(fds,O_NONBLOCK|O_CLOEXEC)==0);auto made_handoff=Provider::create();assert(made_handoff);auto handoff_provider=made_handoff.take();auto handoff_core=NetworkAccess::core_for_test(handoff_provider);auto old=handoff_core->register_descriptor(fds[0],ReadinessHandler{},ReadinessHandler{[](std::uint32_t){return false;}});assert(old);assert(handoff_core->dispatch_for_test(old,reactor_writable));assert(handoff_core->live_descriptor_registrations_for_test()==0);auto replacement=handoff_core->register_descriptor(fds[0],ReadinessHandler{[](std::uint32_t){return false;}},ReadinessHandler{});assert(replacement);handoff_core->retire(replacement);close(fds[0]);close(fds[1]);assert(handoff_provider.shutdown());
   }
 
-  // H2: EPOLLONESHOT retains and rearms a live WRITE direction after every
+  // H2: one-shot readiness retains and rearms a live WRITE direction after every
   // readiness dispatch.  The terminal WRITE callback removes only itself;
   // an independently active READ direction remains registered and rearmed.
   {
-    int fds[2];assert(pipe2(fds,O_NONBLOCK|O_CLOEXEC)==0);auto made_rearm=Provider::create();assert(made_rearm);auto rearm_provider=made_rearm.take();auto rearm_core=NetworkAccess::core_for_test(rearm_provider);std::atomic<unsigned> reads{},writes{};auto token=rearm_core->register_descriptor(fds[0],ReadinessHandler{[&](std::uint32_t){++reads;return true;}},ReadinessHandler{[&](std::uint32_t){return ++writes<3;}});assert(token);const auto before=rearm_core->epoll_ctl_count_for_test(EPOLL_CTL_MOD);assert(rearm_core->dispatch_for_test(token,EPOLLOUT));assert(writes==1&&rearm_core->accepts(token));assert(rearm_core->epoll_ctl_count_for_test(EPOLL_CTL_MOD)==before+1);assert(rearm_core->dispatch_for_test(token,EPOLLOUT));assert(writes==2&&rearm_core->accepts(token));assert(rearm_core->epoll_ctl_count_for_test(EPOLL_CTL_MOD)==before+2);assert(rearm_core->dispatch_for_test(token,EPOLLOUT));assert(writes==3&&rearm_core->accepts(token));assert(rearm_core->epoll_ctl_count_for_test(EPOLL_CTL_MOD)==before+3);assert(rearm_core->dispatch_for_test(token,EPOLLIN));assert(reads==1&&rearm_core->accepts(token));rearm_core->retire(token);close(fds[0]);close(fds[1]);assert(rearm_provider.shutdown());
+    int fds[2];assert(pipe2(fds,O_NONBLOCK|O_CLOEXEC)==0);auto made_rearm=Provider::create();assert(made_rearm);auto rearm_provider=made_rearm.take();auto rearm_core=NetworkAccess::core_for_test(rearm_provider);std::atomic<unsigned> reads{},writes{};auto token=rearm_core->register_descriptor(fds[0],ReadinessHandler{[&](std::uint32_t){++reads;return true;}},ReadinessHandler{[&](std::uint32_t){return ++writes<3;}});assert(token);const auto before=rearm_core->reactor_control_count_for_test(ReactorControl::modify);assert(rearm_core->dispatch_for_test(token,reactor_writable));assert(writes==1&&rearm_core->accepts(token));assert(rearm_core->reactor_control_count_for_test(ReactorControl::modify)==before+1);assert(rearm_core->dispatch_for_test(token,reactor_writable));assert(writes==2&&rearm_core->accepts(token));assert(rearm_core->reactor_control_count_for_test(ReactorControl::modify)==before+2);assert(rearm_core->dispatch_for_test(token,reactor_writable));assert(writes==3&&rearm_core->accepts(token));assert(rearm_core->reactor_control_count_for_test(ReactorControl::modify)==before+3);assert(rearm_core->dispatch_for_test(token,reactor_readable));assert(reads==1&&rearm_core->accepts(token));rearm_core->retire(token);close(fds[0]);close(fds[1]);assert(rearm_provider.shutdown());
   }
 
   // C3: hold the normal starter progression, terminalize through the normal

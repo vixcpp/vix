@@ -1,7 +1,22 @@
 add_executable(vix_files_test files_test.cpp)
 target_compile_features(vix_files_test PRIVATE cxx_std_20)
 target_link_libraries(vix_files_test PRIVATE vix::files)
-add_test(NAME vix_files_test COMMAND vix_files_test)
+if (NOT CMAKE_SYSTEM_NAME STREQUAL "WASI")
+  add_test(NAME vix_files_test COMMAND vix_files_test)
+endif()
+
+if (ANDROID)
+  add_executable(vix_files_android_consumer_test public_consumer.cpp)
+  target_compile_features(vix_files_android_consumer_test PRIVATE cxx_std_20)
+  target_link_libraries(vix_files_android_consumer_test PRIVATE vix::files)
+  add_test(NAME vix_files_android_public_consumer COMMAND vix_files_android_consumer_test)
+  set_tests_properties(vix_files_test PROPERTIES LABELS "files;android;functional")
+  set_tests_properties(vix_files_android_public_consumer PROPERTIES LABELS "files;android;consumer")
+endif()
+
+if (CMAKE_SYSTEM_NAME STREQUAL "WASI")
+  add_subdirectory(wasi)
+endif()
 
 function(vix_files_expect_exception_disabled_compile name source)
   if (NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")

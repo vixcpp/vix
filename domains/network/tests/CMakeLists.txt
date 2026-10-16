@@ -1,3 +1,4 @@
+if (VIX_NETWORK_PLATFORM_BACKEND STREQUAL "linux")
 add_executable(vix_network_phase1_test phase1_test.cpp)
 target_compile_features(vix_network_phase1_test PRIVATE cxx_std_20)
 target_include_directories(vix_network_phase1_test PRIVATE ../src)
@@ -5,8 +6,20 @@ target_link_libraries(vix_network_phase1_test PRIVATE vix_network vix::standard)
 add_test(NAME vix_network_phase1_test COMMAND vix_network_phase1_test)
 add_executable(vix_network_public_consumer_test public_consumer.cpp)
 target_compile_features(vix_network_public_consumer_test PRIVATE cxx_std_20)
-target_link_libraries(vix_network_public_consumer_test PRIVATE vix_network vix::standard)
+# This consumer intentionally links only Network: Standard is part of the
+# exported public usage requirements of vix::network.
+target_link_libraries(vix_network_public_consumer_test PRIVATE vix_network)
 add_test(NAME vix_network_public_consumer_test COMMAND vix_network_public_consumer_test)
+add_executable(vix_network_continuations_lifecycle_test continuations_lifecycle_test.cpp)
+target_compile_features(vix_network_continuations_lifecycle_test PRIVATE cxx_std_20)
+target_include_directories(vix_network_continuations_lifecycle_test PRIVATE ../src)
+target_link_libraries(vix_network_continuations_lifecycle_test PRIVATE vix_network)
+add_test(NAME vix_network_continuations_partial_startup
+  COMMAND vix_network_continuations_lifecycle_test partial-startup)
+add_test(NAME vix_network_continuations_concurrent_startup
+  COMMAND vix_network_continuations_lifecycle_test concurrent-startup)
+add_test(NAME vix_network_continuations_process_exit_drain
+  COMMAND vix_network_continuations_lifecycle_test drain-on-process-exit)
 add_executable(vix_network_phase2a_test phase2a_test.cpp)
 target_compile_features(vix_network_phase2a_test PRIVATE cxx_std_20)
 target_include_directories(vix_network_phase2a_test PRIVATE ../src)
@@ -30,3 +43,115 @@ target_include_directories(vix_network_phase2d_test PRIVATE ../src)
 target_link_libraries(vix_network_phase2d_test PRIVATE vix_network vix::standard)
 add_test(NAME vix_network_phase2d_test COMMAND vix_network_phase2d_test)
 set_tests_properties(vix_network_phase2d_test PROPERTIES SKIP_RETURN_CODE 77)
+elseif (VIX_NETWORK_PLATFORM_BACKEND STREQUAL "android")
+# Android NDK builds use public-consumer and transport tests that can run on a
+# device/emulator or inside Termux. Linux reactor white-box tests depend on
+# host-specific harness assumptions and are intentionally not registered here.
+add_executable(vix_network_public_consumer_test public_consumer.cpp)
+target_compile_features(vix_network_public_consumer_test PRIVATE cxx_std_20)
+target_link_libraries(vix_network_public_consumer_test PRIVATE vix_network)
+add_test(NAME vix_network_android_public_consumer COMMAND vix_network_public_consumer_test)
+add_executable(vix_network_continuations_lifecycle_test continuations_lifecycle_test.cpp)
+target_compile_features(vix_network_continuations_lifecycle_test PRIVATE cxx_std_20)
+target_include_directories(vix_network_continuations_lifecycle_test PRIVATE ../src)
+target_link_libraries(vix_network_continuations_lifecycle_test PRIVATE vix_network)
+add_test(NAME vix_network_android_continuations_partial_startup
+  COMMAND vix_network_continuations_lifecycle_test partial-startup)
+add_test(NAME vix_network_android_continuations_lifecycle
+  COMMAND vix_network_continuations_lifecycle_test concurrent-startup)
+add_test(NAME vix_network_android_continuations_process_exit_drain
+  COMMAND vix_network_continuations_lifecycle_test drain-on-process-exit)
+add_executable(vix_network_transport_contract_test windows_transport_test.cpp)
+target_compile_features(vix_network_transport_contract_test PRIVATE cxx_std_20)
+target_link_libraries(vix_network_transport_contract_test PRIVATE vix_network)
+add_test(NAME vix_network_android_transport COMMAND vix_network_transport_contract_test)
+add_test(NAME vix_network_android_ipv6_transport
+  COMMAND vix_network_transport_contract_test --ipv6-only)
+set_tests_properties(vix_network_android_ipv6_transport PROPERTIES SKIP_RETURN_CODE 77)
+elseif (VIX_NETWORK_PLATFORM_BACKEND STREQUAL "macos")
+# These tests use only the public Network contract and portable POSIX peer
+# sockets; Linux reactor-internal tests remain registered only for Linux.
+add_executable(vix_network_public_consumer_test public_consumer.cpp)
+target_compile_features(vix_network_public_consumer_test PRIVATE cxx_std_20)
+target_link_libraries(vix_network_public_consumer_test PRIVATE vix_network)
+add_test(NAME vix_network_public_consumer_test COMMAND vix_network_public_consumer_test)
+add_executable(vix_network_continuations_lifecycle_test continuations_lifecycle_test.cpp)
+target_compile_features(vix_network_continuations_lifecycle_test PRIVATE cxx_std_20)
+target_include_directories(vix_network_continuations_lifecycle_test PRIVATE ../src)
+target_link_libraries(vix_network_continuations_lifecycle_test PRIVATE vix_network)
+add_test(NAME vix_network_continuations_partial_startup
+  COMMAND vix_network_continuations_lifecycle_test partial-startup)
+add_test(NAME vix_network_continuations_concurrent_startup
+  COMMAND vix_network_continuations_lifecycle_test concurrent-startup)
+add_test(NAME vix_network_continuations_process_exit_drain
+  COMMAND vix_network_continuations_lifecycle_test drain-on-process-exit)
+add_executable(vix_network_phase2d_test phase2d_test.cpp)
+target_compile_features(vix_network_phase2d_test PRIVATE cxx_std_20)
+target_include_directories(vix_network_phase2d_test PRIVATE ../src)
+target_link_libraries(vix_network_phase2d_test PRIVATE vix_network vix::standard)
+add_test(NAME vix_network_phase2d_test COMMAND vix_network_phase2d_test)
+set_tests_properties(vix_network_phase2d_test PROPERTIES SKIP_RETURN_CODE 77)
+add_executable(vix_network_transport_contract_test windows_transport_test.cpp)
+target_compile_features(vix_network_transport_contract_test PRIVATE cxx_std_20)
+target_link_libraries(vix_network_transport_contract_test PRIVATE vix_network)
+add_test(NAME vix_network_transport_contract_test COMMAND vix_network_transport_contract_test)
+add_test(NAME vix_network_ipv6_transport_test
+  COMMAND vix_network_transport_contract_test --ipv6-only)
+set_tests_properties(vix_network_ipv6_transport_test PROPERTIES SKIP_RETURN_CODE 77)
+elseif (VIX_NETWORK_PLATFORM_BACKEND STREQUAL "windows")
+add_executable(vix_network_public_consumer_test public_consumer.cpp)
+target_compile_features(vix_network_public_consumer_test PRIVATE cxx_std_20)
+target_link_libraries(vix_network_public_consumer_test PRIVATE vix_network)
+add_test(NAME vix_network_public_consumer_test COMMAND vix_network_public_consumer_test)
+add_executable(vix_network_continuations_lifecycle_test continuations_lifecycle_test.cpp)
+target_compile_features(vix_network_continuations_lifecycle_test PRIVATE cxx_std_20)
+target_include_directories(vix_network_continuations_lifecycle_test PRIVATE ../src)
+target_link_libraries(vix_network_continuations_lifecycle_test PRIVATE vix_network)
+add_test(NAME vix_network_continuations_partial_startup
+  COMMAND vix_network_continuations_lifecycle_test partial-startup)
+add_test(NAME vix_network_continuations_concurrent_startup
+  COMMAND vix_network_continuations_lifecycle_test concurrent-startup)
+add_test(NAME vix_network_continuations_process_exit_drain
+  COMMAND vix_network_continuations_lifecycle_test drain-on-process-exit)
+add_executable(vix_network_transport_contract_test windows_transport_test.cpp)
+target_compile_features(vix_network_transport_contract_test PRIVATE cxx_std_20)
+target_link_libraries(vix_network_transport_contract_test PRIVATE vix_network)
+add_test(NAME vix_network_transport_contract_test COMMAND vix_network_transport_contract_test)
+add_test(NAME vix_network_ipv6_transport_test
+  COMMAND vix_network_transport_contract_test --ipv6-only)
+set_tests_properties(vix_network_ipv6_transport_test PROPERTIES SKIP_RETURN_CODE 77)
+add_executable(vix_network_windows_handle_reuse_test windows_handle_reuse_test.cpp)
+target_compile_features(vix_network_windows_handle_reuse_test PRIVATE cxx_std_20)
+target_include_directories(vix_network_windows_handle_reuse_test PRIVATE ../src)
+target_link_libraries(vix_network_windows_handle_reuse_test PRIVATE vix_network)
+add_test(NAME vix_network_windows_handle_reuse_test COMMAND vix_network_windows_handle_reuse_test)
+elseif (VIX_NETWORK_PLATFORM_BACKEND STREQUAL "wasi-p2")
+set(VIX_WASMTIME_EXECUTABLE "" CACHE FILEPATH "Pinned Wasmtime 49.0.3 executable for WASI Preview 2 Network tests")
+if (NOT VIX_WASMTIME_EXECUTABLE OR NOT EXISTS "${VIX_WASMTIME_EXECUTABLE}")
+  message(FATAL_ERROR "WASI Network tests require VIX_WASMTIME_EXECUTABLE (Wasmtime 49.0.3); host-capability tests may not be silently omitted.")
+endif()
+add_executable(vix_network_public_consumer_test public_consumer.cpp)
+target_compile_features(vix_network_public_consumer_test PRIVATE cxx_std_20)
+target_link_libraries(vix_network_public_consumer_test PRIVATE vix_network)
+add_test(NAME vix_network_wasi_public_consumer
+  COMMAND "${VIX_WASMTIME_EXECUTABLE}" run "$<TARGET_FILE:vix_network_public_consumer_test>")
+add_executable(vix_network_wasi_cooperative_test wasi_cooperative_test.cpp)
+target_compile_features(vix_network_wasi_cooperative_test PRIVATE cxx_std_20)
+target_link_libraries(vix_network_wasi_cooperative_test PRIVATE vix_network)
+add_test(NAME vix_network_wasi_host_denied
+  COMMAND "${VIX_WASMTIME_EXECUTABLE}" run -W tcp=y
+          "$<TARGET_FILE:vix_network_wasi_cooperative_test>" denied)
+add_test(NAME vix_network_wasi_cooperative_loopback
+  COMMAND "${VIX_WASMTIME_EXECUTABLE}" run -W tcp=y -W inherit-network=y
+          "$<TARGET_FILE:vix_network_wasi_cooperative_test>" loopback)
+endif()
+
+# Cooperative progress is exercised through loopback TCP. The private include
+# is used only to hold one queued resume for the abandonment regression.
+if (NOT VIX_NETWORK_PLATFORM_BACKEND STREQUAL "wasi-p2")
+  add_executable(vix_network_cooperative_progress_test cooperative_progress_test.cpp)
+  target_compile_features(vix_network_cooperative_progress_test PRIVATE cxx_std_20)
+  target_include_directories(vix_network_cooperative_progress_test PRIVATE ../src)
+  target_link_libraries(vix_network_cooperative_progress_test PRIVATE vix_network)
+  add_test(NAME vix_network_cooperative_progress_test COMMAND vix_network_cooperative_progress_test)
+endif()

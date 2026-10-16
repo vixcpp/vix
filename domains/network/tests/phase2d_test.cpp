@@ -9,12 +9,14 @@
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <spawn.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <array>
 #include <atomic>
 #include <cassert>
 #include <chrono>
 #include <cstring>
+#include <cstdio>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -60,9 +62,18 @@ static Endpoint loopback(std::uint16_t port = 0)
 }
 static int connect_peer(const Endpoint &endpoint)
 {
-  int fd = ::socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0); assert(fd >= 0);
+  int fd = ::socket(AF_INET, SOCK_STREAM, 0); assert(fd >= 0);
+  assert(::fcntl(fd, F_SETFD, FD_CLOEXEC) == 0);
   sockaddr_in address{}; address.sin_family = AF_INET; address.sin_port = htons(endpoint.port());
   address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+  assert(::connect(fd, reinterpret_cast<sockaddr *>(&address), sizeof address) == 0);
+  return fd;
+}
+static int connect_peer_v6(const Endpoint &endpoint)
+{
+  int fd = ::socket(AF_INET6, SOCK_STREAM, 0); assert(fd >= 0);
+  sockaddr_in6 address{}; address.sin6_family = AF_INET6; address.sin6_port = htons(endpoint.port());
+  address.sin6_addr = in6addr_loopback;
   assert(::connect(fd, reinterpret_cast<sockaddr *>(&address), sizeof address) == 0);
   return fd;
 }
@@ -174,6 +185,47 @@ int main(int argc, char **argv)
   auto first_endpoint = first_listener.local_endpoint(); assert(first_endpoint);
   auto collision = collision_provider.listen(first_endpoint.value()); assert(!collision && collision.error().identity() == address_in_use);
   assert(first_listener.close()); assert(collision_provider.shutdown());
+
+  // Refusal is reported through the same Standard error contract on every
+  // readiness backend (the closed ephemeral port cannot accept the connect).
+  auto refused_listener_result = Provider::create(); assert(refused_listener_result);
+  auto refused_provider = refused_listener_result.take();
+  auto refused_listener = refused_provider.listen(loopback()); assert(refused_listener);
+  auto refused_endpoint = refused_listener.value().local_endpoint(); assert(refused_endpoint);
+  assert(refused_listener.value().close());
+  auto refused = std::make_shared<Seen<TcpConnection>>();
+  auto refused_task = await(refused_provider.connect(refused_endpoint.value()), refused);
+  assert(done(refused));
+  { std::lock_guard lock(refused->mutex); assert(refused->value->status() == vix::CompletionStatus::Failure && refused->value->error().identity() == connection_refused); }
+  assert(refused_provider.shutdown());
+
+  // Exercise IPv6 TCP when loopback is enabled by the host. A failed listen
+  // denotes an unavailable host capability; once it succeeds, transport
+  // failures are test failures rather than skips.
+  auto ipv6_address = Address::parse("::1"); assert(ipv6_address);
+  auto ipv6_endpoint = Endpoint::create(ipv6_address.take(), 0); assert(ipv6_endpoint);
+  auto ipv6_provider_result = Provider::create(); assert(ipv6_provider_result);
+  auto ipv6_provider = ipv6_provider_result.take();
+  auto ipv6_listener_result = ipv6_provider.listen(ipv6_endpoint.value());
+  if (ipv6_listener_result)
+  {
+    auto ipv6_listener = ipv6_listener_result.take();
+    auto ipv6_local = ipv6_listener.local_endpoint(); assert(ipv6_local);
+    auto ipv6_accepted = std::make_shared<Seen<TcpConnection>>();
+    auto ipv6_accept_task = await(ipv6_listener.accept(), ipv6_accepted);
+    int ipv6_peer = connect_peer_v6(ipv6_local.value());
+    assert(done(ipv6_accepted));
+    auto ipv6_connection = take_connection(ipv6_accepted);
+    assert(ipv6_connection.close()); ::close(ipv6_peer);
+    assert(ipv6_listener.close());
+  }
+  else
+  {
+    const auto identity = ipv6_listener_result.error().identity();
+    assert(identity == unsupported || identity == address_unavailable);
+    std::fprintf(stderr, "IPv6 loopback unavailable on this host; IPv6 transport not exercised\n");
+  }
+  assert(ipv6_provider.shutdown());
 
   const auto overlap = spawn_overlap(argv[0]); assert(WIFEXITED(overlap) && WEXITSTATUS(overlap) == 42);
 }

@@ -41,7 +41,10 @@ namespace vix::files
     bool append_ = false;
     std::optional<vix::Error> close_error_;
     friend vix::Result<File> open(const Path &, OpenOptions);
+#ifndef _WIN32
     friend int detail_duplicate_native_handle(const File &) noexcept;
+#endif
+    friend std::intptr_t detail_duplicate_process_handle(const File &) noexcept;
   };
 } // namespace vix::files
 

@@ -1,0 +1,486 @@
+name: Vix release qualification
+
+"on":
+  workflow_call:
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  canonical-ci:
+    name: Canonical Foundations, CLI, and platform qualification
+    uses: ./.github/workflows/canonical-ci.yml
+    permissions:
+      contents: read
+
+  managed-installer-contracts:
+    permissions:
+      contents: read
+    # Matrix strategy and steps follow.
+    name: Managed installer protocol contracts (${{ matrix.name }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            runner: ubuntu-24.04
+          - name: macos-arm64
+            runner: macos-14
+          - name: macos-x86_64
+            runner: macos-15-intel
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Verify exact root-pinned source revisions
+        shell: bash
+        run: |
+          set -euo pipefail
+          git submodule status --recursive | tee "$RUNNER_TEMP/installer-submodules.txt"
+          if grep -Eq '^[+-U]' "$RUNNER_TEMP/installer-submodules.txt"; then
+            echo "A CLI or dependency submodule differs from its pinned revision." >&2
+            exit 1
+          fi
+      - name: Install Linux CLI test dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config git \
+            libssl-dev zlib1g-dev libsqlite3-dev libbrotli-dev \
+            libspdlog-dev libfmt-dev libcurl4-openssl-dev nlohmann-json3-dev
+      - name: Install macOS CLI test dependencies
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          brew install cmake ninja openssl@3 zlib sqlite3 brotli spdlog fmt curl
+          echo "CMAKE_PREFIX_PATH=$(brew --prefix openssl@3):$(brew --prefix sqlite3):$(brew --prefix brotli):$(brew --prefix spdlog):$(brew --prefix fmt)" >> "$GITHUB_ENV"
+      - name: Provision isolated test-only trust and HTTPS source fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/test-provision"
+          cat > "$RUNNER_TEMP/test-provision/releases.toml" <<'EOF'
+          format = 1
+
+          [[trusted-key]]
+          key-id = "runtime-test"
+          algorithm = "ed25519"
+          public-key = "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
+          EOF
+          cat > "$RUNNER_TEMP/test-provision/source.toml" <<'EOF'
+          format = 1
+
+          [channels.stable]
+          manifest = "https://releases.invalid/manifest.toml"
+          signature = "https://releases.invalid/signature.toml"
+          EOF
+      - name: Configure CLI distribution contract tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S modules/cli -B cli-build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug -DVIX_CLI_BUILD_TESTS=ON \
+            -DVIX_REQUESTS_BUILD_TESTS=OFF -DVIX_REQUESTS_BUILD_EXAMPLES=OFF \
+            -DVIX_CORE_WITH_UI=OFF -DVIX_CORE_FETCH_UI=OFF -DVIX_CORE_WITH_MYSQL=OFF \
+            -DVIX_INSTALLER_TRUST_STORE_FILE="$RUNNER_TEMP/test-provision/releases.toml" \
+            -DVIX_INSTALLER_SOURCE_CONFIG_FILE="$RUNNER_TEMP/test-provision/source.toml"
+      - name: Build and run distribution signature, install, rollback, and extraction contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake --build cli-build --target \
+            vix_cli_distribution_foundation_tests \
+            vix_cli_distribution_runtime_tests \
+            vix_installer --parallel 2
+          ctest --test-dir cli-build --output-on-failure \
+            --tests-regex '^vix_cli_distribution_(foundation|runtime)_tests$' \
+            --no-tests=error --timeout 180 2>&1 | tee "$RUNNER_TEMP/managed-installer-ctest.txt"
+          if grep -Eiq 'tests did not run|Skipped' "$RUNNER_TEMP/managed-installer-ctest.txt"; then
+            echo "A required managed-installer contract test was skipped." >&2
+            exit 1
+          fi
+          cli-build/vix-installer --validate-provisioning
+
+  build-qualified-artifact:
+    name: Build and package x86_64-linux-gnu release candidate
+    needs: [canonical-ci, managed-installer-contracts]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    # Read-only public trust/source variables are provisioned on the protected
+    # release environment. No signing secret is referenced or injected here.
+    environment: vix-production-release
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          persist-credentials: false
+      - name: Validate release tag, package versions, and exact submodule commits
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
+          release_version="${RELEASE_TAG#v}"
+          sdk_version="$(sed -n 's/^set(_VIX_VERSION_FALLBACK "\([^"]*\)").*/\1/p' CMakeLists.txt)"
+          test -n "$sdk_version"
+          test "$release_version" = "$sdk_version" || {
+            echo "Release tag $release_version differs from canonical SDK version $sdk_version." >&2
+            exit 1
+          }
+          git submodule status --recursive | tee "$RUNNER_TEMP/release-submodules.txt"
+          if grep -Eq '^[+-U]' "$RUNNER_TEMP/release-submodules.txt"; then
+            echo "A submodule is not at the exact root-pinned commit." >&2
+            exit 1
+          fi
+          pinned_cli="$(git ls-tree HEAD modules/cli | awk '{print $3}')"
+          checked_cli="$(git -C modules/cli rev-parse HEAD)"
+          test -n "$pinned_cli" && test "$checked_cli" = "$pinned_cli"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          test -z "$(git -C modules/cli status --porcelain --untracked-files=all)"
+          echo "RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
+          echo "SDK_VERSION=$sdk_version" >> "$GITHUB_ENV"
+      - name: Require public production trust and HTTPS source configuration
+        shell: bash
+        env:
+          RELEASE_KEY_ID: ${{ vars.VIX_RELEASE_KEY_ID }}
+          RELEASE_PUBLIC_KEY: ${{ vars.VIX_RELEASE_AUTHORITY_PUBLIC_KEY_HEX }}
+          RELEASE_BASE_URL: ${{ vars.VIX_OFFICIAL_RELEASE_BASE_URL }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_KEY_ID" =~ ^[A-Za-z0-9._-]+$ ]]
+          [[ "$RELEASE_PUBLIC_KEY" =~ ^[0-9A-Fa-f]{64}$ ]]
+          test "$RELEASE_BASE_URL" = "https://github.com/$GITHUB_REPOSITORY/releases"
+          mkdir -p "$RUNNER_TEMP/vix-provision"
+          cat > "$RUNNER_TEMP/vix-provision/releases.toml" <<EOF
+          format = 1
+
+          [[trusted-key]]
+          key-id = "$RELEASE_KEY_ID"
+          algorithm = "ed25519"
+          public-key = "$RELEASE_PUBLIC_KEY"
+          EOF
+          cat > "$RUNNER_TEMP/vix-provision/source.toml" <<EOF
+          format = 1
+
+          [channels.stable]
+          manifest = "$RELEASE_BASE_URL/latest/download/release-manifest.toml"
+          signature = "$RELEASE_BASE_URL/latest/download/release-signature.toml"
+          EOF
+          ! grep -Eiq 'test|example|invalid|placeholder' "$RUNNER_TEMP/vix-provision/releases.toml"
+          ! grep -Eiq 'test|example|invalid|placeholder' "$RUNNER_TEMP/vix-provision/source.toml"
+      - name: Install Linux SDK and CLI build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config git patchelf binutils \
+            nlohmann-json3-dev libssl-dev zlib1g-dev libsqlite3-dev \
+            libbrotli-dev libspdlog-dev libfmt-dev libcurl4-openssl-dev
+      - name: Configure, build, and install canonical SDK at release version
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S . -B sdk-build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DVIX_BUILD_EXAMPLES=OFF -DVIX_BUILD_TESTS=OFF \
+            -DVIX_ENABLE_INSTALL=ON -DVIX_ENABLE_WARNINGS=ON
+          cmake --build sdk-build --target vix_canonical_architecture --parallel 2
+          cmake --install sdk-build --prefix "$RUNNER_TEMP/vix-sdk"
+          grep -F "set(PACKAGE_VERSION \"$RELEASE_VERSION\")" \
+            "$RUNNER_TEMP/vix-sdk/lib/cmake/Vix/VixConfigVersion.cmake"
+      - name: Configure, build, and validate release CLI components
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S modules/cli -B cli-build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DVIX_CLI_VERSION="$RELEASE_VERSION" -DVIX_CLI_BUILD_TESTS=OFF \
+            -DVIX_REQUESTS_BUILD_TESTS=OFF -DVIX_REQUESTS_BUILD_EXAMPLES=OFF \
+            -DVIX_CORE_WITH_UI=OFF -DVIX_CORE_FETCH_UI=OFF -DVIX_CORE_WITH_MYSQL=OFF \
+            -DVIX_INSTALLER_TRUST_STORE_FILE="$RUNNER_TEMP/vix-provision/releases.toml" \
+            -DVIX_INSTALLER_SOURCE_CONFIG_FILE="$RUNNER_TEMP/vix-provision/source.toml"
+          cmake --build cli-build --target vix_cli vix_installer vix_release_tool --parallel 2
+          cli-build/vix --version | tee "$RUNNER_TEMP/package-cli-version.txt"
+          grep -F "version : $RELEASE_VERSION" "$RUNNER_TEMP/package-cli-version.txt"
+          cli-build/vix-installer --validate-provisioning
+      - name: Assemble exact runtime dependencies and canonical distribution trees
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e dist
+          mkdir -p dist
+          runtime_paths() {
+            for executable in "$@"; do
+              ldd "$executable" | awk '
+                $2 == "=>" && $3 ~ /^\// && $1 !~ /^(libc\.so|libm\.so|libpthread\.so|libdl\.so|librt\.so|libresolv\.so|ld-linux|linux-vdso)/ { print $3 }
+                $1 ~ /^\// && $1 !~ /^(libc\.so|libm\.so|libpthread\.so|libdl\.so|librt\.so|libresolv\.so|ld-linux|linux-vdso)/ { print $1 }
+              '
+            done
+          }
+          for executable in cli-build/vix cli-build/vix-installer cli-build/vix-release-tool; do
+            ldd "$executable" | tee -a dist/runtime-dependencies-ldd.txt
+            if ldd "$executable" | grep -F 'not found'; then
+              echo "Unresolved runtime dependency in $executable" >&2
+              exit 1
+            fi
+            readelf -d "$executable" | tee -a dist/runtime-dependencies-readelf.txt
+          done
+          mapfile -t cli_runtime_libs < <(runtime_paths cli-build/vix | sort -u)
+          mapfile -t installer_runtime_libs < <(runtime_paths cli-build/vix-installer | sort -u)
+          cli_runtime_list="$(IFS=';'; printf '%s' "${cli_runtime_libs[*]}")"
+          installer_runtime_list="$(IFS=';'; printf '%s' "${installer_runtime_libs[*]}")"
+          runtime_license_dir="$RUNNER_TEMP/vix-runtime-licenses"
+          mkdir -p "$runtime_license_dir"
+          for library in "${cli_runtime_libs[@]}" "${installer_runtime_libs[@]}"; do
+            resolved_library="$(readlink -f "$library")"
+            owner_line="$(dpkg-query -S "$resolved_library" 2>/dev/null | sed -n '1{s/: .*//;p;}')"
+            test -n "$owner_line" || {
+              echo "Cannot identify the package owning bundled runtime library $library" >&2
+              exit 1
+            }
+            package_name="${owner_line%%:*}"
+            copyright_file="/usr/share/doc/$package_name/copyright"
+            test -s "$copyright_file" || {
+              echo "Missing runtime copyright notice for package $package_name" >&2
+              exit 1
+            }
+            cp "$copyright_file" "$runtime_license_dir/$package_name.copyright"
+          done
+          mapfile -d '' -t runtime_license_files < <(find "$runtime_license_dir" -type f -print0 | sort -z)
+          runtime_license_list="$(IFS=';'; printf '%s' "${runtime_license_files[*]}")"
+          cmake -DVIX_CLI_BINARY="$GITHUB_WORKSPACE/cli-build/vix" \
+            -DVIX_INSTALLER_BINARY="$GITHUB_WORKSPACE/cli-build/vix-installer" \
+            -DVIX_SDK_PREFIX="$RUNNER_TEMP/vix-sdk" \
+            -DVIX_SDK_LIBRARIES="$RUNNER_TEMP/vix-sdk/lib/libvix_files.a;$RUNNER_TEMP/vix-sdk/lib/libvix_process.a;$RUNNER_TEMP/vix-sdk/lib/libvix_network.a" \
+            "-DVIX_CLI_RUNTIME_LIBRARIES=$cli_runtime_list" \
+            "-DVIX_INSTALLER_RUNTIME_LIBRARIES=$installer_runtime_list" \
+            "-DVIX_RUNTIME_LICENSE_FILES=$runtime_license_list" \
+            -DVIX_RELEASE_TRUST="$RUNNER_TEMP/vix-provision/releases.toml" \
+            -DVIX_DISTRIBUTION_SOURCE="$RUNNER_TEMP/vix-provision/source.toml" \
+            -DVIX_OUTPUT_ROOT="$RUNNER_TEMP/vix-release-tree" \
+            -DVIX_BOOTSTRAP_OUTPUT_ROOT="$RUNNER_TEMP/vix-bootstrap-tree" \
+            -P cmake/AssembleVixDistribution.cmake
+          cp cli-build/vix-release-tool dist/vix-release-tool
+          patchelf --set-rpath '$ORIGIN/../lib' "$RUNNER_TEMP/vix-release-tree/bin/vix"
+          patchelf --set-rpath '$ORIGIN/../lib' "$RUNNER_TEMP/vix-bootstrap-tree/bin/vix-installer"
+          mkdir -p "$RUNNER_TEMP/vix-release-tree/lib" "$RUNNER_TEMP/vix-bootstrap-tree/lib"
+          for library in "${cli_runtime_libs[@]}"; do
+            patchelf --set-rpath '$ORIGIN' "$RUNNER_TEMP/vix-release-tree/lib/$(basename "$library")"
+          done
+          for library in "${installer_runtime_libs[@]}"; do
+            patchelf --set-rpath '$ORIGIN' "$RUNNER_TEMP/vix-bootstrap-tree/lib/$(basename "$library")"
+          done
+          test -f "$RUNNER_TEMP/vix-release-tree/share/doc/vix/README.md"
+          test -f "$RUNNER_TEMP/vix-release-tree/share/doc/vix/LICENSE"
+          test -f "$RUNNER_TEMP/vix-release-tree/share/doc/vix/CLI-LICENSE"
+          if ((${#cli_runtime_libs[@]} > 0)); then
+            test -n "$(find "$RUNNER_TEMP/vix-release-tree/share/licenses/runtime" -type f -print -quit)"
+          fi
+          if ((${#installer_runtime_libs[@]} > 0)); then
+            test -n "$(find "$RUNNER_TEMP/vix-bootstrap-tree/share/licenses/runtime" -type f -print -quit)"
+          fi
+          test -f "$RUNNER_TEMP/vix-release-tree/share/completions/bash/vix"
+          test -f "$RUNNER_TEMP/vix-release-tree/share/completions/zsh/_vix"
+          test -f "$RUNNER_TEMP/vix-release-tree/share/completions/fish/vix.fish"
+          readelf -h "$RUNNER_TEMP/vix-release-tree/bin/vix" | grep -F 'Advanced Micro Devices X86-64'
+          readelf -h "$RUNNER_TEMP/vix-bootstrap-tree/bin/vix-installer" | grep -F 'Advanced Micro Devices X86-64'
+          ldd "$RUNNER_TEMP/vix-release-tree/bin/vix" | tee -a dist/staged-runtime-check.txt
+          ldd "$RUNNER_TEMP/vix-bootstrap-tree/bin/vix-installer" | tee -a dist/staged-runtime-check.txt
+          if grep -F 'not found' dist/staged-runtime-check.txt; then
+            echo "Staged distribution has unresolved runtime libraries." >&2
+            exit 1
+          fi
+          check_runtime_containment() {
+            local executable="$1"
+            local bundled_lib_dir="$2"
+            ldd "$executable" | awk -v bundled_prefix="$bundled_lib_dir/" '
+              $2 == "=>" && $3 == "not" { print "missing dependency: " $1; failed=1 }
+              $2 == "=>" && $1 !~ /^(libc\.so|libm\.so|libpthread\.so|libdl\.so|librt\.so|libresolv\.so|ld-linux|linux-vdso)/ && index($3, bundled_prefix) != 1 {
+                print "non-system dependency not bundled: " $1 " => " $3; failed=1
+              }
+              END { exit failed }
+            '
+          }
+          check_runtime_containment "$RUNNER_TEMP/vix-release-tree/bin/vix" "$RUNNER_TEMP/vix-release-tree/lib"
+          check_runtime_containment "$RUNNER_TEMP/vix-bootstrap-tree/bin/vix-installer" "$RUNNER_TEMP/vix-bootstrap-tree/lib"
+          printf 'format = 1\nrelease = "%s"\ncli_version = "%s"\nhost = "x86_64-linux-gnu"\nroot = "%s"\ncli = "%s"\nsdk = "%s"\n' \
+            "$GITHUB_REF_NAME" "$RELEASE_VERSION" "$(git rev-parse HEAD)" \
+            "$(git -C modules/cli rev-parse HEAD)" "$SDK_VERSION" \
+            > "$RUNNER_TEMP/vix-release-tree/share/vix/release-build-info.toml"
+          cp "$RUNNER_TEMP/vix-release-tree/share/vix/release-build-info.toml" \
+            "$RUNNER_TEMP/vix-bootstrap-tree/share/vix/release-build-info.toml"
+          cp "$RUNNER_TEMP/vix-release-tree/share/vix/release-build-info.toml" dist/release-build-info.toml
+      - name: Create deterministic host archives and digest inventory
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          tar --sort=name --mtime="@$SOURCE_DATE_EPOCH" --owner=0 --group=0 --numeric-owner \
+            -C "$RUNNER_TEMP/vix-release-tree" -czf "dist/vix-x86_64-linux-gnu.tar.gz" .
+          tar --sort=name --mtime="@$SOURCE_DATE_EPOCH" --owner=0 --group=0 --numeric-owner \
+            -C "$RUNNER_TEMP/vix-bootstrap-tree" -czf "dist/vix-installer-x86_64-linux-gnu.tar.gz" .
+          tar -xOf dist/vix-x86_64-linux-gnu.tar.gz ./share/vix/release-build-info.toml \
+            | cmp - dist/release-build-info.toml
+          tar -xOf dist/vix-installer-x86_64-linux-gnu.tar.gz ./share/vix/release-build-info.toml \
+            | cmp - dist/release-build-info.toml
+          (cd dist && sha256sum vix-x86_64-linux-gnu.tar.gz \
+            vix-installer-x86_64-linux-gnu.tar.gz release-build-info.toml > SHA256SUMS)
+          (cd dist && sha256sum vix-x86_64-linux-gnu.tar.gz \
+            vix-installer-x86_64-linux-gnu.tar.gz vix-release-tool \
+            release-build-info.toml > QUALIFIED-SHA256SUMS)
+          test -s dist/vix-x86_64-linux-gnu.tar.gz
+          test -s dist/vix-installer-x86_64-linux-gnu.tar.gz
+          (cd dist && sha256sum --check SHA256SUMS)
+          (cd dist && sha256sum --check QUALIFIED-SHA256SUMS)
+      - uses: actions/upload-artifact@v6
+        with:
+          name: vix-release-x86_64-linux-gnu
+          path: |
+            dist/vix-x86_64-linux-gnu.tar.gz
+            dist/vix-installer-x86_64-linux-gnu.tar.gz
+            dist/vix-release-tool
+            dist/release-build-info.toml
+            dist/SHA256SUMS
+            dist/QUALIFIED-SHA256SUMS
+            dist/runtime-dependencies-ldd.txt
+            dist/runtime-dependencies-readelf.txt
+            dist/staged-runtime-check.txt
+          if-no-files-found: error
+
+  attest-qualified-artifacts:
+    name: Attest qualified archive and bootstrap provenance
+    needs: build-qualified-artifact
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          name: vix-release-x86_64-linux-gnu
+          path: dist
+      - name: Verify exact qualification digests before attestation
+        run: |
+          set -euo pipefail
+          (cd dist && sha256sum --check SHA256SUMS)
+          (cd dist && sha256sum --check QUALIFIED-SHA256SUMS)
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: |
+            dist/vix-x86_64-linux-gnu.tar.gz
+            dist/vix-installer-x86_64-linux-gnu.tar.gz
+            dist/vix-release-tool
+            dist/release-build-info.toml
+
+  verify-extracted-archive-and-sdk:
+    name: Fresh-directory archive and installed SDK qualification
+    needs: [build-qualified-artifact, attest-qualified-artifacts]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      attestations: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v6
+        with:
+          name: vix-release-x86_64-linux-gnu
+          path: dist
+      - name: Verify archive checksums and GitHub provenance
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          (cd dist && sha256sum --check SHA256SUMS)
+          (cd dist && sha256sum --check QUALIFIED-SHA256SUMS)
+          gh attestation verify dist/vix-x86_64-linux-gnu.tar.gz --repo "$GITHUB_REPOSITORY"
+          gh attestation verify dist/vix-installer-x86_64-linux-gnu.tar.gz --repo "$GITHUB_REPOSITORY"
+          gh attestation verify dist/vix-release-tool --repo "$GITHUB_REPOSITORY"
+          gh attestation verify dist/release-build-info.toml --repo "$GITHUB_REPOSITORY"
+          grep -Fx 'host = "x86_64-linux-gnu"' dist/release-build-info.toml
+          grep -Fx "release = \"${GITHUB_REF_NAME}\"" dist/release-build-info.toml
+          grep -F "root = \"$(git rev-parse HEAD)\"" dist/release-build-info.toml
+          grep -F "cli = \"$(git ls-tree HEAD modules/cli | awk '{print $3}')\"" dist/release-build-info.toml
+      - name: Extract into a fresh directory outside all build trees
+        shell: bash
+        run: |
+          set -euo pipefail
+          fresh="$RUNNER_TEMP/vix-extracted-clean"
+          test ! -e "$fresh"
+          mkdir -p "$fresh"
+          tar -xzf dist/vix-x86_64-linux-gnu.tar.gz -C "$fresh"
+          test -x "$fresh/bin/vix"
+          cmp "$fresh/share/vix/release-build-info.toml" dist/release-build-info.toml
+          grep -Fx "cli_version = \"${GITHUB_REF_NAME#v}\"" dist/release-build-info.toml
+          grep -Fx "sdk = \"${GITHUB_REF_NAME#v}\"" dist/release-build-info.toml
+          env -u LD_LIBRARY_PATH "$fresh/bin/vix" --version | tee "$RUNNER_TEMP/vix-version.txt"
+          grep -F "version : ${GITHUB_REF_NAME#v}" "$RUNNER_TEMP/vix-version.txt"
+          env -u LD_LIBRARY_PATH "$fresh/bin/vix" help > "$RUNNER_TEMP/vix-help.txt"
+          actual_commands="$(awk '
+            /^(Project|Packages|System):$/ { section=1; next }
+            /^Global options:/ { section=0 }
+            section && /^[[:space:]]+[a-z][a-z0-9-]*[[:space:]]/ { print $1 }
+          ' "$RUNNER_TEMP/vix-help.txt" | paste -sd' ' -)"
+          test "$actual_commands" = "new init build run test dev repl add remove update install publish upgrade"
+          ! grep -R -F "$GITHUB_WORKSPACE" "$fresh/include" "$fresh/lib/cmake/Vix" "$fresh/share"
+          ! find "$fresh/include/vix" -type f \( -path '*/detail/*' -o -name '*Engine.hpp' -o -name '*Test.hpp' \) | grep -q .
+          ! find "$fresh" \( -name CMakeCache.txt -o -name build.ninja -o -name compile_commands.json \) -print | grep -q .
+          ldd "$fresh/bin/vix" | tee "$RUNNER_TEMP/extracted-runtime.txt"
+          ! grep -F 'not found' "$RUNNER_TEMP/extracted-runtime.txt"
+          awk -v bundled_prefix="$fresh/lib/" '
+            $2 == "=>" && $3 == "not" { print "missing dependency: " $1; failed=1 }
+            $2 == "=>" && $1 !~ /^(libc\.so|libm\.so|libpthread\.so|libdl\.so|librt\.so|libresolv\.so|ld-linux|linux-vdso)/ && index($3, bundled_prefix) != 1 {
+              print "non-system dependency not bundled: " $1 " => " $3; failed=1
+            }
+            END { exit failed }
+          ' "$RUNNER_TEMP/extracted-runtime.txt"
+      - name: Install SDK consumer build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake build-essential \
+            pkg-config libssl-dev zlib1g-dev libsqlite3-dev libbrotli-dev \
+            libspdlog-dev libfmt-dev libcurl4-openssl-dev nlohmann-json3-dev
+      - name: Build and run an independent consumer using only the extracted SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S tests/distribution_archive_consumer \
+            -B "$RUNNER_TEMP/archive-sdk-consumer-build" \
+            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/vix-extracted-clean"
+          cmake --build "$RUNNER_TEMP/archive-sdk-consumer-build" --parallel 2
+          PATH="$RUNNER_TEMP/vix-extracted-clean/bin:$PATH" \
+            "$RUNNER_TEMP/archive-sdk-consumer-build/vix_distribution_archive_consumer"
+      - name: Validate extracted bootstrap provisioning locally
+        shell: bash
+        run: |
+          set -euo pipefail
+          bootstrap="$RUNNER_TEMP/vix-bootstrap-extracted"
+          mkdir -p "$bootstrap"
+          tar -xzf dist/vix-installer-x86_64-linux-gnu.tar.gz -C "$bootstrap"
+          test -x "$bootstrap/bin/vix-installer"
+          cmp "$bootstrap/share/vix/release-build-info.toml" dist/release-build-info.toml
+          "$bootstrap/bin/vix-installer" --validate-provisioning
+          ! grep -R -F "$GITHUB_WORKSPACE" "$bootstrap/share/vix"
+          ldd "$bootstrap/bin/vix-installer" | tee "$RUNNER_TEMP/bootstrap-runtime.txt"
+          ! grep -F 'not found' "$RUNNER_TEMP/bootstrap-runtime.txt"
+          awk -v bundled_prefix="$bootstrap/lib/" '
+            $2 == "=>" && $3 == "not" { print "missing dependency: " $1; failed=1 }
+            $2 == "=>" && $1 !~ /^(libc\.so|libm\.so|libpthread\.so|libdl\.so|librt\.so|libresolv\.so|ld-linux|linux-vdso)/ && index($3, bundled_prefix) != 1 {
+              print "non-system dependency not bundled: " $1 " => " $3; failed=1
+            }
+            END { exit failed }
+          ' "$RUNNER_TEMP/bootstrap-runtime.txt"

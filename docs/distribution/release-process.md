@@ -23,9 +23,11 @@ user-level mechanism; the installer does not modify shell configuration.
 
 The distribution assembly script stages only an explicitly built `vix` CLI,
 an installed canonical Vix SDK prefix, the release public trust store, the
-stable-channel source configuration, the reviewed CLI runtime-library list,
-and the current-Vix shell completion assets. It does not sweep repository
-modules into a release.
+stable-channel source configuration, the non-glibc runtime libraries resolved
+for the CLI and bootstrap installer, and the current-Vix shell completion
+assets. It includes Vix and CLI license files plus copyright notices for
+bundled system runtime libraries under share/licenses/runtime. It does not
+sweep repository modules into a release.
 
 The release authority owns the Ed25519 private key outside this repository.
 Release automation supplies its decoded key bytes to the internal
@@ -48,6 +50,18 @@ provisioning fails before assembly. The installer embeds these public inputs;
 the release private key is available only to the signing step.
 
 The first verified release matrix is intentionally only x86_64-linux-gnu.
-The release workflow records ldd and readelf -d output for review; this is
-runtime evidence, not a claim that the archive is self-contained. Direct
-archive installs use archive ownership and are not self-updated.
+Release qualification checks the tag against the canonical SDK and CLI
+versions, verifies root-pinned submodule revisions, assembles an explicit
+runtime-library set, and tests the extracted archive and SDK consumer outside
+the source/build tree. It records ldd/readelf evidence. Only x86_64-linux-gnu
+is currently assembled; this does not qualify another declared host tuple.
+Direct archive installs use archive ownership and are not self-updated.
+
+The qualification workflow uses GitHub build-provenance attestations for the
+host archive, bootstrap archive, release tool and build identity metadata. See
+`release-artifact-verification.md` for consumer-side verification commands.
+Official publication remains disabled until the protected signing environment,
+source provisioning, real HTTPS bootstrap/upgrade/rollback smoke and required
+platform evidence have been reviewed and validated. Existing distribution
+runtime tests exercise signatures, digests, extraction and rollback through
+test transports; they are not a real HTTPS end-to-end test.

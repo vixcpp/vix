@@ -24,6 +24,7 @@ namespace vix::process::errors
   inline constexpr auto already_exited = ErrorIdentity::define<"vix.process">(17);
   inline constexpr auto pipe_read_failed = ErrorIdentity::define<"vix.process">(18);
   inline constexpr auto close_failed = ErrorIdentity::define<"vix.process">(19);
+  inline constexpr auto unsupported_capability = ErrorIdentity::define<"vix.process">(20);
 }
 
 #endif

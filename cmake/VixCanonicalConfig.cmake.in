@@ -1,6 +1,14 @@
 @PACKAGE_INIT@
 
 include(CMakeFindDependencyMacro)
-find_dependency(Threads REQUIRED)
+if (@VIX_PACKAGE_NEEDS_THREADS@)
+  find_dependency(Threads REQUIRED)
+endif()
+
+set(Vix_Standard_FOUND TRUE)
+set(Vix_Files_FOUND TRUE)
+set(Vix_Process_FOUND TRUE)
+set(Vix_Network_FOUND @VIX_HAS_NETWORK@)
 
 include("${CMAKE_CURRENT_LIST_DIR}/VixTargets.cmake")
+check_required_components(Vix)

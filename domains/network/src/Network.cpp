@@ -1,57 +1,17 @@
 #include "Engine.hpp"
+#include "SocketPlatform.hpp"
 #include <vix/network/Provider.hpp>
 #include <vix/network/TcpConnection.hpp>
 #include <vix/network/TcpListener.hpp>
 #include <vix/network/Address.hpp>
 #include <vix/network/Errors.hpp>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <cerrno>
-#include <cstring>
 #include <optional>
 #include <limits>
-#include <string>
-#include <unistd.h>
 #include <utility>
 
 namespace vix::network::detail
 {
-  namespace
-  {
-    vix::Error transport_error(int error, const char *where)
-    {
-      const auto identity = [](int value)
-      {
-        switch (value)
-        {
-        case ECONNRESET:
-          return connection_reset;
-        case ECONNABORTED:
-          return connection_aborted;
-        case EPIPE:
-        case ENOTCONN:
-          return peer_closed;
-        case ENETUNREACH:
-          return network_unreachable;
-        case EHOSTUNREACH:
-          return host_unreachable;
-        case ETIMEDOUT:
-          return timed_out;
-        case EACCES:
-        case EPERM:
-          return permission_denied;
-        case ENOMEM:
-        case ENOBUFS:
-          return resource_exhausted;
-        default:
-          return io_failure;
-        }
-      }(error);
-      return vix::Error{identity, where};
-    }
-  }
-  vix::Error transport_error_for_test(int error) noexcept { return transport_error(error,"test"); }
+  vix::Error transport_error_for_test(int error) noexcept { return transport_error(error, "test"); }
   #ifdef VIX_NETWORK_TEST_CAPTURE
   namespace
   {
@@ -78,11 +38,18 @@ namespace vix::network::detail
   class TcpConnectionState : public std::enable_shared_from_this<TcpConnectionState>
   {
   public:
-    TcpConnectionState(int fd, std::shared_ptr<ProviderCore> provider) noexcept : fd_(fd), provider_(provider), lease_(std::in_place, std::move(provider)) {}
-    TcpConnectionState(int fd, ProviderResourceLease lease) noexcept : fd_(fd), provider_(lease.provider()), lease_(std::in_place, std::move(lease)) {}
-    ~TcpConnectionState() { (void)close(); }
+    TcpConnectionState(NativeSocket fd, std::shared_ptr<ProviderCore> provider) noexcept : fd_(fd), provider_(provider), lease_(std::in_place, std::move(provider)) {}
+    TcpConnectionState(NativeSocket fd, ProviderResourceLease lease) noexcept : fd_(fd), provider_(lease.provider()), lease_(std::in_place, std::move(lease)) {}
+    ~TcpConnectionState()
+    {
+      if (provider_->cooperative() && !provider_->on_owner_thread())
+        std::terminate();
+      (void)close();
+    }
     vix::Result<void> close() noexcept
     {
+      if (provider_->cooperative() && !provider_->on_owner_thread())
+        return vix::Error{operation_in_progress, "cooperative connection is thread-affine"};
       std::lock_guard lock(mutex_);
       if (closed_)
         return error_ ? vix::Result<void>{*error_} : vix::Result<void>::success();
@@ -91,14 +58,16 @@ namespace vix::network::detail
       closed_ = true;
       if (descriptor_)
         provider_->retire(std::exchange(descriptor_, 0));
-      const int fd = std::exchange(fd_, -1);
-      if (fd >= 0 && ::close(fd) != 0)
+      const NativeSocket fd = std::exchange(fd_, invalid_socket);
+      if (fd != invalid_socket && close_native_socket(fd) != 0)
         error_.emplace(vix::Error{close_failed, "close"});
       lease_.reset();
       return error_ ? vix::Result<void>{*error_} : vix::Result<void>::success();
     }
     vix::Result<void> shutdown_write() noexcept
     {
+      if (provider_->cooperative() && !provider_->on_owner_thread())
+        return vix::Error{operation_in_progress, "cooperative connection is thread-affine"};
       std::lock_guard lock(mutex_);
       if (closed_)
         return vix::Error{peer_closed,"connection is closed"};
@@ -108,17 +77,18 @@ namespace vix::network::detail
         return vix::Result<void>::success();
       for (;;)
       {
-        if (::shutdown(fd_,SHUT_WR)==0)
+        if (shutdown_socket_write(fd_) == 0)
         {
           write_shutdown_=true;
           return vix::Result<void>::success();
         }
-        if (errno==EINTR)
+        const int error = last_socket_error();
+        if (socket_error_interrupted(error))
           continue;
-        return transport_error(errno,"shutdown write");
+        return transport_error(error, "shutdown write");
       }
     }
-    int native_fd_for_test() const noexcept { return fd_; }
+    int native_fd_for_test() const noexcept { return static_cast<int>(fd_); }
     vix::network::Operation<std::size_t> receive(std::span<std::byte> buffer, OperationOptions options);
     vix::network::Operation<void> send(std::span<const std::byte> buffer, OperationOptions options);
 
@@ -218,7 +188,7 @@ namespace vix::network::detail
       return {read_progressions_for_test_, write_progressions_for_test_, native_recv_attempts_for_test_, native_send_attempts_for_test_,
               read_buffer_accesses_for_test_, write_buffer_accesses_for_test_, read_slot_releases_for_test_, write_slot_releases_for_test_, write_offset_, write_offset_at_terminal_release_for_test_};
     }
-    int fd_{-1};
+    NativeSocket fd_{invalid_socket};
     std::shared_ptr<ProviderCore> provider_;
     bool closed_{}, write_shutdown_{};
     bool read_active_{}, write_active_{};
@@ -243,9 +213,14 @@ namespace vix::network::detail
   class TcpListenerState : public std::enable_shared_from_this<TcpListenerState>
   {
   public:
-    TcpListenerState(int fd, Endpoint endpoint, std::shared_ptr<ProviderCore> provider) noexcept
+    TcpListenerState(NativeSocket fd, Endpoint endpoint, std::shared_ptr<ProviderCore> provider) noexcept
       : fd_(fd), endpoint_(std::move(endpoint)), provider_(std::move(provider)), lease_(std::in_place, provider_) {}
-    ~TcpListenerState() { (void)close(); }
+    ~TcpListenerState()
+    {
+      if (provider_->cooperative() && !provider_->on_owner_thread())
+        std::terminate();
+      (void)close();
+    }
 
     vix::Result<Endpoint> local_endpoint() const
     {
@@ -256,8 +231,10 @@ namespace vix::network::detail
     }
     vix::Result<void> close() noexcept
     {
+      if (provider_->cooperative() && !provider_->on_owner_thread())
+        return vix::Error{operation_in_progress, "cooperative listener is thread-affine"};
       std::uint64_t descriptor{};
-      int fd{-1};
+      NativeSocket fd{invalid_socket};
       {
         std::lock_guard lock(mutex_);
         if (closed_)
@@ -266,11 +243,11 @@ namespace vix::network::detail
           return vix::Error{operation_in_progress, "accept operation is active"};
         closed_ = true;
         descriptor = std::exchange(descriptor_, 0);
-        fd = std::exchange(fd_, -1);
+        fd = std::exchange(fd_, invalid_socket);
       }
       if (descriptor)
         provider_->retire(descriptor);
-      if (fd >= 0 && ::close(fd) != 0)
+      if (fd != invalid_socket && close_native_socket(fd) != 0)
         error_.emplace(vix::Error{close_failed, "close listener"});
       lease_.reset();
       return error_ ? vix::Result<void>{*error_} : vix::Result<void>::success();
@@ -296,7 +273,7 @@ namespace vix::network::detail
     void progress_accept(std::uint64_t generation)
     {
       std::shared_ptr<OperationRecord<TcpConnection>> record;
-      int fd{-1};
+      NativeSocket fd{invalid_socket};
       {
         std::lock_guard lock(mutex_);
         if (closed_ || generation != accept_generation_ || !accept_active_ || accept_result_published_)
@@ -308,33 +285,31 @@ namespace vix::network::detail
         return;
       for (;;)
       {
-        const int accepted = ::accept4(fd, nullptr, nullptr, SOCK_NONBLOCK | SOCK_CLOEXEC);
-        if (accepted >= 0)
+        int error{};
+        const NativeSocket accepted = accept_tcp_socket(fd, error);
+        if (accepted != invalid_socket)
         {
           {
             std::lock_guard lock(mutex_);
             if (closed_ || generation != accept_generation_ || !accept_active_ || accept_result_published_ || accept_record_.lock() != record)
             {
-              (void)::close(accepted);
+              (void)close_native_socket(accepted);
               return;
             }
             accept_result_published_ = true;
           }
           if (!record->adopt_native_for_test(accepted))
           {
-            (void)::close(accepted);
+            (void)close_native_socket(accepted);
             std::terminate();
           }
-          record->publish_native_success_with([](int client_fd, ProviderResourceLease lease)
+          record->publish_native_success_with([](NativeSocket client_fd, ProviderResourceLease lease)
                                               { return make_tcp_connection(client_fd, std::move(lease)); });
           return;
         }
-        const int error = errno;
-        if (error == EINTR)
+        if (socket_error_accept_retry(error))
           continue;
-        if (error == ECONNABORTED)
-          continue;
-        if (error == EAGAIN || error == EWOULDBLOCK)
+        if (socket_error_would_block(error))
           return;
         {
           std::lock_guard lock(mutex_);
@@ -347,7 +322,7 @@ namespace vix::network::detail
       }
     }
 
-    int fd_{-1};
+    NativeSocket fd_{invalid_socket};
     Endpoint endpoint_;
     std::shared_ptr<ProviderCore> provider_;
     mutable std::mutex mutex_;
@@ -379,7 +354,7 @@ namespace vix::network::detail
   {
     std::shared_ptr<OperationRecord<std::size_t>> record;
     std::span<std::byte> buffer;
-    int fd;
+    NativeSocket fd;
     {
       std::lock_guard lock(mutex_);
       ++read_progressions_for_test_;
@@ -400,17 +375,18 @@ namespace vix::network::detail
         ++native_recv_attempts_for_test_;
         ++read_buffer_accesses_for_test_;
       }
-      const auto result = ::recv(fd, buffer.data(), buffer.size(), 0);
+      const auto result = receive_socket(fd, buffer);
       if (result >= 0)
       {
         record->publish_native_for_test(vix::Completion<std::size_t>{static_cast<std::size_t>(result)});
         return;
       }
-      if (errno == EINTR)
+      const int error = last_socket_error();
+      if (socket_error_interrupted(error))
         continue;
-      if (errno == EAGAIN || errno == EWOULDBLOCK)
+      if (socket_error_would_block(error))
         return;
-      record->publish_native_for_test(vix::Completion<std::size_t>{transport_error(errno, "recv")});
+      record->publish_native_for_test(vix::Completion<std::size_t>{transport_error(error, "recv")});
       return;
     }
   }
@@ -419,7 +395,7 @@ namespace vix::network::detail
     std::shared_ptr<OperationRecord<void>> record;
     std::span<const std::byte> buffer;
     std::size_t offset;
-    int fd;
+    NativeSocket fd;
     {
       std::lock_guard lock(mutex_);
       ++write_progressions_for_test_;
@@ -445,7 +421,7 @@ namespace vix::network::detail
         ++native_send_attempts_for_test_;
         ++write_buffer_accesses_for_test_;
       }
-      const auto result = ::send(fd, buffer.data() + offset, buffer.size() - offset, MSG_NOSIGNAL);
+      const auto result = send_socket(fd, buffer.subspan(offset));
       if (result > 0)
       {
         offset += static_cast<std::size_t>(result);
@@ -462,11 +438,12 @@ namespace vix::network::detail
         }
         continue;
       }
-      if (result < 0 && errno == EINTR)
+      const int error = last_socket_error();
+      if (result < 0 && socket_error_interrupted(error))
         continue;
-      if (result < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+      if (result < 0 && socket_error_would_block(error))
         return;
-      record->publish_native_for_test(vix::Completion<void>{transport_error(result < 0 ? errno : EPIPE, "send")});
+      record->publish_native_for_test(vix::Completion<void>{transport_error(result < 0 ? error : socket_error_peer_closed_code(), "send")});
       return;
     }
   }
@@ -480,6 +457,8 @@ namespace vix::network::detail
     return OperationFactory<std::size_t>::make(provider_, [self, buffer, options](auto record) mutable
 #endif
                                                {
+      if (self->provider_->cooperative() && !self->provider_->on_owner_thread())
+      { record->complete(vix::Completion<std::size_t>{vix::Error{operation_in_progress, "cooperative connection is thread-affine"}}); return; }
       if(buffer.empty()) { record->complete(vix::Completion<std::size_t>{std::size_t{0}}); return; }
       bool closed = false, arm_failed = false;
       { std::lock_guard lock(self->mutex_);
@@ -511,6 +490,8 @@ namespace vix::network::detail
     return OperationFactory<void>::make(provider_, [self, buffer, options](auto record) mutable
 #endif
                                         {
+      if (self->provider_->cooperative() && !self->provider_->on_owner_thread())
+      { record->complete(vix::Completion<void>{vix::Error{operation_in_progress, "cooperative connection is thread-affine"}}); return; }
       bool closed = false, write_shutdown = false, arm_failed = false;
       { std::lock_guard lock(self->mutex_);
         if(self->closed_) closed = true;
@@ -540,6 +521,8 @@ namespace vix::network::detail
     auto self = shared_from_this();
     return OperationFactory<TcpConnection>::make(provider_, [self, options](auto record) mutable
                                                  {
+      if (self->provider_->cooperative() && !self->provider_->on_owner_thread())
+      { record->complete(vix::Completion<TcpConnection>{vix::Error{operation_in_progress, "cooperative listener is thread-affine"}}); return; }
       bool closed = false;
       bool arm_failed = false;
       {
@@ -589,27 +572,10 @@ namespace vix::network
 {
   struct detail_native_endpoint
   {
-    static sockaddr_storage make(const Endpoint &endpoint, socklen_t &size) noexcept
+    static detail::NativeAddress make(const Endpoint &endpoint) noexcept
     {
-      sockaddr_storage storage{};
-      if (endpoint.address_.family_ == AddressFamily::ipv4)
-      {
-        auto &address = reinterpret_cast<sockaddr_in &>(storage);
-        address.sin_family = AF_INET;
-        address.sin_port = htons(endpoint.port_);
-        std::memcpy(&address.sin_addr, endpoint.address_.bytes_.data(), 4);
-        size = sizeof address;
-      }
-      else
-      {
-        auto &address = reinterpret_cast<sockaddr_in6 &>(storage);
-        address.sin6_family = AF_INET6;
-        address.sin6_port = htons(endpoint.port_);
-        address.sin6_scope_id = endpoint.address_.scope_id_;
-        std::memcpy(&address.sin6_addr, endpoint.address_.bytes_.data(), 16);
-        size = sizeof address;
-      }
-      return storage;
+      return detail::make_native_address(endpoint.address_.family_, endpoint.address_.bytes_,
+                                         endpoint.address_.scope_id_, endpoint.port_);
     }
   };
 }
@@ -618,90 +584,21 @@ namespace vix::network
 {
   namespace
   {
-    vix::Result<Endpoint> endpoint_from_native(const sockaddr_storage &storage, socklen_t size)
-    {
-      char text[INET6_ADDRSTRLEN]{};
-      std::string address_text;
-      std::uint16_t port{};
-      if (size >= sizeof(sockaddr_in) && storage.ss_family == AF_INET)
-      {
-        const auto &native = reinterpret_cast<const sockaddr_in &>(storage);
-        if (!::inet_ntop(AF_INET, &native.sin_addr, text, sizeof text))
-          return vix::Error{io_failure, "getsockname"};
-        address_text = text;
-        port = ntohs(native.sin_port);
-      }
-      else if (size >= sizeof(sockaddr_in6) && storage.ss_family == AF_INET6)
-      {
-        const auto &native = reinterpret_cast<const sockaddr_in6 &>(storage);
-        if (!::inet_ntop(AF_INET6, &native.sin6_addr, text, sizeof text))
-          return vix::Error{io_failure, "getsockname"};
-        address_text = text;
-        if (native.sin6_scope_id)
-          address_text += "%" + std::to_string(native.sin6_scope_id);
-        port = ntohs(native.sin6_port);
-      }
-      else
-        return vix::Error{io_failure, "getsockname returned unsupported address"};
-      auto address = Address::parse(address_text);
-      if (!address)
-        return address.error();
-      return Endpoint::create(address.take(), port);
-    }
-    vix::Error connect_error(int error, const char *where)
-    {
-      const auto identity = [](int value)
-      {
-        switch (value)
-        {
-        case ECONNREFUSED:
-          return connection_refused;
-        case ECONNRESET:
-          return connection_reset;
-        case ECONNABORTED:
-          return connection_aborted;
-        case ENETUNREACH:
-          return network_unreachable;
-        case EHOSTUNREACH:
-          return host_unreachable;
-        case ETIMEDOUT:
-          return timed_out;
-        case EADDRNOTAVAIL:
-          return address_unavailable;
-        case EACCES:
-        case EPERM:
-          return permission_denied;
-        case EMFILE:
-        case ENFILE:
-        case ENOBUFS:
-        case ENOMEM:
-          return resource_exhausted;
-        case EAFNOSUPPORT:
-        case EPROTONOSUPPORT:
-        case ESOCKTNOSUPPORT:
-          return unsupported;
-        default:
-          return io_failure;
-        }
-      }(error);
-      return vix::Error{identity, where};
-    }
-    void publish_connect_result(const std::shared_ptr<detail::OperationRecord<TcpConnection>> &record, int fd)
+    void publish_connect_result(const std::shared_ptr<detail::OperationRecord<TcpConnection>> &record, detail::NativeSocket socket)
     {
       int error{};
-      socklen_t size = sizeof error;
-      if (::getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &size) != 0)
+      if (detail::connection_error(socket, error) != 0)
       {
-        record->publish_native_for_test(vix::Completion<TcpConnection>{connect_error(errno, "getsockopt")});
+        record->publish_native_for_test(vix::Completion<TcpConnection>{detail::connect_error(detail::last_socket_error(), "getsockopt")});
         return;
       }
       if (error != 0)
       {
-        record->publish_native_for_test(vix::Completion<TcpConnection>{connect_error(error, "connect")});
+        record->publish_native_for_test(vix::Completion<TcpConnection>{detail::connect_error(error, "connect")});
         return;
       }
-      record->publish_native_success_with([](int connected_fd, detail::ProviderResourceLease lease)
-                                          { return detail::make_tcp_connection(connected_fd, std::move(lease)); });
+      record->publish_native_success_with([](detail::NativeSocket connected_socket, detail::ProviderResourceLease lease)
+                                          { return detail::make_tcp_connection(connected_socket, std::move(lease)); });
     }
   }
   vix::Result<Provider> Provider::create()
@@ -711,10 +608,21 @@ namespace vix::network
       return created.error();
     return Provider{std::static_pointer_cast<void>(created.take())};
   }
+  vix::Result<Provider> Provider::create_cooperative()
+  {
+    auto created = detail::ProviderCore::create(true);
+    if (!created)
+      return created.error();
+    return Provider{std::static_pointer_cast<void>(created.take())};
+  }
   Provider::~Provider()
   {
-    if (core_ && std::static_pointer_cast<detail::ProviderCore>(core_)->has_dependencies())
-      std::terminate();
+    if (core_)
+    {
+      auto core = std::static_pointer_cast<detail::ProviderCore>(core_);
+      if ((core->cooperative() && !core->on_owner_thread()) || core->has_dependencies())
+        std::terminate();
+    }
   }
   vix::Result<void> Provider::shutdown()
   {
@@ -722,11 +630,19 @@ namespace vix::network
       return vix::Error{provider_stopped, "provider has no lifecycle authority"};
     return std::static_pointer_cast<detail::ProviderCore>(core_)->shutdown();
   }
+  vix::Result<std::size_t> Provider::poll()
+  {
+    if (!core_)
+      return vix::Error{provider_stopped, "provider has no lifecycle authority"};
+    return std::static_pointer_cast<detail::ProviderCore>(core_)->poll();
+  }
   Operation<TcpConnection> Provider::connect(const Endpoint &endpoint, OperationOptions options)
   {
     auto core = std::static_pointer_cast<detail::ProviderCore>(core_);
     return detail::OperationFactory<TcpConnection>::make(core, [core, endpoint, options](auto record) mutable
                                                          {
+      if (core && core->cooperative() && !core->on_owner_thread())
+      { record->complete(vix::Completion<TcpConnection>{vix::Error{operation_in_progress, "cooperative provider is thread-affine"}}); return; }
       if (!core || !core->running()) { record->complete(vix::Completion<TcpConnection>{vix::Error{provider_stopped,"provider is stopped"}}); return; }
       if (!endpoint.port()) { record->complete(vix::Completion<TcpConnection>{vix::Error{invalid_port,"destination port must not be zero"}}); return; }
       record->observe_cancellation(options.cancellation);
@@ -738,21 +654,21 @@ namespace vix::network
         if (!pending) return;
         const auto phase=pending->phase();
         if (phase!=detail::OperationRecord<TcpConnection>::Phase::suspending && phase!=detail::OperationRecord<TcpConnection>::Phase::suspended) return;
-        socklen_t address_size{}; auto address=detail_native_endpoint::make(endpoint,address_size);
-        const int family=reinterpret_cast<const sockaddr &>(address).sa_family;
-        const int fd=::socket(family,SOCK_STREAM|SOCK_NONBLOCK|SOCK_CLOEXEC,0);
-        if (fd < 0) { pending->publish_native_for_test(vix::Completion<TcpConnection>{connect_error(errno,"socket")}); return; }
-        if (!pending->adopt_native_for_connect(fd)) { (void)::close(fd); std::terminate(); }
-        if (::connect(fd,reinterpret_cast<const sockaddr *>(&address),address_size)==0)
+        const auto address=detail_native_endpoint::make(endpoint);
+        auto created=detail::create_tcp_socket(endpoint.address().family());
+        if (!created) { pending->publish_native_for_test(vix::Completion<TcpConnection>{created.error()}); return; }
+        const auto socket=created.take();
+        if (!pending->adopt_native_for_connect(socket)) { (void)detail::close_native_socket(socket); std::terminate(); }
+        if (detail::connect_socket(socket,address)==0)
         {
-          pending->publish_native_success_with([](int connected_fd, detail::ProviderResourceLease lease)
-          { return detail::make_tcp_connection(connected_fd,std::move(lease)); });
+          pending->publish_native_success_with([](detail::NativeSocket connected_socket, detail::ProviderResourceLease lease)
+          { return detail::make_tcp_connection(connected_socket,std::move(lease)); });
           return;
         }
-        const int error=errno;
-        if (error != EINPROGRESS) { pending->publish_native_for_test(vix::Completion<TcpConnection>{connect_error(error,"connect")}); return; }
-        const auto token=core->register_descriptor(fd,{},[weak,fd](std::uint32_t)
-        { if(auto record=weak.lock()) publish_connect_result(record,fd); return false; });
+        const int error=detail::last_socket_error();
+        if (!detail::socket_error_connect_pending(error)) { pending->publish_native_for_test(vix::Completion<TcpConnection>{detail::connect_error(error,"connect")}); return; }
+        const auto token=core->register_descriptor(socket,{},[weak,socket](std::uint32_t)
+        { if(auto record=weak.lock()) publish_connect_result(record,socket); return false; });
         if (!token) { pending->publish_native_for_test(vix::Completion<TcpConnection>{vix::Error{io_failure,"cannot register connect socket"}}); return; }
         pending->bind_descriptor_direction(token,false);
       })) record->complete(vix::Completion<TcpConnection>{vix::Error{provider_stopped,"provider is stopped"}}); });
@@ -762,45 +678,44 @@ namespace vix::network
     auto core = std::static_pointer_cast<detail::ProviderCore>(core_);
     if (!core || !core->running())
       return vix::Error{provider_stopped, "provider is stopped"};
+    if (core->cooperative() && !core->on_owner_thread())
+      return vix::Error{operation_in_progress, "cooperative provider is thread-affine"};
     if (!options.backlog)
       return vix::Error{invalid_port, "listen backlog must not be zero"};
     if (options.backlog > static_cast<std::uint32_t>(std::numeric_limits<int>::max()))
       return vix::Error{io_failure, "listen backlog exceeds native range"};
-    socklen_t address_size{};
-    auto address = detail_native_endpoint::make(endpoint, address_size);
-    const int family = reinterpret_cast<const sockaddr &>(address).sa_family;
-    const int fd = ::socket(family, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
-    if (fd < 0)
-      return connect_error(errno, "socket");
-    if (::bind(fd, reinterpret_cast<const sockaddr *>(&address), address_size) != 0)
+    const auto address = detail_native_endpoint::make(endpoint);
+    auto created = detail::create_tcp_socket(endpoint.address().family());
+    if (!created)
+      return created.error();
+    const auto socket = created.take();
+    if (detail::bind_socket(socket, address) != 0)
     {
-      const int error = errno;
-      (void)::close(fd);
-      if (error == EADDRINUSE)
+      const int error = detail::last_socket_error();
+      (void)detail::close_native_socket(socket);
+      if (detail::socket_error_address_in_use(error))
         return vix::Error{address_in_use, "bind"};
-      return connect_error(error, "bind");
+      return detail::connect_error(error, "bind");
     }
-    if (::listen(fd, static_cast<int>(options.backlog)) != 0)
+    if (detail::listen_socket(socket, static_cast<int>(options.backlog)) != 0)
     {
-      const int error = errno;
-      (void)::close(fd);
-      return connect_error(error, "listen");
+      const int error = detail::last_socket_error();
+      (void)detail::close_native_socket(socket);
+      return detail::connect_error(error, "listen");
     }
-    sockaddr_storage local{};
-    socklen_t local_size = sizeof local;
-    if (::getsockname(fd, reinterpret_cast<sockaddr *>(&local), &local_size) != 0)
+    auto local = detail::local_socket_address(socket);
+    if (!local)
     {
-      const int error = errno;
-      (void)::close(fd);
-      return connect_error(error, "getsockname");
+      (void)detail::close_native_socket(socket);
+      return local.error();
     }
-    auto local_endpoint = endpoint_from_native(local, local_size);
+    auto local_endpoint = detail::endpoint_from_native_address(local.value());
     if (!local_endpoint)
     {
-      (void)::close(fd);
+      (void)detail::close_native_socket(socket);
       return local_endpoint.error();
     }
-    return TcpListener{std::make_shared<detail::TcpListenerState>(fd, local_endpoint.take(), std::move(core))};
+    return TcpListener{std::make_shared<detail::TcpListenerState>(socket, local_endpoint.take(), std::move(core))};
   }
   TcpConnection::TcpConnection(std::shared_ptr<detail::TcpConnectionState> state) noexcept : state_(std::move(state)) {}
   TcpConnection::TcpConnection(TcpConnection &&) noexcept = default;
@@ -854,7 +769,7 @@ namespace vix::network
 
 namespace vix::network::detail
 {
-  TcpConnection make_tcp_connection(int fd, ProviderResourceLease lease)
+  TcpConnection make_tcp_connection(NativeSocket fd, ProviderResourceLease lease)
   {
     return NetworkAccess::from_handoff(fd, std::move(lease));
   }
@@ -911,7 +826,7 @@ namespace vix::network::detail
   {
     return connection.state_ ? connection.state_->transport_counters_for_test() : TransportCountersForTest{};
   }
-  TcpConnection NetworkAccess::from_handoff(int fd, ProviderResourceLease lease)
+  TcpConnection NetworkAccess::from_handoff(NativeSocket fd, ProviderResourceLease lease)
   {
     return TcpConnection{std::make_shared<TcpConnectionState>(fd, std::move(lease))};
   }

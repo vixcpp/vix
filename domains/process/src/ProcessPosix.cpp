@@ -15,7 +15,12 @@
 #include <signal.h>
 #include <string>
 #include <string_view>
+#if defined(__APPLE__)
+#include <spawn.h>
+#include <AvailabilityMacros.h>
+#endif
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <thread>
 #include <unistd.h>
@@ -92,6 +97,33 @@ namespace vix::process
       if (descriptor >= 0) { (void)::close(descriptor); descriptor = -1; }
     }
 
+    [[nodiscard]] int create_pipe_cloexec(int descriptors[2]) noexcept
+    {
+#if defined(__linux__) && defined(O_CLOEXEC)
+      return ::pipe2(descriptors, O_CLOEXEC);
+#elif defined(__APPLE__) && defined(O_CLOEXEC) && \
+      defined(__MAC_OS_X_VERSION_MAX_ALLOWED) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101500
+      if (__builtin_available(macOS 10.15, *))
+        return ::pipe2(descriptors, O_CLOEXEC);
+#else
+#endif
+      if (::pipe(descriptors) != 0) return -1;
+      for (int index = 0; index < 2; ++index)
+      {
+        const int descriptor = descriptors[index];
+        const int flags = ::fcntl(descriptor, F_GETFD);
+        if (flags < 0 || ::fcntl(descriptor, F_SETFD, flags | FD_CLOEXEC) != 0)
+        {
+          const int saved = errno;
+          close_noexcept(descriptors[0]);
+          close_noexcept(descriptors[1]);
+          errno = saved;
+          return -1;
+        }
+      }
+      return 0;
+    }
+
     [[nodiscard]] Result<void> close_cached(int &descriptor, std::optional<Error> &saved)
     {
       if (descriptor < 0) return saved ? Result<void>{*saved} : Result<void>::success();
@@ -152,6 +184,10 @@ namespace vix::process
     public:
       static Reaper &instance()
       {
+        // The service is deliberately process-lifetime: joining it during
+        // static destruction could block forever on an abandoned live child.
+        // Its state is heap-owned and intentionally never destroyed, so the
+        // detached worker cannot observe torn-down function-static members.
         static Reaper *value = vix::detail::allocation_or_terminate([] { return new Reaper; });
         return *value;
       }
@@ -161,9 +197,18 @@ namespace vix::process
         std::lock_guard lock(mutex_);
         if (!started_)
         {
-          if (const int code = ::pthread_create(&thread_, nullptr, &Reaper::entry, this); code != 0)
+          pthread_attr_t attributes;
+          if (const int code = ::pthread_attr_init(&attributes); code != 0)
+            return error(errors::resource_exhausted, "cannot initialize process reaper attributes");
+          if (const int code = ::pthread_attr_setdetachstate(&attributes, PTHREAD_CREATE_DETACHED); code != 0)
+          {
+            (void)::pthread_attr_destroy(&attributes);
+            return error(errors::resource_exhausted, "cannot configure detached process reaper");
+          }
+          const int create_code = ::pthread_create(&thread_, &attributes, &Reaper::entry, this);
+          (void)::pthread_attr_destroy(&attributes);
+          if (create_code != 0)
             return error(errors::resource_exhausted, "cannot start process reaper");
-          (void)::pthread_detach(thread_);
           started_ = true;
         }
         // Allocation here is intentionally before fork; bad_alloc follows the
@@ -461,10 +506,24 @@ namespace vix::process
     const int descriptor = std::exchange(stderr_descriptor_, -2); return ChildOutput{descriptor};
   }
 
-  // Spawn is intentionally kept POSIX-local.  The preparation below builds
-  // all allocatable native state and installs the reaping record before fork.
+  // Spawn is intentionally kept POSIX-local. Preparation builds all
+  // allocatable native state and installs the reaping record before spawning.
   Result<Process> spawn(ProcessSpec spec)
   {
+#if !defined(__linux__) && !defined(__ANDROID__)
+    // pipe()+fcntl() is the portable fallback where atomic pipe2(O_CLOEXEC)
+    // is unavailable. Serialize only that fallback; the modern macOS path
+    // uses atomic pipe2 plus CLOEXEC_DEFAULT spawn semantics.
+    static std::mutex provider_spawn_mutex;
+    std::unique_lock spawn_lock(provider_spawn_mutex, std::defer_lock);
+#if defined(__APPLE__) && defined(POSIX_SPAWN_CLOEXEC_DEFAULT) && \
+    defined(__MAC_OS_X_VERSION_MAX_ALLOWED) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101500
+    if (!__builtin_available(macOS 10.15, *))
+      spawn_lock.lock();
+#else
+    spawn_lock.lock();
+#endif
+#endif
     auto &state = *spec.state_;
     static std::atomic<std::uint64_t> next_generation{1};
     const auto identity = detail_process_record_access::id(next_generation.fetch_add(1, std::memory_order_relaxed), 0);
@@ -473,10 +532,10 @@ namespace vix::process
 
     int in_pipe[2]{-1, -1}, out_pipe[2]{-1, -1}, err_pipe[2]{-1, -1}, report_pipe[2]{-1, -1};
     auto cleanup = [&]() noexcept { close_noexcept(in_pipe[0]); close_noexcept(in_pipe[1]); close_noexcept(out_pipe[0]); close_noexcept(out_pipe[1]); close_noexcept(err_pipe[0]); close_noexcept(err_pipe[1]); close_noexcept(report_pipe[0]); close_noexcept(report_pipe[1]); detail::Reaper::instance().remove(record); };
-    if (state.input.kind_ == StandardInput::Kind::pipe && ::pipe2(in_pipe, O_CLOEXEC) != 0) { auto e=native_error(errors::spawn_failed,"pipe"); cleanup(); return e; }
-    if (state.output.kind_ == StandardOutput::Kind::pipe && ::pipe2(out_pipe, O_CLOEXEC) != 0) { auto e=native_error(errors::spawn_failed,"pipe"); cleanup(); return e; }
-    if (state.error.kind_ == StandardError::Kind::pipe && ::pipe2(err_pipe, O_CLOEXEC) != 0) { auto e=native_error(errors::spawn_failed,"pipe"); cleanup(); return e; }
-    if (::pipe2(report_pipe, O_CLOEXEC) != 0) { auto e=native_error(errors::spawn_failed,"pipe"); cleanup(); return e; }
+    if (state.input.kind_ == StandardInput::Kind::pipe && create_pipe_cloexec(in_pipe) != 0) { auto e=native_error(errors::spawn_failed,"pipe"); cleanup(); return e; }
+    if (state.output.kind_ == StandardOutput::Kind::pipe && create_pipe_cloexec(out_pipe) != 0) { auto e=native_error(errors::spawn_failed,"pipe"); cleanup(); return e; }
+    if (state.error.kind_ == StandardError::Kind::pipe && create_pipe_cloexec(err_pipe) != 0) { auto e=native_error(errors::spawn_failed,"pipe"); cleanup(); return e; }
+    if (create_pipe_cloexec(report_pipe) != 0) { auto e=native_error(errors::spawn_failed,"pipe"); cleanup(); return e; }
 
     auto validate_file = [](files::File *file, bool read) -> int
     { if (!file || !file->is_open()) contract_violation(); const auto access=file->access(); if (read ? !(access==files::FileAccess::read||access==files::FileAccess::read_write) : !(access==files::FileAccess::write||access==files::FileAccess::read_write)) contract_violation(); return files::detail_duplicate_native_handle(*file); };
@@ -515,12 +574,107 @@ namespace vix::process
     std::vector<std::string> argv_storage; vix::detail::allocation_or_terminate([&] { argv_storage.push_back(executable); for(const auto &argument:state.arguments) argv_storage.push_back(argument); });
     std::vector<char *> argv; vix::detail::allocation_or_terminate([&] { for(auto &argument:argv_storage) argv.push_back(argument.data()); argv.push_back(nullptr); });
 
-    const pid_t child=::fork();
+    pid_t child = -1;
+#if defined(__APPLE__) && defined(POSIX_SPAWN_CLOEXEC_DEFAULT) && \
+    defined(__MAC_OS_X_VERSION_MAX_ALLOWED) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101500
+    // macOS has no portable atomic pipe2(O_CLOEXEC) on all supported SDKs.
+    // CLOEXEC_DEFAULT makes the child descriptor set explicit, so unrelated
+    // libraries' descriptors cannot leak through this spawn window.
+    bool use_posix_spawn = true;
+    if (!__builtin_available(macOS 10.15, *))
+      use_posix_spawn = false;
+    if (use_posix_spawn)
+    {
+      posix_spawn_file_actions_t actions;
+      posix_spawnattr_t attributes;
+      int spawn_error = ::posix_spawn_file_actions_init(&actions);
+      bool actions_initialized = spawn_error == 0;
+      bool attributes_initialized = false;
+      if (spawn_error == 0)
+      {
+        spawn_error = ::posix_spawnattr_init(&attributes);
+        attributes_initialized = spawn_error == 0;
+      }
+      if (spawn_error == 0 && state.working_directory)
+        spawn_error = ::posix_spawn_file_actions_addchdir_np(
+          &actions, files::detail_native_path(*state.working_directory).c_str());
+      auto add_stdio = [&](int source, int destination)
+      {
+        if (spawn_error == 0)
+          spawn_error = ::posix_spawn_file_actions_adddup2(&actions, source, destination);
+      };
+      const int child_stdin = state.input.kind_ == StandardInput::Kind::pipe ? in_pipe[0]
+        : state.input.kind_ == StandardInput::Kind::null ? null_read
+        : state.input.kind_ == StandardInput::Kind::file ? in_file : STDIN_FILENO;
+      const int child_stdout = state.output.kind_ == StandardOutput::Kind::pipe ? out_pipe[1]
+        : state.output.kind_ == StandardOutput::Kind::null ? null_write
+        : state.output.kind_ == StandardOutput::Kind::file ? out_file : STDOUT_FILENO;
+      const int child_stderr = state.error.kind_ == StandardError::Kind::pipe ? err_pipe[1]
+        : state.error.kind_ == StandardError::Kind::null ? null_write
+        : state.error.kind_ == StandardError::Kind::file ? err_file
+        : state.error.kind_ == StandardError::Kind::merge_stdout ? child_stdout : STDERR_FILENO;
+      if (spawn_error == 0) add_stdio(child_stdin, STDIN_FILENO);
+      if (spawn_error == 0) add_stdio(child_stdout, STDOUT_FILENO);
+      if (spawn_error == 0) add_stdio(child_stderr, STDERR_FILENO);
+      if (spawn_error == 0)
+      {
+        short flags = POSIX_SPAWN_CLOEXEC_DEFAULT;
+        spawn_error = ::posix_spawnattr_setflags(&attributes, flags);
+      }
+      if (spawn_error == 0)
+        spawn_error = ::posix_spawn(&child, executable.c_str(), &actions, &attributes,
+                                    argv.data(), environment_ptrs.data());
+      if (attributes_initialized) (void)::posix_spawnattr_destroy(&attributes);
+      if (actions_initialized) (void)::posix_spawn_file_actions_destroy(&actions);
+
+      if (spawn_error != 0)
+      {
+        close_noexcept(in_file); close_noexcept(out_file); close_noexcept(err_file);
+        close_noexcept(null_read); close_noexcept(null_write);
+        cleanup();
+        if (state.working_directory)
+        {
+          struct stat working_directory_info{};
+          const auto &working_directory = files::detail_native_path(*state.working_directory);
+          if (::stat(working_directory.c_str(), &working_directory_info) != 0)
+            return native_error(errors::invalid_working_directory, "posix_spawn working directory", errno);
+          if (!S_ISDIR(working_directory_info.st_mode))
+            return native_error(errors::invalid_working_directory, "posix_spawn working directory", ENOTDIR);
+        }
+        return native_error(errors::spawn_failed, "posix_spawn", spawn_error);
+      }
+
+      close_noexcept(report_pipe[0]); close_noexcept(report_pipe[1]);
+      close_noexcept(in_pipe[0]); close_noexcept(out_pipe[1]); close_noexcept(err_pipe[1]);
+      close_noexcept(in_file); close_noexcept(out_file); close_noexcept(err_file);
+      close_noexcept(null_read); close_noexcept(null_write);
+      {
+        std::lock_guard lock(record->mutex);
+        record->pid = child;
+        detail_process_record_access::set_native(record->id, static_cast<std::uint64_t>(child));
+      }
+      return Process{std::move(record), in_pipe[1], out_pipe[0], err_pipe[0]};
+    }
+#endif
+    child=::fork();
     if(child<0){auto e=native_error(errors::spawn_failed,"fork");close_noexcept(in_file);close_noexcept(out_file);close_noexcept(err_file);close_noexcept(null_read);close_noexcept(null_write);cleanup();return e;}
     if(child==0)
     {
       close_noexcept(report_pipe[0]);
-      auto fail=[&](int stage) noexcept { ExecFailure failure{stage,errno}; (void)::write(report_pipe[1],&failure,sizeof(failure)); _exit(127); };
+      auto fail=[&](int stage) noexcept
+      {
+        ExecFailure failure{stage,errno};
+        const auto *bytes=reinterpret_cast<const char *>(&failure);
+        std::size_t written=0;
+        while(written<sizeof(failure))
+        {
+          const auto count=::write(report_pipe[1],bytes+written,sizeof(failure)-written);
+          if(count>0){written+=static_cast<std::size_t>(count);continue;}
+          if(count<0&&errno==EINTR)continue;
+          break;
+        }
+        _exit(127);
+      };
       if(state.working_directory && ::chdir(files::detail_native_path(*state.working_directory).c_str())!=0) fail(cwd_stage);
       auto attach=[&](int source,int target) noexcept { if(source>=0 && source!=target && ::dup2(source,target)<0) fail(stdio_stage); };
       if(state.input.kind_==StandardInput::Kind::pipe) attach(in_pipe[0],STDIN_FILENO); else if(state.input.kind_==StandardInput::Kind::null) attach(null_read,STDIN_FILENO); else if(state.input.kind_==StandardInput::Kind::file) attach(in_file,STDIN_FILENO);
@@ -530,8 +684,34 @@ namespace vix::process
       ::execve(executable.c_str(),argv.data(),environment_ptrs.data()); fail(exec_stage);
     }
     close_noexcept(report_pipe[1]); close_noexcept(in_pipe[0]);close_noexcept(out_pipe[1]);close_noexcept(err_pipe[1]);close_noexcept(in_file);close_noexcept(out_file);close_noexcept(err_file);close_noexcept(null_read);close_noexcept(null_write);
-    ExecFailure failure{}; const auto read_count=::read(report_pipe[0],&failure,sizeof(failure)); close_noexcept(report_pipe[0]);
-    if(read_count>0){int ignored=0;(void)::waitpid(child,&ignored,0);cleanup(); return failure.stage==cwd_stage ? native_error(errors::invalid_working_directory,"chdir",failure.error_number) : native_error(errors::spawn_failed,"exec",failure.error_number);}
+    ExecFailure failure{};
+    std::size_t report_bytes=0;
+    int report_error=0;
+    while(report_bytes<sizeof(failure))
+    {
+      const auto count=::read(report_pipe[0],reinterpret_cast<char *>(&failure)+report_bytes,sizeof(failure)-report_bytes);
+      if(count>0){report_bytes+=static_cast<std::size_t>(count);continue;}
+      if(count==0)break;
+      if(errno==EINTR)continue;
+      report_error=errno;break;
+    }
+    close_noexcept(report_pipe[0]);
+    if(report_error!=0 || (report_bytes!=0 && report_bytes!=sizeof(failure)))
+    {
+      int ignored=0;
+      while(::waitpid(child,&ignored,0)<0&&errno==EINTR){}
+      cleanup();
+      return report_error!=0 ? native_error(errors::spawn_failed,"read child spawn status",report_error)
+                             : error(errors::spawn_failed,"child spawn status was incomplete");
+    }
+    if(report_bytes==sizeof(failure))
+    {
+      int ignored=0;
+      while(::waitpid(child,&ignored,0)<0&&errno==EINTR){}
+      cleanup();
+      return failure.stage==cwd_stage ? native_error(errors::invalid_working_directory,"chdir",failure.error_number)
+                                      : native_error(errors::spawn_failed,"exec",failure.error_number);
+    }
     { std::lock_guard lock(record->mutex); record->pid=child; detail_process_record_access::set_native(record->id, static_cast<std::uint64_t>(child)); }
     return Process{std::move(record),in_pipe[1],out_pipe[0],err_pipe[0]};
   }

@@ -3,205 +3,111 @@ name: current-vix-release
 "on":
   push:
     tags: ["v*"]
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: "Release tag (for example v2.9.0)"
-        required: true
-        type: string
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: current-vix-release-${{ github.event.inputs.tag || github.ref }}
+  group: current-vix-release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  linux-x86_64:
-    name: current Vix x86_64-linux-gnu
+  qualify:
+    name: Required release qualification
+    uses: ./.github/workflows/release-qualification.yml
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+  publish:
+    name: Protected signed publication (intentionally disabled)
+    # Keep official publication fail-closed until production environment,
+    # trust provisioning, managed HTTPS upgrade/rollback qualification, and
+    # platform release evidence have been reviewed and validated.
+    if: ${{ false }}
+    needs: qualify
     runs-on: ubuntu-24.04
+    environment: vix-production-release
+    permissions:
+      contents: write
+      attestations: read
     env:
       VIX_RELEASE_KEY_ID: ${{ vars.VIX_RELEASE_KEY_ID }}
       VIX_RELEASE_AUTHORITY_PUBLIC_KEY_HEX: ${{ vars.VIX_RELEASE_AUTHORITY_PUBLIC_KEY_HEX }}
       VIX_OFFICIAL_RELEASE_BASE_URL: ${{ vars.VIX_OFFICIAL_RELEASE_BASE_URL }}
     steps:
-      - uses: actions/checkout@v5
+      - name: Download immutable release-qualified outputs
+        uses: actions/download-artifact@v6
         with:
-          fetch-depth: 0
-
-      - name: Checkout requested release tag
-        if: github.event_name == 'workflow_dispatch'
-        shell: bash
-        env:
-          RELEASE_TAG: ${{ github.event.inputs.tag }}
-        run: |
-          set -euo pipefail
-          git fetch --tags --force
-          git checkout "tags/$RELEASE_TAG"
-
-      - name: Require production release provisioning
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "$VIX_RELEASE_KEY_ID"
-          test -n "$VIX_RELEASE_AUTHORITY_PUBLIC_KEY_HEX"
-          test -n "$VIX_OFFICIAL_RELEASE_BASE_URL"
-          case "$VIX_OFFICIAL_RELEASE_BASE_URL" in https://*) ;; *) echo "official source base must use HTTPS" >&2; exit 1;; esac
-          configured_base="$(printf '%s' "$VIX_OFFICIAL_RELEASE_BASE_URL" | sed 's:/*$::')"
-          expected_base="https://github.com/$GITHUB_REPOSITORY/releases"
-          test "$configured_base" = "$expected_base" || {
-            echo "This workflow publishes to GitHub Releases; provision the matching HTTPS releases root." >&2
-            exit 1
-          }
-
-      - name: Install Linux build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build pkg-config ca-certificates \
-            nlohmann-json3-dev libssl-dev zlib1g-dev libsqlite3-dev \
-            libbrotli-dev libspdlog-dev libfmt-dev
-
-      - name: Configure canonical SDK
-        run: >-
-          cmake -S . -B sdk-build -G Ninja
-          -DCMAKE_BUILD_TYPE=Release
-          -DVIX_BUILD_EXAMPLES=OFF
-          -DVIX_ENABLE_INSTALL=ON
-          -DVIX_ENABLE_WARNINGS=ON
-
-      - name: Build and install canonical SDK
-        run: |
-          cmake --build sdk-build --target vix_canonical_architecture
-          cmake --install sdk-build --prefix "$RUNNER_TEMP/vix-sdk"
-
-      - name: Provision public release trust and stable source
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/vix-provision"
-          cat > "$RUNNER_TEMP/vix-provision/releases.toml" <<EOF
-          format = 1
-
-          [[trusted-key]]
-          key-id = "$VIX_RELEASE_KEY_ID"
-          algorithm = "ed25519"
-          public-key = "$VIX_RELEASE_AUTHORITY_PUBLIC_KEY_HEX"
-          EOF
-          base="$(printf '%s' "$VIX_OFFICIAL_RELEASE_BASE_URL" | sed 's:/*$::')"
-          cat > "$RUNNER_TEMP/vix-provision/source.toml" <<EOF
-          format = 1
-
-          [channels.stable]
-          manifest = "$base/latest/download/release-manifest.toml"
-          signature = "$base/latest/download/release-signature.toml"
-          EOF
-          ! grep -Eiq 'test|example|invalid|placeholder' "$RUNNER_TEMP/vix-provision/releases.toml"
-          ! grep -Eiq 'test|example|invalid|placeholder' "$RUNNER_TEMP/vix-provision/source.toml"
-
-      - name: Configure current CLI and distribution tools
-        shell: bash
-        env:
-          RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
-        run: |
-          version="$(printf '%s' "$RELEASE_TAG" | sed 's/^v//')"
-          cmake -S modules/cli -B cli-build -G Ninja -DCMAKE_BUILD_TYPE=Release \
-            -DVIX_CLI_VERSION="$version" -DVIX_CLI_BUILD_TESTS=OFF \
-            -DVIX_REQUESTS_BUILD_TESTS=OFF -DVIX_REQUESTS_BUILD_EXAMPLES=OFF \
-            -DVIX_CORE_WITH_UI=OFF -DVIX_CORE_FETCH_UI=OFF -DVIX_CORE_WITH_MYSQL=OFF \
-            -DVIX_INSTALLER_TRUST_STORE_FILE="$RUNNER_TEMP/vix-provision/releases.toml" \
-            -DVIX_INSTALLER_SOURCE_CONFIG_FILE="$RUNNER_TEMP/vix-provision/source.toml"
-
-      - name: Build current CLI and release tools
-        run: cmake --build cli-build --target vix_cli vix_installer vix_release_tool
-
-      - name: Validate embedded bootstrap provisioning
-        run: cli-build/vix-installer --validate-provisioning
-
-      - name: Assemble only admitted current-Vix outputs
-        shell: bash
-        run: |
-          set -euo pipefail
-          cmake -DVIX_CLI_BINARY="$GITHUB_WORKSPACE/cli-build/vix" \
-            -DVIX_INSTALLER_BINARY="$GITHUB_WORKSPACE/cli-build/vix-installer" \
-            -DVIX_SDK_PREFIX="$RUNNER_TEMP/vix-sdk" \
-            -DVIX_SDK_LIBRARIES="$RUNNER_TEMP/vix-sdk/lib/libvix_files.a;$RUNNER_TEMP/vix-sdk/lib/libvix_process.a;$RUNNER_TEMP/vix-sdk/lib/libvix_network.a" \
-            -DVIX_CLI_RUNTIME_LIBRARIES= \
-            -DVIX_RELEASE_TRUST="$RUNNER_TEMP/vix-provision/releases.toml" \
-            -DVIX_DISTRIBUTION_SOURCE="$RUNNER_TEMP/vix-provision/source.toml" \
-            -DVIX_OUTPUT_ROOT="$RUNNER_TEMP/vix-release-tree" \
-            -DVIX_BOOTSTRAP_OUTPUT_ROOT="$RUNNER_TEMP/vix-bootstrap-tree" \
-            -P cmake/AssembleVixDistribution.cmake
-
-      - name: Validate distribution shape and runtime dependencies
-        run: |
-          set -euo pipefail
-          test -x "$RUNNER_TEMP/vix-release-tree/bin/vix"
-          test -f "$RUNNER_TEMP/vix-release-tree/share/vix/trust/releases.toml"
-          test -f "$RUNNER_TEMP/vix-release-tree/share/vix/distribution/source.toml"
-          test -f "$RUNNER_TEMP/vix-release-tree/share/completions/bash/vix"
-          test -f "$RUNNER_TEMP/vix-release-tree/share/completions/zsh/_vix"
-          test -f "$RUNNER_TEMP/vix-release-tree/share/completions/fish/vix.fish"
-          test -x "$RUNNER_TEMP/vix-bootstrap-tree/bin/vix-installer"
-          mkdir -p dist
-          ldd "$RUNNER_TEMP/vix-release-tree/bin/vix" | tee dist/runtime-dependencies-ldd.txt
-          readelf -d "$RUNNER_TEMP/vix-release-tree/bin/vix" | tee dist/runtime-dependencies-readelf.txt
-          ldd "$RUNNER_TEMP/vix-bootstrap-tree/bin/vix-installer" | tee dist/installer-runtime-dependencies-ldd.txt
-          readelf -d "$RUNNER_TEMP/vix-bootstrap-tree/bin/vix-installer" | tee dist/installer-runtime-dependencies-readelf.txt
-          "$RUNNER_TEMP/vix-release-tree/bin/vix" --version
-
-      - name: Create deterministic release archives
-        shell: bash
-        run: |
-          set -euo pipefail
-          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
-          tar --sort=name --mtime="@$SOURCE_DATE_EPOCH" --owner=0 --group=0 --numeric-owner \
-            -C "$RUNNER_TEMP/vix-release-tree" -czf dist/vix-x86_64-linux-gnu.tar.gz .
-          tar --sort=name --mtime="@$SOURCE_DATE_EPOCH" --owner=0 --group=0 --numeric-owner \
-            -C "$RUNNER_TEMP/vix-bootstrap-tree" -czf dist/vix-installer-x86_64-linux-gnu.tar.gz .
-          test -s dist/vix-x86_64-linux-gnu.tar.gz
-          test -s dist/vix-installer-x86_64-linux-gnu.tar.gz
-
-      - name: Create signed release metadata
-        shell: bash
-        env:
-          RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
-          VIX_RELEASE_SIGNING_KEY_HEX: ${{ secrets.VIX_RELEASE_SIGNING_KEY_HEX }}
-          VIX_RELEASE_TRUST_FILE: ${{ runner.temp }}/vix-provision/releases.toml
-        run: |
-          set -euo pipefail
-          test -n "$VIX_RELEASE_SIGNING_KEY_HEX"
-          artifact_url="https://github.com/$GITHUB_REPOSITORY/releases/download/$RELEASE_TAG/vix-x86_64-linux-gnu.tar.gz"
-          version="$(printf '%s' "$RELEASE_TAG" | sed 's/^v//')"
-          (cd dist && "$GITHUB_WORKSPACE/cli-build/vix-release-tool" \
-            "$version" x86_64-linux-gnu "$artifact_url" vix-x86_64-linux-gnu.tar.gz)
-
-      - name: Publish artifact before signed authority metadata
+          name: vix-release-x86_64-linux-gnu
+          path: dist
+      - name: Reverify exact candidate digests and provenance
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
-          gh release create "$RELEASE_TAG" --draft --title "Vix $RELEASE_TAG" --notes "Current Vix release."
-          gh release upload "$RELEASE_TAG" dist/vix-x86_64-linux-gnu.tar.gz
-          gh release upload "$RELEASE_TAG" dist/vix-installer-x86_64-linux-gnu.tar.gz
-          gh release upload "$RELEASE_TAG" dist/release-manifest.toml dist/release-signature.toml
-          gh release upload "$RELEASE_TAG" dist/runtime-dependencies-ldd.txt dist/runtime-dependencies-readelf.txt
-          gh release upload "$RELEASE_TAG" dist/installer-runtime-dependencies-ldd.txt dist/installer-runtime-dependencies-readelf.txt
+          (cd dist && sha256sum --check SHA256SUMS)
+          (cd dist && sha256sum --check QUALIFIED-SHA256SUMS)
+          gh attestation verify dist/vix-x86_64-linux-gnu.tar.gz --repo "$GITHUB_REPOSITORY"
+          gh attestation verify dist/vix-installer-x86_64-linux-gnu.tar.gz --repo "$GITHUB_REPOSITORY"
+          gh attestation verify dist/vix-release-tool --repo "$GITHUB_REPOSITORY"
+          gh attestation verify dist/release-build-info.toml --repo "$GITHUB_REPOSITORY"
+          chmod +x dist/vix-release-tool
+          test "$(sed -n 's/^root = "\([^"]*\)"$/\1/p' dist/release-build-info.toml)" = "$GITHUB_SHA"
+          test "$(sed -n 's/^release = "\([^"]*\)"$/\1/p' dist/release-build-info.toml)" = "${GITHUB_REF_NAME}"
+          test "$(sed -n 's/^cli_version = "\([^"]*\)"$/\1/p' dist/release-build-info.toml)" = "${GITHUB_REF_NAME#v}"
+          test "$(sed -n 's/^sdk = "\([^"]*\)"$/\1/p' dist/release-build-info.toml)" = "${GITHUB_REF_NAME#v}"
+          grep -Fx 'host = "x86_64-linux-gnu"' dist/release-build-info.toml
+      - name: Install release metadata tool runtime dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libssl-dev zlib1g-dev
+          ldd dist/vix-release-tool | tee "$RUNNER_TEMP/release-tool-runtime.txt"
+          ! grep -F 'not found' "$RUNNER_TEMP/release-tool-runtime.txt"
+      - name: Require protected production signing inputs
+        shell: bash
+        env:
+          VIX_RELEASE_SIGNING_KEY_HEX: ${{ secrets.VIX_RELEASE_SIGNING_KEY_HEX }}
+        run: |
+          set -euo pipefail
+          [[ "$VIX_RELEASE_KEY_ID" =~ ^[A-Za-z0-9._-]+$ ]]
+          [[ "$VIX_RELEASE_AUTHORITY_PUBLIC_KEY_HEX" =~ ^[0-9A-Fa-f]{64}$ ]]
+          test "$VIX_OFFICIAL_RELEASE_BASE_URL" = "https://github.com/$GITHUB_REPOSITORY/releases"
+          test -n "${VIX_RELEASE_SIGNING_KEY_HEX:-}"
+      - name: Sign the qualified archive metadata in the protected environment
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          VIX_RELEASE_SIGNING_KEY_HEX: ${{ secrets.VIX_RELEASE_SIGNING_KEY_HEX }}
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          mkdir -p "$RUNNER_TEMP/vix-signing"
+          printf 'format = 1\n\n[[trusted-key]]\nkey-id = "%s"\nalgorithm = "ed25519"\npublic-key = "%s"\n' \
+            "$VIX_RELEASE_KEY_ID" "$VIX_RELEASE_AUTHORITY_PUBLIC_KEY_HEX" \
+            > "$RUNNER_TEMP/vix-signing/releases.toml"
+          export VIX_RELEASE_TRUST_FILE="$RUNNER_TEMP/vix-signing/releases.toml"
+          artifact_url="https://github.com/$GITHUB_REPOSITORY/releases/download/$RELEASE_TAG/vix-x86_64-linux-gnu.tar.gz"
+          (cd dist && ./vix-release-tool "$version" x86_64-linux-gnu "$artifact_url" vix-x86_64-linux-gnu.tar.gz)
+          grep -Fx "version = \"$version\"" dist/release-manifest.toml
+          grep -Fx 'host = "x86_64-linux-gnu"' dist/release-manifest.toml
+          (cd dist && sha256sum --check SHA256SUMS)
+      - name: Publish all qualified files atomically as a draft before promotion
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          gh release create "$RELEASE_TAG" --draft --title "Vix $RELEASE_TAG" \
+            --notes "Current Vix release. Verify archive provenance before use."
+          gh release upload "$RELEASE_TAG" \
+            dist/vix-x86_64-linux-gnu.tar.gz \
+            dist/vix-installer-x86_64-linux-gnu.tar.gz \
+            dist/SHA256SUMS dist/release-build-info.toml \
+            dist/release-manifest.toml dist/release-signature.toml \
+            dist/runtime-dependencies-ldd.txt \
+            dist/runtime-dependencies-readelf.txt dist/staged-runtime-check.txt
           gh release edit "$RELEASE_TAG" --draft=false
-
-      - name: Preserve release evidence
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: current-vix-linux-x86_64-release-evidence
-          path: |
-            dist/runtime-dependencies-ldd.txt
-            dist/runtime-dependencies-readelf.txt
-            dist/installer-runtime-dependencies-ldd.txt
-            dist/installer-runtime-dependencies-readelf.txt
-            dist/release-manifest.toml
-            dist/release-signature.toml
-          if-no-files-found: warn
