@@ -70,6 +70,7 @@ cmake/*
 !cmake/VixCanonicalConfig.cmake.in
 !cmake/VixSdkPackageTest.cmake
 !cmake/VixVendoredDeps.cmake
+!cmake/AssembleVixDistribution.cmake
 *.bak
 db.sql
 revoir.md
