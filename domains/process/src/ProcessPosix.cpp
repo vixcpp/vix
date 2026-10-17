@@ -527,7 +527,10 @@ namespace vix::process
     std::unique_lock spawn_lock(provider_spawn_mutex, std::defer_lock);
 #if defined(__APPLE__) && defined(POSIX_SPAWN_CLOEXEC_DEFAULT) && \
     defined(__MAC_OS_X_VERSION_MAX_ALLOWED) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101500
-    if (!__builtin_available(macOS 10.15, *))
+    bool cloexec_default_available = false;
+    if (__builtin_available(macOS 10.15, *))
+      cloexec_default_available = true;
+    if (!cloexec_default_available)
       spawn_lock.lock();
 #else
     spawn_lock.lock();

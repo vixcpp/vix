@@ -162,6 +162,7 @@ jobs:
           set -euo pipefail
           cmake -S modules/cli -B cli-analysis -G Ninja \
             -DCMAKE_BUILD_TYPE=Debug -DVIX_CLI_BUILD_TESTS=OFF \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DVIX_REQUESTS_BUILD_TESTS=OFF -DVIX_REQUESTS_BUILD_EXAMPLES=OFF \
             -DVIX_CORE_WITH_UI=OFF -DVIX_CORE_FETCH_UI=OFF -DVIX_CORE_WITH_MYSQL=OFF
           shopt -s globstar nullglob

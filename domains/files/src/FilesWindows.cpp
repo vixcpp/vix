@@ -46,9 +46,12 @@ namespace vix::files
       case EINVAL: identity = errors::invalid_path; break;
       default: break;
       }
+      char description[256]{};
+      const auto description_status = ::strerror_s(description, sizeof(description), value);
+      const std::string message = description_status == 0 ? description : "unknown C runtime error";
       return detail::allocation_or_terminate([&]
       {
-        return Error{identity, std::string(operation) + ": " + std::strerror(value)};
+        return Error{identity, std::string(operation) + ": " + message};
       });
     }
 
