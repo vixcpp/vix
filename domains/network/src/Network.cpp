@@ -101,6 +101,7 @@ namespace vix::network::detail
       if (read)
       {
         read_active_ = false;
+        read_result_published_ = false;
         read_record_.reset();
         read_buffer_ = {};
         ++read_slot_releases_for_test_;
@@ -108,6 +109,7 @@ namespace vix::network::detail
       else
       {
         write_active_ = false;
+        write_result_published_ = false;
         write_record_.reset();
         write_buffer_ = {};
         write_offset_at_terminal_release_for_test_ = write_offset_;
@@ -128,14 +130,14 @@ namespace vix::network::detail
       auto weak = weak_from_this();
       (void)provider_->set_descriptor_handlers(descriptor_,
                                                read_active_ ? ReadinessHandler{[weak](std::uint32_t)
-                                                                               { if(auto self=weak.lock()) { self->progress_receive(); return true; } return false; }}
+                                                                               { if(auto self=weak.lock()) return self->progress_receive(); return false; }}
                                                             : ReadinessHandler{},
                                                write_active_ ? ReadinessHandler{[weak](std::uint32_t)
-                                                                                { if(auto self=weak.lock()) { self->progress_send(); return true; } return false; }}
+                                                                                { if(auto self=weak.lock()) return self->progress_send(); return false; }}
                                                              : ReadinessHandler{});
     }
-    void progress_receive();
-    void progress_send();
+    bool progress_receive();
+    bool progress_send();
     bool ensure_descriptor_locked();
     void hold_progression_for_test(bool hold) noexcept
     {
@@ -192,6 +194,7 @@ namespace vix::network::detail
     std::shared_ptr<ProviderCore> provider_;
     bool closed_{}, write_shutdown_{};
     bool read_active_{}, write_active_{};
+    bool read_result_published_{}, write_result_published_{};
     std::weak_ptr<OperationRecord<std::size_t>> read_record_;
     std::weak_ptr<OperationRecord<void>> write_record_;
     std::span<std::byte> read_buffer_{};
@@ -343,14 +346,14 @@ namespace vix::network::detail
     auto weak = weak_from_this();
     descriptor_ = provider_->register_descriptor(fd_,
                                                  read_active_ ? ReadinessHandler{[weak](std::uint32_t)
-                                                                                 { if(auto self=weak.lock()) { self->progress_receive(); return true; } return false; }}
+                                                                                 { if(auto self=weak.lock()) return self->progress_receive(); return false; }}
                                                               : ReadinessHandler{},
                                                  write_active_ ? ReadinessHandler{[weak](std::uint32_t)
-                                                                                  { if(auto self=weak.lock()) { self->progress_send(); return true; } return false; }}
+                                                                                  { if(auto self=weak.lock()) return self->progress_send(); return false; }}
                                                                : ReadinessHandler{});
     return descriptor_ != 0;
   }
-  void TcpConnectionState::progress_receive()
+  bool TcpConnectionState::progress_receive()
   {
     std::shared_ptr<OperationRecord<std::size_t>> record;
     std::span<std::byte> buffer;
@@ -358,11 +361,13 @@ namespace vix::network::detail
     {
       std::lock_guard lock(mutex_);
       ++read_progressions_for_test_;
+      if (!read_active_ || closed_ || read_result_published_)
+        return false;
       if (progression_held_for_test_)
-        return;
-      if (!read_active_ || closed_)
-        return;
+        return true;
       record = read_record_.lock();
+      if (!record)
+        return false;
       buffer = read_buffer_;
       fd = fd_;
     }
@@ -371,26 +376,38 @@ namespace vix::network::detail
       {
         std::lock_guard lock(mutex_);
         if (!read_active_ || closed_)
-          return;
+          return false;
         ++native_recv_attempts_for_test_;
         ++read_buffer_accesses_for_test_;
       }
       const auto result = receive_socket(fd, buffer);
       if (result >= 0)
       {
+        {
+          std::lock_guard lock(mutex_);
+          if (!read_active_ || closed_ || read_result_published_ || read_record_.lock() != record)
+            return false;
+          read_result_published_ = true;
+        }
         record->publish_native_for_test(vix::Completion<std::size_t>{static_cast<std::size_t>(result)});
-        return;
+        return false;
       }
       const int error = last_socket_error();
       if (socket_error_interrupted(error))
         continue;
       if (socket_error_would_block(error))
-        return;
+        return true;
+      {
+        std::lock_guard lock(mutex_);
+        if (!read_active_ || closed_ || read_result_published_ || read_record_.lock() != record)
+          return false;
+        read_result_published_ = true;
+      }
       record->publish_native_for_test(vix::Completion<std::size_t>{transport_error(error, "recv")});
-      return;
+      return false;
     }
   }
-  void TcpConnectionState::progress_send()
+  bool TcpConnectionState::progress_send()
   {
     std::shared_ptr<OperationRecord<void>> record;
     std::span<const std::byte> buffer;
@@ -399,11 +416,13 @@ namespace vix::network::detail
     {
       std::lock_guard lock(mutex_);
       ++write_progressions_for_test_;
+      if (!write_active_ || closed_ || write_result_published_)
+        return false;
       if (progression_held_for_test_)
-        return;
-      if (!write_active_ || closed_)
-        return;
+        return true;
       record = write_record_.lock();
+      if (!record)
+        return false;
       buffer = write_buffer_;
       offset = write_offset_;
       fd = fd_;
@@ -411,13 +430,13 @@ namespace vix::network::detail
     // A readiness notification and the starter command can both be queued.
     // Once one has advanced the complete span, later callbacks are inert.
     if (offset == buffer.size())
-      return;
+      return false;
     for (;;)
     {
       {
         std::lock_guard lock(mutex_);
         if (!write_active_ || closed_)
-          return;
+          return false;
         ++native_send_attempts_for_test_;
         ++write_buffer_accesses_for_test_;
       }
@@ -428,13 +447,19 @@ namespace vix::network::detail
         {
           std::lock_guard lock(mutex_);
           if (!write_active_)
-            return;
+            return false;
           write_offset_ = offset;
         }
         if (offset == buffer.size())
         {
+          {
+            std::lock_guard lock(mutex_);
+            if (!write_active_ || closed_ || write_result_published_ || write_record_.lock() != record)
+              return false;
+            write_result_published_ = true;
+          }
           record->publish_native_for_test(vix::Completion<void>::success());
-          return;
+          return false;
         }
         continue;
       }
@@ -442,9 +467,15 @@ namespace vix::network::detail
       if (result < 0 && socket_error_interrupted(error))
         continue;
       if (result < 0 && socket_error_would_block(error))
-        return;
+        return true;
+      {
+        std::lock_guard lock(mutex_);
+        if (!write_active_ || closed_ || write_result_published_ || write_record_.lock() != record)
+          return false;
+        write_result_published_ = true;
+      }
       record->publish_native_for_test(vix::Completion<void>{transport_error(result < 0 ? error : socket_error_peer_closed_code(), "send")});
-      return;
+      return false;
     }
   }
   vix::network::Operation<std::size_t> TcpConnectionState::receive(std::span<std::byte> buffer, OperationOptions options)
@@ -465,7 +496,7 @@ namespace vix::network::detail
         if(self->closed_) closed = true;
         else {
         if(self->read_active_) std::terminate();
-        self->read_active_=true; self->read_record_=record; self->read_buffer_=buffer;
+        self->read_active_=true; self->read_result_published_=false; self->read_record_=record; self->read_buffer_=buffer;
         record->set_terminal_cleanup([self]{ self->release_direction<std::size_t>(true); });
         arm_failed = !self->ensure_descriptor_locked();
         }
@@ -499,7 +530,7 @@ namespace vix::network::detail
         else if(buffer.empty()) { }
         else {
         if(self->write_active_) std::terminate();
-        self->write_active_=true; self->write_record_=record; self->write_buffer_=buffer; self->write_offset_=0;
+        self->write_active_=true; self->write_result_published_=false; self->write_record_=record; self->write_buffer_=buffer; self->write_offset_=0;
         record->set_terminal_cleanup([self]{ self->release_direction<void>(false); });
         arm_failed = !self->ensure_descriptor_locked();
         }

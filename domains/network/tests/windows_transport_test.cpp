@@ -205,6 +205,8 @@ int main(int argc, char **argv)
     std::lock_guard lock(sent->mutex);
     assert(sent->completion->status() == vix::CompletionStatus::Success);
   }
+  // Regression: stale readiness after the first recv must not consume the
+  // remaining bytes into the first operation's borrowed buffer.
   std::array<std::byte, 2> first{};
   auto first_read = std::make_shared<Observation<std::size_t>>();
   auto first_read_task = observe(server->receive(first), first_read);

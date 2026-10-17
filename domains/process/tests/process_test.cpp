@@ -231,7 +231,7 @@ int main(int argc,char **argv)
   assert(running.terminate());
   auto terminated=running.wait();
 #if defined(_WIN32)
-  assert(terminated&&terminated.value().kind()==ExitKind::exited&&terminated.value().exit_code()==1);
+  assert(terminated&&terminated.value().kind()==ExitKind::exited&&terminated.value().exit_code()==std::uint32_t{1});
 #else
   assert(terminated&&terminated.value().kind()==ExitKind::abnormal);
 #endif

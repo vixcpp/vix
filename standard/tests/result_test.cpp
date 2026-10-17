@@ -88,6 +88,7 @@ namespace
     int marker{0};
   };
 
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
   struct ThrowingMoveValue
   {
     ThrowingMoveValue() = default;
@@ -97,6 +98,7 @@ namespace
       throw std::runtime_error("move construction failed");
     }
   };
+#endif
 
   void test_success_and_failure_observation()
   {
@@ -168,6 +170,7 @@ namespace
     assert(extracted.marker == 99);
   }
 
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
   void test_throwing_value_construction_is_not_result_failure()
   {
     bool exception_observed = false;
@@ -184,6 +187,7 @@ namespace
 
     assert(exception_observed);
   }
+#endif
 
   void test_void_result()
   {
@@ -218,7 +222,9 @@ int main()
   test_multilayer_translation_preserves_diagnostics();
   test_move_only_value();
   test_const_access_and_large_value_extraction();
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
   test_throwing_value_construction_is_not_result_failure();
+#endif
   test_void_result();
   test_type_properties();
 

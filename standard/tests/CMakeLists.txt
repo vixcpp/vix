@@ -135,21 +135,29 @@ add_test(
   COMMAND vix_standard_cancellation_test
 )
 
-add_executable(vix_standard_cancellation_fault_test
-  cancellation_fault_test.cpp
-)
+set(_vix_standard_exceptions_enabled TRUE)
+if (CMAKE_SYSTEM_NAME STREQUAL "WASI" AND
+    CMAKE_CXX_COMPILER_TARGET STREQUAL "wasm32-wasip2")
+  # This test specifically throws from a cancellation callback; that behavior
+  # cannot be expressed by the exception-free WASI Preview 2 target.
+  set(_vix_standard_exceptions_enabled FALSE)
+else()
+  add_executable(vix_standard_cancellation_fault_test
+    cancellation_fault_test.cpp
+  )
 
-target_compile_features(vix_standard_cancellation_fault_test PRIVATE cxx_std_20)
+  target_compile_features(vix_standard_cancellation_fault_test PRIVATE cxx_std_20)
 
-target_link_libraries(vix_standard_cancellation_fault_test
-  PRIVATE
-    vix::standard
-)
+  target_link_libraries(vix_standard_cancellation_fault_test
+    PRIVATE
+      vix::standard
+  )
 
-add_test(
-  NAME vix_standard_cancellation_callback_fault_test
-  COMMAND vix_standard_cancellation_fault_test
-)
+  add_test(
+    NAME vix_standard_cancellation_callback_fault_test
+    COMMAND vix_standard_cancellation_fault_test
+  )
+endif()
 
 # The WASI exception-free requirement is propagated by vix::standard to all
 # linked tests and external consumers.
@@ -207,19 +215,20 @@ set(_vix_standard_fault_tests
   vix_standard_result_second_take_fault_test
   vix_standard_time_duration_fault_test
   vix_standard_time_deadline_fault_test
-  vix_standard_cancellation_callback_fault_test
   vix_standard_completion_value_fault_test
   vix_standard_completion_error_fault_test
   vix_standard_completion_taken_value_fault_test
   vix_standard_completion_second_take_fault_test
 )
+if (_vix_standard_exceptions_enabled)
+  list(APPEND _vix_standard_fault_tests vix_standard_cancellation_callback_fault_test)
+endif()
 set_tests_properties(${_vix_standard_fault_tests} PROPERTIES WILL_FAIL TRUE)
 
 # Repository verification convenience only.  This is deliberately not a
 # dependency of vix::standard: consumers receive the header-only programming
 # model, while the repository can explicitly build its executable checks.
-add_custom_target(vix_standard_check
-  DEPENDS
+set(_vix_standard_check_dependencies
     vix_standard_target_smoke_test
     vix_standard_result_test
     vix_standard_error_test
@@ -227,10 +236,13 @@ add_custom_target(vix_standard_check
     vix_standard_time_test
     vix_standard_time_fault_test
     vix_standard_cancellation_test
-    vix_standard_cancellation_fault_test
     vix_standard_completion_test
-  vix_standard_completion_fault_test
+    vix_standard_completion_fault_test
 )
+if (_vix_standard_exceptions_enabled)
+  list(APPEND _vix_standard_check_dependencies vix_standard_cancellation_fault_test)
+endif()
+add_custom_target(vix_standard_check DEPENDS ${_vix_standard_check_dependencies})
 
 function(vix_standard_expect_compile_failure name source)
   try_compile(${name}_compiled
