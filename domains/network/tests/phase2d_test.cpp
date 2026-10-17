@@ -19,7 +19,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <exception>
+#if defined(__APPLE__) || defined(__GLIBC__)
 #include <execinfo.h>
+#endif
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -41,10 +43,12 @@ namespace
   {
     std::fprintf(stderr, "vix_network_phase2d_test: std::terminate during phase: %s\n",
                  active_phase.load());
+#if defined(__APPLE__) || defined(__GLIBC__)
     void *frames[64]{};
     const int count = ::backtrace(frames, 64);
     if (count > 0)
       ::backtrace_symbols_fd(frames, count, STDERR_FILENO);
+#endif
     std::fflush(stderr);
     std::abort();
   }
