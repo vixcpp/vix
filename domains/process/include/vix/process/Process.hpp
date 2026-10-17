@@ -55,9 +55,9 @@ namespace vix::process
     Process(std::shared_ptr<detail::ProcessRecord>, int stdin_descriptor,
             int stdout_descriptor, int stderr_descriptor) noexcept;
     std::shared_ptr<detail::ProcessRecord> record_;
-    int stdin_descriptor_{-1};
-    int stdout_descriptor_{-1};
-    int stderr_descriptor_{-1};
+    [[maybe_unused]] int stdin_descriptor_{-1};
+    [[maybe_unused]] int stdout_descriptor_{-1};
+    [[maybe_unused]] int stderr_descriptor_{-1};
     friend vix::Result<Process> spawn(ProcessSpec);
   };
 

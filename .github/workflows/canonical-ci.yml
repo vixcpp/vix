@@ -77,11 +77,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ctest --test-dir foundation-build --show-only | tee "$RUNNER_TEMP/foundation-test-list.txt"
+          ctest --test-dir foundation-build -C Debug --show-only | tee "$RUNNER_TEMP/foundation-test-list.txt"
           grep -Eq 'Total Tests: [1-9][0-9]*' "$RUNNER_TEMP/foundation-test-list.txt"
           grep -Fq 'vix_sdk_package_consumer_test' "$RUNNER_TEMP/foundation-test-list.txt"
           set -o pipefail
-          ctest --test-dir foundation-build --output-on-failure --parallel 2 --timeout 180 \
+          ctest --test-dir foundation-build -C Debug --output-on-failure --parallel 2 --timeout 180 \
             2>&1 | tee "$RUNNER_TEMP/foundation-ctest.txt"
           if grep -Eiq 'tests did not run|Skipped' "$RUNNER_TEMP/foundation-ctest.txt"; then
             echo "A required Foundation or SDK test was skipped." >&2
@@ -174,7 +174,6 @@ jobs:
           fi
           clang-tidy --warnings-as-errors='*' -p cli-analysis \
             --header-filter='.*modules/cli/(src|include|tools)/.*' \
-            --exclude-header-filter='.*modules/cli/third_party/.*' \
             --system-headers=false \
             "${cli_sources[@]}" "${tool_sources[@]}"
           cmake --build cli-analysis --target vix_cli vix_installer vix_release_tool --parallel 2

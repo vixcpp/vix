@@ -24,7 +24,7 @@ namespace vix::process
 
   private:
     explicit ChildOutput(int descriptor) noexcept;
-    int descriptor_ = -1;
+    [[maybe_unused]] int descriptor_ = -1;
     std::optional<vix::Error> close_error_;
     friend class Process;
   };
