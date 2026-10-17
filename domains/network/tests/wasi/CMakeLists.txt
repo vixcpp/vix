@@ -5,7 +5,8 @@ if (NOT CMAKE_SYSTEM_NAME STREQUAL "WASI" OR NOT CMAKE_C_COMPILER_TARGET STREQUA
   message(FATAL_ERROR "Configure this probe with wasi-sdk 34.0's wasi-sdk-p2.cmake toolchain.")
 endif()
 
-add_executable(vix_wasi_p2_socket_contract ../p2_socket_contract.c)
+add_executable(vix_wasi_p2_socket_contract
+  "${CMAKE_CURRENT_SOURCE_DIR}/p2_socket_contract.c")
 set_target_properties(vix_wasi_p2_socket_contract PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON)
 
 if (NOT DEFINED WASMTIME_EXECUTABLE OR WASMTIME_EXECUTABLE STREQUAL "" OR

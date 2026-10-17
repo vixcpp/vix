@@ -175,23 +175,21 @@ jobs:
             echo "CLI or distribution-tool Clang-Tidy source/header selection is empty." >&2
             exit 1
           fi
-          line_filter='['
-          separator=''
-          for source in "${cli_sources[@]}" "${tool_sources[@]}" "${cli_headers[@]}"; do
-            source_path="$(realpath "$source")"
-            relative_path="${source#./}"
-            # clang-tidy may report a source-manager path from the compile
-            # database or the spelling passed on its command line. Include
-            # both exact first-party spellings; vendored paths match neither.
-            line_filter+="${separator}{\"name\":\"${source_path}\",\"lines\":[[1,2147483647]]},{\"name\":\"${relative_path}\",\"lines\":[[1,2147483647]]}"
-            separator=','
-          done
-          line_filter+=']'
-          clang-tidy --warnings-as-errors='*' -p cli-analysis \
+          tidy_log="$RUNNER_TEMP/cli-clang-tidy.log"
+          tidy_status=0
+          clang-tidy -p cli-analysis \
             --header-filter='.*modules/cli/(src|include|tools)/.*' \
             --system-headers=false \
-            "--line-filter=${line_filter}" \
-            "${cli_sources[@]}" "${tool_sources[@]}"
+            "${cli_sources[@]}" "${tool_sources[@]}" >"$tidy_log" 2>&1 || tidy_status=$?
+          cat "$tidy_log"
+          if ((tidy_status != 0)); then
+            echo "clang-tidy failed before first-party diagnostic qualification." >&2
+            exit "$tidy_status"
+          fi
+          if grep -Eq '(^|/)modules/cli/(src|include|tools)/[^:]*:[0-9]+:[0-9]+: (warning|error):' "$tidy_log"; then
+            echo "Clang-Tidy reported a first-party CLI or distribution diagnostic." >&2
+            exit 1
+          fi
           cmake --build cli-analysis --target vix_cli vix_installer vix_release_tool --parallel 2
 
   cli-contracts:

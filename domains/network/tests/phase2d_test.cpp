@@ -17,6 +17,9 @@
 #include <chrono>
 #include <cstring>
 #include <cstdio>
+#include <cstdlib>
+#include <exception>
+#include <execinfo.h>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -24,6 +27,28 @@
 
 using namespace vix::network;
 extern char **environ;
+
+namespace
+{
+  std::atomic<const char *> active_phase{"test startup"};
+
+  void set_phase(const char *phase) noexcept
+  {
+    active_phase.store(phase);
+  }
+
+  [[noreturn]] void phase2d_terminate_handler() noexcept
+  {
+    std::fprintf(stderr, "vix_network_phase2d_test: std::terminate during phase: %s\n",
+                 active_phase.load());
+    void *frames[64]{};
+    const int count = ::backtrace(frames, 64);
+    if (count > 0)
+      ::backtrace_symbols_fd(frames, count, STDERR_FILENO);
+    std::fflush(stderr);
+    std::abort();
+  }
+}
 
 template<class T> struct Seen { std::mutex mutex; std::optional<vix::Completion<T>> value; std::atomic<bool> done{}; };
 template<class T> struct Task
@@ -101,8 +126,10 @@ static int spawn_overlap(const char *self)
 
 int main(int argc, char **argv)
 {
+  std::set_terminate(phase2d_terminate_handler);
   if (argc == 2 && std::strcmp(argv[1], "--overlap") == 0) return overlap_child();
 
+  set_phase("provider startup and listener setup");
   auto made = Provider::create(); assert(made); auto provider = made.take();
   auto listener_result = provider.listen(loopback());
   if (!listener_result) return 77; // loopback networking is unavailable in this sandbox.
@@ -111,6 +138,7 @@ int main(int argc, char **argv)
   assert(!provider.shutdown() && provider.shutdown().error().identity() == provider_in_use);
 
   // A native peer reaches the listener through reactor READ readiness.
+  set_phase("accept, receive, send, and EOF");
   auto accepted = std::make_shared<Seen<TcpConnection>>();
   auto accepted_task = await(listener.accept(), accepted);
   assert(!done(accepted, std::chrono::milliseconds(20)));
@@ -142,9 +170,11 @@ int main(int argc, char **argv)
   auto held_by_connection = provider.shutdown();
   assert(!held_by_connection && held_by_connection.error().identity() == provider_in_use);
   assert(connection.close()); ::close(peer);
+  set_phase("provider resource retirement and shutdown");
   assert(provider.shutdown());
 
   // Cancellation, timeout, and stale queued progression all leave the listener reusable.
+  set_phase("cancellation and listener reuse");
   auto made_reuse = Provider::create(); assert(made_reuse); auto reuse_provider = made_reuse.take();
   auto reusable_result = reuse_provider.listen(loopback()); assert(reusable_result); auto reusable = reusable_result.take();
   auto reusable_endpoint = reusable.local_endpoint(); assert(reusable_endpoint);
@@ -157,6 +187,7 @@ int main(int argc, char **argv)
   assert(done(after_cancel)); auto stale_connection = take_connection(after_cancel);
   assert(stale_connection.close()); ::close(stale_peer);
 
+  set_phase("deadline and listener reuse");
   auto expired = std::make_shared<Seen<TcpConnection>>();
   auto expired_task = await(reusable.accept({{}, vix::Deadline::after(vix::Duration::milliseconds(10))}), expired);
   assert(done(expired)); { std::lock_guard lock(expired->mutex); assert(expired->value->status() == vix::CompletionStatus::Failure && expired->value->error().identity() == timed_out); }
@@ -165,6 +196,7 @@ int main(int argc, char **argv)
   assert(done(after_deadline)); auto deadline_connection = take_connection(after_deadline);
   assert(deadline_connection.close()); ::close(deadline_peer);
 
+  set_phase("active accept, close rejection, and provider shutdown");
   auto active = std::make_shared<Seen<TcpConnection>>(); auto active_task = await(reusable.accept(), active);
   auto close_busy = reusable.close(); assert(!close_busy && close_busy.error().identity() == operation_in_progress);
   assert(!source.request_cancel()); // already cancelled; this must not affect the new operation.
@@ -179,6 +211,7 @@ int main(int argc, char **argv)
   { std::lock_guard lock(after_close->mutex); assert(after_close->value->status() == vix::CompletionStatus::Failure && after_close->value->error().identity() == peer_closed); }
   assert(reuse_provider.shutdown());
 
+  set_phase("address collision handling");
   auto collision_provider_result = Provider::create(); assert(collision_provider_result); auto collision_provider = collision_provider_result.take();
   auto first_listener_result = collision_provider.listen(loopback()); assert(first_listener_result); auto first_listener = first_listener_result.take();
   auto first_endpoint = first_listener.local_endpoint(); assert(first_endpoint);
@@ -187,6 +220,7 @@ int main(int argc, char **argv)
 
   // Refusal is reported through the same Standard error contract on every
   // readiness backend (the closed ephemeral port cannot accept the connect).
+  set_phase("connection refusal propagation");
   auto refused_listener_result = Provider::create(); assert(refused_listener_result);
   auto refused_provider = refused_listener_result.take();
   auto refused_listener = refused_provider.listen(loopback()); assert(refused_listener);
@@ -201,6 +235,7 @@ int main(int argc, char **argv)
   // Exercise IPv6 TCP when loopback is enabled by the host. A failed listen
   // denotes an unavailable host capability; once it succeeds, transport
   // failures are test failures rather than skips.
+  set_phase("IPv6 loopback capability and transport");
   auto ipv6_address = Address::parse("::1"); assert(ipv6_address);
   auto ipv6_endpoint = Endpoint::create(ipv6_address.take(), 0); assert(ipv6_endpoint);
   auto ipv6_provider_result = Provider::create(); assert(ipv6_provider_result);
@@ -226,5 +261,6 @@ int main(int argc, char **argv)
   }
   assert(ipv6_provider.shutdown());
 
+  set_phase("intentional incomplete-operation child contract");
   const auto overlap = spawn_overlap(argv[0]); assert(WIFEXITED(overlap) && WEXITSTATUS(overlap) == 42);
 }
