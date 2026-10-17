@@ -139,10 +139,10 @@ add_executable(vix_network_wasi_cooperative_test wasi_cooperative_test.cpp)
 target_compile_features(vix_network_wasi_cooperative_test PRIVATE cxx_std_20)
 target_link_libraries(vix_network_wasi_cooperative_test PRIVATE vix_network)
 add_test(NAME vix_network_wasi_host_denied
-  COMMAND "${VIX_WASMTIME_EXECUTABLE}" run -W tcp=y
+  COMMAND "${VIX_WASMTIME_EXECUTABLE}" run -S tcp=y
           "$<TARGET_FILE:vix_network_wasi_cooperative_test>" denied)
 add_test(NAME vix_network_wasi_cooperative_loopback
-  COMMAND "${VIX_WASMTIME_EXECUTABLE}" run -W tcp=y -W inherit-network=y
+  COMMAND "${VIX_WASMTIME_EXECUTABLE}" run -S tcp=y -S inherit-network=y
           "$<TARGET_FILE:vix_network_wasi_cooperative_test>" loopback)
 endif()
 

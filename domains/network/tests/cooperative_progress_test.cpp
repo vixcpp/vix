@@ -34,9 +34,8 @@ struct Task
 {
   struct promise_type
   {
-    std::mutex final_mutex;
-    std::condition_variable final_cv;
-    bool final_suspended{};
+    std::shared_ptr<vix::network::test_detail::FinalSuspendState> final_suspend_state =
+        std::make_shared<vix::network::test_detail::FinalSuspendState>();
     Task get_return_object() { return Task{std::coroutine_handle<promise_type>::from_promise(*this)}; }
     std::suspend_never initial_suspend() noexcept { return {}; }
     vix::network::test_detail::FinalSuspendAwaiter<promise_type> final_suspend() noexcept { return {}; }

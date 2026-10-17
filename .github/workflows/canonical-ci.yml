@@ -179,7 +179,11 @@ jobs:
           separator=''
           for source in "${cli_sources[@]}" "${tool_sources[@]}" "${cli_headers[@]}"; do
             source_path="$(realpath "$source")"
-            line_filter+="${separator}{\"name\":\"${source_path}\"}"
+            relative_path="${source#./}"
+            # clang-tidy may report a source-manager path from the compile
+            # database or the spelling passed on its command line. Include
+            # both exact first-party spellings; vendored paths match neither.
+            line_filter+="${separator}{\"name\":\"${source_path}\",\"lines\":[[1,2147483647]]},{\"name\":\"${relative_path}\",\"lines\":[[1,2147483647]]}"
             separator=','
           done
           line_filter+=']'

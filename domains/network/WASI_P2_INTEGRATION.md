@@ -113,8 +113,8 @@ cmake --build out/network-wasi-p2 -j2
 ctest --test-dir out/network-wasi-p2 --output-on-failure
 ```
 
-The `denied` case uses `-W tcp=y` without granting addresses and expects
-`EACCES`/`EPERM`. The `loopback` case uses `-W tcp=y -W inherit-network=y`
+The `denied` case uses `-S tcp=y` without granting addresses and expects
+`EACCES`/`EPERM`. The `loopback` case uses `-S tcp=y -S inherit-network=y`
 and checks bind/listen/connect/accept, send/receive, `poll`, half-close/EOF,
 and close. Runtime flags are deliberately explicit because host policy is
 part of the test. These probe commands are prepared for human execution and

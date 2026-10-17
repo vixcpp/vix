@@ -15,8 +15,8 @@ endif()
 
 enable_testing()
 add_test(NAME vix_wasi_p2_host_denies_network
-  COMMAND "${WASMTIME_EXECUTABLE}" run -W tcp=y
+  COMMAND "${WASMTIME_EXECUTABLE}" run -S tcp=y
           "$<TARGET_FILE:vix_wasi_p2_socket_contract>" denied)
 add_test(NAME vix_wasi_p2_loopback_tcp
-  COMMAND "${WASMTIME_EXECUTABLE}" run -W tcp=y -W inherit-network=y
+  COMMAND "${WASMTIME_EXECUTABLE}" run -S tcp=y -S inherit-network=y
           "$<TARGET_FILE:vix_wasi_p2_socket_contract>" loopback)
