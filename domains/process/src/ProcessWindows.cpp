@@ -632,7 +632,9 @@ namespace vix::process
       const BOOL updated=::UpdateProcThreadAttribute(startup.lpAttributeList,0,PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
         handle_list.data(),handle_list.size()*sizeof(HANDLE),nullptr,nullptr);
       if(!updated){const auto code=::GetLastError();::DeleteProcThreadAttributeList(startup.lpAttributeList);auto e=win_error(errors::spawn_failed,"UpdateProcThreadAttribute",code);cleanup_handles();return e;}
-      std::vector<wchar_t> mutable_command=command;
+      // CreateProcessW may modify this buffer. Copy the already-terminated
+      // UTF-16 command line into mutable storage without losing its terminator.
+      std::vector<wchar_t> mutable_command(command.begin(), command.end());
       PROCESS_INFORMATION information{};
       const BOOL created=::CreateProcessW(executable->c_str(),mutable_command.data(),nullptr,nullptr,TRUE,
         EXTENDED_STARTUPINFO_PRESENT|CREATE_UNICODE_ENVIRONMENT,env_block.data(),cwd?cwd->c_str():nullptr,

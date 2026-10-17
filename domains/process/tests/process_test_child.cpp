@@ -24,6 +24,14 @@
 
 namespace
 {
+  std::filesystem::path path_from_utf8(std::string_view value)
+  {
+    std::u8string encoded;
+    encoded.reserve(value.size());
+    for (const char byte : value) encoded.push_back(static_cast<char8_t>(static_cast<unsigned char>(byte)));
+    return std::filesystem::path(encoded);
+  }
+
   int write_all(const char *data,std::size_t size)
   {
     std::size_t offset=0;
@@ -105,7 +113,8 @@ int main(int argc,char **argv)
     for(;;)
     {
       const int amount=::_read(0,buffer.data(),static_cast<unsigned>(buffer.size()));
-      if(amount==0)return 0;if(amount<0)return 3;
+      if(amount==0)return 0;
+      if(amount<0)return 3;
       std::size_t offset=0;
       while(offset<static_cast<std::size_t>(amount))
       {const int written=::_write(2,buffer.data()+offset,static_cast<unsigned>(amount-static_cast<int>(offset)));if(written<=0)return 4;offset+=static_cast<std::size_t>(written);}
@@ -121,7 +130,7 @@ int main(int argc,char **argv)
     std::string filename(static_cast<std::size_t>(encoded), '\0');
     if(::WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,argv[3],-1,filename.data(),encoded,nullptr,nullptr)<=0)return 71;
     filename.resize(static_cast<std::size_t>(encoded-1));
-    std::ofstream output(std::filesystem::u8path(filename),std::ios::binary|std::ios::trunc);
+    std::ofstream output(path_from_utf8(filename),std::ios::binary|std::ios::trunc);
     output<<"child-survived";return output?0:72;
   }
   if(mode==L"copy")
@@ -130,7 +139,8 @@ int main(int argc,char **argv)
     for(;;)
     {
       const int amount=::_read(0,buffer.data(),static_cast<unsigned>(buffer.size()));
-      if(amount==0)return 0;if(amount<0)return 3;
+      if(amount==0)return 0;
+      if(amount<0)return 3;
       if(write_all(buffer.data(),static_cast<std::size_t>(amount))!=0)return 4;
     }
   }
@@ -185,7 +195,8 @@ int main(int argc,char **argv)
     for(;;)
     {
       const auto amount=::read(STDIN_FILENO,buffer.data(),buffer.size());
-      if(amount==0)return 0;if(amount<0)return 3;
+      if(amount==0)return 0;
+      if(amount<0)return 3;
       std::size_t offset=0;
       while(offset<static_cast<std::size_t>(amount))
       {const auto written=::write(STDERR_FILENO,buffer.data()+offset,static_cast<std::size_t>(amount)-offset);if(written<=0)return 4;offset+=static_cast<std::size_t>(written);}
@@ -217,7 +228,7 @@ int main(int argc,char **argv)
   {
     if(argc<4)return 70;
     std::this_thread::sleep_for(std::chrono::milliseconds(std::atoi(argv[2])));
-    std::ofstream output(std::filesystem::u8path(argv[3]),std::ios::binary|std::ios::trunc);
+    std::ofstream output(path_from_utf8(argv[3]),std::ios::binary|std::ios::trunc);
     output<<"child-survived";return output?0:72;
   }
 #endif

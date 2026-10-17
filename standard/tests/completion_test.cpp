@@ -42,7 +42,7 @@ namespace
   };
 
   vix::Completion<void> receive_one(
-      BorrowedSocket &socket,
+      BorrowedSocket &,
       vix::CancellationToken token)
   {
     if (token.is_cancel_requested())

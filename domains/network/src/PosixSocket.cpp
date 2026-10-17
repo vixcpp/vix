@@ -19,6 +19,7 @@ namespace vix::network::detail
   namespace
   {
     int native_family(AddressFamily family) noexcept { return family == AddressFamily::ipv4 ? AF_INET : AF_INET6; }
+#if !defined(__linux__)
     bool configure_socket(int socket) noexcept
     {
       const int status = ::fcntl(socket, F_GETFL, 0);
@@ -40,6 +41,7 @@ namespace vix::network::detail
       return true;
 #endif
     }
+#endif
   }
 
   NativeAddress make_native_address(AddressFamily family, const std::array<std::uint8_t, 16> &bytes,

@@ -51,7 +51,8 @@ target_include_directories(vix_process PUBLIC
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 target_link_libraries(vix_process PUBLIC vix::standard vix::files)
 if (APPLE)
-  # Expose Darwin's pipe2 declaration for the atomic CLOEXEC path on macOS 10.15+.
+  # Expose Darwin's posix_spawn extensions used for explicit child descriptor
+  # inheritance and working-directory setup. macOS pipes use pipe()+fcntl().
   target_compile_definitions(vix_process PRIVATE _DARWIN_C_SOURCE)
 endif()
 if (NOT WIN32 AND NOT CMAKE_SYSTEM_NAME STREQUAL "WASI")

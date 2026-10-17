@@ -253,6 +253,10 @@ function(vix_standard_expect_exception_disabled_compile name source)
     return()
   endif()
 
+  # This is a compile-only contract. Avoid linking a probe executable: with
+  # WASI (and other exception-free runtimes), exception support symbols are
+  # intentionally absent even though compiling the API is valid.
+  set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
   try_compile(${name}_compiled
     "${CMAKE_CURRENT_BINARY_DIR}/${name}"
     SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/${source}"

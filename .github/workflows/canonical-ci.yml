@@ -163,8 +163,16 @@ jobs:
           cmake -S modules/cli -B cli-analysis -G Ninja \
             -DCMAKE_BUILD_TYPE=Debug -DVIX_CLI_BUILD_TESTS=OFF \
             -DVIX_REQUESTS_BUILD_TESTS=OFF -DVIX_REQUESTS_BUILD_EXAMPLES=OFF \
-            -DVIX_CORE_WITH_UI=OFF -DVIX_CORE_FETCH_UI=OFF -DVIX_CORE_WITH_MYSQL=OFF \
-            "-DCMAKE_CXX_CLANG_TIDY=clang-tidy;-warnings-as-errors=*"
+            -DVIX_CORE_WITH_UI=OFF -DVIX_CORE_FETCH_UI=OFF -DVIX_CORE_WITH_MYSQL=OFF
+          shopt -s globstar nullglob
+          cli_sources=(modules/cli/src/**/*.cpp)
+          tool_sources=(modules/cli/tools/**/*.cpp)
+          if ((${#cli_sources[@]} == 0 || ${#tool_sources[@]} == 0)); then
+            echo "CLI or distribution-tool Clang-Tidy source selection is empty." >&2
+            exit 1
+          fi
+          clang-tidy --warnings-as-errors='*' -p cli-analysis \
+            "${cli_sources[@]}" "${tool_sources[@]}"
           cmake --build cli-analysis --target vix_cli vix_installer vix_release_tool --parallel 2
 
   cli-contracts:

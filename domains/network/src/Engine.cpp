@@ -225,8 +225,9 @@ namespace vix::network::detail
   std::uint64_t ProviderCore::encode_token(std::uint32_t i, std::uint32_t g) noexcept { return (std::uint64_t{i} << 32) | g; }
   bool ProviderCore::decode_token(std::uint64_t t, std::uint32_t &i, std::uint32_t &g) noexcept
   {
-    i = t >> 32;
-    g = t;
+    constexpr auto component_mask = (std::uint64_t{1} << 32) - 1;
+    i = static_cast<std::uint32_t>((t >> 32) & component_mask);
+    g = static_cast<std::uint32_t>(t & component_mask);
     return i && g;
   }
   vix::Result<std::shared_ptr<ProviderCore>> ProviderCore::create(bool cooperative)

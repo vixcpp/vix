@@ -28,6 +28,13 @@
 namespace
 {
   std::filesystem::path helper_path;
+  std::filesystem::path path_from_utf8(std::string_view value)
+  {
+    std::u8string encoded;
+    encoded.reserve(value.size());
+    for (const char byte : value) encoded.push_back(static_cast<char8_t>(static_cast<unsigned char>(byte)));
+    return std::filesystem::path(encoded);
+  }
   vix::files::Path path(std::string_view value)
   { auto result=vix::files::Path::from_utf8(value);assert(result);return result.take(); }
   std::string utf8(const std::filesystem::path &value)
@@ -56,7 +63,7 @@ int main(int argc,char **argv)
   helper_path=std::filesystem::path(module).parent_path()/L"vix_process_test_child.exe";
 #else
   assert(argc>0);
-  helper_path=std::filesystem::absolute(std::filesystem::u8path(argv[0])).parent_path()/"vix_process_test_child";
+  helper_path=std::filesystem::absolute(path_from_utf8(argv[0])).parent_path()/"vix_process_test_child";
 #endif
 
   ProcessSpec arguments(helper());
@@ -112,7 +119,7 @@ int main(int argc,char **argv)
   assert(collect(environment_output.value())=="portable-\xf0\x9f\x8c\x8d");
   assert(environment_child.wait().value().succeeded());
 
-  auto working_directory=std::filesystem::temp_directory_path()/std::filesystem::u8path("vix-process-working-directory-\xf0\x9f\x8c\x8d");
+  auto working_directory=std::filesystem::temp_directory_path()/std::filesystem::path(u8"vix-process-working-directory-\U0001F30D");
   std::filesystem::create_directories(working_directory);
   ProcessSpec cwd_spec(helper());assert(cwd_spec.add_argument("cwd"));
   auto cwd_path=path(utf8(working_directory));assert(cwd_spec.set_working_directory(cwd_path));
@@ -138,6 +145,22 @@ int main(int argc,char **argv)
   auto stderr_process=spawn(std::move(stderr_spec));assert(stderr_process);
   auto stderr_child=stderr_process.take();auto stderr_output=stderr_child.take_stderr();assert(stderr_output);
   assert(collect(stderr_output.value())=="stderr-marker");assert(stderr_child.wait().value().succeeded());
+
+#if !defined(_WIN32)
+  // A broken child pipe must be reported as a Process error without
+  // delivering SIGPIPE to, and terminating, the calling process.
+  ProcessSpec broken_pipe_spec(helper());
+  assert(broken_pipe_spec.add_argument("exit"));
+  assert(broken_pipe_spec.add_argument("0"));
+  broken_pipe_spec.set_stdin(StandardInput::pipe());
+  auto broken_pipe_process_result=spawn(std::move(broken_pipe_spec));assert(broken_pipe_process_result);
+  auto broken_pipe_process=broken_pipe_process_result.take();
+  auto broken_pipe_input=broken_pipe_process.take_stdin();assert(broken_pipe_input);
+  assert(broken_pipe_process.wait().value().succeeded());
+  const std::array<std::byte,1> broken_pipe_payload{std::byte{'x'}};
+  auto broken_pipe_write=broken_pipe_input.value().write_some(broken_pipe_payload);
+  assert(!broken_pipe_write&&broken_pipe_write.error().identity()==errors::broken_pipe);
+#endif
 
   ProcessSpec copy_spec(helper());
   assert(copy_spec.add_argument("copy"));

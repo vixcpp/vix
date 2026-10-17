@@ -150,7 +150,7 @@ elseif (WIN32)
   message(STATUS "compile_commands.json copy disabled on Windows.")
 endif()
 
-option(VIX_ENABLE_WARNINGS         "Enable extra warnings"                                        ON)
+option(VIX_ENABLE_WARNINGS         "Enable strict warnings-as-errors for canonical Vix targets" ON)
 option(VIX_ENABLE_INSTALL          "Enable install/export rules for packaging"                    ON)
 option(VIX_ENABLE_LTO              "Enable IPO/LTO (Release only)"                                OFF)
 option(VIX_MSVC_STATIC_RUNTIME     "Link MSVC runtime statically (/MT)"                           OFF)
@@ -161,6 +161,39 @@ option(VIX_ENABLE_SANITIZERS       "Enable ASan+UBSan (GCC/Clang only)"         
 option(VIX_BUILD_EXAMPLES          "Build umbrella examples in ./examples"                        ON)
 option(VIX_BUILD_TESTS             "Build Vix SDK package tests"                                  OFF)
 option(VIX_BUILD_NETWORK           "Build the Network domain when its provider is available"      ON)
+
+function(vix_apply_canonical_warnings target)
+  if (NOT VIX_ENABLE_WARNINGS OR NOT TARGET "${target}")
+    return()
+  endif()
+
+  get_target_property(_vix_target_type "${target}" TYPE)
+  if (_vix_target_type STREQUAL "INTERFACE_LIBRARY" OR _vix_target_type STREQUAL "UTILITY")
+    return()
+  endif()
+
+  if (MSVC)
+    target_compile_options("${target}" PRIVATE /W4 /WX /permissive-)
+  elseif (CMAKE_CXX_COMPILER_ID MATCHES "^(GNU|Clang|AppleClang)$")
+    target_compile_options("${target}" PRIVATE
+      -Wall -Wextra -Wshadow -Wconversion -Wformat=2 -Wpedantic -Werror)
+  endif()
+endfunction()
+
+function(vix_apply_canonical_warnings_recursively directory)
+  get_property(_vix_targets DIRECTORY "${directory}" PROPERTY BUILDSYSTEM_TARGETS)
+  foreach(_vix_target IN LISTS _vix_targets)
+    if (_vix_target MATCHES "^vix_(standard|files|process|network)(_|$)")
+      vix_apply_canonical_warnings("${_vix_target}")
+    endif()
+  endforeach()
+
+  get_property(_vix_subdirectories DIRECTORY "${directory}" PROPERTY SUBDIRECTORIES)
+  foreach(_vix_subdirectory IN LISTS _vix_subdirectories)
+    vix_apply_canonical_warnings_recursively("${_vix_subdirectory}")
+  endforeach()
+endfunction()
+
 if (CMAKE_SYSTEM_NAME STREQUAL "WASI")
   set(VIX_WASMTIME_EXECUTABLE "" CACHE FILEPATH "Pinned Wasmtime 49.0.3 executable for WASI domain tests")
   if (VIX_WASMTIME_EXECUTABLE STREQUAL "" AND DEFINED WASMTIME_EXECUTABLE)
@@ -186,6 +219,11 @@ if (VIX_BUILD_NETWORK)
 else()
   set(VIX_HAS_NETWORK FALSE)
 endif()
+
+# Apply diagnostics only to the canonical Vix domain targets and their owned
+# tests. Third-party targets and exported consumer usage requirements are not
+# affected.
+vix_apply_canonical_warnings_recursively("${CMAKE_SOURCE_DIR}")
 
 set(_vix_canonical_targets vix_standard_check vix_files vix_process)
 if (VIX_HAS_NETWORK)
@@ -228,6 +266,10 @@ if (VIX_BUILD_TESTS)
     get_filename_component(_vix_package_toolchain_file "${_vix_package_toolchain_file}" REALPATH
       BASE_DIR "${CMAKE_SOURCE_DIR}")
   endif()
+  set(_vix_package_sanitizer_link_flags "")
+  if (CMAKE_EXE_LINKER_FLAGS MATCHES "-fsanitize")
+    set(_vix_package_sanitizer_link_flags "${CMAKE_EXE_LINKER_FLAGS}")
+  endif()
   add_test(
     NAME vix_sdk_package_consumer_test
     COMMAND "${CMAKE_COMMAND}"
@@ -238,6 +280,7 @@ if (VIX_BUILD_TESTS)
       "-DVIX_WASMTIME_EXECUTABLE=${VIX_WASMTIME_EXECUTABLE}"
       "-DVIX_WASI_SDK_ROOT=${VIX_WASI_SDK_ROOT}"
       "-DVIX_TOOLCHAIN_FILE=${_vix_package_toolchain_file}"
+      "-DVIX_SANITIZER_LINK_FLAGS=${_vix_package_sanitizer_link_flags}"
       "-DVIX_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}"
       -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/VixSdkPackageTest.cmake"
   )

@@ -12,6 +12,13 @@ if (VIX_TARGET_SYSTEM STREQUAL "WASI" AND VIX_EXPECT_NETWORK AND
   message(FATAL_ERROR "The WASI installed-SDK consumer requires VIX_WASMTIME_EXECUTABLE.")
 endif()
 set(_consumer_cmake_args)
+if (DEFINED VIX_SANITIZER_LINK_FLAGS AND NOT VIX_SANITIZER_LINK_FLAGS STREQUAL "")
+  # The installed archives in this test came from an instrumented build. Link
+  # only this isolated test consumer with the matching runtime; exported SDK
+  # targets remain free of sanitizer usage requirements for ordinary users.
+  list(APPEND _consumer_cmake_args
+    "-DCMAKE_EXE_LINKER_FLAGS=${VIX_SANITIZER_LINK_FLAGS}")
+endif()
 if (DEFINED VIX_TOOLCHAIN_FILE AND NOT VIX_TOOLCHAIN_FILE STREQUAL "")
   list(APPEND _consumer_cmake_args "-DCMAKE_TOOLCHAIN_FILE=${VIX_TOOLCHAIN_FILE}")
 endif()

@@ -668,7 +668,7 @@ namespace vix::network
         const int error=detail::last_socket_error();
         if (!detail::socket_error_connect_pending(error)) { pending->publish_native_for_test(vix::Completion<TcpConnection>{detail::connect_error(error,"connect")}); return; }
         const auto token=core->register_descriptor(socket,{},[weak,socket](std::uint32_t)
-        { if(auto record=weak.lock()) publish_connect_result(record,socket); return false; });
+        { if(auto locked_record=weak.lock()) publish_connect_result(locked_record,socket); return false; });
         if (!token) { pending->publish_native_for_test(vix::Completion<TcpConnection>{vix::Error{io_failure,"cannot register connect socket"}}); return; }
         pending->bind_descriptor_direction(token,false);
       })) record->complete(vix::Completion<TcpConnection>{vix::Error{provider_stopped,"provider is stopped"}}); });

@@ -204,8 +204,8 @@ int main()
   // Hold a cooperative resume after terminalization, destroy its suspended
   // awaiter, then prove the queued ticket is safely discarded by a later poll.
   auto abandoned_observation = std::make_shared<Observation<void>>();
-  std::span<const std::byte> empty_payload;
-  auto abandoned_task = await_operation(connected.send(empty_payload), abandoned_observation);
+  const std::array<std::byte, 1> abandoned_payload{std::byte{'x'}};
+  auto abandoned_task = await_operation(connected.send(abandoned_payload), abandoned_observation);
   auto client_core = detail::NetworkAccess::core_for_test(client);
   client_core->hold_cooperative_resumes_for_test(true);
   assert(client.poll());
