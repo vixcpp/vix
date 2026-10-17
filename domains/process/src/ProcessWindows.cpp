@@ -106,8 +106,13 @@ namespace vix::process
       if (code == EACCES || code == EPERM) identity = errors::access_denied;
       else if (code == EMFILE || code == ENFILE) identity = errors::resource_exhausted;
       else if (code == EPIPE) identity = errors::broken_pipe;
+      char description[256]{};
+      const auto description_status = ::strerror_s(description, sizeof(description), code);
       return vix::detail::allocation_or_terminate([&]
-      { return Error{identity, std::string(operation) + ": " + std::strerror(code)}; });
+      {
+        const std::string_view message = description_status == 0 ? description : "unknown C runtime error";
+        return Error{identity, std::string(operation) + ": " + std::string(message)};
+      });
     }
 
     void close_fd(int &fd) noexcept { if (fd >= 0) { const int old = std::exchange(fd, -1); (void)::_close(old); } }

@@ -173,6 +173,7 @@ jobs:
             exit 1
           fi
           clang-tidy --warnings-as-errors='*' -p cli-analysis \
+            --header-filter='.*modules/cli/(src|include|tools)/.*' \
             "${cli_sources[@]}" "${tool_sources[@]}"
           cmake --build cli-analysis --target vix_cli vix_installer vix_release_tool --parallel 2
 

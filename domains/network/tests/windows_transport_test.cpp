@@ -8,6 +8,7 @@
 #include <atomic>
 #include <cassert>
 #include <chrono>
+#include <condition_variable>
 #include <cstdio>
 #include <exception>
 #include <memory>
@@ -34,9 +35,12 @@ namespace
   {
     struct promise_type
     {
+      std::mutex final_mutex;
+      std::condition_variable final_cv;
+      bool final_suspended{};
       Task get_return_object() noexcept { return Task{std::coroutine_handle<promise_type>::from_promise(*this)}; }
       std::suspend_never initial_suspend() const noexcept { return {}; }
-      std::suspend_always final_suspend() const noexcept { return {}; }
+      vix::network::test_detail::FinalSuspendAwaiter<promise_type> final_suspend() noexcept { return {}; }
       void return_void() const noexcept {}
       void unhandled_exception() const noexcept { std::terminate(); }
     };

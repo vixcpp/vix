@@ -157,6 +157,12 @@ add_executable(vix_standard_completion_test
 
 target_compile_features(vix_standard_completion_test PRIVATE cxx_std_20)
 
+if (CMAKE_SYSTEM_NAME STREQUAL "WASI")
+  # WASI Preview 2's current C++ runtime is exception-free. Keep the
+  # completion contract executable enabled, but compile it in that mode.
+  target_compile_options(vix_standard_completion_test PRIVATE -fno-exceptions)
+endif()
+
 target_link_libraries(vix_standard_completion_test
   PRIVATE
     vix::standard
@@ -167,41 +173,40 @@ add_test(
   COMMAND vix_standard_completion_test
 )
 
-# These runtime fault cases intentionally throw. The current WASI Preview 2
-# SDK has no C++ exception runtime, so that platform validates the
-# exception-disabled API through the compile probes below instead.
-if (NOT CMAKE_SYSTEM_NAME STREQUAL "WASI")
-  add_executable(vix_standard_completion_fault_test
-    completion_fault_test.cpp
-  )
+add_executable(vix_standard_completion_fault_test
+  completion_fault_test.cpp
+)
 
-  target_compile_features(vix_standard_completion_fault_test PRIVATE cxx_std_20)
+target_compile_features(vix_standard_completion_fault_test PRIVATE cxx_std_20)
 
-  target_link_libraries(vix_standard_completion_fault_test
-    PRIVATE
-      vix::standard
-  )
-
-  add_test(
-    NAME vix_standard_completion_value_fault_test
-    COMMAND vix_standard_completion_fault_test value
-  )
-
-  add_test(
-    NAME vix_standard_completion_error_fault_test
-    COMMAND vix_standard_completion_fault_test error
-  )
-
-  add_test(
-    NAME vix_standard_completion_taken_value_fault_test
-    COMMAND vix_standard_completion_fault_test taken_value
-  )
-
-  add_test(
-    NAME vix_standard_completion_second_take_fault_test
-    COMMAND vix_standard_completion_fault_test second_take
-  )
+if (CMAKE_SYSTEM_NAME STREQUAL "WASI")
+  target_compile_options(vix_standard_completion_fault_test PRIVATE -fno-exceptions)
 endif()
+
+target_link_libraries(vix_standard_completion_fault_test
+  PRIVATE
+    vix::standard
+)
+
+add_test(
+  NAME vix_standard_completion_value_fault_test
+  COMMAND vix_standard_completion_fault_test value
+)
+
+add_test(
+  NAME vix_standard_completion_error_fault_test
+  COMMAND vix_standard_completion_fault_test error
+)
+
+add_test(
+  NAME vix_standard_completion_taken_value_fault_test
+  COMMAND vix_standard_completion_fault_test taken_value
+)
+
+add_test(
+  NAME vix_standard_completion_second_take_fault_test
+  COMMAND vix_standard_completion_fault_test second_take
+)
 
 set(_vix_standard_fault_tests
   vix_standard_result_value_fault_test
@@ -211,15 +216,11 @@ set(_vix_standard_fault_tests
   vix_standard_time_duration_fault_test
   vix_standard_time_deadline_fault_test
   vix_standard_cancellation_callback_fault_test
+  vix_standard_completion_value_fault_test
+  vix_standard_completion_error_fault_test
+  vix_standard_completion_taken_value_fault_test
+  vix_standard_completion_second_take_fault_test
 )
-if (NOT CMAKE_SYSTEM_NAME STREQUAL "WASI")
-  list(APPEND _vix_standard_fault_tests
-    vix_standard_completion_value_fault_test
-    vix_standard_completion_error_fault_test
-    vix_standard_completion_taken_value_fault_test
-    vix_standard_completion_second_take_fault_test
-  )
-endif()
 set_tests_properties(${_vix_standard_fault_tests} PROPERTIES WILL_FAIL TRUE)
 
 # Repository verification convenience only.  This is deliberately not a
@@ -236,10 +237,8 @@ add_custom_target(vix_standard_check
     vix_standard_cancellation_test
     vix_standard_cancellation_fault_test
     vix_standard_completion_test
+  vix_standard_completion_fault_test
 )
-if (NOT CMAKE_SYSTEM_NAME STREQUAL "WASI")
-  add_dependencies(vix_standard_check vix_standard_completion_fault_test)
-endif()
 
 function(vix_standard_expect_compile_failure name source)
   try_compile(${name}_compiled
