@@ -18,6 +18,7 @@
 #if defined(__APPLE__)
 #include <spawn.h>
 #include <AvailabilityMacros.h>
+#include <sys/socket.h>
 #endif
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -117,6 +118,39 @@ namespace vix::process
         }
       }
       return 0;
+    }
+
+    [[nodiscard]] int create_stdin_channel_cloexec(int descriptors[2]) noexcept
+    {
+#if defined(__APPLE__)
+      if (::socketpair(AF_UNIX, SOCK_STREAM, 0, descriptors) != 0) return -1;
+      for (int index = 0; index < 2; ++index)
+      {
+        const int descriptor = descriptors[index];
+        const int flags = ::fcntl(descriptor, F_GETFD);
+        if (flags < 0 || ::fcntl(descriptor, F_SETFD, flags | FD_CLOEXEC) != 0)
+        {
+          const int saved = errno;
+          close_noexcept(descriptors[0]);
+          close_noexcept(descriptors[1]);
+          errno = saved;
+          return -1;
+        }
+      }
+      const int suppress_sigpipe = 1;
+      if (::setsockopt(descriptors[1], SOL_SOCKET, SO_NOSIGPIPE,
+                       &suppress_sigpipe, sizeof(suppress_sigpipe)) != 0)
+      {
+        const int saved = errno;
+        close_noexcept(descriptors[0]);
+        close_noexcept(descriptors[1]);
+        errno = saved;
+        return -1;
+      }
+      return 0;
+#else
+      return create_pipe_cloexec(descriptors);
+#endif
     }
 
     [[nodiscard]] Result<void> close_cached(int &descriptor, std::optional<Error> &saved)
@@ -544,7 +578,7 @@ namespace vix::process
 
     int in_pipe[2]{-1, -1}, out_pipe[2]{-1, -1}, err_pipe[2]{-1, -1}, report_pipe[2]{-1, -1};
     auto cleanup = [&]() noexcept { close_noexcept(in_pipe[0]); close_noexcept(in_pipe[1]); close_noexcept(out_pipe[0]); close_noexcept(out_pipe[1]); close_noexcept(err_pipe[0]); close_noexcept(err_pipe[1]); close_noexcept(report_pipe[0]); close_noexcept(report_pipe[1]); detail::Reaper::instance().remove(record); };
-    if (state.input.kind_ == StandardInput::Kind::pipe && create_pipe_cloexec(in_pipe) != 0) { auto e=native_error(errors::spawn_failed,"pipe"); cleanup(); return e; }
+    if (state.input.kind_ == StandardInput::Kind::pipe && create_stdin_channel_cloexec(in_pipe) != 0) { auto e=native_error(errors::spawn_failed,"stdin channel"); cleanup(); return e; }
     if (state.output.kind_ == StandardOutput::Kind::pipe && create_pipe_cloexec(out_pipe) != 0) { auto e=native_error(errors::spawn_failed,"pipe"); cleanup(); return e; }
     if (state.error.kind_ == StandardError::Kind::pipe && create_pipe_cloexec(err_pipe) != 0) { auto e=native_error(errors::spawn_failed,"pipe"); cleanup(); return e; }
     if (create_pipe_cloexec(report_pipe) != 0) { auto e=native_error(errors::spawn_failed,"pipe"); cleanup(); return e; }

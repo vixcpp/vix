@@ -81,8 +81,13 @@ int main(int argc,char **argv)
   }
   if(mode==L"env")
   {
-    const wchar_t *value=::_wgetenv(L"VIX_PROCESS_TEST_VALUE");
-    return value?write_wide(value):65;
+    wchar_t *value=nullptr;
+    std::size_t value_size=0;
+    const int lookup_status=::_wdupenv_s(&value,&value_size,L"VIX_PROCESS_TEST_VALUE");
+    if(lookup_status!=0||!value){std::free(value);return 65;}
+    const int write_status=write_wide(value);
+    std::free(value);
+    return write_status;
   }
   if(mode==L"cwd")
   {

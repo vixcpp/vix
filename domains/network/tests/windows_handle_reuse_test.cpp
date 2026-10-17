@@ -1,5 +1,6 @@
 #include "Engine.hpp"
 #include "SocketPlatform.hpp"
+#include <vix/network/Address.hpp>
 #include <cassert>
 #include <cstdint>
 

@@ -18,6 +18,14 @@ add_library(vix::standard ALIAS vix_standard)
 
 target_compile_features(vix_standard INTERFACE cxx_std_20)
 
+# The supported WASI Preview 2 C++ runtime is exception-free. Standard's
+# variant-backed Result/Completion accessors must therefore be compiled by
+# both in-tree and installed-SDK consumers without exception ABI references.
+if (CMAKE_SYSTEM_NAME STREQUAL "WASI" AND
+    CMAKE_CXX_COMPILER_TARGET STREQUAL "wasm32-wasip2")
+  target_compile_options(vix_standard INTERFACE -fno-exceptions)
+endif()
+
 target_include_directories(vix_standard
   INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

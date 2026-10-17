@@ -151,17 +151,13 @@ add_test(
   COMMAND vix_standard_cancellation_fault_test
 )
 
+# The WASI exception-free requirement is propagated by vix::standard to all
+# linked tests and external consumers.
 add_executable(vix_standard_completion_test
   completion_test.cpp
 )
 
 target_compile_features(vix_standard_completion_test PRIVATE cxx_std_20)
-
-if (CMAKE_SYSTEM_NAME STREQUAL "WASI")
-  # WASI Preview 2's current C++ runtime is exception-free. Keep the
-  # completion contract executable enabled, but compile it in that mode.
-  target_compile_options(vix_standard_completion_test PRIVATE -fno-exceptions)
-endif()
 
 target_link_libraries(vix_standard_completion_test
   PRIVATE
@@ -178,10 +174,6 @@ add_executable(vix_standard_completion_fault_test
 )
 
 target_compile_features(vix_standard_completion_fault_test PRIVATE cxx_std_20)
-
-if (CMAKE_SYSTEM_NAME STREQUAL "WASI")
-  target_compile_options(vix_standard_completion_fault_test PRIVATE -fno-exceptions)
-endif()
 
 target_link_libraries(vix_standard_completion_fault_test
   PRIVATE

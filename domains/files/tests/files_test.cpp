@@ -115,7 +115,9 @@ int main()
   assert(!write_link && write_link.error().identity() == files::errors::symlink_not_allowed);
 #elif defined(_WIN32)
   const auto link_native = root / L"entry-link";
-  const auto link_flags = SYMBOLIC_LINK_FLAG_RELATIVE | SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE;
+  // A relative target path creates a relative symlink; Win32 has no separate
+  // SYMBOLIC_LINK_FLAG_RELATIVE flag.
+  const auto link_flags = SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE;
   if (::CreateSymbolicLinkW(link_native.c_str(), L"payload.txt", link_flags))
   {
     const auto link_u8 = link_native.u8string();
