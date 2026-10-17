@@ -4,6 +4,7 @@
 #include <cerrno>
 #include <climits>
 #include <limits>
+#include <new>
 #include <poll.h>
 #include <unordered_map>
 #include <vector>
@@ -28,14 +29,13 @@ namespace vix::network::detail
 
   vix::Result<std::unique_ptr<Reactor>> Reactor::create()
   {
-    try
-    {
-      return std::unique_ptr<Reactor>(new Reactor(std::make_unique<Impl>()));
-    }
-    catch (...)
-    {
+    std::unique_ptr<Impl> impl{new (std::nothrow) Impl};
+    if (!impl)
       return vix::Error{vix::network::resource_exhausted, "cannot allocate WASI network reactor"};
-    }
+    std::unique_ptr<Reactor> reactor{new (std::nothrow) Reactor(std::move(impl))};
+    if (!reactor)
+      return vix::Error{vix::network::resource_exhausted, "cannot allocate WASI network reactor"};
+    return reactor;
   }
 
   // Cooperative providers have no sleeping reactor thread. Commands are
@@ -46,17 +46,21 @@ namespace vix::network::detail
   {
     if (socket > static_cast<NativeSocket>(INT_MAX) || (!read && !write))
       return false;
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
     try
     {
+#endif
       if (!impl_->registrations.emplace(socket, Impl::Registration{token, read, write}).second)
         return false;
       ++impl_->adds;
       return true;
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
     }
     catch (...)
     {
       return false;
     }
+#endif
   }
 
   bool Reactor::modify(NativeSocket socket, std::uint64_t token, bool read, bool write) noexcept
@@ -89,8 +93,10 @@ namespace vix::network::detail
     // infinite timeout would violate its public cooperative progress contract.
     if (!events || capacity <= 0 || timeout_ms != 0)
       return -1;
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
     try
     {
+#endif
       std::vector<pollfd> descriptors;
       std::vector<std::uint64_t> tokens;
       descriptors.reserve(impl_->registrations.size());
@@ -139,11 +145,13 @@ namespace vix::network::detail
       if (output)
         impl_->cursor = (start + last_ready + 1) % descriptors.size();
       return output;
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
     }
     catch (...)
     {
       return -1;
     }
+#endif
   }
 
   std::uint64_t Reactor::control_count(ReactorControl operation) const noexcept

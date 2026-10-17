@@ -243,16 +243,24 @@ namespace vix::network::detail
         return infra.error();
     }
 #endif
-    vix::Result<std::unique_ptr<Reactor>> native_reactor = [&]() -> vix::Result<std::unique_ptr<Reactor>>
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
+    auto native_reactor = [&]() -> vix::Result<std::unique_ptr<Reactor>>
     {
       try { return Reactor::create(); }
       catch (...) { return vix::Error{resource_exhausted, "cannot allocate network reactor state"}; }
     }();
+#else
+    auto native_reactor = Reactor::create();
+#endif
     if (!native_reactor)
       return native_reactor.error();
     std::shared_ptr<ProviderCore> p;
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
     try { p = std::shared_ptr<ProviderCore>(new ProviderCore(native_reactor.take(), cooperative)); }
     catch (...) { return vix::Error{resource_exhausted, "cannot allocate network provider state"}; }
+#else
+    p = std::shared_ptr<ProviderCore>(new ProviderCore(native_reactor.take(), cooperative));
+#endif
     if (cooperative)
     {
 #if !defined(__wasi__)
@@ -551,6 +559,7 @@ namespace vix::network::detail
       return false;
     bool out = false;
     ReadinessHandler read_slot, write_slot;
+#if defined(__cpp_exceptions) || defined(_CPPUNWIND)
     try
     {
       read_slot = it->second.read_slot;
@@ -560,6 +569,10 @@ namespace vix::network::detail
     {
       return false;
     }
+#else
+    read_slot = it->second.read_slot;
+    write_slot = it->second.write_slot;
+#endif
     const auto read_revision = it->second.read_revision;
     const auto write_revision = it->second.write_revision;
     const auto terminal_events = reactor_error | reactor_hangup;

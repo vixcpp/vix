@@ -56,6 +56,8 @@ int main(int argc,char **argv)
   using namespace vix::process;
 
 #if defined(_WIN32)
+  (void)argc;
+  (void)argv;
   std::wstring module(32768,L'\0');
   const DWORD module_size=::GetModuleFileNameW(nullptr,module.data(),static_cast<DWORD>(module.size()));
   assert(module_size>0&&module_size<module.size());
@@ -215,7 +217,7 @@ int main(int argc,char **argv)
   ProcessSpec exit_spec(helper());
   assert(exit_spec.add_argument("exit"));assert(exit_spec.add_argument("23"));
   auto exit_process=spawn(std::move(exit_spec));assert(exit_process);
-  auto exited=exit_process.value().wait();assert(exited&&exited.value().exit_code()==23);
+  auto exited=exit_process.value().wait();assert(exited&&exited.value().exit_code()==std::uint32_t{23});
 
   ProcessSpec delayed(helper());
   assert(delayed.add_argument("sleep-ms"));assert(delayed.add_argument("1000"));

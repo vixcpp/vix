@@ -9,6 +9,7 @@
 #include <cassert>
 #include <chrono>
 #include <condition_variable>
+#include <cstddef>
 #include <cstdio>
 #include <exception>
 #include <memory>
@@ -212,6 +213,10 @@ int main(int argc, char **argv)
     std::lock_guard lock(first_read->mutex);
     assert(first_read->completion->status() == vix::CompletionStatus::Success);
     assert(first_read->completion->take() == first.size());
+    if (first[0] != payload[0] || first[1] != payload[1])
+      std::fprintf(stderr, "first TCP read mismatch: got %u %u, expected %u %u\n",
+                   std::to_integer<unsigned>(first[0]), std::to_integer<unsigned>(first[1]),
+                   std::to_integer<unsigned>(payload[0]), std::to_integer<unsigned>(payload[1]));
     assert(first[0] == payload[0] && first[1] == payload[1]);
   }
   std::array<std::byte, 2> second{};
@@ -222,6 +227,10 @@ int main(int argc, char **argv)
     std::lock_guard lock(second_read->mutex);
     assert(second_read->completion->status() == vix::CompletionStatus::Success);
     assert(second_read->completion->take() == second.size());
+    if (second[0] != payload[2] || second[1] != payload[3])
+      std::fprintf(stderr, "second TCP read mismatch: got %u %u, expected %u %u\n",
+                   std::to_integer<unsigned>(second[0]), std::to_integer<unsigned>(second[1]),
+                   std::to_integer<unsigned>(payload[2]), std::to_integer<unsigned>(payload[3]));
     assert(second[0] == payload[2] && second[1] == payload[3]);
   }
   assert(client->shutdown_write());

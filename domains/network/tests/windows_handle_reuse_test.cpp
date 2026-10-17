@@ -7,6 +7,7 @@
 int main()
 {
   using namespace vix::network::detail;
+  using vix::network::AddressFamily;
   auto created = ProviderCore::create();
   assert(created);
   auto provider = created.take();
