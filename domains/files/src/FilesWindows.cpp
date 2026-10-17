@@ -175,7 +175,9 @@ namespace vix::files
 
     [[nodiscard]] std::optional<std::string> path_utf8(const std::filesystem::path &path)
     {
-      const auto &wide = path.native();
+      // Publicly derived Paths use the same generic separator spelling on all
+      // providers, while filesystem operations still consume native paths.
+      const auto wide = path.generic_wstring();
       if (wide.empty()) return std::string{};
       if (wide.size() > static_cast<std::size_t>(INT_MAX)) return std::nullopt;
       const int input_size = static_cast<int>(wide.size());

@@ -16,6 +16,9 @@ if (NOT TARGET vix::vix_network)
 endif()
 
 add_executable(vix_sdk_consumer main.cpp)
+file(GENERATE
+  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/vix_sdk_consumer_path-$<CONFIG>.txt"
+  CONTENT "$<TARGET_FILE:vix_sdk_consumer>\n")
 target_link_libraries(vix_sdk_consumer PRIVATE
   vix::vix_standard
   vix::vix_files

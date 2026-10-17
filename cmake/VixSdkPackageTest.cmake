@@ -12,6 +12,21 @@ if (VIX_TARGET_SYSTEM STREQUAL "WASI" AND VIX_EXPECT_NETWORK AND
   message(FATAL_ERROR "The WASI installed-SDK consumer requires VIX_WASMTIME_EXECUTABLE.")
 endif()
 set(_consumer_cmake_args)
+set(_consumer_generator_args)
+set(_configuration_args)
+if (DEFINED VIX_CONFIGURATION AND NOT VIX_CONFIGURATION STREQUAL "")
+  list(APPEND _configuration_args --config "${VIX_CONFIGURATION}")
+  list(APPEND _consumer_cmake_args "-DCMAKE_BUILD_TYPE=${VIX_CONFIGURATION}")
+endif()
+if (DEFINED VIX_GENERATOR AND NOT VIX_GENERATOR STREQUAL "")
+  list(APPEND _consumer_generator_args -G "${VIX_GENERATOR}")
+endif()
+if (DEFINED VIX_GENERATOR_PLATFORM AND NOT VIX_GENERATOR_PLATFORM STREQUAL "")
+  list(APPEND _consumer_generator_args -A "${VIX_GENERATOR_PLATFORM}")
+endif()
+if (DEFINED VIX_GENERATOR_TOOLSET AND NOT VIX_GENERATOR_TOOLSET STREQUAL "")
+  list(APPEND _consumer_generator_args -T "${VIX_GENERATOR_TOOLSET}")
+endif()
 if (DEFINED VIX_SANITIZER_LINK_FLAGS AND NOT VIX_SANITIZER_LINK_FLAGS STREQUAL "")
   # The installed archives in this test came from an instrumented build. Link
   # only this isolated test consumer with the matching runtime; exported SDK
@@ -35,6 +50,7 @@ set(_consumer_build "${VIX_BINARY_DIR}/sdk-package-consumer-build")
 file(REMOVE_RECURSE "${_prefix}" "${_relocated_prefix}" "${_consumer_build}")
 execute_process(
   COMMAND "${CMAKE_COMMAND}" --install "${VIX_BINARY_DIR}" --prefix "${_prefix}"
+    ${_configuration_args}
   RESULT_VARIABLE _install_result
 )
 if (NOT _install_result EQUAL 0)
@@ -163,6 +179,7 @@ endif()
 execute_process(
   COMMAND "${CMAKE_COMMAND}" -S "${_consumer_source}" -B "${_consumer_build}"
     "-DCMAKE_PREFIX_PATH=${_relocated_prefix}"
+    ${_consumer_generator_args}
     ${_consumer_cmake_args}
   RESULT_VARIABLE _configure_result
 )
@@ -171,20 +188,30 @@ if (NOT _configure_result EQUAL 0)
 endif()
 execute_process(
   COMMAND "${CMAKE_COMMAND}" --build "${_consumer_build}" --parallel 2
+    ${_configuration_args}
   RESULT_VARIABLE _build_result
 )
 if (NOT _build_result EQUAL 0)
   message(FATAL_ERROR "External Vix SDK consumer build failed")
 endif()
 if (VIX_EXPECT_NETWORK)
+  set(_consumer_path_file "${_consumer_build}/vix_sdk_consumer_path-${VIX_CONFIGURATION}.txt")
+  if (NOT EXISTS "${_consumer_path_file}")
+    message(FATAL_ERROR "External SDK consumer did not generate its configuration-specific target path: ${_consumer_path_file}")
+  endif()
+  file(READ "${_consumer_path_file}" _consumer_executable)
+  string(STRIP "${_consumer_executable}" _consumer_executable)
+  if (_consumer_executable STREQUAL "" OR NOT EXISTS "${_consumer_executable}")
+    message(FATAL_ERROR "External SDK consumer executable is missing for configuration '${VIX_CONFIGURATION}': ${_consumer_executable}")
+  endif()
   if (VIX_TARGET_SYSTEM STREQUAL "WASI")
     execute_process(
-      COMMAND "${VIX_WASMTIME_EXECUTABLE}" run "${_consumer_build}/vix_sdk_consumer.wasm"
+      COMMAND "${VIX_WASMTIME_EXECUTABLE}" run "${_consumer_executable}"
       RESULT_VARIABLE _runtime_result
     )
   else()
     execute_process(
-      COMMAND "${_consumer_build}/vix_sdk_consumer"
+      COMMAND "${_consumer_executable}"
       RESULT_VARIABLE _runtime_result
     )
   endif()

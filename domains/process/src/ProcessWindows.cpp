@@ -580,8 +580,11 @@ namespace vix::process
       };
       auto make_pipe=[&](bool input)->bool
       {
-        HANDLE child=nullptr,parent=nullptr;
-        if(!::CreatePipe(&child,&parent,&inheritable,0))return false;
+        HANDLE read_end=nullptr,write_end=nullptr;
+        if(!::CreatePipe(&read_end,&write_end,&inheritable,0))return false;
+        // CreatePipe returns the read end first and the write end second.
+        HANDLE child=input?read_end:write_end;
+        HANDLE parent=input?write_end:read_end;
         if(!::SetHandleInformation(parent,HANDLE_FLAG_INHERIT,0)){const auto e=::GetLastError();::CloseHandle(child);::CloseHandle(parent);::SetLastError(e);return false;}
         if(input){in_child=child;in_parent=parent;}else{out_parent=parent;out_child=child;}
         return true;
@@ -590,8 +593,10 @@ namespace vix::process
       if(state.output.kind_==StandardOutput::Kind::pipe && !make_pipe(false)){auto e=win_error(errors::spawn_failed,"CreatePipe stdout");cleanup_handles();return e;}
       if(state.error.kind_==StandardError::Kind::pipe)
       {
-        HANDLE child=nullptr,parent=nullptr;
-        if(!::CreatePipe(&child,&parent,&inheritable,0)){auto e=win_error(errors::spawn_failed,"CreatePipe stderr");cleanup_handles();return e;}
+        HANDLE read_end=nullptr,write_end=nullptr;
+        if(!::CreatePipe(&read_end,&write_end,&inheritable,0)){auto e=win_error(errors::spawn_failed,"CreatePipe stderr");cleanup_handles();return e;}
+        // The child writes stderr; the parent owns and reads the read end.
+        HANDLE child=write_end,parent=read_end;
         if(!::SetHandleInformation(parent,HANDLE_FLAG_INHERIT,0)){auto e=win_error(errors::spawn_failed,"SetHandleInformation stderr");::CloseHandle(child);::CloseHandle(parent);cleanup_handles();return e;}
         err_child=child;err_parent=parent;
       }

@@ -20,6 +20,9 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#if defined(_MSC_VER)
+#include <crtdbg.h>
+#endif
 #elif defined(__APPLE__)
 #include <fcntl.h>
 #include <unistd.h>
@@ -56,6 +59,12 @@ int main(int argc,char **argv)
   using namespace vix::process;
 
 #if defined(_WIN32)
+#if defined(_MSC_VER) && defined(_DEBUG)
+  // Keep failed assertions fatal and visible to CTest instead of opening an
+  // interactive CRT assertion dialog on a headless Windows runner.
+  (void)::_CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
+  (void)::_CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
+#endif
   (void)argc;
   (void)argv;
   std::wstring module(32768,L'\0');

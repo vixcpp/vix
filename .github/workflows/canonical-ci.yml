@@ -168,13 +168,25 @@ jobs:
           shopt -s globstar nullglob
           cli_sources=(modules/cli/src/**/*.cpp)
           tool_sources=(modules/cli/tools/**/*.cpp)
-          if ((${#cli_sources[@]} == 0 || ${#tool_sources[@]} == 0)); then
-            echo "CLI or distribution-tool Clang-Tidy source selection is empty." >&2
+          cli_headers=(modules/cli/src/**/*.h modules/cli/src/**/*.hpp modules/cli/src/**/*.hh modules/cli/src/**/*.hxx
+                       modules/cli/include/**/*.h modules/cli/include/**/*.hpp modules/cli/include/**/*.hh modules/cli/include/**/*.hxx
+                       modules/cli/tools/**/*.h modules/cli/tools/**/*.hpp modules/cli/tools/**/*.hh modules/cli/tools/**/*.hxx)
+          if ((${#cli_sources[@]} == 0 || ${#tool_sources[@]} == 0 || ${#cli_headers[@]} == 0)); then
+            echo "CLI or distribution-tool Clang-Tidy source/header selection is empty." >&2
             exit 1
           fi
+          line_filter='['
+          separator=''
+          for source in "${cli_sources[@]}" "${tool_sources[@]}" "${cli_headers[@]}"; do
+            source_path="$(realpath "$source")"
+            line_filter+="${separator}{\"name\":\"${source_path}\"}"
+            separator=','
+          done
+          line_filter+=']'
           clang-tidy --warnings-as-errors='*' -p cli-analysis \
             --header-filter='.*modules/cli/(src|include|tools)/.*' \
             --system-headers=false \
+            "--line-filter=${line_filter}" \
             "${cli_sources[@]}" "${tool_sources[@]}"
           cmake --build cli-analysis --target vix_cli vix_installer vix_release_tool --parallel 2
 
