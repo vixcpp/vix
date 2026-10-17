@@ -6,9 +6,6 @@
 
 namespace
 {
-  inline constexpr vix::ErrorIdentity failed_operation =
-      vix::ErrorIdentity::define<"vix.test">(1);
-
   [[noreturn]] void expected_termination() noexcept
   {
     std::_Exit(42);

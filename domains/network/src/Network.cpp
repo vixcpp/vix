@@ -492,10 +492,10 @@ namespace vix::network::detail
                                         {
       if (self->provider_->cooperative() && !self->provider_->on_owner_thread())
       { record->complete(vix::Completion<void>{vix::Error{operation_in_progress, "cooperative connection is thread-affine"}}); return; }
-      bool closed = false, write_shutdown = false, arm_failed = false;
+      bool closed = false, write_is_shutdown = false, arm_failed = false;
       { std::lock_guard lock(self->mutex_);
         if(self->closed_) closed = true;
-        else if(self->write_shutdown_) write_shutdown = true;
+        else if(self->write_shutdown_) write_is_shutdown = true;
         else if(buffer.empty()) { }
         else {
         if(self->write_active_) std::terminate();
@@ -505,7 +505,7 @@ namespace vix::network::detail
         }
       }
       if(closed) { record->complete(vix::Completion<void>{vix::Error{peer_closed,"connection is closed"}}); return; }
-      if(write_shutdown) { record->complete(vix::Completion<void>{vix::Error{vix::network::write_shutdown,"connection write direction is shut down"}}); return; }
+      if(write_is_shutdown) { record->complete(vix::Completion<void>{vix::Error{vix::network::write_shutdown,"connection write direction is shut down"}}); return; }
       if(buffer.empty()) { record->complete(vix::Completion<void>::success()); return; }
       if(arm_failed) { record->complete(vix::Completion<void>{vix::Error{io_failure,"cannot arm send"}}); return; }
       record->observe_cancellation(options.cancellation); if(options.deadline) record->observe_deadline(*options.deadline);

@@ -289,6 +289,8 @@ jobs:
           submodules: recursive
           persist-credentials: false
       - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
       - name: Install pinned Android NDK
         run: sdkmanager "ndk;27.2.12479018"
       - name: Configure and compile Android Foundation tests

@@ -41,7 +41,7 @@ namespace vix::files
 
     friend class File;
     friend class DirectoryIterator;
-    friend struct DirectoryEntry;
+    friend class DirectoryEntry;
     friend Path detail_path_from_native(std::string);
     friend const std::string &detail_native_path(const Path &) noexcept;
   };

@@ -73,8 +73,9 @@ namespace vix::files
         std::string result;
         result.reserve(value.size());
         constexpr char hex[] = "0123456789ABCDEF";
-        for (const unsigned char c : value)
+        for (const char byte : value)
         {
+          const auto c = static_cast<unsigned char>(byte);
           if (c >= 0x20 && c < 0x7f) result.push_back(static_cast<char>(c));
           else { result += "\\x"; result.push_back(hex[c >> 4]); result.push_back(hex[c & 0xf]); }
         }

@@ -211,7 +211,21 @@ namespace vix::network::detail
     {
     case ECONNREFUSED: identity = connection_refused; break;
     case EADDRNOTAVAIL: identity = address_unavailable; break;
-    case EAFNOSUPPORT: case EPROTONOSUPPORT: case ESOCKTNOSUPPORT: identity = unsupported; break;
+#if defined(EAFNOSUPPORT)
+    case EAFNOSUPPORT:
+#endif
+#if defined(EPROTONOSUPPORT) && (!defined(EAFNOSUPPORT) || EPROTONOSUPPORT != EAFNOSUPPORT)
+    case EPROTONOSUPPORT:
+#endif
+#if defined(ESOCKTNOSUPPORT) && \
+    (!defined(EAFNOSUPPORT) || ESOCKTNOSUPPORT != EAFNOSUPPORT) && \
+    (!defined(EPROTONOSUPPORT) || ESOCKTNOSUPPORT != EPROTONOSUPPORT)
+    case ESOCKTNOSUPPORT:
+#endif
+#if defined(EAFNOSUPPORT) || defined(EPROTONOSUPPORT) || defined(ESOCKTNOSUPPORT)
+      identity = unsupported;
+      break;
+#endif
     case EMFILE: case ENFILE: identity = resource_exhausted; break;
     default: break;
     }
