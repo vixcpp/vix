@@ -72,6 +72,7 @@ endforeach()
 
 set(_required_targets
     "vix::vix_standard"
+    "vix::vix_concurrency"
     "vix::vix_files"
     "vix::vix_process")
 if (VIX_EXPECT_NETWORK)

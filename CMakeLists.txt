@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.23)
 # Vix.cpp — Umbrella CMake Configuration
 # ====================================================================
 # Purpose:
-#   - Build the admitted Vix Standard, Files, Process, and Network surfaces.
+#   - Build the admitted Vix Standard, Files, Process, Network, and Concurrency surfaces.
 #   - Install/export the canonical package: find_package(Vix CONFIG REQUIRED)
 #
 # Quick start:
@@ -159,7 +159,7 @@ option(VIX_ENABLE_CPPCHECK         "Enable cppcheck if available"               
 option(VIX_ENABLE_COVERAGE         "Enable coverage flags (Debug only)"                           OFF)
 option(VIX_ENABLE_SANITIZERS       "Enable ASan+UBSan (GCC/Clang only)"                           OFF)
 option(VIX_BUILD_EXAMPLES          "Build umbrella examples in ./examples"                        ON)
-option(VIX_BUILD_TESTS             "Build Vix SDK package tests"                                  OFF)
+option(VIX_BUILD_TESTS             "Build Vix SDK package and domain tests"                       OFF)
 option(VIX_BUILD_NETWORK           "Build the Network domain when its provider is available"      ON)
 
 function(vix_apply_canonical_warnings target)
@@ -183,7 +183,7 @@ endfunction()
 function(vix_apply_canonical_warnings_recursively directory)
   get_property(_vix_targets DIRECTORY "${directory}" PROPERTY BUILDSYSTEM_TARGETS)
   foreach(_vix_target IN LISTS _vix_targets)
-    if (_vix_target MATCHES "^vix_(standard|files|process|network)(_|$)")
+    if (_vix_target MATCHES "^vix_(standard|files|process|network|concurrency)(_|$)")
       vix_apply_canonical_warnings("${_vix_target}")
     endif()
   endforeach()
@@ -211,6 +211,7 @@ endif()
 # remain available in their own repositories/standalone builds, but are not
 # aggregated into this package.
 add_subdirectory(standard standard_build)
+add_subdirectory(domains/concurrency concurrency_build)
 add_subdirectory(domains/files files_build)
 add_subdirectory(domains/process canonical_process_build)
 if (VIX_BUILD_NETWORK)
@@ -225,15 +226,15 @@ endif()
 # affected.
 vix_apply_canonical_warnings_recursively("${CMAKE_SOURCE_DIR}")
 
-set(_vix_canonical_targets vix_standard_check vix_files vix_process)
+set(_vix_canonical_targets vix_standard_check vix_concurrency vix_files vix_process)
 if (VIX_HAS_NETWORK)
   list(APPEND _vix_canonical_targets vix_network)
 endif()
 add_custom_target(vix_canonical_architecture DEPENDS ${_vix_canonical_targets})
 
-# POSIX Process and native Network providers require Threads. The WASI
-# Process contract is explicitly unsupported and its Network provider is
-# caller-driven/cooperative, so the complete WASI SDK stays threadless.
+# Native Process, Network, and Concurrency providers use Threads. Their WASI
+# contracts are respectively unsupported or caller-driven/cooperative, so the
+# complete WASI SDK stays threadless.
 if (CMAKE_SYSTEM_NAME STREQUAL "WASI")
   set(VIX_PACKAGE_NEEDS_THREADS FALSE)
 else()
@@ -291,7 +292,7 @@ if (VIX_BUILD_TESTS)
 endif()
 
 if (VIX_HAS_NETWORK)
-  message(STATUS "Vix SDK: Standard -> Files -> Process -> Network")
+  message(STATUS "Vix SDK: Standard -> Concurrency, Files -> Process -> Network")
 else()
-  message(STATUS "Vix SDK: Standard -> Files -> Process (Network unavailable/not requested)")
+  message(STATUS "Vix SDK: Standard -> Concurrency, Files -> Process (Network unavailable/not requested)")
 endif()

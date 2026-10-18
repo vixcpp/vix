@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
 project(vix_sdk_files_process_consumer LANGUAGES CXX)
 
-find_package(Vix CONFIG REQUIRED COMPONENTS Files Process)
+find_package(Vix CONFIG REQUIRED COMPONENTS Concurrency Files Process)
 
-foreach(target vix::vix_standard vix::vix_files vix::vix_process)
+foreach(target vix::vix_standard vix::vix_concurrency vix::vix_files vix::vix_process)
   if (NOT TARGET ${target})
     message(FATAL_ERROR "missing imported target: ${target}")
   endif()
@@ -14,4 +14,4 @@ endif()
 
 add_executable(vix_sdk_files_process_consumer main.cpp)
 target_link_libraries(vix_sdk_files_process_consumer PRIVATE
-  vix::vix_standard vix::vix_files vix::vix_process)
+  vix::vix_standard vix::vix_concurrency vix::vix_files vix::vix_process)

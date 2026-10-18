@@ -6,6 +6,7 @@ if (@VIX_PACKAGE_NEEDS_THREADS@)
 endif()
 
 set(Vix_Standard_FOUND TRUE)
+set(Vix_Concurrency_FOUND TRUE)
 set(Vix_Files_FOUND TRUE)
 set(Vix_Process_FOUND TRUE)
 set(Vix_Network_FOUND @VIX_HAS_NETWORK@)

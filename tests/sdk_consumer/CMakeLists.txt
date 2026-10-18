@@ -5,6 +5,7 @@ find_package(Vix CONFIG REQUIRED)
 
 foreach(target
     vix::vix_standard
+    vix::vix_concurrency
     vix::vix_files
     vix::vix_process)
   if (NOT TARGET ${target})
@@ -21,6 +22,7 @@ file(GENERATE
   CONTENT "$<TARGET_FILE:vix_sdk_consumer>\n")
 target_link_libraries(vix_sdk_consumer PRIVATE
   vix::vix_standard
+  vix::vix_concurrency
   vix::vix_files
   vix::vix_process
   vix::vix_network)
