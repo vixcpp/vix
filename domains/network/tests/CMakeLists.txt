@@ -1,3 +1,11 @@
+# Assertions must remain active in test binaries, including Release.
+# Production libraries retain their normal NDEBUG configuration.
+if(MSVC)
+  add_compile_options(/UNDEBUG)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  add_compile_options(-UNDEBUG)
+endif()
+
 if (VIX_NETWORK_PLATFORM_BACKEND STREQUAL "linux")
 add_executable(vix_network_phase1_test phase1_test.cpp)
 target_compile_features(vix_network_phase1_test PRIVATE cxx_std_20)
@@ -43,6 +51,13 @@ target_include_directories(vix_network_phase2d_test PRIVATE ../src)
 target_link_libraries(vix_network_phase2d_test PRIVATE vix_network vix::standard)
 add_test(NAME vix_network_phase2d_test COMMAND vix_network_phase2d_test)
 set_tests_properties(vix_network_phase2d_test PROPERTIES SKIP_RETURN_CODE 77)
+add_executable(vix_network_transport_lease_test transport_lease_test.cpp)
+target_compile_features(vix_network_transport_lease_test PRIVATE cxx_std_20)
+target_include_directories(vix_network_transport_lease_test PRIVATE ../src)
+target_compile_definitions(vix_network_transport_lease_test PRIVATE VIX_NETWORK_TEST_CAPTURE=1)
+target_link_libraries(vix_network_transport_lease_test PRIVATE vix_network vix::standard Threads::Threads)
+add_test(NAME vix_network_transport_lease_test COMMAND vix_network_transport_lease_test)
+set_tests_properties(vix_network_transport_lease_test PROPERTIES TIMEOUT 15)
 elseif (VIX_NETWORK_PLATFORM_BACKEND STREQUAL "android")
 # Android NDK builds use public-consumer and transport tests that can run on a
 # device/emulator or inside Termux. Linux reactor white-box tests depend on

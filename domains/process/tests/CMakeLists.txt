@@ -1,3 +1,11 @@
+# Assertions must remain active in test binaries, including Release.
+# Production libraries retain their normal NDEBUG configuration.
+if(MSVC)
+  add_compile_options(/UNDEBUG)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  add_compile_options(-UNDEBUG)
+endif()
+
 if (CMAKE_SYSTEM_NAME STREQUAL "WASI")
   if (NOT DEFINED WASMTIME_EXECUTABLE OR NOT EXISTS "${WASMTIME_EXECUTABLE}")
     message(FATAL_ERROR "Set WASMTIME_EXECUTABLE; the WASI unsupported-process contract test must execute.")

@@ -1,3 +1,11 @@
+# Assertions must remain active in test binaries, including Release.
+# Production libraries retain their normal NDEBUG configuration.
+if(MSVC)
+  add_compile_options(/UNDEBUG)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  add_compile_options(-UNDEBUG)
+endif()
+
 add_executable(vix_files_test files_test.cpp)
 target_compile_features(vix_files_test PRIVATE cxx_std_20)
 target_link_libraries(vix_files_test PRIVATE vix::files)

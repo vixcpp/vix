@@ -14,6 +14,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <span>
 #include <vector>
 #include <variant>
 #include <utility>
@@ -215,8 +216,33 @@ namespace vix::network::detail
   private:
     std::shared_ptr<ProviderCore> provider_;
   };
+  class TcpConnectionState;
   template <class T>
   class OperationRecord;
+  class TcpTransportLease
+  {
+  public:
+    TcpTransportLease() noexcept = default;
+    TcpTransportLease(TcpTransportLease &&) noexcept;
+    TcpTransportLease(const TcpTransportLease &) = delete;
+    TcpTransportLease &operator=(TcpTransportLease &&) = delete;
+    TcpTransportLease &operator=(const TcpTransportLease &) = delete;
+    ~TcpTransportLease();
+
+    // Private Network operations authorized by this lease. This class lives
+    // only in the non-installed engine header, not in the public API.
+    vix::network::Operation<std::size_t> receive(std::span<std::byte>, OperationOptions = {});
+    vix::network::Operation<void> send(std::span<const std::byte>, OperationOptions = {});
+    vix::Result<void> shutdown_write() noexcept;
+    // Permanently close a claimed transport. Network defers descriptor close
+    // until active child operations have retired.
+    void close() noexcept;
+
+  private:
+    explicit TcpTransportLease(std::shared_ptr<TcpConnectionState>) noexcept;
+    std::shared_ptr<TcpConnectionState> state_;
+    friend class NetworkAccess;
+  };
   class NetworkAccess
   {
   public:
@@ -245,7 +271,18 @@ namespace vix::network::detail
     static void capture_next_receive_record_for_test(const TcpConnection &, std::shared_ptr<OperationRecord<std::size_t>> &);
     static void capture_next_send_record_for_test(const TcpConnection &, std::shared_ptr<OperationRecord<void>> &);
     static TransportCountersForTest transport_counters_for_test(const TcpConnection &);
+    static TransportCountersForTest transport_counters_for_test(const TcpTransportLease &);
+    // Private TLS integration: returns the provider retained by an exclusive
+    // transport lease without exposing its native descriptor.
+    static std::shared_ptr<ProviderCore> provider_for_tls_lease(const TcpTransportLease &) noexcept;
     static TcpConnection from_handoff(NativeSocket, ProviderResourceLease);
+    // Experimental, engine-private ownership transfer. Engine.hpp is not an
+    // installed header; ordinary SDK consumers cannot access this entrypoint.
+    static vix::Result<TcpTransportLease> claim_tcp_for_tls(TcpConnection &&);
+#ifdef VIX_NETWORK_TEST_CAPTURE
+    static void set_before_native_receive_hook_for_test(const TcpConnection &,
+                                                         void (*)(void *) noexcept, void *) noexcept;
+#endif
   };
   // Compatibility spelling for private focused tests only.  It is not in any
   // installed public header.

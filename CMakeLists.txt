@@ -161,6 +161,8 @@ option(VIX_ENABLE_SANITIZERS       "Enable ASan+UBSan (GCC/Clang only)"         
 option(VIX_BUILD_EXAMPLES          "Build umbrella examples in ./examples"                        ON)
 option(VIX_BUILD_TESTS             "Build Vix SDK package and domain tests"                       OFF)
 option(VIX_BUILD_NETWORK           "Build the Network domain when its provider is available"      ON)
+option(VIX_BUILD_TLS_I0B_TESTS      "Build the private Linux TLS-I0-B feasibility tests"          OFF)
+option(VIX_BUILD_TLS_EXPERIMENTAL   "Build the uninstalled experimental TLS Domain"             OFF)
 
 function(vix_apply_canonical_warnings target)
   if (NOT VIX_ENABLE_WARNINGS OR NOT TARGET "${target}")
@@ -183,7 +185,7 @@ endfunction()
 function(vix_apply_canonical_warnings_recursively directory)
   get_property(_vix_targets DIRECTORY "${directory}" PROPERTY BUILDSYSTEM_TARGETS)
   foreach(_vix_target IN LISTS _vix_targets)
-    if (_vix_target MATCHES "^vix_(standard|files|process|network|concurrency)(_|$)")
+    if (_vix_target MATCHES "^vix_(standard|files|process|network|concurrency|tls_i0b|tls_experimental)(_|$)")
       vix_apply_canonical_warnings("${_vix_target}")
     endif()
   endforeach()
@@ -219,6 +221,38 @@ if (VIX_BUILD_NETWORK)
   set(VIX_HAS_NETWORK TRUE)
 else()
   set(VIX_HAS_NETWORK FALSE)
+endif()
+
+# TLS is explicitly experimental and is never installed/exported. Its current
+# lease and runtime qualification is Linux-only; ordinary Vix configurations
+# do not discover or link OpenSSL.
+if (VIX_BUILD_TLS_EXPERIMENTAL OR VIX_BUILD_TLS_I0B_TESTS)
+  if (NOT VIX_HAS_NETWORK OR NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    message(FATAL_ERROR "Experimental TLS currently requires the Linux Network provider.")
+  endif()
+  find_package(OpenSSL 3 REQUIRED COMPONENTS SSL Crypto)
+  add_library(vix_tls_experimental STATIC
+    domains/tls/src/OpenSslDriver.cpp
+    domains/tls/src/PrivateChannel.cpp
+    domains/tls/src/TlsConfig.cpp
+    domains/tls/src/TlsChannel.cpp)
+  add_library(vix::tls_experimental ALIAS vix_tls_experimental)
+  target_compile_features(vix_tls_experimental PUBLIC cxx_std_20)
+  target_include_directories(vix_tls_experimental
+    PUBLIC
+      $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/domains/tls/include>
+    PRIVATE
+      ${CMAKE_SOURCE_DIR}/domains/tls/src
+      ${CMAKE_SOURCE_DIR}/domains/network/src)
+  target_link_libraries(vix_tls_experimental
+    PUBLIC vix::network vix::standard
+    PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+  if (VIX_BUILD_TLS_I0B_TESTS)
+    if (NOT VIX_BUILD_TESTS)
+      message(FATAL_ERROR "VIX_BUILD_TLS_I0B_TESTS requires VIX_BUILD_TESTS.")
+    endif()
+    add_subdirectory(domains/tls/tests tls_i0b_tests)
+  endif()
 endif()
 
 # Apply diagnostics only to the canonical Vix domain targets and their owned

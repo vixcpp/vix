@@ -1,3 +1,11 @@
+# Assertions must remain active in test binaries, including Release.
+# Production libraries retain their normal NDEBUG configuration.
+if(MSVC)
+  add_compile_options(/UNDEBUG)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  add_compile_options(-UNDEBUG)
+endif()
+
 if (CMAKE_SYSTEM_NAME STREQUAL "WASI")
   if (NOT VIX_WASMTIME_EXECUTABLE OR NOT EXISTS "${VIX_WASMTIME_EXECUTABLE}")
     message(FATAL_ERROR "WASI Concurrency capability test requires VIX_WASMTIME_EXECUTABLE.")

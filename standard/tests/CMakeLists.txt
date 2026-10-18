@@ -1,3 +1,11 @@
+# Assertions must remain active in test binaries, including Release.
+# Production libraries retain their normal NDEBUG configuration.
+if(MSVC)
+  add_compile_options(/UNDEBUG)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  add_compile_options(-UNDEBUG)
+endif()
+
 add_executable(vix_standard_target_smoke_test
   standard_target_smoke_test.cpp
 )

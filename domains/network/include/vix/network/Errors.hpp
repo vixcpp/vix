@@ -22,4 +22,7 @@ namespace vix::network
   inline constexpr auto operation_in_progress = vix::ErrorIdentity::define<"vix.network">(32);
   inline constexpr auto write_shutdown = vix::ErrorIdentity::define<"vix.network">(33);
   inline constexpr auto address_in_use = vix::ErrorIdentity::define<"vix.network">(34);
+  // The TCP transport has been exclusively transferred to a private Network
+  // owner; an already-created ordinary operation cannot use it.
+  inline constexpr auto transport_owned = vix::ErrorIdentity::define<"vix.network">(35);
 }
