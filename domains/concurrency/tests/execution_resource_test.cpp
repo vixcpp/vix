@@ -421,7 +421,7 @@ namespace
     unsigned int rejected_shutdown = 0;
     std::vector<vix::concurrency::WorkHandle<void>> accepted_handles;
     accepted_handles.reserve(submission_count);
-    std::thread submitter([&resource, submission_count, &attempted, &accepted, &rejected_capacity,
+    std::thread submitter([&resource, &attempted, &accepted, &rejected_capacity,
                            &rejected_shutdown, &accepted_handles]
     {
       for (unsigned int index = 0; index < submission_count; ++index)

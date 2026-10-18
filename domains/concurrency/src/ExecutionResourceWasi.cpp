@@ -16,18 +16,33 @@ namespace vix::concurrency
 
   NotificationRegistration::NotificationRegistration(
       NotificationRegistration &&other) noexcept
-      : state_(other.state_.exchange(std::shared_ptr<detail::NotificationState>{},
-                                     std::memory_order_acq_rel))
   {
+    std::lock_guard lock(other.state_mutex_);
+    state_ = std::move(other.state_);
   }
 
   NotificationRegistration &NotificationRegistration::operator=(
       NotificationRegistration &&other) noexcept
   {
     if (this != &other)
-      state_.store(other.state_.exchange(std::shared_ptr<detail::NotificationState>{},
-                                         std::memory_order_acq_rel),
-                   std::memory_order_release);
+    {
+      std::shared_ptr<detail::NotificationState> previous;
+      {
+        std::lock_guard lock(state_mutex_);
+        previous = std::move(state_);
+      }
+      std::shared_ptr<detail::NotificationState> incoming;
+      {
+        std::lock_guard lock(other.state_mutex_);
+        incoming = std::move(other.state_);
+      }
+      {
+        std::lock_guard lock(state_mutex_);
+        state_ = std::move(incoming);
+      }
+      // Release the replaced state after all registration mutexes are free.
+      previous.reset();
+    }
     return *this;
   }
 
