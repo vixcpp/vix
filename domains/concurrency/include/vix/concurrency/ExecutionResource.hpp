@@ -224,7 +224,8 @@ namespace vix::concurrency
 
     [[nodiscard]] bool valid() const noexcept
     {
-      return static_cast<bool>(state_.load(std::memory_order_acquire));
+      std::lock_guard lock(state_mutex_);
+      return static_cast<bool>(state_);
     }
     // Nonblocking. If dispatch has already begun, that invocation continues;
     // callback captures must remain valid until wait/reset or quiescent
@@ -243,7 +244,13 @@ namespace vix::concurrency
     template <typename> friend class WorkHandle;
     explicit NotificationRegistration(std::shared_ptr<detail::NotificationState> state) noexcept
         : state_(std::move(state)) {}
-    std::atomic<std::shared_ptr<detail::NotificationState>> state_;
+    [[nodiscard]] std::shared_ptr<detail::NotificationState> snapshot_state() const noexcept
+    {
+      std::lock_guard lock(state_mutex_);
+      return state_;
+    }
+    mutable std::mutex state_mutex_;
+    std::shared_ptr<detail::NotificationState> state_;
   };
 
   /** @brief Result of atomically observing readiness or accepting a callback.

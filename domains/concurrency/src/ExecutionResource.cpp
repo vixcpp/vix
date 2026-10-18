@@ -708,9 +708,9 @@ namespace vix::concurrency
 
   NotificationRegistration::NotificationRegistration(
       NotificationRegistration &&other) noexcept
-      : state_(other.state_.exchange(std::shared_ptr<detail::NotificationState>{},
-                                     std::memory_order_acq_rel))
   {
+    std::lock_guard lock(other.state_mutex_);
+    state_ = std::move(other.state_);
   }
 
   NotificationRegistration &NotificationRegistration::operator=(
@@ -718,8 +718,11 @@ namespace vix::concurrency
   {
     if (this != &other)
     {
-      auto previous = state_.exchange(std::shared_ptr<detail::NotificationState>{},
-                                      std::memory_order_acq_rel);
+      std::shared_ptr<detail::NotificationState> previous;
+      {
+        std::lock_guard lock(state_mutex_);
+        previous = std::move(state_);
+      }
       if (previous)
       {
         detail::deactivate_notification(previous);
@@ -729,16 +732,21 @@ namespace vix::concurrency
         if (!detail::is_current_notification(previous.get()))
           (void)detail::wait_notification(previous);
       }
-      state_.store(other.state_.exchange(std::shared_ptr<detail::NotificationState>{},
-                                         std::memory_order_acq_rel),
-                   std::memory_order_release);
+      {
+        std::lock_guard lock(other.state_mutex_);
+        previous = std::move(other.state_);
+      }
+      {
+        std::lock_guard lock(state_mutex_);
+        state_ = std::move(previous);
+      }
     }
     return *this;
   }
 
   NotificationRegistration::~NotificationRegistration()
   {
-    auto state = state_.load(std::memory_order_acquire);
+    auto state = snapshot_state();
     if (!state)
       return;
     detail::deactivate_notification(state);
@@ -751,30 +759,30 @@ namespace vix::concurrency
 
   void NotificationRegistration::deactivate() noexcept
   {
-    auto state = state_.load(std::memory_order_acquire);
+    auto state = snapshot_state();
     if (state)
       detail::deactivate_notification(state);
   }
 
   Result<void> NotificationRegistration::reset()
   {
-    auto state = state_.load(std::memory_order_acquire);
+    auto state = snapshot_state();
     if (!state)
       return Error(errors::invalid_notification_registration);
     auto result = detail::reset_notification(state);
     if (!result && detail::notification_wait_would_deadlock(state))
       return result;
-    auto expected = std::move(state);
-    (void)state_.compare_exchange_strong(expected,
-                                         std::shared_ptr<detail::NotificationState>{},
-                                         std::memory_order_acq_rel,
-                                         std::memory_order_acquire);
+    {
+      std::lock_guard lock(state_mutex_);
+      if (state_ == state)
+        state_.reset();
+    }
     return result;
   }
 
   Result<void> NotificationRegistration::wait() const
   {
-    auto state = state_.load(std::memory_order_acquire);
+    auto state = snapshot_state();
     if (!state)
       return Error(errors::invalid_notification_registration);
     if (detail::notification_wait_would_deadlock(state))

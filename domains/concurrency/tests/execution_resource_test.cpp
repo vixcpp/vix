@@ -688,13 +688,16 @@ namespace
     auto created = ExecutionResource::create({1, 1});
     require(static_cast<bool>(created));
     auto resource = created.take();
+    WorkGate blocker_gate;
     auto blocker = resource.submit([&](WorkContext &context)
     {
+      blocker_gate.enter_and_wait();
       while (!context.stop_requested())
         std::this_thread::yield();
       return 1;
     });
     require(static_cast<bool>(blocker));
+    blocker_gate.wait_until_started();
     auto pending = resource.submit([] { return 2; });
     require(static_cast<bool>(pending));
     std::atomic<unsigned int> cancelled_calls{0};
@@ -708,7 +711,12 @@ namespace
     auto cancelled_registration = cancelled_registration_result.take();
     require(pending.value().request_cancel());
     require(pending.value().ready());
+    auto while_cancelled_entry_pending = resource.submit([] { return 3; });
+    require(!while_cancelled_entry_pending &&
+            while_cancelled_entry_pending.error().identity() ==
+                vix::concurrency::errors::capacity_exhausted);
     require(static_cast<bool>(blocker.value().request_cancel()));
+    blocker_gate.release();
     require(static_cast<bool>(cancelled_registration.wait()));
     require(cancelled_calls.load(std::memory_order_relaxed) == 1);
     auto cancelled_completion = pending.value().take_completion();
