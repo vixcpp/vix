@@ -108,9 +108,156 @@ jobs:
           fi
           cli-build/vix-installer --validate-provisioning
 
+  build-target-sdk-artifacts:
+    name: Build, package, and consume target SDK (${{ matrix.target }})
+    needs: canonical-ci
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: android-arm64-v8a-api21
+            kind: android
+            abi: arm64-v8a
+          - target: android-x86_64-api21
+            kind: android
+            abi: x86_64
+          - target: wasm32-wasip2
+            kind: wasi
+            abi: ""
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Set release version
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          test "$version" = "$(sed -n 's/^set(_VIX_VERSION_FALLBACK "\([^"]*\)").*/\1/p' CMakeLists.txt)"
+          echo "RELEASE_VERSION=$version" >> "$GITHUB_ENV"
+      - name: Install Android NDK
+        if: matrix.kind == 'android'
+        uses: android-actions/setup-android@v3
+      - name: Install pinned Android NDK package
+        if: matrix.kind == 'android'
+        run: sdkmanager "ndk;27.2.12479018"
+      - name: Install pinned WASI SDK and Wasmtime
+        if: matrix.kind == 'wasi'
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/wasi-sdk-34.0-x86_64-linux.tar.gz"
+          curl --fail --location --retry 3 \
+            https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-34/wasi-sdk-34.0-x86_64-linux.tar.gz \
+            -o "$archive"
+          echo 'b761e3a0721dbae9c09a0059e5fdb2bf917d1b4a8a7b430fb3b5aafb0984b2c4  '"$archive" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/wasi-sdk"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/wasi-sdk" --strip-components=1
+          echo "VIX_WASI_SDK_ROOT=$RUNNER_TEMP/wasi-sdk" >> "$GITHUB_ENV"
+          cargo install wasmtime-cli --version 49.0.3 --locked --root "$RUNNER_TEMP/wasmtime"
+      - name: Configure, build, and install Android Vix SDK
+        if: matrix.kind == 'android'
+        shell: bash
+        env:
+          ABI: ${{ matrix.abi }}
+        run: |
+          set -euo pipefail
+          cmake -S . -B target-sdk-build -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/27.2.12479018/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI="$ABI" -DANDROID_PLATFORM=android-21 \
+            -DCMAKE_BUILD_TYPE=Release -DVIX_BUILD_TESTS=OFF \
+            -DVIX_BUILD_EXAMPLES=OFF -DVIX_BUILD_NETWORK=ON \
+            -DVIX_ENABLE_INSTALL=ON -DVIX_ENABLE_WARNINGS=ON
+          cmake --build target-sdk-build --target vix_canonical_architecture --parallel 2
+          cmake --install target-sdk-build --prefix "$RUNNER_TEMP/vix-target-sdk"
+          cmake -DVIX_TARGET_SDK_PREFIX="$RUNNER_TEMP/vix-target-sdk" \
+            -DVIX_TARGET_SDK_VERSION="$RELEASE_VERSION" \
+            -DVIX_TARGET_SDK_TARGET="${{ matrix.target }}" \
+            -DVIX_TARGET_SDK_TOOLCHAIN="Android NDK 27.2.12479018; ABI $ABI; API 21+ (NDK supplied separately)" \
+            -P cmake/WriteVixTargetSdkMetadata.cmake
+      - name: Configure, build, and install WASI Preview 2 Vix SDK
+        if: matrix.kind == 'wasi'
+        shell: bash
+        run: |
+          set -euo pipefail
+          toolchain="$GITHUB_WORKSPACE/domains/network/wasi-sdk-p2-toolchain.cmake"
+          cmake -S . -B target-sdk-build -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$toolchain" \
+            -DVIX_WASI_SDK_ROOT="$VIX_WASI_SDK_ROOT" \
+            -DVIX_BUILD_TESTS=OFF -DVIX_BUILD_EXAMPLES=OFF \
+            -DVIX_BUILD_NETWORK=ON -DVIX_ENABLE_INSTALL=ON -DVIX_ENABLE_WARNINGS=ON
+          cmake --build target-sdk-build --target vix_canonical_architecture --parallel 2
+          cmake --install target-sdk-build --prefix "$RUNNER_TEMP/vix-target-sdk"
+          cmake -DVIX_TARGET_SDK_PREFIX="$RUNNER_TEMP/vix-target-sdk" \
+            -DVIX_TARGET_SDK_VERSION="$RELEASE_VERSION" \
+            -DVIX_TARGET_SDK_TARGET="wasm32-wasip2" \
+            -DVIX_TARGET_SDK_TOOLCHAIN="wasi-sdk 34.0 (supplied separately); Wasmtime 49.0.3 runtime qualification" \
+            -P cmake/WriteVixTargetSdkMetadata.cmake
+      - name: Cross-compile an external consumer from the installed target SDK
+        shell: bash
+        env:
+          KIND: ${{ matrix.kind }}
+          ABI: ${{ matrix.abi }}
+        run: |
+          set -euo pipefail
+          if [[ "$KIND" == android ]]; then
+            cmake -S tests/target_sdk_consumer -B target-consumer-build -G Ninja \
+              -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/27.2.12479018/build/cmake/android.toolchain.cmake" \
+              -DANDROID_ABI="$ABI" -DANDROID_PLATFORM=android-21 \
+              -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/vix-target-sdk"
+          else
+            cmake -S tests/target_sdk_consumer -B target-consumer-build -G Ninja \
+              -DCMAKE_TOOLCHAIN_FILE="$GITHUB_WORKSPACE/domains/network/wasi-sdk-p2-toolchain.cmake" \
+              -DVIX_WASI_SDK_ROOT="$VIX_WASI_SDK_ROOT" \
+              -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/vix-target-sdk"
+          fi
+          cmake --build target-consumer-build --parallel 2
+      - name: Archive, relocate, and reconsume target SDK
+        shell: bash
+        env:
+          TARGET_NAME: ${{ matrix.target }}
+          KIND: ${{ matrix.kind }}
+          ABI: ${{ matrix.abi }}
+        run: |
+          set -euo pipefail
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          asset="vix-sdk-${TARGET_NAME}-${RELEASE_VERSION}.tar.gz"
+          tar --sort=name --mtime="@$SOURCE_DATE_EPOCH" --owner=0 --group=0 --numeric-owner \
+            -C "$RUNNER_TEMP/vix-target-sdk" -czf "$RUNNER_TEMP/$asset" .
+          mkdir -p "$RUNNER_TEMP/target-sdk-relocated"
+          tar -xzf "$RUNNER_TEMP/$asset" -C "$RUNNER_TEMP/target-sdk-relocated"
+          if [[ "$KIND" == android ]]; then
+            cmake -S tests/target_sdk_consumer -B target-consumer-relocated -G Ninja \
+              -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/27.2.12479018/build/cmake/android.toolchain.cmake" \
+              -DANDROID_ABI="$ABI" -DANDROID_PLATFORM=android-21 \
+              -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/target-sdk-relocated"
+          else
+            cmake -S tests/target_sdk_consumer -B target-consumer-relocated -G Ninja \
+              -DCMAKE_TOOLCHAIN_FILE="$GITHUB_WORKSPACE/domains/network/wasi-sdk-p2-toolchain.cmake" \
+              -DVIX_WASI_SDK_ROOT="$VIX_WASI_SDK_ROOT" \
+              -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/target-sdk-relocated"
+          fi
+          cmake --build target-consumer-relocated --parallel 2
+          if [[ "$KIND" == wasi ]]; then
+            "$RUNNER_TEMP/wasmtime/bin/wasmtime" run target-consumer-relocated/vix_target_sdk_consumer
+          fi
+          (cd "$RUNNER_TEMP" && sha256sum "$asset" > "$asset.sha256")
+      - uses: actions/upload-artifact@v6
+        with:
+          name: vix-target-sdk-${{ matrix.target }}
+          path: |
+            ${{ runner.temp }}/vix-sdk-${{ matrix.target }}-*.tar.gz
+            ${{ runner.temp }}/vix-sdk-${{ matrix.target }}-*.tar.gz.sha256
+          if-no-files-found: error
+
   build-qualified-artifact:
     name: Build and package x86_64-linux-gnu release candidate
-    needs: [canonical-ci, managed-installer-contracts]
+    needs: [canonical-ci, managed-installer-contracts, build-target-sdk-artifacts]
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -259,7 +406,7 @@ jobs:
           cmake -DVIX_CLI_BINARY="$GITHUB_WORKSPACE/cli-build/vix" \
             -DVIX_INSTALLER_BINARY="$GITHUB_WORKSPACE/cli-build/vix-installer" \
             -DVIX_SDK_PREFIX="$RUNNER_TEMP/vix-sdk" \
-            -DVIX_SDK_LIBRARIES="$RUNNER_TEMP/vix-sdk/lib/libvix_files.a;$RUNNER_TEMP/vix-sdk/lib/libvix_process.a;$RUNNER_TEMP/vix-sdk/lib/libvix_network.a" \
+            -DVIX_SDK_LIBRARIES="$RUNNER_TEMP/vix-sdk/lib/libvix_concurrency.a;$RUNNER_TEMP/vix-sdk/lib/libvix_files.a;$RUNNER_TEMP/vix-sdk/lib/libvix_process.a;$RUNNER_TEMP/vix-sdk/lib/libvix_network.a" \
             "-DVIX_CLI_RUNTIME_LIBRARIES=$cli_runtime_list" \
             "-DVIX_INSTALLER_RUNTIME_LIBRARIES=$installer_runtime_list" \
             "-DVIX_RUNTIME_LICENSE_FILES=$runtime_license_list" \
@@ -318,6 +465,17 @@ jobs:
           cp "$RUNNER_TEMP/vix-release-tree/share/vix/release-build-info.toml" \
             "$RUNNER_TEMP/vix-bootstrap-tree/share/vix/release-build-info.toml"
           cp "$RUNNER_TEMP/vix-release-tree/share/vix/release-build-info.toml" dist/release-build-info.toml
+      - uses: actions/download-artifact@v6
+        with:
+          pattern: vix-target-sdk-*
+          path: dist/target-sdks
+          merge-multiple: true
+      - name: Verify target SDK archive checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(find dist/target-sdks -maxdepth 1 -type f -name 'vix-sdk-*.tar.gz' | wc -l)" -eq 3
+          (cd dist/target-sdks && sha256sum --check ./*.sha256)
       - name: Create deterministic host archives and digest inventory
         shell: bash
         env:
@@ -325,29 +483,34 @@ jobs:
         run: |
           set -euo pipefail
           export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          host_archive="vix-x86_64-linux-gnu-${RELEASE_VERSION}.tar.gz"
+          bootstrap_archive="vix-installer-x86_64-linux-gnu-${RELEASE_VERSION}.tar.gz"
           tar --sort=name --mtime="@$SOURCE_DATE_EPOCH" --owner=0 --group=0 --numeric-owner \
-            -C "$RUNNER_TEMP/vix-release-tree" -czf "dist/vix-x86_64-linux-gnu.tar.gz" .
+            -C "$RUNNER_TEMP/vix-release-tree" -czf "dist/$host_archive" .
           tar --sort=name --mtime="@$SOURCE_DATE_EPOCH" --owner=0 --group=0 --numeric-owner \
-            -C "$RUNNER_TEMP/vix-bootstrap-tree" -czf "dist/vix-installer-x86_64-linux-gnu.tar.gz" .
-          tar -xOf dist/vix-x86_64-linux-gnu.tar.gz ./share/vix/release-build-info.toml \
+            -C "$RUNNER_TEMP/vix-bootstrap-tree" -czf "dist/$bootstrap_archive" .
+          tar -xOf "dist/$host_archive" ./share/vix/release-build-info.toml \
             | cmp - dist/release-build-info.toml
-          tar -xOf dist/vix-installer-x86_64-linux-gnu.tar.gz ./share/vix/release-build-info.toml \
+          tar -xOf "dist/$bootstrap_archive" ./share/vix/release-build-info.toml \
             | cmp - dist/release-build-info.toml
-          (cd dist && sha256sum vix-x86_64-linux-gnu.tar.gz \
-            vix-installer-x86_64-linux-gnu.tar.gz release-build-info.toml > SHA256SUMS)
-          (cd dist && sha256sum vix-x86_64-linux-gnu.tar.gz \
-            vix-installer-x86_64-linux-gnu.tar.gz vix-release-tool \
+          (cd dist && sha256sum "$host_archive" \
+            "$bootstrap_archive" release-build-info.toml \
+            target-sdks/*.tar.gz > SHA256SUMS)
+          (cd dist && sha256sum "$host_archive" \
+            "$bootstrap_archive" vix-release-tool \
             release-build-info.toml > QUALIFIED-SHA256SUMS)
-          test -s dist/vix-x86_64-linux-gnu.tar.gz
-          test -s dist/vix-installer-x86_64-linux-gnu.tar.gz
+          (cd dist && sha256sum target-sdks/*.tar.gz >> QUALIFIED-SHA256SUMS)
+          test -s "dist/$host_archive"
+          test -s "dist/$bootstrap_archive"
           (cd dist && sha256sum --check SHA256SUMS)
           (cd dist && sha256sum --check QUALIFIED-SHA256SUMS)
+          (cd dist/target-sdks && sha256sum --check ./*.sha256)
       - uses: actions/upload-artifact@v6
         with:
           name: vix-release-x86_64-linux-gnu
           path: |
-            dist/vix-x86_64-linux-gnu.tar.gz
-            dist/vix-installer-x86_64-linux-gnu.tar.gz
+            dist/vix-x86_64-linux-gnu-*.tar.gz
+            dist/vix-installer-x86_64-linux-gnu-*.tar.gz
             dist/vix-release-tool
             dist/release-build-info.toml
             dist/SHA256SUMS
@@ -355,6 +518,8 @@ jobs:
             dist/runtime-dependencies-ldd.txt
             dist/runtime-dependencies-readelf.txt
             dist/staged-runtime-check.txt
+            dist/target-sdks/*.tar.gz
+            dist/target-sdks/*.sha256
           if-no-files-found: error
 
   attest-qualified-artifacts:
@@ -378,8 +543,9 @@ jobs:
       - uses: actions/attest-build-provenance@v3
         with:
           subject-path: |
-            dist/vix-x86_64-linux-gnu.tar.gz
-            dist/vix-installer-x86_64-linux-gnu.tar.gz
+            dist/vix-x86_64-linux-gnu-*.tar.gz
+            dist/vix-installer-x86_64-linux-gnu-*.tar.gz
+            dist/target-sdks/*.tar.gz
             dist/vix-release-tool
             dist/release-build-info.toml
 
@@ -407,8 +573,14 @@ jobs:
           set -euo pipefail
           (cd dist && sha256sum --check SHA256SUMS)
           (cd dist && sha256sum --check QUALIFIED-SHA256SUMS)
-          gh attestation verify dist/vix-x86_64-linux-gnu.tar.gz --repo "$GITHUB_REPOSITORY"
-          gh attestation verify dist/vix-installer-x86_64-linux-gnu.tar.gz --repo "$GITHUB_REPOSITORY"
+          (cd dist/target-sdks && sha256sum --check ./*.sha256)
+          host_archive="dist/vix-x86_64-linux-gnu-${GITHUB_REF_NAME#v}.tar.gz"
+          bootstrap_archive="dist/vix-installer-x86_64-linux-gnu-${GITHUB_REF_NAME#v}.tar.gz"
+          gh attestation verify "$host_archive" --repo "$GITHUB_REPOSITORY"
+          gh attestation verify "$bootstrap_archive" --repo "$GITHUB_REPOSITORY"
+          for target_archive in dist/target-sdks/*.tar.gz; do
+            gh attestation verify "$target_archive" --repo "$GITHUB_REPOSITORY"
+          done
           gh attestation verify dist/vix-release-tool --repo "$GITHUB_REPOSITORY"
           gh attestation verify dist/release-build-info.toml --repo "$GITHUB_REPOSITORY"
           grep -Fx 'host = "x86_64-linux-gnu"' dist/release-build-info.toml
@@ -422,7 +594,7 @@ jobs:
           fresh="$RUNNER_TEMP/vix-extracted-clean"
           test ! -e "$fresh"
           mkdir -p "$fresh"
-          tar -xzf dist/vix-x86_64-linux-gnu.tar.gz -C "$fresh"
+          tar -xzf "$host_archive" -C "$fresh"
           test -x "$fresh/bin/vix"
           cmp "$fresh/share/vix/release-build-info.toml" dist/release-build-info.toml
           grep -Fx "cli_version = \"${GITHUB_REF_NAME#v}\"" dist/release-build-info.toml
@@ -470,7 +642,7 @@ jobs:
           set -euo pipefail
           bootstrap="$RUNNER_TEMP/vix-bootstrap-extracted"
           mkdir -p "$bootstrap"
-          tar -xzf dist/vix-installer-x86_64-linux-gnu.tar.gz -C "$bootstrap"
+          tar -xzf "$bootstrap_archive" -C "$bootstrap"
           test -x "$bootstrap/bin/vix-installer"
           cmp "$bootstrap/share/vix/release-build-info.toml" dist/release-build-info.toml
           "$bootstrap/bin/vix-installer" --validate-provisioning

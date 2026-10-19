@@ -72,6 +72,7 @@ cmake/*
 !cmake/VixTlsPackageTest.cmake
 !cmake/VixVendoredDeps.cmake
 !cmake/AssembleVixDistribution.cmake
+!cmake/WriteVixTargetSdkMetadata.cmake
 *.bak
 db.sql
 revoir.md

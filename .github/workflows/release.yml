@@ -50,8 +50,14 @@ jobs:
           set -euo pipefail
           (cd dist && sha256sum --check SHA256SUMS)
           (cd dist && sha256sum --check QUALIFIED-SHA256SUMS)
-          gh attestation verify dist/vix-x86_64-linux-gnu.tar.gz --repo "$GITHUB_REPOSITORY"
-          gh attestation verify dist/vix-installer-x86_64-linux-gnu.tar.gz --repo "$GITHUB_REPOSITORY"
+          version="${GITHUB_REF_NAME#v}"
+          host_archive="dist/vix-x86_64-linux-gnu-${version}.tar.gz"
+          bootstrap_archive="dist/vix-installer-x86_64-linux-gnu-${version}.tar.gz"
+          gh attestation verify "$host_archive" --repo "$GITHUB_REPOSITORY"
+          gh attestation verify "$bootstrap_archive" --repo "$GITHUB_REPOSITORY"
+          for target_archive in dist/target-sdks/*.tar.gz; do
+            gh attestation verify "$target_archive" --repo "$GITHUB_REPOSITORY"
+          done
           gh attestation verify dist/vix-release-tool --repo "$GITHUB_REPOSITORY"
           gh attestation verify dist/release-build-info.toml --repo "$GITHUB_REPOSITORY"
           chmod +x dist/vix-release-tool
@@ -89,10 +95,24 @@ jobs:
             "$VIX_RELEASE_KEY_ID" "$VIX_RELEASE_AUTHORITY_PUBLIC_KEY_HEX" \
             > "$RUNNER_TEMP/vix-signing/releases.toml"
           export VIX_RELEASE_TRUST_FILE="$RUNNER_TEMP/vix-signing/releases.toml"
-          artifact_url="https://github.com/$GITHUB_REPOSITORY/releases/download/$RELEASE_TAG/vix-x86_64-linux-gnu.tar.gz"
-          (cd dist && ./vix-release-tool "$version" x86_64-linux-gnu "$artifact_url" vix-x86_64-linux-gnu.tar.gz)
+          {
+            printf 'version = "%s"\nchannel = "stable"\nsequence = %s\n\n' "$version" "${GITHUB_RUN_NUMBER}"
+            printf '[[artifact]]\nid = "host-x86_64-linux-gnu"\nhost = "x86_64-linux-gnu"\n'
+            host_archive="vix-x86_64-linux-gnu-${version}.tar.gz"
+            printf 'location = "https://github.com/%s/releases/download/%s/%s"\narchive = "tar.gz"\nfile = "%s"\n\n' \
+              "$GITHUB_REPOSITORY" "$RELEASE_TAG" "$host_archive" "$host_archive"
+            for target in android-arm64-v8a-api21 android-x86_64-api21 wasm32-wasip2; do
+              asset="vix-sdk-${target}-${version}.tar.gz"
+              test -s "dist/target-sdks/$asset"
+              printf '[[component]]\nid = "%s"\nkind = "target-sdk"\ntarget = "%s"\n' "$target" "$target"
+              printf 'location = "https://github.com/%s/releases/download/%s/%s"\narchive = "tar.gz"\nfile = "target-sdks/%s"\ninstall-path = "target-sdks"\n\n' \
+                "$GITHUB_REPOSITORY" "$RELEASE_TAG" "$asset" "$asset"
+            done
+          } > dist/release-spec.toml
+          (cd dist && ./vix-release-tool --spec release-spec.toml)
           grep -Fx "version = \"$version\"" dist/release-manifest.toml
           grep -Fx 'host = "x86_64-linux-gnu"' dist/release-manifest.toml
+          grep -Fx 'target = "wasm32-wasip2"' dist/release-manifest.toml
           (cd dist && sha256sum --check SHA256SUMS)
       - name: Publish all qualified files atomically as a draft before promotion
         shell: bash
@@ -101,11 +121,14 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
+          version="${RELEASE_TAG#v}"
           gh release create "$RELEASE_TAG" --draft --title "Vix $RELEASE_TAG" \
             --notes "Current Vix release. Verify archive provenance before use."
           gh release upload "$RELEASE_TAG" \
-            dist/vix-x86_64-linux-gnu.tar.gz \
-            dist/vix-installer-x86_64-linux-gnu.tar.gz \
+            "dist/vix-x86_64-linux-gnu-${version}.tar.gz" \
+            "dist/vix-installer-x86_64-linux-gnu-${version}.tar.gz" \
+            dist/target-sdks/*.tar.gz \
+            dist/target-sdks/*.sha256 \
             dist/SHA256SUMS dist/release-build-info.toml \
             dist/release-manifest.toml dist/release-signature.toml \
             dist/runtime-dependencies-ldd.txt \
