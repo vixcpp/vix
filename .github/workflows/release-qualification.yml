@@ -113,7 +113,6 @@ jobs:
 
   build-target-sdk-artifacts:
     name: Build, package, and consume target SDK (${{ matrix.target }})
-    needs: canonical-ci
     runs-on: ubuntu-24.04
     timeout-minutes: 150
     strategy:
@@ -318,7 +317,6 @@ jobs:
 
   build-qualified-artifact:
     name: Linux x86_64 GNU host candidate qualification
-    needs: [canonical-ci, managed-installer-contracts]
     runs-on: ubuntu-24.04
     permissions:
       contents: read
