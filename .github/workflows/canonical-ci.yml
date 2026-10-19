@@ -2,7 +2,7 @@ name: Canonical Vix CI
 
 "on":
   push:
-    branches: [next]
+    branches: [next, "experimental/**"]
   pull_request:
     branches: [main, next]
   workflow_dispatch:
@@ -16,6 +16,65 @@ concurrency:
   cancel-in-progress: ${{ github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
+  experimental-http-tls-linux:
+    name: Experimental Network/TLS/HTTP (Linux x86_64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Configure opt-in experimental domains and installed exports
+        run: >-
+          cmake -S . -B experimental-build
+          -DCMAKE_BUILD_TYPE=Debug
+          -DVIX_BUILD_TESTS=ON
+          -DVIX_BUILD_EXAMPLES=OFF
+          -DVIX_BUILD_NETWORK=ON
+          -DVIX_BUILD_HTTP_P1_TESTS=ON
+          -DVIX_BUILD_HTTP_EXPERIMENTAL=ON
+          -DVIX_BUILD_TLS_EXPERIMENTAL=ON
+          -DVIX_BUILD_TLS_I0B_TESTS=ON
+          -DVIX_BUILD_HTTP_TLS_EXPERIMENTAL=ON
+          -DVIX_ENABLE_INSTALL=ON
+          -DVIX_INSTALL_HTTP_EXPERIMENTAL=ON
+          -DVIX_INSTALL_TLS_EXPERIMENTAL=ON
+          -DVIX_INSTALL_HTTP_TLS_EXPERIMENTAL=ON
+          -DVIX_ENABLE_WARNINGS=ON
+      - name: Build experimental domains and canonical architecture
+        run: |
+          set -euo pipefail
+          cmake --build experimental-build --target vix_canonical_architecture --parallel 2
+          cmake --build experimental-build --parallel 2
+      - name: Run Network, TLS, HTTP, and package regressions
+        run: >-
+          ctest --test-dir experimental-build -C Debug
+          --output-on-failure --parallel 2 --timeout 180
+          -R '^(vix_network_.*|vix_tls_.*|vix_http_.*|vix_sdk_package_consumer_test)$'
+      - name: Install and verify external HTTP/TLS consumers
+        shell: bash
+        run: |
+          set -euo pipefail
+          prefix="$RUNNER_TEMP/vix-install"
+          cmake --install experimental-build --prefix "$prefix"
+          for consumer in sdk_http_consumer sdk_tls_disabled_consumer sdk_tls_consumer sdk_http_tls_consumer; do
+            build="$RUNNER_TEMP/$consumer"
+            cmake -S "tests/$consumer" -B "$build" \
+              -DCMAKE_BUILD_TYPE=Debug \
+              -DVix_DIR="$prefix/lib/cmake/Vix"
+            cmake --build "$build" --parallel 2
+          done
+          "$RUNNER_TEMP/sdk_http_consumer/vix_http_installed_consumer"
+          "$RUNNER_TEMP/sdk_tls_consumer/vix_tls_package_consumer"
+          "$RUNNER_TEMP/sdk_http_tls_consumer/vix_https_installed_consumer"
+          relocated="$RUNNER_TEMP/vix-relocated"
+          mv "$prefix" "$relocated"
+          cmake -S tests/sdk_http_tls_consumer -B "$RUNNER_TEMP/http-tls-relocated" \
+            -DCMAKE_BUILD_TYPE=Debug -DVix_DIR="$relocated/lib/cmake/Vix"
+          cmake --build "$RUNNER_TEMP/http-tls-relocated" --parallel 2
+          "$RUNNER_TEMP/http-tls-relocated/vix_https_installed_consumer"
+
   foundations-native:
     name: Foundations (${{ matrix.name }})
     runs-on: ${{ matrix.runner }}

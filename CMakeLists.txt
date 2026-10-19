@@ -161,8 +161,14 @@ option(VIX_ENABLE_SANITIZERS       "Enable ASan+UBSan (GCC/Clang only)"         
 option(VIX_BUILD_EXAMPLES          "Build umbrella examples in ./examples"                        ON)
 option(VIX_BUILD_TESTS             "Build Vix SDK package and domain tests"                       OFF)
 option(VIX_BUILD_NETWORK           "Build the Network domain when its provider is available"      ON)
+option(VIX_BUILD_HTTP_P1_TESTS      "Build private HTTP protocol and Network composition tests"   OFF)
+option(VIX_BUILD_HTTP_EXPERIMENTAL  "Build the experimental Linux HTTP/1.1 Domain"               OFF)
+option(VIX_INSTALL_HTTP_EXPERIMENTAL "Install/export the experimental Linux HTTP package"         OFF)
+option(VIX_BUILD_HTTP_TLS_EXPERIMENTAL "Build optional experimental HTTP/TLS integration"         OFF)
+option(VIX_INSTALL_HTTP_TLS_EXPERIMENTAL "Install/export experimental HTTP/TLS integration"       OFF)
 option(VIX_BUILD_TLS_I0B_TESTS      "Build the private Linux TLS-I0-B feasibility tests"          OFF)
-option(VIX_BUILD_TLS_EXPERIMENTAL   "Build the uninstalled experimental TLS Domain"             OFF)
+option(VIX_BUILD_TLS_EXPERIMENTAL   "Build the experimental Linux TLS Domain"                    OFF)
+option(VIX_INSTALL_TLS_EXPERIMENTAL "Install/export the experimental Linux TLS package component" OFF)
 
 function(vix_apply_canonical_warnings target)
   if (NOT VIX_ENABLE_WARNINGS OR NOT TARGET "${target}")
@@ -185,7 +191,7 @@ endfunction()
 function(vix_apply_canonical_warnings_recursively directory)
   get_property(_vix_targets DIRECTORY "${directory}" PROPERTY BUILDSYSTEM_TARGETS)
   foreach(_vix_target IN LISTS _vix_targets)
-    if (_vix_target MATCHES "^vix_(standard|files|process|network|concurrency|tls_i0b|tls_experimental)(_|$)")
+    if (_vix_target MATCHES "^vix_(standard|files|process|network|concurrency|http|tls_i0b|tls_experimental)(_|$)")
       vix_apply_canonical_warnings("${_vix_target}")
     endif()
   endforeach()
@@ -205,7 +211,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "WASI")
     set(WASMTIME_EXECUTABLE "${VIX_WASMTIME_EXECUTABLE}")
   endif()
 endif()
-if (VIX_BUILD_TESTS)
+if (VIX_BUILD_TESTS OR VIX_BUILD_HTTP_P1_TESTS)
   enable_testing()
 endif()
 
@@ -223,9 +229,9 @@ else()
   set(VIX_HAS_NETWORK FALSE)
 endif()
 
-# TLS is explicitly experimental and is never installed/exported. Its current
-# lease and runtime qualification is Linux-only; ordinary Vix configurations
-# do not discover or link OpenSSL.
+# TLS remains experimental and is not installed by default. Its current
+# runtime qualification is Linux-only; ordinary Vix configurations do not
+# discover or link OpenSSL.
 if (VIX_BUILD_TLS_EXPERIMENTAL OR VIX_BUILD_TLS_I0B_TESTS)
   if (NOT VIX_HAS_NETWORK OR NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
     message(FATAL_ERROR "Experimental TLS currently requires the Linux Network provider.")
@@ -234,6 +240,7 @@ if (VIX_BUILD_TLS_EXPERIMENTAL OR VIX_BUILD_TLS_I0B_TESTS)
   add_library(vix_tls_experimental STATIC
     domains/tls/src/OpenSslDriver.cpp
     domains/tls/src/PrivateChannel.cpp
+    domains/tls/src/HttpTlsAccess.cpp
     domains/tls/src/TlsConfig.cpp
     domains/tls/src/TlsChannel.cpp)
   add_library(vix::tls_experimental ALIAS vix_tls_experimental)
@@ -247,12 +254,95 @@ if (VIX_BUILD_TLS_EXPERIMENTAL OR VIX_BUILD_TLS_I0B_TESTS)
   target_link_libraries(vix_tls_experimental
     PUBLIC vix::network vix::standard
     PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+  # Keep the build-tree and installed target spelling aligned without exposing
+  # backend or Network-private include directories to consumers.
+  set_target_properties(vix_tls_experimental PROPERTIES
+    EXPORT_NAME tls_experimental)
+  if (VIX_INSTALL_TLS_EXPERIMENTAL)
+    if (NOT VIX_ENABLE_INSTALL)
+      message(FATAL_ERROR "VIX_INSTALL_TLS_EXPERIMENTAL requires VIX_ENABLE_INSTALL=ON.")
+    endif()
+    install(TARGETS vix_tls_experimental EXPORT VixTlsTargets
+      ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+    install(FILES
+      domains/tls/include/vix/tls/Errors.hpp
+      domains/tls/include/vix/tls/TlsConfig.hpp
+      domains/tls/include/vix/tls/TlsChannel.hpp
+      DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/vix/tls")
+    set(VIX_HAS_TLS_EXPERIMENTAL TRUE)
+  else()
+    set(VIX_HAS_TLS_EXPERIMENTAL FALSE)
+  endif()
   if (VIX_BUILD_TLS_I0B_TESTS)
     if (NOT VIX_BUILD_TESTS)
       message(FATAL_ERROR "VIX_BUILD_TLS_I0B_TESTS requires VIX_BUILD_TESTS.")
     endif()
     add_subdirectory(domains/tls/tests tls_i0b_tests)
   endif()
+elseif (VIX_INSTALL_TLS_EXPERIMENTAL)
+  message(FATAL_ERROR
+    "VIX_INSTALL_TLS_EXPERIMENTAL requires VIX_BUILD_TLS_EXPERIMENTAL=ON.")
+else()
+  set(VIX_HAS_TLS_EXPERIMENTAL FALSE)
+endif()
+
+# HTTP's private parser/protocol proofs remain independently opt-in. The
+# provisional public component is a separate Linux-only option and has no TLS
+# or OpenSSL dependency.
+if (VIX_INSTALL_HTTP_EXPERIMENTAL AND NOT VIX_BUILD_HTTP_EXPERIMENTAL)
+  message(FATAL_ERROR "VIX_INSTALL_HTTP_EXPERIMENTAL requires VIX_BUILD_HTTP_EXPERIMENTAL=ON.")
+endif()
+if (VIX_BUILD_HTTP_EXPERIMENTAL OR VIX_BUILD_HTTP_P1_TESTS)
+  if (NOT VIX_HAS_NETWORK)
+    message(FATAL_ERROR "Experimental HTTP requires the Network Domain.")
+  endif()
+  if (VIX_BUILD_HTTP_EXPERIMENTAL AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    message(FATAL_ERROR "Experimental public HTTP is currently qualified only on Linux.")
+  endif()
+  if (VIX_INSTALL_HTTP_EXPERIMENTAL AND
+      (NOT VIX_BUILD_HTTP_EXPERIMENTAL OR NOT VIX_ENABLE_INSTALL))
+    message(FATAL_ERROR
+      "VIX_INSTALL_HTTP_EXPERIMENTAL requires VIX_BUILD_HTTP_EXPERIMENTAL=ON and install enabled.")
+  endif()
+  add_subdirectory(domains/http http_build)
+  if (VIX_INSTALL_HTTP_EXPERIMENTAL)
+    set(VIX_HAS_HTTP_EXPERIMENTAL TRUE)
+  else()
+    set(VIX_HAS_HTTP_EXPERIMENTAL FALSE)
+  endif()
+else()
+  set(VIX_HAS_HTTP_EXPERIMENTAL FALSE)
+endif()
+
+# HTTPS is a separately selected experimental component layered on the
+# independently optional HTTP and TLS packages. It is never needed by HTTP-only
+# builds or consumers.
+if (VIX_BUILD_HTTP_TLS_EXPERIMENTAL)
+  if (NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    message(FATAL_ERROR "Experimental HTTP/TLS integration is currently Linux-only.")
+  endif()
+  if (NOT VIX_BUILD_HTTP_EXPERIMENTAL OR NOT VIX_BUILD_TLS_EXPERIMENTAL OR
+      NOT VIX_HAS_NETWORK)
+    message(FATAL_ERROR
+      "VIX_BUILD_HTTP_TLS_EXPERIMENTAL requires HTTP, TLS, and Network experimental builds.")
+  endif()
+  if (VIX_INSTALL_HTTP_TLS_EXPERIMENTAL AND
+      (NOT VIX_INSTALL_HTTP_EXPERIMENTAL OR NOT VIX_INSTALL_TLS_EXPERIMENTAL OR
+       NOT VIX_ENABLE_INSTALL))
+    message(FATAL_ERROR
+      "VIX_INSTALL_HTTP_TLS_EXPERIMENTAL requires install-enabled HTTP and TLS components.")
+  endif()
+  if (VIX_INSTALL_HTTP_TLS_EXPERIMENTAL)
+    set(VIX_HAS_HTTP_TLS_EXPERIMENTAL TRUE)
+  else()
+    set(VIX_HAS_HTTP_TLS_EXPERIMENTAL FALSE)
+  endif()
+else()
+  if (VIX_INSTALL_HTTP_TLS_EXPERIMENTAL)
+    message(FATAL_ERROR
+      "VIX_INSTALL_HTTP_TLS_EXPERIMENTAL requires VIX_BUILD_HTTP_TLS_EXPERIMENTAL=ON.")
+  endif()
+  set(VIX_HAS_HTTP_TLS_EXPERIMENTAL FALSE)
 endif()
 
 # Apply diagnostics only to the canonical Vix domain targets and their owned
@@ -290,6 +380,24 @@ install(EXPORT VixTargets
   NAMESPACE vix::
   DESTINATION "${VIX_INSTALL_CMAKEDIR}"
 )
+if (VIX_HAS_TLS_EXPERIMENTAL)
+  install(EXPORT VixTlsTargets
+    NAMESPACE vix::
+    DESTINATION "${VIX_INSTALL_CMAKEDIR}"
+    FILE VixTlsTargets.cmake)
+endif()
+if (VIX_HAS_HTTP_EXPERIMENTAL)
+  install(EXPORT VixHttpTargets
+    NAMESPACE vix::
+    DESTINATION "${VIX_INSTALL_CMAKEDIR}"
+    FILE VixHttpTargets.cmake)
+endif()
+if (VIX_HAS_HTTP_TLS_EXPERIMENTAL)
+  install(EXPORT VixHttpTlsTargets
+    NAMESPACE vix::
+    DESTINATION "${VIX_INSTALL_CMAKEDIR}"
+    FILE VixHttpTlsTargets.cmake)
+endif()
 install(FILES
   "${CMAKE_CURRENT_BINARY_DIR}/VixConfig.cmake"
   "${CMAKE_CURRENT_BINARY_DIR}/VixConfigVersion.cmake"
@@ -323,6 +431,15 @@ if (VIX_BUILD_TESTS)
       "-DVIX_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}"
       -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/VixSdkPackageTest.cmake"
   )
+  if (VIX_INSTALL_TLS_EXPERIMENTAL)
+    add_test(
+      NAME vix_tls_experimental_package_consumer_test
+      COMMAND "${CMAKE_COMMAND}"
+        "-DVIX_BINARY_DIR=${CMAKE_BINARY_DIR}"
+        "-DVIX_SOURCE_DIR=${CMAKE_SOURCE_DIR}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/VixTlsPackageTest.cmake"
+    )
+  endif()
 endif()
 
 if (VIX_HAS_NETWORK)

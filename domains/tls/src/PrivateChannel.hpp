@@ -58,6 +58,8 @@ namespace vix::tls::detail
                                           std::optional<vix::Deadline> deadline = {});
     [[nodiscard]] ShutdownDiagnostics
     shutdown_diagnostics_for_test() const noexcept;
+    [[nodiscard]] std::shared_ptr<vix::network::detail::ProviderCore>
+    provider_for_http_composition() const noexcept;
     void close() noexcept;
 
   private:

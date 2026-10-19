@@ -1286,6 +1286,12 @@ namespace vix::tls::detail
             state_->shutdown_ciphertext_sent.load(std::memory_order_acquire)};
   }
 
+  std::shared_ptr<vix::network::detail::ProviderCore>
+  PrivateChannel::provider_for_http_composition() const noexcept
+  {
+    return state_ ? state_->provider : nullptr;
+  }
+
   vix::network::Operation<void> PrivateChannel::handshake(
       vix::CancellationToken cancellation, std::optional<vix::Deadline> deadline)
   {

@@ -1,11 +1,13 @@
 # Vix TLS Domain — Normative Contract Proposal
 
-Status: proposed contracts plus an opt-in, uninstalled experimental OpenSSL 3
-implementation. Build-tree public headers now expose client/server
-configuration, authenticated handshake, secure stream operations, abortive
-close, and graceful shutdown. The implementation and tests have not been
-compiled or runtime-validated in this task; this does not establish any
-qualified platform claim or a stable installed SDK contract.
+Status: provisional contracts plus an opt-in experimental OpenSSL 3
+implementation. Build-tree public headers expose client/server configuration,
+authenticated handshake, secure stream operations, abortive close, and
+graceful shutdown. A separately opted-in Linux package component may install
+these candidate headers and the experimental target; default Vix installations
+still omit TLS and do not require OpenSSL. Linux build/runtime evidence is
+experimental only and does not establish support on other platforms or freeze
+a stable installed SDK contract.
 
 ## 1. Contract status and boundaries
 
@@ -51,31 +53,45 @@ the cryptographic session, authentication policy, TLS protocol state, bounded
 TLS buffers, and serialization of access to its backend session.
 
 TLS must use a maintained cryptographic/TLS implementation. Vix must not
-implement cryptographic primitives or a TLS protocol engine. Backend selection,
-trust-store integration, entropy guarantees, and platform support remain
-unresolved until TLS-I0 candidate evaluation and executable feasibility proof.
+implement cryptographic primitives or a TLS protocol engine. OpenSSL 3 is the
+backend for the current experimental implementation; its long-term dependency
+and update policy, trust-store integration, entropy guarantees, and platform
+support are not approved for a stable release.
 
-### Awaiting implementation feasibility evidence
+### Established private integration facts
 
-The following are design requirements, not established repository facts:
+Network's uninstalled `Engine.hpp` now defines an experimental exclusive TCP
+lease with distinct TLS and HTTP owner tags. Both entry points arbitrate on the
+same `TcpConnectionState` mutex, reject active ordinary operations, and cause
+previously created ordinary operations to recheck and reject before native I/O.
+The owner token is required for lease I/O and deferred close; the TLS and HTTP
+claims cannot authorize one another. Linux focused tests cover idle claims,
+active and dormant operations, a starter race, provider accounting, deferred
+retirement, cooperative affinity, and cross-owner exclusion. This is a private
+implementation fact, not a stable Network API or cross-platform qualification.
 
-1. A private Network transport lease can atomically exclude ordinary TCP
-   operations and hand exclusive transport access to TLS.
-2. A selected backend can be driven nonblockingly with bounded and controllable
+### Awaiting further implementation feasibility evidence
+
+The following remain design requirements, not established repository facts:
+
+1. A selected backend can be driven nonblockingly with bounded and controllable
    input/output buffers, without internal worker creation or blocking calls.
-3. A TLS driver can serialize all backend session access while allowing one
+2. A TLS driver can serialize all backend session access while allowing one
    logical read and one logical write to make progress.
-4. The driver can preserve Network's background and cooperative progress
+3. The driver can preserve Network's background and cooperative progress
    contracts without blocking a reactor or continuation worker.
-5. Authentication, trust-root provisioning, peer reference identity, entropy,
+4. Authentication, trust-root provisioning, peer reference identity, entropy,
    close-notify, truncation, cancellation, and deadline behavior can be tested
    with the selected backend on every advertised target.
 
 ### Explicitly unsupported or not yet promised
 
 - The build-tree TLS API and OpenSSL 3 backend are experimental and gated by
-  `VIX_BUILD_TLS_EXPERIMENTAL`; the target is not installed/exported. A CMake
-  platform branch or available system library is not qualification evidence.
+  `VIX_BUILD_TLS_EXPERIMENTAL`. Installation/export additionally requires
+  `VIX_INSTALL_TLS_EXPERIMENTAL`; consumers request the `TLSExperimental`
+  component explicitly. This package slice is not a stable SDK commitment. A
+  CMake platform branch or available system library is not qualification
+  evidence.
 - WASI Preview 2 native TLS execution is unsupported unless TLS-I0 proves a
   maintained backend, suitable entropy/trust facilities, and a cooperative
   nonblocking integration. Network's source-level WASI cooperative provider is

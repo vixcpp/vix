@@ -204,6 +204,19 @@ namespace
     }
   };
 
+  void report_handshake_failure(const char *side, Observation &observation)
+  {
+    std::lock_guard lock(observation.mutex);
+    if (!observation.completion ||
+        observation.completion->status() != vix::CompletionStatus::Failure)
+      return;
+    const auto &identity = observation.completion->error().identity();
+    const auto domain = identity.domain();
+    std::fprintf(stderr, "TLS handshake %s failed: %.*s:%u\n", side,
+                 static_cast<int>(domain.size()), domain.data(),
+                 static_cast<unsigned>(identity.code()));
+  }
+
   void report_shutdown_observation(const char *side, Observation &observation)
   {
     std::lock_guard lock(observation.mutex);
@@ -507,6 +520,8 @@ namespace
       assert(server_observation->wait_for(std::chrono::seconds(5)));
     }
     assert(client_observation->done() && server_observation->done());
+    report_handshake_failure("client", *client_observation);
+    report_handshake_failure("server", *server_observation);
     assert(client_observation->status() == vix::CompletionStatus::Success);
     assert(server_observation->status() == vix::CompletionStatus::Success);
     client.reset();

@@ -16,6 +16,7 @@
 namespace vix::tls::detail
 {
   class PrivateChannel;
+  class HttpTlsAccess;
 }
 
 namespace vix::tls
@@ -57,5 +58,6 @@ namespace vix::tls
     explicit TlsChannel(std::shared_ptr<detail::PrivateChannel> channel) noexcept
         : channel_(std::move(channel)) {}
     std::shared_ptr<detail::PrivateChannel> channel_;
+    friend class detail::HttpTlsAccess;
   };
 }

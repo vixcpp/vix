@@ -1,11 +1,13 @@
 # Vix TLS Domain — Implementation Plan
 
-Status: gated phase plan. An opt-in experimental OpenSSL 3 target now includes
-build-tree client/server configuration, channel creation, authenticated
-handshake, secure receive/send, abortive close, graceful close_notify exchange,
-and private Network-backed tests. This source has not passed consolidated
-compilation or runtime validation; I0/I1/I2 acceptance criteria remain open,
-and no platform is qualified.
+Status: gated phase plan. The opt-in experimental OpenSSL 3 target includes
+client/server configuration, channel creation, authenticated handshake,
+secure receive/send, abortive close, graceful close_notify exchange, and
+private Network-backed tests. A separate opt-in Linux package component is now
+installable/exportable for consumer qualification; it remains provisional and
+is excluded from default Vix installations. Linux runtime evidence exists,
+but I0/I1/I2 acceptance criteria and release qualification remain open; no
+platform is production-qualified.
 
 The implementation sequence is gated: a phase does not advance because code
 compiles alone. It advances only when its stated behavioral evidence and
@@ -43,9 +45,11 @@ platform claims are satisfied. Contracts and unresolved choices are in
 - The OpenSSL memory-BIO driver is bounded at 32 KiB per BIO and retains
   stable write storage across retry. PrivateChannel retains child Network
   awaiters and staging buffers until each child completes.
-- The experimental CMake target is opt-in, Linux-only, and excluded from
-  install/export. The only current test executable is the private driver test;
-  its coverage is not yet equivalent to the I0/I1/I2 acceptance matrix below.
+- The experimental CMake target is opt-in and Linux-only. Installation/export
+  is separately gated by `VIX_INSTALL_TLS_EXPERIMENTAL`; the exported
+  `TLSExperimental` package component resolves OpenSSL only when explicitly
+  requested. The private driver test does not constitute the complete
+  security/platform acceptance matrix below.
 
 ## TLS-I0 — Backend and Network integration feasibility
 

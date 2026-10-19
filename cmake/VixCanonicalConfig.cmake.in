@@ -10,6 +10,45 @@ set(Vix_Concurrency_FOUND TRUE)
 set(Vix_Files_FOUND TRUE)
 set(Vix_Process_FOUND TRUE)
 set(Vix_Network_FOUND @VIX_HAS_NETWORK@)
-
 include("${CMAKE_CURRENT_LIST_DIR}/VixTargets.cmake")
+
+# TLS is a separately requested experimental component. Do not discover
+# OpenSSL merely because this Vix package was built with the component; static
+# consumers need OpenSSL's link targets only when they request the TLS target.
+set(Vix_TLSExperimental_FOUND FALSE)
+if ("TLSExperimental" IN_LIST Vix_FIND_COMPONENTS)
+  if (@VIX_HAS_TLS_EXPERIMENTAL@)
+    find_dependency(OpenSSL 3 COMPONENTS SSL Crypto)
+    include("${CMAKE_CURRENT_LIST_DIR}/VixTlsTargets.cmake")
+    set(Vix_TLSExperimental_FOUND TRUE)
+  endif()
+endif()
+
+# HTTP is a separate experimental component. It depends only on the already
+# selected Network target and never discovers TLS/OpenSSL.
+set(Vix_HTTPExperimental_FOUND FALSE)
+if ("HTTPExperimental" IN_LIST Vix_FIND_COMPONENTS)
+  if (@VIX_HAS_HTTP_EXPERIMENTAL@)
+    include("${CMAKE_CURRENT_LIST_DIR}/VixHttpTargets.cmake")
+    set(Vix_HTTPExperimental_FOUND TRUE)
+  endif()
+endif()
+
+# HTTPS explicitly composes the already exported HTTP and TLS targets. Only a
+# consumer selecting this component triggers OpenSSL discovery.
+set(Vix_HTTPSTLSExperimental_FOUND FALSE)
+if ("HTTPSTLSExperimental" IN_LIST Vix_FIND_COMPONENTS)
+  if (@VIX_HAS_HTTP_TLS_EXPERIMENTAL@)
+    find_dependency(OpenSSL 3 COMPONENTS SSL Crypto)
+    if (NOT TARGET vix::http_experimental)
+      include("${CMAKE_CURRENT_LIST_DIR}/VixHttpTargets.cmake")
+    endif()
+    if (NOT TARGET vix::tls_experimental)
+      include("${CMAKE_CURRENT_LIST_DIR}/VixTlsTargets.cmake")
+    endif()
+    include("${CMAKE_CURRENT_LIST_DIR}/VixHttpTlsTargets.cmake")
+    set(Vix_HTTPSTLSExperimental_FOUND TRUE)
+  endif()
+endif()
+
 check_required_components(Vix)
