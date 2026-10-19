@@ -42,6 +42,11 @@ jobs:
         with:
           name: vix-release-x86_64-linux-gnu
           path: dist
+      - name: Download independently qualified target SDK components
+        uses: actions/download-artifact@v6
+        with:
+          name: vix-qualified-target-sdks
+          path: dist/target-sdks
       - name: Reverify exact candidate digests and provenance
         shell: bash
         env:
@@ -50,6 +55,7 @@ jobs:
           set -euo pipefail
           (cd dist && sha256sum --check SHA256SUMS)
           (cd dist && sha256sum --check QUALIFIED-SHA256SUMS)
+          (cd dist/target-sdks && sha256sum --check ./*.sha256)
           version="${GITHUB_REF_NAME#v}"
           host_archive="dist/vix-x86_64-linux-gnu-${version}.tar.gz"
           bootstrap_archive="dist/vix-installer-x86_64-linux-gnu-${version}.tar.gz"

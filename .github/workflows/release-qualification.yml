@@ -1,6 +1,9 @@
 name: Vix release qualification
 
 "on":
+  push:
+    branches:
+      - experimental/http-tls-integration
   workflow_call:
 
 permissions:
@@ -133,13 +136,21 @@ jobs:
           persist-credentials: false
       - name: Set release version
         shell: bash
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          version="${RELEASE_TAG#v}"
+          sdk_version="$(sed -n 's/^set(_VIX_VERSION_FALLBACK "\([^" ]*\)").*/\1/p' CMakeLists.txt)"
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then
+            [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
+            version="${GITHUB_REF_NAME#v}"
+            archive_suffix=""
+          else
+            test "$GITHUB_REF" = "refs/heads/experimental/http-tls-integration"
+            version="$sdk_version"
+            archive_suffix="-candidate-${GITHUB_SHA:0:12}"
+          fi
           test "$version" = "$(sed -n 's/^set(_VIX_VERSION_FALLBACK "\([^"]*\)").*/\1/p' CMakeLists.txt)"
           echo "RELEASE_VERSION=$version" >> "$GITHUB_ENV"
+          echo "ARCHIVE_SUFFIX=$archive_suffix" >> "$GITHUB_ENV"
       - name: Install Android NDK
         if: matrix.kind == 'android'
         uses: android-actions/setup-android@v3
@@ -226,7 +237,7 @@ jobs:
         run: |
           set -euo pipefail
           export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
-          asset="vix-sdk-${TARGET_NAME}-${RELEASE_VERSION}.tar.gz"
+          asset="vix-sdk-${TARGET_NAME}-${RELEASE_VERSION}${ARCHIVE_SUFFIX}.tar.gz"
           tar --sort=name --mtime="@$SOURCE_DATE_EPOCH" --owner=0 --group=0 --numeric-owner \
             -C "$RUNNER_TEMP/vix-target-sdk" -czf "$RUNNER_TEMP/$asset" .
           mkdir -p "$RUNNER_TEMP/target-sdk-relocated"
@@ -255,15 +266,64 @@ jobs:
             ${{ runner.temp }}/vix-sdk-${{ matrix.target }}-*.tar.gz.sha256
           if-no-files-found: error
 
-  build-qualified-artifact:
-    name: Build and package x86_64-linux-gnu release candidate
-    needs: [canonical-ci, managed-installer-contracts, build-target-sdk-artifacts]
+  qualify-multi-target-components:
+    name: Multi-target SDK qualification outcome
+    needs: build-target-sdk-artifacts
+    if: always()
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-    # Read-only public trust/source variables are provisioned on the protected
-    # release environment. No signing secret is referenced or injected here.
-    environment: vix-production-release
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Report target qualification result
+        if: needs.build-target-sdk-artifacts.result != 'success'
+        run: |
+          echo "NO-GO: Android and/or wasm32-wasip2 SDK archive qualification did not pass." >&2
+          exit 1
+      - uses: actions/download-artifact@v6
+        with:
+          pattern: vix-target-sdk-*
+          path: target-sdks
+          merge-multiple: true
+      - name: Require and verify every intended target component
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^set(_VIX_VERSION_FALLBACK "\([^"]*\)").*/\1/p' CMakeLists.txt)"
+          suffix=""
+          if [[ "$GITHUB_REF_TYPE" != tag ]]; then
+            suffix="-candidate-${GITHUB_SHA:0:12}"
+          fi
+          for target in android-arm64-v8a-api21 android-x86_64-api21 wasm32-wasip2; do
+            asset="target-sdks/vix-sdk-${target}-${version}${suffix}.tar.gz"
+            test -s "$asset"
+            test -s "$asset.sha256"
+            (cd target-sdks && sha256sum --check "$(basename "$asset").sha256")
+          done
+          test "$(find target-sdks -maxdepth 1 -type f -name 'vix-sdk-*.tar.gz' | wc -l)" -eq 3
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: target-sdks/vix-sdk-*.tar.gz
+      - uses: actions/upload-artifact@v6
+        with:
+          name: vix-qualified-target-sdks
+          path: |
+            target-sdks/vix-sdk-*.tar.gz
+            target-sdks/vix-sdk-*.tar.gz.sha256
+          if-no-files-found: error
+
+  build-qualified-artifact:
+    name: Linux x86_64 GNU host candidate qualification
+    needs: [canonical-ci, managed-installer-contracts]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    # Qualification reads only public repository/organization variables. The
+    # protected production environment and its signing secret are not used.
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v5
@@ -271,20 +331,27 @@ jobs:
           fetch-depth: 0
           submodules: recursive
           persist-credentials: false
-      - name: Validate release tag, package versions, and exact submodule commits
+      - name: Derive candidate identity and validate canonical versions and pinned commits
         shell: bash
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
-          release_version="${RELEASE_TAG#v}"
           sdk_version="$(sed -n 's/^set(_VIX_VERSION_FALLBACK "\([^"]*\)").*/\1/p' CMakeLists.txt)"
           test -n "$sdk_version"
-          test "$release_version" = "$sdk_version" || {
-            echo "Release tag $release_version differs from canonical SDK version $sdk_version." >&2
-            exit 1
-          }
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then
+            [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
+            release_version="${GITHUB_REF_NAME#v}"
+            test "$release_version" = "$sdk_version" || {
+              echo "Release tag $release_version differs from canonical SDK version $sdk_version." >&2
+              exit 1
+            }
+            candidate_identity="$GITHUB_REF_NAME"
+            archive_suffix=""
+          else
+            test "$GITHUB_REF" = "refs/heads/experimental/http-tls-integration"
+            release_version="$sdk_version"
+            candidate_identity="linux-x86_64-gnu-${GITHUB_SHA:0:12}"
+            archive_suffix="-candidate-${GITHUB_SHA:0:12}"
+          fi
           git submodule status --recursive | tee "$RUNNER_TEMP/release-submodules.txt"
           if grep -Eq '^[+-U]' "$RUNNER_TEMP/release-submodules.txt"; then
             echo "A submodule is not at the exact root-pinned commit." >&2
@@ -295,6 +362,13 @@ jobs:
           test -n "$pinned_cli" && test "$checked_cli" = "$pinned_cli"
           test -z "$(git status --porcelain --untracked-files=all)"
           test -z "$(git -C modules/cli status --porcelain --untracked-files=all)"
+          root_sha="$(git rev-parse HEAD)"
+          test "$root_sha" = "$GITHUB_SHA"
+          test "$(git -C modules/cli rev-parse HEAD)" = "$pinned_cli"
+          echo "CANDIDATE_IDENTITY=$candidate_identity" >> "$GITHUB_ENV"
+          echo "ARCHIVE_SUFFIX=$archive_suffix" >> "$GITHUB_ENV"
+          echo "ROOT_SOURCE_SHA=$root_sha" >> "$GITHUB_ENV"
+          echo "CLI_GITLINK_SHA=$pinned_cli" >> "$GITHUB_ENV"
           echo "RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
           echo "SDK_VERSION=$sdk_version" >> "$GITHUB_ENV"
       - name: Require public production trust and HTTPS source configuration
@@ -305,9 +379,18 @@ jobs:
           RELEASE_BASE_URL: ${{ vars.VIX_OFFICIAL_RELEASE_BASE_URL }}
         run: |
           set -euo pipefail
-          [[ "$RELEASE_KEY_ID" =~ ^[A-Za-z0-9._-]+$ ]]
-          [[ "$RELEASE_PUBLIC_KEY" =~ ^[0-9A-Fa-f]{64}$ ]]
-          test "$RELEASE_BASE_URL" = "https://github.com/$GITHUB_REPOSITORY/releases"
+          if [[ ! "$RELEASE_KEY_ID" =~ ^[A-Za-z0-9._-]+$ ]]; then
+            echo "Missing or invalid VIX_RELEASE_KEY_ID in the qualification environment." >&2
+            exit 1
+          fi
+          if [[ ! "$RELEASE_PUBLIC_KEY" =~ ^[0-9A-Fa-f]{64}$ ]]; then
+            echo "Missing or invalid VIX_RELEASE_AUTHORITY_PUBLIC_KEY_HEX in the qualification environment." >&2
+            exit 1
+          fi
+          if [[ "$RELEASE_BASE_URL" != "https://github.com/$GITHUB_REPOSITORY/releases" ]]; then
+            echo "VIX_OFFICIAL_RELEASE_BASE_URL must be the approved HTTPS release URL for this repository." >&2
+            exit 1
+          fi
           mkdir -p "$RUNNER_TEMP/vix-provision"
           cat > "$RUNNER_TEMP/vix-provision/releases.toml" <<EOF
           format = 1
@@ -458,33 +541,20 @@ jobs:
           }
           check_runtime_containment "$RUNNER_TEMP/vix-release-tree/bin/vix" "$RUNNER_TEMP/vix-release-tree/lib"
           check_runtime_containment "$RUNNER_TEMP/vix-bootstrap-tree/bin/vix-installer" "$RUNNER_TEMP/vix-bootstrap-tree/lib"
-          printf 'format = 1\nrelease = "%s"\ncli_version = "%s"\nhost = "x86_64-linux-gnu"\nroot = "%s"\ncli = "%s"\nsdk = "%s"\n' \
-            "$GITHUB_REF_NAME" "$RELEASE_VERSION" "$(git rev-parse HEAD)" \
-            "$(git -C modules/cli rev-parse HEAD)" "$SDK_VERSION" \
+          printf 'format = 1\nrelease = "%s"\ncandidate = "%s"\nsource_ref = "%s"\nsource_sha = "%s"\ncli_version = "%s"\nhost = "x86_64-linux-gnu"\nroot = "%s"\ncli = "%s"\nsdk = "%s"\n' \
+            "$CANDIDATE_IDENTITY" "$CANDIDATE_IDENTITY" "$GITHUB_REF" "$ROOT_SOURCE_SHA" \
+            "$RELEASE_VERSION" "$ROOT_SOURCE_SHA" "$CLI_GITLINK_SHA" "$SDK_VERSION" \
             > "$RUNNER_TEMP/vix-release-tree/share/vix/release-build-info.toml"
           cp "$RUNNER_TEMP/vix-release-tree/share/vix/release-build-info.toml" \
             "$RUNNER_TEMP/vix-bootstrap-tree/share/vix/release-build-info.toml"
           cp "$RUNNER_TEMP/vix-release-tree/share/vix/release-build-info.toml" dist/release-build-info.toml
-      - uses: actions/download-artifact@v6
-        with:
-          pattern: vix-target-sdk-*
-          path: dist/target-sdks
-          merge-multiple: true
-      - name: Verify target SDK archive checksums
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(find dist/target-sdks -maxdepth 1 -type f -name 'vix-sdk-*.tar.gz' | wc -l)" -eq 3
-          (cd dist/target-sdks && sha256sum --check ./*.sha256)
       - name: Create deterministic host archives and digest inventory
         shell: bash
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
           export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
-          host_archive="vix-x86_64-linux-gnu-${RELEASE_VERSION}.tar.gz"
-          bootstrap_archive="vix-installer-x86_64-linux-gnu-${RELEASE_VERSION}.tar.gz"
+          host_archive="vix-x86_64-linux-gnu-${RELEASE_VERSION}${ARCHIVE_SUFFIX}.tar.gz"
+          bootstrap_archive="vix-installer-x86_64-linux-gnu-${RELEASE_VERSION}${ARCHIVE_SUFFIX}.tar.gz"
           tar --sort=name --mtime="@$SOURCE_DATE_EPOCH" --owner=0 --group=0 --numeric-owner \
             -C "$RUNNER_TEMP/vix-release-tree" -czf "dist/$host_archive" .
           tar --sort=name --mtime="@$SOURCE_DATE_EPOCH" --owner=0 --group=0 --numeric-owner \
@@ -494,17 +564,14 @@ jobs:
           tar -xOf "dist/$bootstrap_archive" ./share/vix/release-build-info.toml \
             | cmp - dist/release-build-info.toml
           (cd dist && sha256sum "$host_archive" \
-            "$bootstrap_archive" release-build-info.toml \
-            target-sdks/*.tar.gz > SHA256SUMS)
+            "$bootstrap_archive" release-build-info.toml > SHA256SUMS)
           (cd dist && sha256sum "$host_archive" \
             "$bootstrap_archive" vix-release-tool \
             release-build-info.toml > QUALIFIED-SHA256SUMS)
-          (cd dist && sha256sum target-sdks/*.tar.gz >> QUALIFIED-SHA256SUMS)
           test -s "dist/$host_archive"
           test -s "dist/$bootstrap_archive"
           (cd dist && sha256sum --check SHA256SUMS)
           (cd dist && sha256sum --check QUALIFIED-SHA256SUMS)
-          (cd dist/target-sdks && sha256sum --check ./*.sha256)
       - uses: actions/upload-artifact@v6
         with:
           name: vix-release-x86_64-linux-gnu
@@ -518,8 +585,6 @@ jobs:
             dist/runtime-dependencies-ldd.txt
             dist/runtime-dependencies-readelf.txt
             dist/staged-runtime-check.txt
-            dist/target-sdks/*.tar.gz
-            dist/target-sdks/*.sha256
           if-no-files-found: error
 
   attest-qualified-artifacts:
@@ -545,7 +610,6 @@ jobs:
           subject-path: |
             dist/vix-x86_64-linux-gnu-*.tar.gz
             dist/vix-installer-x86_64-linux-gnu-*.tar.gz
-            dist/target-sdks/*.tar.gz
             dist/vix-release-tool
             dist/release-build-info.toml
 
@@ -573,34 +637,47 @@ jobs:
           set -euo pipefail
           (cd dist && sha256sum --check SHA256SUMS)
           (cd dist && sha256sum --check QUALIFIED-SHA256SUMS)
-          (cd dist/target-sdks && sha256sum --check ./*.sha256)
-          host_archive="dist/vix-x86_64-linux-gnu-${GITHUB_REF_NAME#v}.tar.gz"
-          bootstrap_archive="dist/vix-installer-x86_64-linux-gnu-${GITHUB_REF_NAME#v}.tar.gz"
+          release_version="$(awk -F'"' '$1 == "cli_version = " {print $2}' dist/release-build-info.toml)"
+          source_sha="$(awk -F'"' '$1 == "source_sha = " {print $2}' dist/release-build-info.toml)"
+          candidate="$(awk -F'"' '$1 == "candidate = " {print $2}' dist/release-build-info.toml)"
+          test -n "$release_version" && test "$source_sha" = "$GITHUB_SHA" && test -n "$candidate"
+          archive_suffix=""
+          if [[ "$GITHUB_REF_TYPE" != tag ]]; then
+            archive_suffix="-candidate-${source_sha:0:12}"
+          fi
+          host_archive="dist/vix-x86_64-linux-gnu-${release_version}${archive_suffix}.tar.gz"
+          bootstrap_archive="dist/vix-installer-x86_64-linux-gnu-${release_version}${archive_suffix}.tar.gz"
           gh attestation verify "$host_archive" --repo "$GITHUB_REPOSITORY"
           gh attestation verify "$bootstrap_archive" --repo "$GITHUB_REPOSITORY"
-          for target_archive in dist/target-sdks/*.tar.gz; do
-            gh attestation verify "$target_archive" --repo "$GITHUB_REPOSITORY"
-          done
           gh attestation verify dist/vix-release-tool --repo "$GITHUB_REPOSITORY"
           gh attestation verify dist/release-build-info.toml --repo "$GITHUB_REPOSITORY"
           grep -Fx 'host = "x86_64-linux-gnu"' dist/release-build-info.toml
-          grep -Fx "release = \"${GITHUB_REF_NAME}\"" dist/release-build-info.toml
+          grep -Fx "candidate = \"${candidate}\"" dist/release-build-info.toml
+          grep -Fx "source_ref = \"${GITHUB_REF}\"" dist/release-build-info.toml
+          grep -Fx "source_sha = \"${GITHUB_SHA}\"" dist/release-build-info.toml
           grep -F "root = \"$(git rev-parse HEAD)\"" dist/release-build-info.toml
           grep -F "cli = \"$(git ls-tree HEAD modules/cli | awk '{print $3}')\"" dist/release-build-info.toml
       - name: Extract into a fresh directory outside all build trees
         shell: bash
         run: |
           set -euo pipefail
+          release_version="$(awk -F'"' '$1 == "cli_version = " {print $2}' dist/release-build-info.toml)"
+          source_sha="$(awk -F'"' '$1 == "source_sha = " {print $2}' dist/release-build-info.toml)"
+          archive_suffix=""
+          if [[ "$GITHUB_REF_TYPE" != tag ]]; then
+            archive_suffix="-candidate-${source_sha:0:12}"
+          fi
+          host_archive="dist/vix-x86_64-linux-gnu-${release_version}${archive_suffix}.tar.gz"
           fresh="$RUNNER_TEMP/vix-extracted-clean"
           test ! -e "$fresh"
           mkdir -p "$fresh"
           tar -xzf "$host_archive" -C "$fresh"
           test -x "$fresh/bin/vix"
           cmp "$fresh/share/vix/release-build-info.toml" dist/release-build-info.toml
-          grep -Fx "cli_version = \"${GITHUB_REF_NAME#v}\"" dist/release-build-info.toml
-          grep -Fx "sdk = \"${GITHUB_REF_NAME#v}\"" dist/release-build-info.toml
+          grep -Fx "cli_version = \"${release_version}\"" dist/release-build-info.toml
+          grep -Fx "sdk = \"${release_version}\"" dist/release-build-info.toml
           env -u LD_LIBRARY_PATH "$fresh/bin/vix" --version | tee "$RUNNER_TEMP/vix-version.txt"
-          grep -F "version : ${GITHUB_REF_NAME#v}" "$RUNNER_TEMP/vix-version.txt"
+          grep -F "version : ${release_version}" "$RUNNER_TEMP/vix-version.txt"
           env -u LD_LIBRARY_PATH "$fresh/bin/vix" help > "$RUNNER_TEMP/vix-help.txt"
           actual_commands="$(awk '
             /^(Project|Packages|System):$/ { section=1; next }
@@ -640,6 +717,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          release_version="$(awk -F'"' '$1 == "cli_version = " {print $2}' dist/release-build-info.toml)"
+          source_sha="$(awk -F'"' '$1 == "source_sha = " {print $2}' dist/release-build-info.toml)"
+          archive_suffix=""
+          if [[ "$GITHUB_REF_TYPE" != tag ]]; then
+            archive_suffix="-candidate-${source_sha:0:12}"
+          fi
+          bootstrap_archive="dist/vix-installer-x86_64-linux-gnu-${release_version}${archive_suffix}.tar.gz"
           bootstrap="$RUNNER_TEMP/vix-bootstrap-extracted"
           mkdir -p "$bootstrap"
           tar -xzf "$bootstrap_archive" -C "$bootstrap"
