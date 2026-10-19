@@ -15,6 +15,7 @@ namespace vix::network::detail
 {
   namespace
   {
+    thread_local bool on_continuation_worker = false;
 #if !defined(__wasi__)
     struct Pool
     {
@@ -47,6 +48,7 @@ namespace vix::network::detail
     }
     void worker()
     {
+      on_continuation_worker = true;
       auto &p = pool();
       for (;;)
       {
@@ -65,6 +67,7 @@ namespace vix::network::detail
     }
 #endif
   }
+  bool Continuations::on_worker_thread() noexcept { return on_continuation_worker; }
   vix::Result<void> Continuations::ensure()
   {
 #if defined(__wasi__)
@@ -385,6 +388,24 @@ namespace vix::network::detail
   }
   vix::Result<std::size_t> ProviderCore::poll()
   {
+    return poll_impl(false);
+  }
+  vix::Result<std::size_t> ProviderCore::run_one()
+  {
+    if (!impl_->cooperative)
+      return vix::Error{unsupported, "blocking progress turns require a cooperative provider"};
+    return poll_impl(true);
+  }
+  bool ProviderCore::may_run_here() const noexcept
+  {
+    if (!impl_->running)
+      return false;
+    if (impl_->cooperative)
+      return on_owner_thread() && !impl_->driving;
+    return !on_owner_thread() && !Continuations::on_worker_thread();
+  }
+  vix::Result<std::size_t> ProviderCore::poll_impl(bool wait_for_event)
+  {
     if (!impl_->cooperative)
       return vix::Error{unsupported, "poll is available only for cooperative providers"};
     if (!on_owner_thread())
@@ -461,7 +482,42 @@ namespace vix::network::detail
     if (impl_->running)
     {
       ReactorEvent events[16];
-      const int count = impl_->reactor->wait(events, 16, 0);
+      int timeout = 0;
+      if (wait_for_event && progress == 0)
+      {
+        bool commands_pending{};
+        {
+          std::lock_guard lock(impl_->queue_m);
+          commands_pending = !impl_->commands.empty();
+        }
+        bool resumes_pending{};
+        {
+          std::lock_guard lock(impl_->resume_m);
+          resumes_pending = !impl_->cooperative_resumes.empty();
+        }
+        if (!commands_pending && !resumes_pending)
+        {
+          if (!live_head())
+            timeout = -1;
+          else
+          {
+            const auto remaining = impl_->deadlines.top().boundary
+                                       .remaining(vix::MonotonicClock::now())
+                                       .nanosecond_count();
+            if (remaining <= 0)
+              timeout = 0;
+            else
+            {
+              const auto milliseconds = remaining / 1000000LL +
+                                        (remaining % 1000000LL != 0);
+              timeout = milliseconds > 2147483647LL
+                            ? 2147483647
+                            : static_cast<int>(milliseconds);
+            }
+          }
+        }
+      }
+      const int count = impl_->reactor->wait(events, 16, timeout);
       if (count < 0)
         return vix::Error{io_failure, "cooperative reactor poll failed"};
       bool woke = false;

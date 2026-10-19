@@ -56,9 +56,8 @@ namespace vix::network
       vix::Completion<T> await_resume() { return state->take_completion(); }
       ~Awaiter()
       {
-        if (!state) return;
-        if (state->incomplete()) std::terminate();
-        if (state->scheduled()) state->abandon();
+        if (state)
+          state->abandon();
       }
     };
     Awaiter operator co_await() && { return {std::move(state_), std::move(starter_)}; }

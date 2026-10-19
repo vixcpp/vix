@@ -39,6 +39,7 @@ namespace vix::network::detail
     // Private test hook: fail after starting this many workers during the next
     // initialization attempt. The hook is consumed by that attempt.
     static void fail_worker_creation_after_for_test(unsigned) noexcept;
+    static bool on_worker_thread() noexcept;
   };
   enum class ResumeState : std::uint8_t
   {
@@ -86,6 +87,9 @@ namespace vix::network::detail
     [[nodiscard]] bool cooperative() const noexcept;
     [[nodiscard]] bool on_owner_thread() const noexcept;
     vix::Result<std::size_t> poll();
+    // One blocking cooperative progress turn, used by the top-level runner.
+    vix::Result<std::size_t> run_one();
+    [[nodiscard]] bool may_run_here() const noexcept;
     void schedule_resume(std::shared_ptr<ResumeTicket>);
     std::uint64_t register_descriptor(NativeSocket, ReadinessHandler, ReadinessHandler);
     bool set_descriptor_handlers(std::uint64_t, ReadinessHandler, ReadinessHandler);
@@ -119,6 +123,7 @@ namespace vix::network::detail
     [[nodiscard]] std::uint64_t maximum_consecutive_zero_waits_for_test() const noexcept;
 
   private:
+    vix::Result<std::size_t> poll_impl(bool wait_for_event);
     enum class CommandKind : std::uint8_t
     {
       generic,
@@ -219,6 +224,12 @@ namespace vix::network::detail
   class TcpConnectionState;
   template <class T>
   class OperationRecord;
+  enum class TcpTransportOwner : std::uint8_t
+  {
+    none,
+    tls,
+    http,
+  };
   class TcpTransportLease
   {
   public:
@@ -239,8 +250,10 @@ namespace vix::network::detail
     void close() noexcept;
 
   private:
-    explicit TcpTransportLease(std::shared_ptr<TcpConnectionState>) noexcept;
+    explicit TcpTransportLease(std::shared_ptr<TcpConnectionState>,
+                               TcpTransportOwner) noexcept;
     std::shared_ptr<TcpConnectionState> state_;
+    TcpTransportOwner owner_{TcpTransportOwner::none};
     friend class NetworkAccess;
   };
   class NetworkAccess
@@ -248,6 +261,9 @@ namespace vix::network::detail
   public:
     static TcpConnection adopt_tcp_for_test(Provider &, int);
     static std::shared_ptr<ProviderCore> core_for_test(const Provider &);
+    // Private HTTP parent operations need the same provider lifetime as their
+    // Network children. This does not expose ProviderCore outside Engine.hpp.
+    static std::shared_ptr<ProviderCore> core_for_http(const Provider &);
     static int native_fd_for_test(const TcpConnection &) noexcept;
     struct TransportCountersForTest
     {
@@ -261,6 +277,8 @@ namespace vix::network::detail
       std::uint64_t write_slot_releases{};
       std::size_t write_offset{};
       std::size_t write_offset_at_terminal_release{};
+      std::uint64_t descriptor_arm_attempts{};
+      std::uint64_t descriptor_arm_wrong_thread{};
     };
     static void hold_transport_progression_for_test(const TcpConnection &, bool) noexcept;
     static void fail_descriptor_arm_for_test(const TcpConnection &, bool) noexcept;
@@ -272,17 +290,29 @@ namespace vix::network::detail
     static void capture_next_send_record_for_test(const TcpConnection &, std::shared_ptr<OperationRecord<void>> &);
     static TransportCountersForTest transport_counters_for_test(const TcpConnection &);
     static TransportCountersForTest transport_counters_for_test(const TcpTransportLease &);
-    // Private TLS integration: returns the provider retained by an exclusive
-    // transport lease without exposing its native descriptor.
+    // Private protocol integration: returns the provider retained by an
+    // exclusive transport lease without exposing its native descriptor.
     static std::shared_ptr<ProviderCore> provider_for_tls_lease(const TcpTransportLease &) noexcept;
+    static std::shared_ptr<ProviderCore> provider_for_http_lease(const TcpTransportLease &) noexcept;
     static TcpConnection from_handoff(NativeSocket, ProviderResourceLease);
     // Experimental, engine-private ownership transfer. Engine.hpp is not an
     // installed header; ordinary SDK consumers cannot access this entrypoint.
     static vix::Result<TcpTransportLease> claim_tcp_for_tls(TcpConnection &&);
+    static vix::Result<TcpTransportLease> claim_tcp_for_http(TcpConnection &&);
 #ifdef VIX_NETWORK_TEST_CAPTURE
+    static TcpConnection alias_tcp_for_test(const TcpConnection &);
     static void set_before_native_receive_hook_for_test(const TcpConnection &,
                                                          void (*)(void *) noexcept, void *) noexcept;
+    static void set_before_start_enqueue_hook_for_test(const TcpConnection &,
+                                                        void (*)(void *) noexcept, void *) noexcept;
+    static void set_before_start_execute_hook_for_test(const TcpConnection &,
+                                                        void (*)(void *) noexcept, void *) noexcept;
+    static void limit_send_chunk_for_test(const TcpConnection &, std::size_t) noexcept;
 #endif
+
+  private:
+    static vix::Result<TcpTransportLease> claim_tcp_for_owner(
+        TcpConnection &&, TcpTransportOwner);
   };
   // Compatibility spelling for private focused tests only.  It is not in any
   // installed public header.
@@ -336,8 +366,12 @@ namespace vix::network::detail
       created,
       suspending,
       suspended,
+      completing_before_suspend,
+      completion_suspend_committed,
+      completing_suspended,
       completed_before_suspend,
       completed_scheduled,
+      abandoned,
       consumed
     };
     explicit OperationRecord(std::shared_ptr<ProviderCore> p) : provider_(std::move(p)) {}
@@ -359,6 +393,21 @@ namespace vix::network::detail
     void publish_native_success_with(Producer &&producer);
     void hold_evaluation_for_test(bool hold) noexcept { evaluation_held_.store(hold); }
     void release_evaluation_for_test();
+    void hold_completion_publication_for_test(bool hold) noexcept
+    {
+      hold_completion_publication_for_test_.store(hold, std::memory_order_release);
+      if (!hold)
+        hold_completion_publication_for_test_.notify_all();
+    }
+    void set_terminal_hook_for_test(void (*hook)(void *) noexcept, void *context) noexcept
+    {
+      std::lock_guard lock(mutex_);
+      terminal_hook_for_test_ = hook;
+      terminal_hook_context_for_test_ = context;
+    }
+    // Atomic abandonment arbitration. Awaiter destruction treats a losing
+    // race as a contract violation; focused tests may inspect the outcome.
+    bool try_abandon() noexcept;
     void bind_descriptor_direction(std::uint64_t token, bool read) noexcept
     {
       descriptor_token_ = token;
@@ -370,7 +419,10 @@ namespace vix::network::detail
     [[nodiscard]] bool incomplete() const noexcept override
     {
       const auto p = phase_.load();
-      return p == Phase::suspending || p == Phase::suspended;
+      return p == Phase::suspending || p == Phase::suspended ||
+             p == Phase::completing_before_suspend ||
+             p == Phase::completion_suspend_committed ||
+             p == Phase::completing_suspended;
     }
     [[nodiscard]] bool scheduled() const noexcept override { return phase_.load() == Phase::completed_scheduled; }
     [[nodiscard]] Phase phase() const noexcept { return phase_.load(); }
@@ -407,6 +459,9 @@ namespace vix::network::detail
     std::conditional_t<std::is_void_v<T>, std::monostate, std::optional<std::function<T(NativeSocket, ProviderResourceLease)>>> native_success_builder_;
     std::atomic<bool> cancellation_fact_{false}, deadline_fact_{false};
     std::atomic<bool> evaluation_held_{false};
+    std::atomic<bool> hold_completion_publication_for_test_{};
+    void (*terminal_hook_for_test_)(void *) noexcept{};
+    void *terminal_hook_context_for_test_{};
     bool claim_terminal(bool &) noexcept;
     template <class Build>
     void finish_terminal_winner(bool, Build &&);
@@ -425,8 +480,14 @@ namespace vix::network::detail
   template <class T>
   bool OperationRecord<T>::commit_suspend() noexcept
   {
+    std::lock_guard lock(mutex_);
     Phase e = Phase::suspending;
-    return phase_.compare_exchange_strong(e, Phase::suspended);
+    if (phase_.compare_exchange_strong(e, Phase::suspended))
+      return true;
+    if (e == Phase::completing_before_suspend)
+        return phase_.compare_exchange_strong(
+            e, Phase::completion_suspend_committed);
+      return false;
   }
   template <class T>
   bool OperationRecord<T>::claim_terminal(bool &queue) noexcept
@@ -434,11 +495,16 @@ namespace vix::network::detail
     Phase p = phase_.load();
     for (;;)
     {
-      if (p == Phase::completed_before_suspend || p == Phase::completed_scheduled || p == Phase::consumed)
+      if (p == Phase::completing_before_suspend ||
+          p == Phase::completion_suspend_committed ||
+          p == Phase::completing_suspended ||
+          p == Phase::completed_before_suspend ||
+          p == Phase::completed_scheduled || p == Phase::abandoned ||
+          p == Phase::consumed)
         return false;
       if (p == Phase::suspending)
       {
-        if (phase_.compare_exchange_weak(p, Phase::completed_before_suspend))
+        if (phase_.compare_exchange_weak(p, Phase::completing_before_suspend))
         {
           queue = false;
           return true;
@@ -447,7 +513,7 @@ namespace vix::network::detail
       }
       if (p == Phase::suspended)
       {
-        if (phase_.compare_exchange_weak(p, Phase::completed_scheduled))
+        if (phase_.compare_exchange_weak(p, Phase::completing_suspended))
         {
           queue = true;
           return true;
@@ -482,23 +548,59 @@ namespace vix::network::detail
     record_event(TerminalEvent::cancellation_released);
     borrow_allowed_ = false;
     record_event(TerminalEvent::borrow_revoked);
-    std::shared_ptr<ResumeTicket> ticket;
+    for (bool held = hold_completion_publication_for_test_.load(
+             std::memory_order_acquire);
+         held;
+         held = hold_completion_publication_for_test_.load(
+             std::memory_order_acquire))
+      hold_completion_publication_for_test_.wait(true,
+                                                 std::memory_order_acquire);
+    void (*terminal_hook)(void *) noexcept{};
+    void *terminal_context{};
     {
       std::lock_guard l(mutex_);
       completion_.emplace(build());
       record_event(TerminalEvent::completion_stored);
-      if (queue)
-        ticket = ticket_ = std::make_shared<ResumeTicket>(handle_);
+      if (phase_.load(std::memory_order_acquire) != Phase::abandoned)
+        ticket_ = std::make_shared<ResumeTicket>(handle_);
     }
     provider_->finish_operation();
     record_event(TerminalEvent::provider_released);
     auto provider = provider_;
     provider_.reset();
-    if (queue)
     {
-      record_event(TerminalEvent::resume_queued);
-      provider->schedule_resume(std::move(ticket));
+      std::lock_guard l(mutex_);
+      const auto phase = phase_.load(std::memory_order_acquire);
+      if (phase == Phase::abandoned)
+      {
+      }
+      else if (queue || phase == Phase::completion_suspend_committed)
+      {
+        if (phase != Phase::completing_suspended &&
+            phase != Phase::completion_suspend_committed)
+          std::terminate();
+        if (!ticket_)
+          std::terminate();
+        phase_.store(Phase::completed_scheduled, std::memory_order_release);
+        // Queue while holding the same mutex used by abandonment. A destroyer
+        // therefore either retires the ticket first or observes that dispatch
+        // has already been committed; it cannot return from abandonment and
+        // then have this completion path enqueue a ticket afterward.
+        record_event(TerminalEvent::resume_queued);
+        provider->schedule_resume(ticket_);
+      }
+      else
+      {
+        if (phase != Phase::completing_before_suspend)
+          std::terminate();
+        ticket_.reset();
+        phase_.store(Phase::completed_before_suspend, std::memory_order_release);
+        terminal_hook = std::exchange(terminal_hook_for_test_, nullptr);
+        terminal_context = std::exchange(terminal_hook_context_for_test_, nullptr);
+      }
     }
+    if (terminal_hook)
+      terminal_hook(terminal_context);
   }
   template <class T>
   void OperationRecord<T>::complete(vix::Completion<T> c)
@@ -666,9 +768,33 @@ namespace vix::network::detail
   template <class T>
   void OperationRecord<T>::abandon() noexcept
   {
+    if (!try_abandon())
+      std::terminate();
+  }
+
+  template <class T>
+  bool OperationRecord<T>::try_abandon() noexcept
+  {
     std::lock_guard l(mutex_);
-    if (ticket_)
-      ticket_->abandon();
+    const auto phase = phase_.load(std::memory_order_acquire);
+    if (phase == Phase::created || phase == Phase::consumed ||
+        phase == Phase::abandoned)
+      return true;
+    if (phase == Phase::completing_suspended)
+    {
+      if (ticket_ && !ticket_->abandon())
+        return false;
+      phase_.store(Phase::abandoned, std::memory_order_release);
+      return true;
+    }
+    if (phase == Phase::completed_scheduled)
+    {
+      if (!ticket_ || !ticket_->abandon())
+        return false;
+      phase_.store(Phase::abandoned, std::memory_order_release);
+      return true;
+    }
+    return false;
   }
 
   template <class T>

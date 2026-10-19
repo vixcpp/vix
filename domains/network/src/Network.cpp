@@ -44,7 +44,7 @@ namespace vix::network::detail
     {
       if (provider_->cooperative() && !provider_->on_owner_thread())
         std::terminate();
-      if (tls_owned_ && !closed_)
+      if (transport_owner_ != TcpTransportOwner::none && !closed_)
         std::terminate();
       (void)close();
     }
@@ -55,16 +55,18 @@ namespace vix::network::detail
       std::lock_guard lock(mutex_);
       if (closed_)
         return error_ ? vix::Result<void>{*error_} : vix::Result<void>::success();
-      if (tls_owned_)
+      if (transport_owner_ != TcpTransportOwner::none)
         return vix::Error{transport_owned, "transport is owned by a private Network lease"};
       return close_locked();
     }
-    vix::Result<void> shutdown_write(bool lease_authorized = false) noexcept
+    vix::Result<void> shutdown_write(
+        TcpTransportOwner owner = TcpTransportOwner::none) noexcept
     {
       if (provider_->cooperative() && !provider_->on_owner_thread())
         return vix::Error{operation_in_progress, "cooperative connection is thread-affine"};
       std::lock_guard lock(mutex_);
-      if (tls_owned_ != lease_authorized || (lease_authorized && tls_release_pending_))
+      if (transport_owner_ != owner ||
+          (owner != TcpTransportOwner::none && transport_release_pending_))
         return vix::Error{transport_owned, "transport is owned by a private Network lease"};
       if (closed_)
         return vix::Error{peer_closed,"connection is closed"};
@@ -87,25 +89,27 @@ namespace vix::network::detail
     }
     int native_fd_for_test() const noexcept { return static_cast<int>(fd_); }
     vix::network::Operation<std::size_t> receive(std::span<std::byte> buffer, OperationOptions options,
-                                                 bool lease_authorized = false);
+                                                 TcpTransportOwner owner = TcpTransportOwner::none);
     vix::network::Operation<void> send(std::span<const std::byte> buffer, OperationOptions options,
-                                       bool lease_authorized = false);
+                                       TcpTransportOwner owner = TcpTransportOwner::none);
 
   private:
     friend class NetworkAccess;
     friend class TcpTransportLease;
-    vix::Result<void> claim_tls_ownership() noexcept
+    vix::Result<void> claim_transport_ownership(TcpTransportOwner owner) noexcept
     {
+      if (owner == TcpTransportOwner::none)
+        return vix::Error{transport_owned, "an exclusive transport owner is required"};
       if (provider_->cooperative() && !provider_->on_owner_thread())
         return vix::Error{operation_in_progress, "cooperative connection is thread-affine"};
       std::lock_guard lock(mutex_);
       if (closed_)
         return vix::Error{peer_closed, "connection is closed"};
-      if (tls_owned_)
+      if (transport_owner_ != TcpTransportOwner::none)
         return vix::Error{transport_owned, "transport already has a private owner"};
       if (read_active_ || write_active_)
         return vix::Error{operation_in_progress, "transport operation is active"};
-      tls_owned_ = true;
+      transport_owner_ = owner;
       return vix::Result<void>::success();
     }
     vix::Result<void> close_locked() noexcept
@@ -123,14 +127,14 @@ namespace vix::network::detail
       lease_.reset();
       return error_ ? vix::Result<void>{*error_} : vix::Result<void>::success();
     }
-    void close_from_tls_lease() noexcept
+    void close_from_transport_lease(TcpTransportOwner owner) noexcept
     {
       if (provider_->cooperative() && !provider_->on_owner_thread())
         std::terminate();
       std::lock_guard lock(mutex_);
-      if (!tls_owned_)
+      if (transport_owner_ != owner || owner == TcpTransportOwner::none)
         std::terminate();
-      tls_release_pending_ = true;
+      transport_release_pending_ = true;
       if (!read_active_ && !write_active_)
         (void)close_locked();
     }
@@ -156,7 +160,7 @@ namespace vix::network::detail
         write_offset_ = 0;
         ++write_slot_releases_for_test_;
       }
-      if (tls_release_pending_ && !read_active_ && !write_active_)
+      if (transport_release_pending_ && !read_active_ && !write_active_)
         (void)close_locked();
       else
         update_interest_locked();
@@ -228,23 +232,61 @@ namespace vix::network::detail
       fail_descriptor_arm_for_test_ = fail;
     }
 #ifdef VIX_NETWORK_TEST_CAPTURE
+    void limit_send_chunk_for_test(std::size_t limit) noexcept
+    {
+      std::lock_guard lock(mutex_);
+      max_send_chunk_for_test_ = limit == 0 ? 1 : limit;
+    }
     void set_before_native_receive_hook_for_test(void (*hook)(void *) noexcept, void *context) noexcept
     {
       std::lock_guard lock(mutex_);
       before_native_receive_hook_for_test_ = hook;
       before_native_receive_context_for_test_ = context;
     }
+    void set_before_start_enqueue_hook_for_test(void (*hook)(void *) noexcept, void *context) noexcept
+    {
+      std::lock_guard lock(mutex_);
+      before_start_enqueue_hook_for_test_ = hook;
+      before_start_enqueue_context_for_test_ = context;
+    }
+    void set_before_start_execute_hook_for_test(void (*hook)(void *) noexcept, void *context) noexcept
+    {
+      std::lock_guard lock(mutex_);
+      before_start_execute_hook_for_test_ = hook;
+      before_start_execute_context_for_test_ = context;
+    }
+    void run_start_hook_for_test(bool before_enqueue) noexcept
+    {
+      void (*hook)(void *) noexcept{};
+      void *context{};
+      {
+        std::lock_guard lock(mutex_);
+        if (before_enqueue)
+        {
+          hook = std::exchange(before_start_enqueue_hook_for_test_, nullptr);
+          context = std::exchange(before_start_enqueue_context_for_test_, nullptr);
+        }
+        else
+        {
+          hook = std::exchange(before_start_execute_hook_for_test_, nullptr);
+          context = std::exchange(before_start_execute_context_for_test_, nullptr);
+        }
+      }
+      if (hook)
+        hook(context);
+    }
 #endif
     NetworkAccess::TransportCountersForTest transport_counters_for_test()
     {
       std::lock_guard lock(mutex_);
       return {read_progressions_for_test_, write_progressions_for_test_, native_recv_attempts_for_test_, native_send_attempts_for_test_,
-              read_buffer_accesses_for_test_, write_buffer_accesses_for_test_, read_slot_releases_for_test_, write_slot_releases_for_test_, write_offset_, write_offset_at_terminal_release_for_test_};
+              read_buffer_accesses_for_test_, write_buffer_accesses_for_test_, read_slot_releases_for_test_, write_slot_releases_for_test_, write_offset_, write_offset_at_terminal_release_for_test_, descriptor_arm_attempts_for_test_, descriptor_arm_wrong_thread_for_test_};
     }
     NativeSocket fd_{invalid_socket};
     std::shared_ptr<ProviderCore> provider_;
     bool closed_{}, write_shutdown_{};
-    bool tls_owned_{}, tls_release_pending_{};
+    TcpTransportOwner transport_owner_{TcpTransportOwner::none};
+    bool transport_release_pending_{};
     bool read_active_{}, write_active_{};
     bool read_result_published_{}, write_result_published_{};
     std::weak_ptr<OperationRecord<std::size_t>> read_record_;
@@ -261,12 +303,19 @@ namespace vix::network::detail
 #ifdef VIX_NETWORK_TEST_CAPTURE
     void (*before_native_receive_hook_for_test_)(void *) noexcept{};
     void *before_native_receive_context_for_test_{};
+    void (*before_start_enqueue_hook_for_test_)(void *) noexcept{};
+    void *before_start_enqueue_context_for_test_{};
+    void (*before_start_execute_hook_for_test_)(void *) noexcept{};
+    void *before_start_execute_context_for_test_{};
+    std::size_t max_send_chunk_for_test_{static_cast<std::size_t>(-1)};
 #endif
     std::uint64_t read_progressions_for_test_{}, write_progressions_for_test_{};
     std::uint64_t native_recv_attempts_for_test_{}, native_send_attempts_for_test_{};
     std::uint64_t read_buffer_accesses_for_test_{}, write_buffer_accesses_for_test_{};
     std::uint64_t read_slot_releases_for_test_{}, write_slot_releases_for_test_{};
     std::size_t write_offset_at_terminal_release_for_test_{};
+    std::uint64_t descriptor_arm_attempts_for_test_{};
+    std::uint64_t descriptor_arm_wrong_thread_for_test_{};
   };
 
   class TcpListenerState : public std::enable_shared_from_this<TcpListenerState>
@@ -395,6 +444,11 @@ namespace vix::network::detail
 
   bool TcpConnectionState::ensure_descriptor_locked()
   {
+#ifdef VIX_NETWORK_TEST_CAPTURE
+    ++descriptor_arm_attempts_for_test_;
+    if (!provider_->on_owner_thread())
+      ++descriptor_arm_wrong_thread_for_test_;
+#endif
     if (descriptor_)
       return true;
     if (fail_descriptor_arm_for_test_)
@@ -480,6 +534,9 @@ namespace vix::network::detail
     std::shared_ptr<OperationRecord<void>> record;
     std::span<const std::byte> buffer;
     std::size_t offset;
+#ifdef VIX_NETWORK_TEST_CAPTURE
+    std::size_t max_send_chunk;
+#endif
     NativeSocket fd;
     {
       std::lock_guard lock(mutex_);
@@ -494,6 +551,9 @@ namespace vix::network::detail
       buffer = write_buffer_;
       offset = write_offset_;
       fd = fd_;
+#ifdef VIX_NETWORK_TEST_CAPTURE
+      max_send_chunk = max_send_chunk_for_test_;
+#endif
     }
     // A readiness notification and the starter command can both be queued.
     // Once one has advanced the complete span, later callbacks are inert.
@@ -508,7 +568,12 @@ namespace vix::network::detail
         ++native_send_attempts_for_test_;
         ++write_buffer_accesses_for_test_;
       }
-      const auto result = send_socket(fd, buffer.subspan(offset));
+      auto remaining = buffer.subspan(offset);
+#ifdef VIX_NETWORK_TEST_CAPTURE
+      if (remaining.size() > max_send_chunk)
+        remaining = remaining.first(max_send_chunk);
+#endif
+      const auto result = send_socket(fd, remaining);
       if (result > 0)
       {
         offset += static_cast<std::size_t>(result);
@@ -548,36 +613,61 @@ namespace vix::network::detail
   }
   vix::network::Operation<std::size_t> TcpConnectionState::receive(std::span<std::byte> buffer,
                                                                    OperationOptions options,
-                                                                   bool lease_authorized)
+                                                                   TcpTransportOwner owner)
   {
     auto self = shared_from_this();
 #ifdef VIX_NETWORK_TEST_CAPTURE
     auto capture = take_read_capture_for_test(self.get());
-    return OperationFactory<std::size_t>::make_with_capture(provider_, [self, buffer, options, lease_authorized](auto record) mutable
+    return OperationFactory<std::size_t>::make_with_capture(provider_, [self, buffer, options, owner](auto record) mutable
 #else
-    return OperationFactory<std::size_t>::make(provider_, [self, buffer, options, lease_authorized](auto record) mutable
+    return OperationFactory<std::size_t>::make(provider_, [self, buffer, options, owner](auto record) mutable
 #endif
                                                {
       if (self->provider_->cooperative() && !self->provider_->on_owner_thread())
       { record->complete(vix::Completion<std::size_t>{vix::Error{operation_in_progress, "cooperative connection is thread-affine"}}); return; }
-      bool closed = false, claimed = false, empty = false, arm_failed = false;
+      bool closed = false, claimed = false, empty = false;
       { std::lock_guard lock(self->mutex_);
-        if(self->tls_owned_ != lease_authorized || (lease_authorized && self->tls_release_pending_)) claimed = true;
+        if(self->transport_owner_ != owner ||
+           (owner != TcpTransportOwner::none && self->transport_release_pending_)) claimed = true;
         else if(self->closed_) closed = true;
         else if(buffer.empty()) empty = true;
         else {
         if(self->read_active_) std::terminate();
         self->read_active_=true; self->read_result_published_=false; self->read_record_=record; self->read_buffer_=buffer;
         record->set_terminal_cleanup([self]{ self->release_direction<std::size_t>(true); });
-        arm_failed = !self->ensure_descriptor_locked();
         }
       }
       if(claimed) { record->complete(vix::Completion<std::size_t>{vix::Error{transport_owned,"transport has an exclusive private owner"}}); return; }
       if(closed) { record->complete(vix::Completion<std::size_t>{vix::Error{peer_closed,"connection is closed"}}); return; }
       if(empty) { record->complete(vix::Completion<std::size_t>{std::size_t{0}}); return; }
-      if(arm_failed) { record->complete(vix::Completion<std::size_t>{vix::Error{io_failure,"cannot arm receive"}}); return; }
       record->observe_cancellation(options.cancellation); if(options.deadline) record->observe_deadline(*options.deadline);
-      if(!self->provider_->post([self]{self->progress_receive();})) record->complete(vix::Completion<std::size_t>{vix::Error{provider_stopped,"provider is stopped"}})
+#ifdef VIX_NETWORK_TEST_CAPTURE
+      self->run_start_hook_for_test(true);
+#endif
+      if(!self->provider_->post([self, record]
+      {
+#ifdef VIX_NETWORK_TEST_CAPTURE
+        self->run_start_hook_for_test(false);
+#endif
+        bool active = false;
+        bool arm_failed = false;
+        {
+          std::lock_guard lock(self->mutex_);
+          active = self->read_active_ && !self->closed_ &&
+                   self->read_record_.lock() == record;
+          if (active)
+            arm_failed = !self->ensure_descriptor_locked();
+        }
+        if (!active)
+          return;
+        if (arm_failed)
+        {
+          record->complete(vix::Completion<std::size_t>{
+              vix::Error{io_failure, "cannot arm receive"}});
+          return;
+        }
+        self->progress_receive();
+      })) record->complete(vix::Completion<std::size_t>{vix::Error{provider_stopped,"provider is stopped"}})
 #ifdef VIX_NETWORK_TEST_CAPTURE
       ; },std::move(capture));
 #else
@@ -586,21 +676,22 @@ namespace vix::network::detail
   }
   vix::network::Operation<void> TcpConnectionState::send(std::span<const std::byte> buffer,
                                                          OperationOptions options,
-                                                         bool lease_authorized)
+                                                         TcpTransportOwner owner)
   {
     auto self = shared_from_this();
 #ifdef VIX_NETWORK_TEST_CAPTURE
     auto capture = take_write_capture_for_test(self.get());
-    return OperationFactory<void>::make_with_capture(provider_, [self, buffer, options, lease_authorized](auto record) mutable
+    return OperationFactory<void>::make_with_capture(provider_, [self, buffer, options, owner](auto record) mutable
 #else
-    return OperationFactory<void>::make(provider_, [self, buffer, options, lease_authorized](auto record) mutable
+    return OperationFactory<void>::make(provider_, [self, buffer, options, owner](auto record) mutable
 #endif
                                         {
       if (self->provider_->cooperative() && !self->provider_->on_owner_thread())
       { record->complete(vix::Completion<void>{vix::Error{operation_in_progress, "cooperative connection is thread-affine"}}); return; }
-      bool closed = false, claimed = false, write_is_shutdown = false, arm_failed = false;
+      bool closed = false, claimed = false, write_is_shutdown = false;
       { std::lock_guard lock(self->mutex_);
-        if(self->tls_owned_ != lease_authorized || (lease_authorized && self->tls_release_pending_)) claimed = true;
+        if(self->transport_owner_ != owner ||
+           (owner != TcpTransportOwner::none && self->transport_release_pending_)) claimed = true;
         else if(self->closed_) closed = true;
         else if(self->write_shutdown_) write_is_shutdown = true;
         else if(buffer.empty()) { }
@@ -608,16 +699,40 @@ namespace vix::network::detail
         if(self->write_active_) std::terminate();
         self->write_active_=true; self->write_result_published_=false; self->write_record_=record; self->write_buffer_=buffer; self->write_offset_=0;
         record->set_terminal_cleanup([self]{ self->release_direction<void>(false); });
-        arm_failed = !self->ensure_descriptor_locked();
         }
       }
       if(claimed) { record->complete(vix::Completion<void>{vix::Error{transport_owned,"transport has an exclusive private owner"}}); return; }
       if(closed) { record->complete(vix::Completion<void>{vix::Error{peer_closed,"connection is closed"}}); return; }
       if(write_is_shutdown) { record->complete(vix::Completion<void>{vix::Error{vix::network::write_shutdown,"connection write direction is shut down"}}); return; }
       if(buffer.empty()) { record->complete(vix::Completion<void>::success()); return; }
-      if(arm_failed) { record->complete(vix::Completion<void>{vix::Error{io_failure,"cannot arm send"}}); return; }
       record->observe_cancellation(options.cancellation); if(options.deadline) record->observe_deadline(*options.deadline);
-      if(!self->provider_->post([self]{self->progress_send();})) record->complete(vix::Completion<void>{vix::Error{provider_stopped,"provider is stopped"}})
+#ifdef VIX_NETWORK_TEST_CAPTURE
+      self->run_start_hook_for_test(true);
+#endif
+      if(!self->provider_->post([self, record]
+      {
+#ifdef VIX_NETWORK_TEST_CAPTURE
+        self->run_start_hook_for_test(false);
+#endif
+        bool active = false;
+        bool arm_failed = false;
+        {
+          std::lock_guard lock(self->mutex_);
+          active = self->write_active_ && !self->closed_ &&
+                   self->write_record_.lock() == record;
+          if (active)
+            arm_failed = !self->ensure_descriptor_locked();
+        }
+        if (!active)
+          return;
+        if (arm_failed)
+        {
+          record->complete(vix::Completion<void>{
+              vix::Error{io_failure, "cannot arm send"}});
+          return;
+        }
+        self->progress_send();
+      })) record->complete(vix::Completion<void>{vix::Error{provider_stopped,"provider is stopped"}})
 #ifdef VIX_NETWORK_TEST_CAPTURE
       ; },std::move(capture));
 #else
@@ -743,6 +858,31 @@ namespace vix::network
     if (!core_)
       return vix::Error{provider_stopped, "provider has no lifecycle authority"};
     return std::static_pointer_cast<detail::ProviderCore>(core_)->poll();
+  }
+  vix::Result<std::size_t> detail::RunnerAccess::run_one(Provider &provider)
+  {
+    if (!provider.core_)
+      return vix::Error{provider_stopped, "provider has no lifecycle authority"};
+    return std::static_pointer_cast<ProviderCore>(provider.core_)->run_one();
+  }
+  detail::RunnerAccess::Admission
+  detail::RunnerAccess::admission(Provider &provider) noexcept
+  {
+    if (!provider.core_)
+      return Admission::stopped;
+    auto core = std::static_pointer_cast<ProviderCore>(provider.core_);
+    if (!core->running())
+      return Admission::stopped;
+#if defined(__wasi__)
+    if (core->cooperative())
+      return Admission::unsupported;
+#endif
+    return core->may_run_here() ? Admission::ready : Admission::reentrant;
+  }
+  bool detail::RunnerAccess::cooperative(Provider &provider) noexcept
+  {
+    return provider.core_ &&
+           std::static_pointer_cast<ProviderCore>(provider.core_)->cooperative();
   }
   Operation<TcpConnection> Provider::connect(const Endpoint &endpoint, OperationOptions options)
   {
@@ -887,6 +1027,7 @@ namespace vix::network::detail
         fd, std::static_pointer_cast<ProviderCore>(provider.core_))};
   }
   std::shared_ptr<ProviderCore> NetworkAccess::core_for_test(const Provider &provider) { return std::static_pointer_cast<ProviderCore>(provider.core_); }
+  std::shared_ptr<ProviderCore> NetworkAccess::core_for_http(const Provider &provider) { return std::static_pointer_cast<ProviderCore>(provider.core_); }
   int NetworkAccess::native_fd_for_test(const TcpConnection &connection) noexcept { return connection.state_ ? connection.state_->native_fd_for_test() : -1; }
   void NetworkAccess::hold_transport_progression_for_test(const TcpConnection &connection, bool hold) noexcept
   {
@@ -917,6 +1058,12 @@ namespace vix::network::detail
       connection.state_->publish_send_for_test(std::move(completion));
   }
   #ifdef VIX_NETWORK_TEST_CAPTURE
+  void NetworkAccess::limit_send_chunk_for_test(const TcpConnection &connection,
+                                                std::size_t limit) noexcept
+  {
+    if (connection.state_)
+      connection.state_->limit_send_chunk_for_test(limit);
+  }
   void NetworkAccess::capture_next_receive_record_for_test(const TcpConnection &connection, std::shared_ptr<OperationRecord<std::size_t>> &record)
   {
     read_capture_connection_for_test = connection.state_.get();
@@ -940,44 +1087,55 @@ namespace vix::network::detail
   }
   std::shared_ptr<ProviderCore> NetworkAccess::provider_for_tls_lease(const TcpTransportLease &lease) noexcept
   {
-    return lease.state_ ? lease.state_->provider_ : std::shared_ptr<ProviderCore>{};
+    return lease.state_ && lease.owner_ == TcpTransportOwner::tls
+               ? lease.state_->provider_
+               : std::shared_ptr<ProviderCore>{};
+  }
+  std::shared_ptr<ProviderCore> NetworkAccess::provider_for_http_lease(const TcpTransportLease &lease) noexcept
+  {
+    return lease.state_ && lease.owner_ == TcpTransportOwner::http
+               ? lease.state_->provider_
+               : std::shared_ptr<ProviderCore>{};
   }
   TcpConnection NetworkAccess::from_handoff(NativeSocket fd, ProviderResourceLease lease)
   {
     return TcpConnection{std::make_shared<TcpConnectionState>(fd, std::move(lease))};
   }
-  TcpTransportLease::TcpTransportLease(std::shared_ptr<TcpConnectionState> state) noexcept
-      : state_(std::move(state))
+  TcpTransportLease::TcpTransportLease(std::shared_ptr<TcpConnectionState> state,
+                                       TcpTransportOwner owner) noexcept
+      : state_(std::move(state)), owner_(owner)
   {
   }
   TcpTransportLease::TcpTransportLease(TcpTransportLease &&other) noexcept
-      : state_(std::move(other.state_))
+      : state_(std::move(other.state_)),
+        owner_(std::exchange(other.owner_, TcpTransportOwner::none))
   {
   }
   TcpTransportLease::~TcpTransportLease()
   {
     if (state_)
-      state_->close_from_tls_lease();
+      state_->close_from_transport_lease(owner_);
+    owner_ = TcpTransportOwner::none;
   }
   vix::network::Operation<std::size_t> TcpTransportLease::receive(
       std::span<std::byte> buffer, OperationOptions options)
   {
     if (!state_)
       std::terminate();
-    return state_->receive(buffer, std::move(options), true);
+    return state_->receive(buffer, std::move(options), owner_);
   }
   vix::network::Operation<void> TcpTransportLease::send(
       std::span<const std::byte> buffer, OperationOptions options)
   {
     if (!state_)
       std::terminate();
-    return state_->send(buffer, std::move(options), true);
+    return state_->send(buffer, std::move(options), owner_);
   }
   vix::Result<void> TcpTransportLease::shutdown_write() noexcept
   {
     if (!state_)
       return vix::Error{peer_closed, "transport lease is empty"};
-    return state_->shutdown_write(true);
+    return state_->shutdown_write(owner_);
   }
   void TcpTransportLease::close() noexcept
   {
@@ -987,34 +1145,63 @@ namespace vix::network::detail
     auto provider = state->provider_;
     if (provider->cooperative() || provider->on_owner_thread())
     {
-      state->close_from_tls_lease();
+      state->close_from_transport_lease(owner_);
+      owner_ = TcpTransportOwner::none;
       return;
     }
-    // A TLS parent may finish on a Network continuation worker. Queue the
+    // A protocol parent may finish on a Network continuation worker. Queue
     // descriptor retirement to the provider reactor instead of synchronously
     // rendezvousing with the reactor from that worker.
-    if (!provider->post([state = std::move(state)]
-                        { state->close_from_tls_lease(); }))
+    const auto owner = std::exchange(owner_, TcpTransportOwner::none);
+    if (!provider->post([state = std::move(state), owner]
+                        { state->close_from_transport_lease(owner); }))
       std::terminate(); // A live transport resource prevents provider shutdown.
   }
   vix::Result<TcpTransportLease> NetworkAccess::claim_tcp_for_tls(TcpConnection &&connection)
   {
+    return claim_tcp_for_owner(std::move(connection), TcpTransportOwner::tls);
+  }
+  vix::Result<TcpTransportLease> NetworkAccess::claim_tcp_for_http(TcpConnection &&connection)
+  {
+    return claim_tcp_for_owner(std::move(connection), TcpTransportOwner::http);
+  }
+  vix::Result<TcpTransportLease> NetworkAccess::claim_tcp_for_owner(
+      TcpConnection &&connection, TcpTransportOwner owner)
+  {
     if (!connection.state_)
       return vix::Error{peer_closed, "connection is closed"};
     auto state = connection.state_;
-    auto claimed = state->claim_tls_ownership();
+    auto claimed = state->claim_transport_ownership(owner);
     if (!claimed)
       return claimed.error();
-    TcpTransportLease lease{std::move(state)};
+    TcpTransportLease lease{std::move(state), owner};
     connection.state_.reset();
     return vix::Result<TcpTransportLease>{std::move(lease)};
   }
 #ifdef VIX_NETWORK_TEST_CAPTURE
+  TcpConnection NetworkAccess::alias_tcp_for_test(const TcpConnection &connection)
+  {
+    if (!connection.state_)
+      std::terminate();
+    return TcpConnection{connection.state_};
+  }
   void NetworkAccess::set_before_native_receive_hook_for_test(
       const TcpConnection &connection, void (*hook)(void *) noexcept, void *context) noexcept
   {
     if (connection.state_)
       connection.state_->set_before_native_receive_hook_for_test(hook, context);
+  }
+  void NetworkAccess::set_before_start_enqueue_hook_for_test(
+      const TcpConnection &connection, void (*hook)(void *) noexcept, void *context) noexcept
+  {
+    if (connection.state_)
+      connection.state_->set_before_start_enqueue_hook_for_test(hook, context);
+  }
+  void NetworkAccess::set_before_start_execute_hook_for_test(
+      const TcpConnection &connection, void (*hook)(void *) noexcept, void *context) noexcept
+  {
+    if (connection.state_)
+      connection.state_->set_before_start_execute_hook_for_test(hook, context);
   }
 #endif
 }
