@@ -69,6 +69,7 @@ cmake/*
 !cmake/VixConfig.cmake.in
 !cmake/VixCanonicalConfig.cmake.in
 !cmake/VixSdkPackageTest.cmake
+!cmake/VixTlsPackageTest.cmake
 !cmake/VixVendoredDeps.cmake
 !cmake/AssembleVixDistribution.cmake
 *.bak
