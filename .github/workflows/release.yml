@@ -21,11 +21,7 @@ jobs:
       attestations: write
 
   publish:
-    name: Protected signed publication (intentionally disabled)
-    # Keep official publication fail-closed until production environment,
-    # trust provisioning, managed HTTPS upgrade/rollback qualification, and
-    # platform release evidence have been reviewed and validated.
-    if: ${{ false }}
+    name: Protected signed publication
     needs: qualify
     runs-on: ubuntu-24.04
     environment: vix-production-release
