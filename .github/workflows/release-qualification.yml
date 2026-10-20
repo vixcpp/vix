@@ -435,7 +435,7 @@ jobs:
             /^Global options:/ { section=0 }
             section && /^[[:space:]]+[a-z][a-z0-9-]*[[:space:]]/ { print $1 }
           ' "$RUNNER_TEMP/vix-help.txt" | paste -sd' ' -)"
-          test "$actual_commands" = "new init build run test dev repl add remove update install publish upgrade"
+          test "$actual_commands" = "new init build run test dev add remove update install publish upgrade"
           ! grep -R -F "$GITHUB_WORKSPACE" "$fresh/include" "$fresh/lib/cmake/Vix" "$fresh/share"
           ! find "$fresh/include/vix" -type f \( -path '*/detail/*' -o -name '*Engine.hpp' -o -name '*Test.hpp' \) | grep -q .
           ! find "$fresh" \( -name CMakeCache.txt -o -name build.ninja -o -name compile_commands.json \) -print | grep -q .

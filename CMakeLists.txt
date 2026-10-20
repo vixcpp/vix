@@ -23,7 +23,7 @@ endif()
 
 # Release/package semantic version. The umbrella identity below may carry
 # additional Git metadata for development builds.
-set(_VIX_VERSION_FALLBACK "2.9.0")
+set(_VIX_VERSION_FALLBACK "3.0.0")
 
 find_package(Git QUIET)
 set(_VIX_GIT_DESCRIBE "")
