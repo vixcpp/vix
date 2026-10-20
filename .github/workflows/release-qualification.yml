@@ -443,7 +443,9 @@ jobs:
             -DVIX_INSTALLER_TRUST_STORE_FILE="$RUNNER_TEMP/vix-provision/releases.toml" \
             -DVIX_INSTALLER_SOURCE_CONFIG_FILE="$RUNNER_TEMP/vix-provision/source.toml"
           cmake --build cli-build --target vix_cli vix_installer vix_release_tool --parallel 2
-          cli-build/vix --version | tee "$RUNNER_TEMP/package-cli-version.txt"
+          cli-build/vix --version \
+            | sed -E 's/\x1B\[[0-9;]*m//g' \
+            | tee "$RUNNER_TEMP/package-cli-version.txt"
           grep -F "version : $RELEASE_VERSION" "$RUNNER_TEMP/package-cli-version.txt"
           cli-build/vix-installer --validate-provisioning
       - name: Assemble exact runtime dependencies and canonical distribution trees
