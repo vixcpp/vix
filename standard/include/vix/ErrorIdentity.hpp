@@ -1,3 +1,17 @@
+/**
+ * @file ErrorIdentity.hpp
+ * @author Gaspard Kirira
+ *
+ * Copyright 2026, Gaspard Kirira.
+ * All rights reserved.
+ * https://github.com/vixcpp/vix
+ *
+ * Use of this source code is governed by an MIT license
+ * that can be found in the LICENSE file.
+ *
+ * Vix.cpp
+ */
+
 #ifndef VIX_ERROR_IDENTITY_HPP
 #define VIX_ERROR_IDENTITY_HPP
 
@@ -34,24 +48,68 @@ namespace vix::detail
 namespace vix
 {
   /**
-   * @brief Stable programmatic identity for an operational failure.
+   * @brief Stable identity for an operational error.
    *
-   * An identity is a domain key and a non-zero code local to that domain.
-   * It intentionally has no success state. Domains define identities as
-   * constexpr values through define<"domain">(code); published identities
-   * must retain their meaning and must not be repurposed.
+   * @details
+   * ErrorIdentity identifies an error using two values:
+   * - A domain string identifying the error namespace.
+   * - A non-zero numeric code unique within that domain.
+   *
+   * Applications can compare identities without relying on
+   * human-readable error messages.
+   *
+   * Identities are defined at compile time using define().
+   *
+   * @par Example
+   * @code{.cpp}
+   * inline constexpr auto not_found =
+   *     vix::ErrorIdentity::define<"example.files">(1);
+   *
+   * static_assert(not_found.domain() == "example.files");
+   * static_assert(not_found.code() == 1);
+   * @endcode
+   *
+   * @par Stability
+   * Once an error identity is published, its domain, code
+   * and meaning must remain stable.
+   *
+   * @note
+   * ErrorIdentity represents errors only. It does not
+   * contain a success state.
    */
   class ErrorIdentity
   {
   public:
+    /**
+     * @brief Default construction is not supported.
+     *
+     * Use define() to create an error identity.
+     */
     ErrorIdentity() = delete;
 
     /**
-     * @brief Define an identity from a static domain literal and a local code.
+     * @brief Defines an error identity at compile time.
      *
-     * The immediate function rejects an empty domain and code zero during
-     * constant evaluation. The domain literal is retained through a template
-     * parameter object and therefore has static program lifetime.
+     * @tparam Domain Non-empty static string literal
+     *                identifying the error domain.
+     *
+     * @param code Non-zero error code within the domain.
+     *
+     * @return An ErrorIdentity containing the specified
+     *         domain and code.
+     *
+     * @par Example
+     * @code{.cpp}
+     * constexpr auto invalid_argument =
+     *     vix::ErrorIdentity::define<"example">(2);
+     * @endcode
+     *
+     * @note
+     * An empty domain or a zero code makes the
+     * definition invalid at compile time.
+     *
+     * The stored domain remains valid for the
+     * lifetime of the program.
      */
     template <detail::static_domain_literal Domain>
     [[nodiscard]] static consteval ErrorIdentity define(std::uint32_t code)
@@ -73,16 +131,40 @@ namespace vix
           validated_tag{});
     }
 
+    /**
+     * @brief Returns the error domain.
+     *
+     * @return A string view identifying the domain.
+     *
+     * @note
+     * The returned view refers to static storage and
+     * does not require ownership or manual cleanup.
+     */
     [[nodiscard]] constexpr std::string_view domain() const noexcept
     {
       return domain_;
     }
 
+    /**
+     * @brief Returns the error code.
+     *
+     * @return The non-zero code within the domain.
+     *
+     * @note
+     * Codes are meaningful within their domain.
+     * Different domains may use the same numeric code.
+     */
     [[nodiscard]] constexpr std::uint32_t code() const noexcept
     {
       return code_;
     }
 
+    /**
+     * @brief Compares two error identities.
+     *
+     * @return true if both identities have the same
+     *         domain and code, false otherwise.
+     */
     friend constexpr bool operator==(ErrorIdentity,
                                      ErrorIdentity) noexcept = default;
 
