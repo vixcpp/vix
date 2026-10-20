@@ -538,13 +538,32 @@ jobs:
           check_runtime_containment() {
             local executable="$1"
             local bundled_lib_dir="$2"
-            ldd "$executable" | awk -v bundled_prefix="$bundled_lib_dir/" '
-              $2 == "=>" && $3 == "not" { print "missing dependency: " $1; failed=1 }
-              $2 == "=>" && $1 !~ /^(libc\.so|libm\.so|libpthread\.so|libdl\.so|librt\.so|libresolv\.so|ld-linux|linux-vdso)/ && index($3, bundled_prefix) != 1 {
-                print "non-system dependency not bundled: " $1 " => " $3; failed=1
-              }
-              END { exit failed }
-            '
+            local bundled_real
+            local resolved
+            local failed=0
+            bundled_real="$(realpath "$bundled_lib_dir")"
+            while read -r name arrow location _; do
+              [[ "$arrow" == "=>" ]] || continue
+              case "$name" in
+                libc.so*|libm.so*|libpthread.so*|libdl.so*|librt.so*|libresolv.so*|ld-linux*|linux-vdso*)
+                  continue
+                  ;;
+              esac
+              if [[ "$location" == "not" ]]; then
+                echo "missing dependency: $name" >&2
+                failed=1
+                continue
+              fi
+              resolved="$(realpath "$location")"
+              case "$resolved" in
+                "$bundled_real"/*) ;;
+                *)
+                  echo "non-system dependency not bundled: $name => $location (resolved: $resolved)" >&2
+                  failed=1
+                  ;;
+              esac
+            done < <(ldd "$executable")
+            return "$failed"
           }
           check_runtime_containment "$RUNNER_TEMP/vix-release-tree/bin/vix" "$RUNNER_TEMP/vix-release-tree/lib"
           check_runtime_containment "$RUNNER_TEMP/vix-bootstrap-tree/bin/vix-installer" "$RUNNER_TEMP/vix-bootstrap-tree/lib"
