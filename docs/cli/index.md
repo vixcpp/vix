@@ -84,21 +84,14 @@ vix main.cpp
 
 Vix detects `.cpp` files and forwards them to `vix run`.
 
-## Default interactive mode
+## Command help
 
-Running `vix` without a command starts the interactive REPL:
+Running `vix` without a command displays the available command help:
 
 ```bash
 vix
 ```
 
-You can also start it explicitly:
-
-```bash
-vix repl
-```
-
-The REPL is useful for quick experiments, JSON work, expressions, and command-driven exploration.
 
 ## Core workflow
 
@@ -170,7 +163,6 @@ Use these commands when you want to run code quickly.
 | ----------- | -------------------------------------------------------------- |
 | `vix run`   | You want to run a project, a C++ file, or a manifest.          |
 | `vix dev`   | You want a development loop with rebuilds and reload behavior. |
-| `vix repl`  | You want an interactive Vix shell.                             |
 | `vix check` | You want to validate before committing or shipping.            |
 
 Example:
@@ -677,8 +669,6 @@ vix logs
 ```
 
 ## When to use each command
-
-Use `vix` when you want the interactive REPL.
 
 Use `vix new` when starting a new project.
 

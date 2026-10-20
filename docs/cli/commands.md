@@ -20,7 +20,7 @@ vix build
 vix check --tests
 ```
 
-Running `vix` without a command starts the interactive REPL:
+Running `vix` without a command displays the available command help:
 
 ```bash
 vix
@@ -102,8 +102,6 @@ These commands are used to create, run, build, validate, and maintain a project.
 
 | Command          | Purpose                                                  | Guide                       |
 | ---------------- | -------------------------------------------------------- | --------------------------- |
-| `vix`            | Start the interactive REPL.                              | [REPL](/cli/repl)           |
-| `vix repl`       | Start the REPL explicitly.                               | [vix repl](/cli/repl)       |
 | `vix new <name>` | Create a new Vix project.                                | [vix new](/cli/new)         |
 | `vix make`       | Generate C++ scaffolding.                                | [vix make](/cli/make)       |
 | `vix modules`    | Manage optional project modules.                         | [vix modules](/cli/modules) |
@@ -713,7 +711,6 @@ publish
 registry
 remove
 replay
-repl
 reset
 run
 search

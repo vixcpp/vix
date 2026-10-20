@@ -20,7 +20,6 @@ build
 run
 dev
 test
-repl
 
 add
 remove
@@ -271,9 +270,9 @@ vix test --ctest <raw-ctest-arguments...>
 
 No `--exact-test`, `-R`, `--test`, `--raw`, `--preset`, `--build-target`, or generic `--` CTest tail is public.
 
-## 9. `vix repl`
+## 9. Interactive C++ REPL (excluded in Vix 3.0)
 
-Canonical syntax is `vix repl`. No public options and no public `--` argument tail in format 1. Its intention is C++ interaction only. It does not expose application/server arguments. Project/package/toolchain-aware REPL context remains future research unless explicitly verified and separately contracted.
+Vix 3.0 does not expose `vix repl`. The historical Reply evaluator is not a C++ REPL and is intentionally unavailable through the stable public command surface. The implementation may remain in the source tree for unrelated internal or historical use, but it is not part of the Vix 3.0 CLI contract.
 
 ## 10. Package commands
 
@@ -408,7 +407,7 @@ The following are not public current-Vix syntax. Their useful engine behavior ma
 - Build presets; raw ambiguous build `--` tail; `--build-target`; platform use of `--target`; `--sysroot`; `--launcher`; `--linker`; redundant sanitizer spellings `--sanitize`, `--sanitize=<mode>`, and `--no-san`; database toggles; Cloud report; managed-SDK profile; graph executor; heartbeat; cache/status controls; warning pagination; debug-log internals.
 - Remote/container run inputs (`docker://`, `container://`, `ssh://`, `http://`); server/script classification; run watch/reload; replay; OpenAPI/docs controls; environment hints; runtime cache/fingerprint controls; run logging-format/color controls.
 - CTest parser vocabulary in ordinary Vix testing: exact-test, `-R`, `--test`, raw mode, presets, build-target, and generic `--` CTest tail. Advanced CTest arguments exist only after terminal `--ctest` in external-CMake mode.
-- REPL application argument tail.
+- `vix repl`; interactive C++ execution is outside the Vix 3.0 release scope.
 - Global log-level, color, and internal debug options.
 - `new --force`, `new --dir`, template/application selection; `init` options; `publish` options; `upgrade` options described above.
 
@@ -439,7 +438,6 @@ build    compile
 run      execute once
 dev      rebuild/restart while developing
 test     test
-repl     interactive C++
 
 add      add dependency
 remove   remove dependency

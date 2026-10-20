@@ -204,7 +204,7 @@ softadastra/softadastra  (latest: 0.1.7)
   repo: https://github.com/softadastra/softadastra
 
 softadastra/cli  (latest: 0.4.2)
-  Modular command-line interface engine for Softadastra systems: parsing, command registry, handlers, interactive REPL, and structured terminal I/O.
+  Modular command-line interface engine for Vix: argument parsing, command registry, handlers, and structured terminal I/O.
   repo: https://github.com/softadastra/cli
 
 ✔ Showing 1-5 of 17 result(s).
