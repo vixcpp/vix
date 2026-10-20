@@ -773,10 +773,22 @@ jobs:
           ! grep -R -F "$GITHUB_WORKSPACE" "$bootstrap/share/vix"
           ldd "$bootstrap/bin/vix-installer" | tee "$RUNNER_TEMP/bootstrap-runtime.txt"
           ! grep -F 'not found' "$RUNNER_TEMP/bootstrap-runtime.txt"
-          awk -v bundled_prefix="$bootstrap/lib/" '
-            $2 == "=>" && $3 == "not" { print "missing dependency: " $1; failed=1 }
-            $2 == "=>" && $1 !~ /^(libc\.so|libm\.so|libpthread\.so|libdl\.so|librt\.so|libresolv\.so|ld-linux|linux-vdso)/ && index($3, bundled_prefix) != 1 {
-              print "non-system dependency not bundled: " $1 " => " $3; failed=1
-            }
-            END { exit failed }
-          ' "$RUNNER_TEMP/bootstrap-runtime.txt"
+          bootstrap_bundled_real="$(realpath "$bootstrap/lib")"
+          bootstrap_runtime_check_failed=0
+          while read -r name arrow location _; do
+            [[ "$arrow" == "=>" ]] || continue
+            case "$name" in
+              libc.so*|libm.so*|libpthread.so*|libdl.so*|librt.so*|libresolv.so*|ld-linux*|linux-vdso*)
+                continue
+                ;;
+            esac
+            resolved="$(realpath "$location")"
+            case "$resolved" in
+              "$bootstrap_bundled_real"/*) ;;
+              *)
+                echo "non-system dependency not bundled: $name => $location (resolved: $resolved)" >&2
+                bootstrap_runtime_check_failed=1
+                ;;
+            esac
+          done < "$RUNNER_TEMP/bootstrap-runtime.txt"
+          test "$bootstrap_runtime_check_failed" -eq 0
