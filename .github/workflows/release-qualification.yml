@@ -305,13 +305,32 @@ jobs:
           check_runtime_containment() {
             local executable="$1"
             local bundled_lib_dir="$2"
-            ldd "$executable" | awk -v bundled_prefix="$bundled_lib_dir/" '
-              $2 == "=>" && $3 == "not" { print "missing dependency: " $1; failed=1 }
-              $2 == "=>" && $1 !~ /^(libc\.so|libm\.so|libpthread\.so|libdl\.so|librt\.so|libresolv\.so|ld-linux|linux-vdso)/ && index($3, bundled_prefix) != 1 {
-                print "non-system dependency not bundled: " $1 " => " $3; failed=1
+            local canonical_bundle_dir
+            local dependencies
+            local line soname arrow resolved remainder resolved_path
+            local failed=0
+            canonical_bundle_dir="$(realpath -e -- "$bundled_lib_dir")"
+            dependencies="$(ldd "$executable")"
+            while IFS= read -r line; do
+              read -r soname arrow resolved remainder <<< "$line"
+              [[ "${arrow:-}" == "=>" ]] || continue
+              if [[ "${resolved:-}" == "not" && "${remainder:-}" == "found" ]]; then
+                echo "missing dependency: $soname" >&2
+                failed=1
+                continue
+              fi
+              [[ "$soname" =~ ^(libc\.so|libm\.so|libpthread\.so|libdl\.so|librt\.so|libresolv\.so|ld-linux|linux-vdso) ]] && continue
+              resolved_path="$(realpath -e -- "$resolved")" || {
+                echo "cannot resolve dependency path: $soname => $resolved" >&2
+                failed=1
+                continue
               }
-              END { exit failed }
-            '
+              if [[ "$resolved_path" != "$canonical_bundle_dir/"* ]]; then
+                echo "non-system dependency not bundled: $soname => $resolved_path" >&2
+                failed=1
+              fi
+            done <<< "$dependencies"
+            return "$failed"
           }
           check_runtime_containment "$RUNNER_TEMP/vix-release-tree/bin/vix" "$RUNNER_TEMP/vix-release-tree/lib"
           check_runtime_containment "$RUNNER_TEMP/vix-bootstrap-tree/bin/vix-installer" "$RUNNER_TEMP/vix-bootstrap-tree/lib"
