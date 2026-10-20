@@ -212,7 +212,8 @@ jobs:
             -DVIX_INSTALLER_SOURCE_CONFIG_FILE="$RUNNER_TEMP/vix-provision/source.toml"
           cmake --build cli-build --target vix_cli vix_installer vix_release_tool --parallel 2
           cli-build/vix --version | tee "$RUNNER_TEMP/package-cli-version.txt"
-          grep -F "version : $RELEASE_VERSION" "$RUNNER_TEMP/package-cli-version.txt"
+          sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' "$RUNNER_TEMP/package-cli-version.txt" \
+            | grep -F "version : $RELEASE_VERSION"
           cli-build/vix-installer --validate-provisioning
       - name: Assemble exact runtime dependencies and canonical distribution trees
         shell: bash
@@ -431,7 +432,8 @@ jobs:
           grep -Fx "cli_version = \"${GITHUB_REF_NAME#v}\"" dist/release-build-info.toml
           grep -Fx "sdk = \"${GITHUB_REF_NAME#v}\"" dist/release-build-info.toml
           env -u LD_LIBRARY_PATH "$fresh/bin/vix" --version | tee "$RUNNER_TEMP/vix-version.txt"
-          grep -F "version : ${GITHUB_REF_NAME#v}" "$RUNNER_TEMP/vix-version.txt"
+          sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' "$RUNNER_TEMP/vix-version.txt" \
+            | grep -F "version : ${GITHUB_REF_NAME#v}"
           env -u LD_LIBRARY_PATH "$fresh/bin/vix" help > "$RUNNER_TEMP/vix-help.txt"
           actual_commands="$(awk '
             /^(Project|Packages|System):$/ { section=1; next }
