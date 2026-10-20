@@ -152,7 +152,10 @@ jobs:
           echo "ARCHIVE_SUFFIX=$archive_suffix" >> "$GITHUB_ENV"
       - name: Install Android NDK
         if: matrix.kind == 'android'
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4.0.4
+        with:
+          cmdline-tools-version: '15859902'
+          packages: 'platform-tools'
       - name: Install pinned Android NDK package
         if: matrix.kind == 'android'
         run: sdkmanager "ndk;27.2.12479018"
