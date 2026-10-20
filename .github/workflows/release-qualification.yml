@@ -702,7 +702,9 @@ jobs:
           cmp "$fresh/share/vix/release-build-info.toml" dist/release-build-info.toml
           grep -Fx "cli_version = \"${release_version}\"" dist/release-build-info.toml
           grep -Fx "sdk = \"${release_version}\"" dist/release-build-info.toml
-          env -u LD_LIBRARY_PATH "$fresh/bin/vix" --version | tee "$RUNNER_TEMP/vix-version.txt"
+          env -u LD_LIBRARY_PATH "$fresh/bin/vix" --version \
+            | sed -E 's/\x1B\[[0-9;]*m//g' \
+            | tee "$RUNNER_TEMP/vix-version.txt"
           grep -F "version : ${release_version}" "$RUNNER_TEMP/vix-version.txt"
           env -u LD_LIBRARY_PATH "$fresh/bin/vix" help > "$RUNNER_TEMP/vix-help.txt"
           actual_commands="$(awk '
@@ -716,13 +718,25 @@ jobs:
           ! find "$fresh" \( -name CMakeCache.txt -o -name build.ninja -o -name compile_commands.json \) -print | grep -q .
           ldd "$fresh/bin/vix" | tee "$RUNNER_TEMP/extracted-runtime.txt"
           ! grep -F 'not found' "$RUNNER_TEMP/extracted-runtime.txt"
-          awk -v bundled_prefix="$fresh/lib/" '
-            $2 == "=>" && $3 == "not" { print "missing dependency: " $1; failed=1 }
-            $2 == "=>" && $1 !~ /^(libc\.so|libm\.so|libpthread\.so|libdl\.so|librt\.so|libresolv\.so|ld-linux|linux-vdso)/ && index($3, bundled_prefix) != 1 {
-              print "non-system dependency not bundled: " $1 " => " $3; failed=1
-            }
-            END { exit failed }
-          ' "$RUNNER_TEMP/extracted-runtime.txt"
+          bundled_real="$(realpath "$fresh/lib")"
+          runtime_check_failed=0
+          while read -r name arrow location _; do
+            [[ "$arrow" == "=>" ]] || continue
+            case "$name" in
+              libc.so*|libm.so*|libpthread.so*|libdl.so*|librt.so*|libresolv.so*|ld-linux*|linux-vdso*)
+                continue
+                ;;
+            esac
+            resolved="$(realpath "$location")"
+            case "$resolved" in
+              "$bundled_real"/*) ;;
+              *)
+                echo "non-system dependency not bundled: $name => $location (resolved: $resolved)" >&2
+                runtime_check_failed=1
+                ;;
+            esac
+          done < "$RUNNER_TEMP/extracted-runtime.txt"
+          test "$runtime_check_failed" -eq 0
       - name: Install SDK consumer build dependencies
         run: |
           sudo apt-get update
