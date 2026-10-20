@@ -222,12 +222,14 @@ jobs:
             cmake -S tests/target_sdk_consumer -B target-consumer-build -G Ninja \
               -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/27.2.12479018/build/cmake/android.toolchain.cmake" \
               -DANDROID_ABI="$ABI" -DANDROID_PLATFORM=android-21 \
-              -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/vix-target-sdk"
+              -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/vix-target-sdk" \
+              -DVix_DIR="$RUNNER_TEMP/vix-target-sdk/lib/cmake/Vix"
           else
             cmake -S tests/target_sdk_consumer -B target-consumer-build -G Ninja \
               -DCMAKE_TOOLCHAIN_FILE="$GITHUB_WORKSPACE/domains/network/wasi-sdk-p2-toolchain.cmake" \
               -DVIX_WASI_SDK_ROOT="$VIX_WASI_SDK_ROOT" \
-              -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/vix-target-sdk"
+              -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/vix-target-sdk" \
+              -DVix_DIR="$RUNNER_TEMP/vix-target-sdk/lib/cmake/Vix"
           fi
           cmake --build target-consumer-build --parallel 2
       - name: Archive, relocate, and reconsume target SDK
@@ -248,12 +250,14 @@ jobs:
             cmake -S tests/target_sdk_consumer -B target-consumer-relocated -G Ninja \
               -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/27.2.12479018/build/cmake/android.toolchain.cmake" \
               -DANDROID_ABI="$ABI" -DANDROID_PLATFORM=android-21 \
-              -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/target-sdk-relocated"
+              -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/target-sdk-relocated" \
+              -DVix_DIR="$RUNNER_TEMP/target-sdk-relocated/lib/cmake/Vix"
           else
             cmake -S tests/target_sdk_consumer -B target-consumer-relocated -G Ninja \
               -DCMAKE_TOOLCHAIN_FILE="$GITHUB_WORKSPACE/domains/network/wasi-sdk-p2-toolchain.cmake" \
               -DVIX_WASI_SDK_ROOT="$VIX_WASI_SDK_ROOT" \
-              -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/target-sdk-relocated"
+              -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/target-sdk-relocated" \
+              -DVix_DIR="$RUNNER_TEMP/target-sdk-relocated/lib/cmake/Vix"
           fi
           cmake --build target-consumer-relocated --parallel 2
           if [[ "$KIND" == wasi ]]; then
@@ -408,8 +412,8 @@ jobs:
           manifest = "$RELEASE_BASE_URL/latest/download/release-manifest.toml"
           signature = "$RELEASE_BASE_URL/latest/download/release-signature.toml"
           EOF
-          ! grep -Eiq 'test|example|invalid|placeholder' "$RUNNER_TEMP/vix-provision/releases.toml"
-          ! grep -Eiq 'test|example|invalid|placeholder' "$RUNNER_TEMP/vix-provision/source.toml"
+          ! grep -Eiq '(^|[^[:alnum:]])(test|example|invalid|placeholder)([^[:alnum:]]|$)' "$RUNNER_TEMP/vix-provision/releases.toml"
+          ! grep -Eiq '(^|[^[:alnum:]])(test|example|invalid|placeholder)([^[:alnum:]]|$)' "$RUNNER_TEMP/vix-provision/source.toml"
       - name: Install Linux SDK and CLI build dependencies
         run: |
           sudo apt-get update
