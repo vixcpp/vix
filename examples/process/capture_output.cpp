@@ -1,39 +1,95 @@
 /**
+ * @file capture_output.cpp
+ * @brief Demonstrates capturing a child process's stdout and stderr.
  *
- *  @file capture_output.cpp
- *  @author Gaspard Kirira
- *
- *  Copyright 2026, Gaspard Kirira.
- *  All rights reserved.
- *  https://github.com/vixcpp/vix
- *
- *  Use of this source code is governed by a MIT license
- *  that can be found in the License file.
- *
- *  Vix.cpp
- *
+ * Requires "git" to be available through PATH.
  */
 
-#include <iostream>
+#include <vix/process/ProcessDomain.hpp>
 
-#include <vix/process/Process.hpp>
+#include <array>
+#include <cstddef>
+#include <iostream>
 
 int main()
 {
-  vix::process::Command command("echo");
-  command.arg("hello from output");
-  command.stdout_mode(vix::process::PipeMode::Pipe);
-  command.stderr_mode(vix::process::PipeMode::Pipe);
+  using namespace vix::process;
 
-  auto result = vix::process::output(command);
-  if (!result)
+  auto executable = Executable::search_path("git");
+  if (!executable)
   {
-    std::cerr << "output failed: " << result.error().message() << '\n';
+    std::cerr << "Invalid executable: " << executable.error().message() << '\n';
     return 1;
   }
 
-  std::cout << "exit code = " << result.value().exit_code << '\n';
-  std::cout << "stdout = " << result.value().stdout_text << '\n';
-  std::cout << "stderr = " << result.value().stderr_text << '\n';
+  ProcessSpec spec(executable.take());
+  auto argument = spec.add_argument("--version");
+  if (!argument)
+  {
+    std::cerr << "Invalid argument: " << argument.error().message() << '\n';
+    return 1;
+  }
+
+  // Merge stderr into stdout so the parent has only one pipe to drain.
+  spec.set_stdout(StandardOutput::pipe());
+  spec.set_stderr(StandardError::merge_with_stdout());
+
+  auto started = spawn(spec);
+  if (!started)
+  {
+    std::cerr << "Cannot start git: " << started.error().message() << '\n';
+    return 1;
+  }
+
+  auto child = started.take();
+  auto output = child.take_stdout();
+  if (!output)
+  {
+    std::cerr << "Cannot take output pipe: " << output.error().message() << '\n';
+    return 1;
+  }
+
+  auto reader = output.take();
+  std::array<std::byte, 4096> buffer{};
+
+  // Drain the output before waiting: a full pipe could otherwise block the child.
+  while (true)
+  {
+    auto read = reader.read_some(buffer);
+    if (!read)
+    {
+      std::cerr << "Pipe read failed: " << read.error().message() << '\n';
+      return 1;
+    }
+
+    const auto count = read.value();
+    if (count == 0)
+      break; // EOF for a non-empty buffer.
+
+    // ChildOutput returns bytes, not decoded text. Print them as-is here.
+    std::cout.write(reinterpret_cast<const char *>(buffer.data()),
+                    static_cast<std::streamsize>(count));
+  }
+
+  auto closed = reader.close();
+  if (!closed)
+  {
+    std::cerr << "Pipe close failed: " << closed.error().message() << '\n';
+    return 1;
+  }
+
+  auto finished = child.wait();
+  if (!finished)
+  {
+    std::cerr << "Wait failed: " << finished.error().message() << '\n';
+    return 1;
+  }
+
+  if (!finished.value().succeeded())
+  {
+    std::cerr << "Child did not exit successfully.\n";
+    return 1;
+  }
+
   return 0;
 }
